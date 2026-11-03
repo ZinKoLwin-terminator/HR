@@ -353,7 +353,7 @@ a {
       line-height: 1.35;
     }
 
-    &:hover:not(.mdc-list-item--disabled),
+    // Keyboard focus (also the pre-highlighted row when the panel opens): a neutral tint.
     &.mat-mdc-option-active:not(.mdc-list-item--selected) {
       background: var(--mat-sys-surface-container-high);
     }
@@ -367,8 +367,35 @@ a {
       }
     }
 
+    // Pointer hover: clearly stronger — blue tint, left accent bar and blue text.
+    &:hover:not(.mdc-list-item--disabled) {
+      background: color-mix(in srgb, var(--mat-sys-primary) 18%, transparent);
+      box-shadow: inset 4px 0 0 var(--mat-sys-primary);
+
+      .mdc-list-item__primary-text {
+        color: var(--mat-sys-primary);
+        font-weight: 600;
+      }
+    }
+
+    &.mdc-list-item--selected:hover:not(.mdc-list-item--disabled) {
+      background: color-mix(in srgb, var(--mat-sys-primary) 26%, transparent);
+    }
+  }
+
+  // While the pointer is over the list, only the hovered row is highlighted
+  // (mute the keyboard-focus row so two rows never look active at once).
+  &:hover .mat-mdc-option.mat-mdc-option-active:not(:hover):not(.mdc-list-item--selected) {
+    background: transparent;
+
+    .mdc-list-item__primary-text {
+      color: var(--mat-sys-on-surface);
+    }
+  }
+
+  .mat-mdc-option {
     // The "All" / "None" entries read as secondary choices.
-    &:first-child:not(.mdc-list-item--selected) .mdc-list-item__primary-text {
+    &:first-child:not(.mdc-list-item--selected):not(:hover) .mdc-list-item__primary-text {
       color: var(--mat-sys-on-surface-variant);
     }
   }
