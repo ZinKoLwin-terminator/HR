@@ -85,6 +85,14 @@ export const NAVIGATION: NavItem[] = [
     ],
   },
   {
+    label: 'Data Exchange',
+    icon: 'swap_vert',
+    children: [
+      { label: 'Import Data', icon: 'upload_file', route: '/data-exchange/import' },
+      { label: 'Import History', icon: 'history', route: '/data-exchange/history' },
+    ],
+  },
+  {
     label: 'Settings',
     icon: 'settings',
     children: [

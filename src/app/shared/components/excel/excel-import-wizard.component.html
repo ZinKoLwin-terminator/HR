@@ -1,0 +1,318 @@
+@if (catalog.error()) {
+  <app-empty-state icon="error" title="Import options could not be loaded">
+    <button mat-flat-button type="button" (click)="catalog.reload()">Try again</button>
+  </app-empty-state>
+} @else if (catalog.isLoading() && !catalog.value()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading import options" />
+} @else if (modules().length === 0) {
+  <app-empty-state
+    icon="upload_file"
+    title="No modules can be imported yet"
+    message="Excel import is added module by module."
+  />
+} @else {
+  <mat-stepper
+    class="wizard"
+    linear
+    labelPosition="bottom"
+    [selectedIndex]="stepIndex()"
+    (selectedIndexChange)="goTo($event)"
+  >
+    <!-- 1. Template -->
+    <mat-step label="Template" [completed]="!!info()" [editable]="!result()">
+      <div class="step">
+        <h2 class="step__title">Choose what to import</h2>
+        <div class="row">
+          <mat-form-field>
+            <mat-label>Module</mat-label>
+            <mat-select [value]="moduleCode()" (selectionChange)="chooseModule($event.value)">
+              @for (module of modules(); track module.code) {
+                <mat-option [value]="module.code">{{ module.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Import strategy</mat-label>
+            <mat-select [value]="strategy()" (selectionChange)="chooseStrategy($event.value)">
+              @for (option of strategies; track option) {
+                <mat-option [value]="option">{{ strategyLabels[option] }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        @if (info(); as module) {
+          <p class="lead">{{ module.description }}</p>
+          <ul class="facts">
+            <li>
+              Existing records are matched by <strong>{{ module.matchKeyLabel }}</strong
+              >.
+            </li>
+            <li>
+              @switch (strategy()) {
+                @case ('InsertOnly') {
+                  <strong>Insert only</strong>: new records are added; rows that match an existing
+                  record are rejected.
+                }
+                @case ('UpdateOnly') {
+                  <strong>Update only</strong>: existing records are updated; rows that match
+                  nothing are rejected.
+                }
+                @default {
+                  <strong>Insert or update</strong>: new records are added and matching records are
+                  updated.
+                }
+              }
+            </li>
+            <li>
+              Up to {{ limits.maxRows.toLocaleString('en-US') }} rows and
+              {{ limits.maxFileBytes / 1048576 }} MB per file. Only .xlsx files are accepted.
+            </li>
+          </ul>
+        }
+
+        <div class="actions">
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!info()"
+            (click)="downloadTemplate()"
+          >
+            <mat-icon>download</mat-icon>Download template
+          </button>
+          <button mat-flat-button type="button" matStepperNext [disabled]="!info()">
+            Continue to upload
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- 2. Upload -->
+    <mat-step label="Upload" [completed]="!!inspection()" [editable]="!result()">
+      <div class="step">
+        <h2 class="step__title">Upload your Excel file</h2>
+        <app-excel-file-upload
+          [file]="file()"
+          [maxBytes]="limits.maxFileBytes"
+          (fileChange)="setFile($event)"
+        />
+        @if (uploadError()) {
+          <div class="notice notice--error" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <span>{{ uploadError() }}</span>
+          </div>
+        }
+        @if (busy() && stepIndex() === steps.upload) {
+          <mat-progress-bar mode="indeterminate" aria-label="Checking the file" />
+        }
+        <div class="actions">
+          <button mat-button type="button" matStepperPrevious>Back</button>
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="!file() || busy()"
+            (click)="checkFile()"
+          >
+            Check file
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- 3. Columns -->
+    <mat-step label="Columns" [completed]="!!preview()" [editable]="!result()">
+      <div class="step">
+        @if (inspection(); as inspected) {
+          @if (info(); as module) {
+            <h2 class="step__title">Check the columns</h2>
+            <dl class="file-facts">
+              <div>
+                <dt>File</dt>
+                <dd>{{ inspected.fileName }}</dd>
+              </div>
+              <div>
+                <dt>Size</dt>
+                <dd>{{ (inspected.fileSize / 1024).toFixed(0) }} KB</dd>
+              </div>
+              <div>
+                <dt>Worksheet</dt>
+                <dd>{{ inspected.sheetName }}</dd>
+              </div>
+              <div>
+                <dt>Data rows</dt>
+                <dd>{{ inspected.rowCount }}</dd>
+              </div>
+            </dl>
+            @if (inspected.needsMapping) {
+              <app-excel-column-mapping
+                [inspection]="inspected"
+                [columns]="module.columns"
+                (mappingChange)="setMapping($event)"
+              />
+            } @else {
+              <div class="notice notice--ok">
+                <mat-icon aria-hidden="true">check_circle</mat-icon>
+                <span>All columns match the template — no mapping is needed.</span>
+              </div>
+              @if (inspected.unknownHeaders.length) {
+                <p class="muted">
+                  Ignored columns (not part of the template):
+                  {{ inspected.unknownHeaders.join(', ') }}.
+                </p>
+              }
+            }
+            @if (reviewError()) {
+              <div class="notice notice--error" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                <span>{{ reviewError() }}</span>
+              </div>
+            }
+            @if (busy() && stepIndex() === steps.columns) {
+              <mat-progress-bar mode="indeterminate" aria-label="Validating the file" />
+            }
+            <div class="actions">
+              <button mat-button type="button" (click)="goTo(steps.upload)">Back</button>
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="mappingBlocked() || busy()"
+                (click)="validate()"
+              >
+                Validate file
+              </button>
+            </div>
+          }
+        }
+      </div>
+    </mat-step>
+
+    <!-- 4. Review -->
+    <mat-step label="Review" [completed]="canImport()" [editable]="!result()">
+      <div class="step">
+        @if (preview(); as review) {
+          <h2 class="step__title">Review before importing</h2>
+          <app-excel-validation-summary [preview]="review" />
+          @if (problemRows() > 0) {
+            <div class="notice notice--warn" role="status">
+              <mat-icon aria-hidden="true">warning</mat-icon>
+              <span>
+                {{ problemRows() }} row(s) have problems and will not be imported. Download the
+                report, correct the file and upload it again — or continue to import only the valid
+                rows.
+              </span>
+            </div>
+          }
+          <app-excel-import-preview
+            [preview]="review"
+            [columns]="info()?.columns ?? []"
+            [shownKeys]="shownKeys()"
+          />
+          <div class="actions">
+            <button mat-button type="button" (click)="goTo(steps.columns)">Back</button>
+            @if (problemRows() > 0 || review.warningRows > 0) {
+              <button mat-stroked-button type="button" (click)="downloadReport()">
+                <mat-icon>download</mat-icon>Download report
+              </button>
+            }
+            <button mat-stroked-button type="button" (click)="uploadCorrected()">
+              <mat-icon>upload_file</mat-icon>Upload a corrected file
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="!canImport()"
+              (click)="goTo(steps.confirm)"
+            >
+              Continue
+            </button>
+          </div>
+          @if (!canImport()) {
+            <p class="muted">
+              There are no valid rows to import. Correct the file and upload it again.
+            </p>
+          }
+        }
+      </div>
+    </mat-step>
+
+    <!-- 5. Confirm -->
+    <mat-step label="Confirm" [completed]="!!result()" [editable]="!result()">
+      <div class="step">
+        @if (preview(); as review) {
+          <h2 class="step__title">Confirm the import</h2>
+          <p class="lead">
+            <strong>{{ review.fileName }}</strong> — {{ strategyLabels[review.strategy] }}.
+          </p>
+          <ul class="facts">
+            <li>
+              <strong>{{ plan().insert }}</strong> record(s) will be added.
+            </li>
+            <li>
+              <strong>{{ plan().update }}</strong> record(s) will be updated.
+            </li>
+            <li>
+              <strong>{{ plan().skipped }}</strong> row(s) will be skipped because of problems.
+            </li>
+          </ul>
+
+          <fieldset class="modes">
+            <legend>How should problems be handled?</legend>
+            <mat-radio-group
+              aria-label="Import mode"
+              [value]="mode()"
+              (change)="mode.set($event.value)"
+            >
+              <mat-radio-button value="AllOrNothing" [disabled]="problemRows() > 0">
+                <strong>{{ modeLabels.AllOrNothing }}</strong> — import everything or nothing. If
+                any row fails while saving, no changes are kept.
+                @if (problemRows() > 0) {
+                  <span class="muted"> Not available: some rows have problems.</span>
+                }
+              </mat-radio-button>
+              <mat-radio-button value="Partial">
+                <strong>{{ modeLabels.Partial }}</strong> — import the valid rows and skip the
+                others. Skipped rows are listed in the report.
+              </mat-radio-button>
+            </mat-radio-group>
+          </fieldset>
+
+          @if (confirmError()) {
+            <div class="notice notice--error" role="alert">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <span>{{ confirmError() }}</span>
+            </div>
+          }
+          @if (busy() && stepIndex() === steps.confirm) {
+            <mat-progress-bar mode="indeterminate" aria-label="Importing" />
+          }
+          <div class="actions">
+            <button mat-button type="button" [disabled]="busy()" (click)="goTo(steps.review)">
+              Back
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="busy() || !canImport()"
+              (click)="execute()"
+            >
+              <mat-icon>publish</mat-icon>Import now
+            </button>
+          </div>
+        }
+      </div>
+    </mat-step>
+
+    <!-- 6. Result -->
+    <mat-step label="Result" [completed]="!!result()" [editable]="false">
+      <div class="step">
+        @if (result(); as outcome) {
+          <app-excel-import-result
+            [result]="outcome"
+            (downloadReport)="downloadReport()"
+            (startAgain)="startAgain()"
+          />
+        }
+      </div>
+    </mat-step>
+  </mat-stepper>
+}

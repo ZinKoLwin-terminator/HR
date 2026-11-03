@@ -1,0 +1,132 @@
+:host {
+  display: block;
+}
+
+.wizard {
+  background: var(--mat-sys-surface-container-lowest);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-sm);
+  overflow: hidden;
+}
+
+.step {
+  padding: 8px 8px 20px;
+}
+
+.step__title {
+  margin: 0 0 16px;
+  font: var(--mat-sys-title-large);
+  font-weight: 700;
+}
+
+.row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  mat-form-field {
+    flex: 1 1 260px;
+  }
+}
+
+.lead {
+  margin: 0 0 8px;
+  font: var(--mat-sys-body-large);
+}
+
+.facts {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  color: var(--mat-sys-on-surface-variant);
+
+  li {
+    margin-bottom: 4px;
+  }
+}
+
+.file-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin: 0 0 16px;
+
+  dt {
+    font: var(--mat-sys-label-small);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: var(--app-radius-md);
+  font: var(--mat-sys-body-medium);
+
+  &--error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+  &--warn {
+    background: var(--app-warning-container);
+    color: var(--app-on-warning-container);
+  }
+  &--ok {
+    background: var(--app-success-container);
+    color: var(--app-on-success-container);
+  }
+}
+
+.modes {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--app-radius-md);
+  padding: 8px 16px 12px;
+  margin: 0 0 8px;
+
+  legend {
+    font: var(--mat-sys-title-small);
+    padding: 0 6px;
+  }
+
+  mat-radio-group {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+@media (max-width: 599.98px) {
+  .actions {
+    justify-content: stretch;
+
+    button,
+    a {
+      flex: 1 1 100%;
+    }
+  }
+}

@@ -15,6 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import {
@@ -30,6 +31,7 @@ import {
   errorMessage,
 } from '../../../core/services/ui-notification.service';
 import { ListQuery } from '../../utilities/list-query';
+import { ExcelExportService } from '../excel/excel-export.service';
 import { DataTableComponent } from '../data-table/data-table.component';
 import { TableAction, TableActionEvent } from '../data-table/data-table.models';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
@@ -59,6 +61,7 @@ type Row = Entity & { status?: string };
     MatInputModule,
     MatFormFieldModule,
     MatSelectModule,
+    RouterLink,
     PageHeaderComponent,
     SearchFieldComponent,
     DataTableComponent,
@@ -76,6 +79,7 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(UiNotificationService);
+  private readonly excelExport = inject(ExcelExportService);
 
   protected readonly pageSizeOptions = this.appConfig.pageSizeOptions;
   protected readonly query = new ListQuery<Record<string, unknown>>({
@@ -243,6 +247,30 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
 
   protected setDateFilter(key: string, value: string): void {
     this.query.setFilter(key, value || null);
+  }
+
+  /** Opens the Excel export dialog with the list's current search and filters. */
+  protected openExport(): void {
+    const cfg = this.config();
+    if (!cfg.excel) return;
+    const active = this.query.filters();
+    const summary = (cfg.filters ?? []).flatMap((f) => {
+      const value = active[f.key];
+      if (value === null || value === undefined || value === '') return [];
+      const label = f.options.find((o) => o.value === value)?.label ?? String(value);
+      return [`: ${label}`];
+    });
+    const df = cfg.dateFilter;
+    if (df && this.dateValue(df.fromKey)) summary.push(`: ${this.dateValue(df.fromKey)}`);
+    if (df && this.dateValue(df.toKey)) summary.push(`: ${this.dateValue(df.toKey)}`);
+    this.excelExport
+      .open({
+        moduleCode: cfg.excel.moduleCode,
+        search: this.query.search() || undefined,
+        filters: { ...active, ...cfg.lockedFilters },
+        filterSummary: summary,
+      })
+      .subscribe();
   }
 
   protected openForm(row?: T): void {

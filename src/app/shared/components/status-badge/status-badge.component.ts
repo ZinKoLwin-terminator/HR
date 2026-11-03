@@ -36,6 +36,14 @@ const TONES: Record<string, BadgeTone> = {
   filled: 'success',
   scheduled: 'info',
   completed: 'success',
+  valid: 'success',
+  warning: 'warning',
+  invalid: 'danger',
+  duplicate: 'warning',
+  failed: 'danger',
+  'completed with errors': 'warning',
+  'failed (rolled back)': 'danger',
+  'validated (not imported)': 'info',
 };
 
 export function badgeTone(status: string): BadgeTone {

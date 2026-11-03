@@ -114,6 +114,8 @@ export interface CrudPageConfig<T extends Entity> {
   canEdit?: (row: T) => boolean;
   /** Hide Delete for rows that cannot be deleted. */
   canDelete?: (row: T) => boolean;
+  /** Shows Export (and Import) buttons for this list, backed by the Excel module with this code. */
+  excel?: { moduleCode: string; import?: boolean };
 }
 
 /** A custom row action (e.g. Approve / Reject) rendered in the row menu. */

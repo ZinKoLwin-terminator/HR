@@ -65,6 +65,13 @@ import {
   RolePermissionMockService,
   UserMockService,
 } from './settings/settings-mock.services';
+import {
+  ExcelExportDataService,
+  ExcelImportDataService,
+  ExcelModuleCatalogDataService,
+} from '../core/services/data/excel-data.services';
+import { ExcelCatalogMockService, ExcelExportMockService } from './excel/excel-export.mock.service';
+import { ExcelImportMockService } from './excel/excel-import.mock.service';
 import { ActivityMockService } from './activity/activity-mock.service';
 import { NotificationMockService } from './activity/notification-mock.service';
 import {
@@ -159,6 +166,9 @@ export function provideMockDataServices(): EnvironmentProviders {
     bind(RoleDataService, RoleMockService),
     bind(RolePermissionDataService, RolePermissionMockService),
     bind(GeneralSettingsDataService, GeneralSettingsMockService),
+    bind(ExcelModuleCatalogDataService, ExcelCatalogMockService),
+    bind(ExcelImportDataService, ExcelImportMockService),
+    bind(ExcelExportDataService, ExcelExportMockService),
     bind(DashboardDataService, DashboardMockService),
     bind(ActivityDataService, ActivityMockService),
     bind(NotificationDataService, NotificationMockService),

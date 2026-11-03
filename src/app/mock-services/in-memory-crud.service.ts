@@ -3,8 +3,10 @@ import { Observable } from 'rxjs';
 import { APP_CONFIG } from '../core/configuration/app-config';
 import { ActivityCategory } from '../core/models/activity.models';
 import {
+  AppError,
   CreateModel,
   Entity,
+  isAppError,
   PagedResult,
   PageRequest,
   UpdateModel,
@@ -171,32 +173,75 @@ export abstract class InMemoryCrudService<
   }
 
   create(model: CreateModel<T>): Observable<T> {
-    return this.respond(() => {
-      const entity = { ...structuredClone(model), id: this.nextId() } as T;
-      this.prepare(entity, true);
-      this.validate(entity, true);
-      this.store.update((items) => [...items, entity]);
+    return this.respond(() => this.createNow(model));
+  }
+
+  update(id: number, changes: UpdateModel<T>): Observable<T> {
+    return this.respond(() => this.updateNow(id, changes));
+  }
+
+  // ---- Synchronous core (also used by batch operations such as Excel import) ----------------
+
+  /** Creates a record immediately with the same rules as `create`. */
+  createNow(model: CreateModel<T>, log = true): T {
+    const entity = { ...structuredClone(model), id: this.nextId() } as T;
+    this.prepare(entity, true);
+    this.validate(entity, true);
+    this.store.update((items) => [...items, entity]);
+    if (log) {
       this.activity.record(
         this.activityCategory,
         `${this.entityLabel} "${this.describe(entity)}" created`,
       );
-      return entity;
-    });
+    }
+    return entity;
   }
 
-  update(id: number, changes: UpdateModel<T>): Observable<T> {
-    return this.respond(() => {
-      const existing = this.require(id);
-      const updated = { ...existing, ...structuredClone(changes), id } as T;
-      this.prepare(updated, false);
-      this.validate(updated, false);
-      this.store.update((items) => items.map((item) => (item.id === id ? updated : item)));
+  /** Updates a record immediately with the same rules as `update`. */
+  updateNow(id: number, changes: UpdateModel<T>, log = true): T {
+    const existing = this.require(id);
+    const updated = { ...existing, ...structuredClone(changes), id } as T;
+    this.prepare(updated, false);
+    this.validate(updated, false);
+    this.store.update((items) => items.map((item) => (item.id === id ? updated : item)));
+    if (log) {
       this.activity.record(
         this.activityCategory,
         `${this.entityLabel} "${this.describe(updated)}" updated`,
       );
-      return updated;
-    });
+    }
+    return updated;
+  }
+
+  /**
+   * Runs the create/update rules WITHOUT saving anything (used to preview an import).
+   * Returns the validation error, or null when the record would be accepted.
+   */
+  dryRun(model: CreateModel<T> | UpdateModel<T>, existingId: number | null): AppError | null {
+    try {
+      if (existingId === null) {
+        const entity = { ...structuredClone(model), id: this.nextId() } as T;
+        this.prepare(entity, true);
+        this.validate(entity, true);
+      } else {
+        const updated = {
+          ...this.require(existingId),
+          ...structuredClone(model),
+          id: existingId,
+        } as T;
+        this.prepare(updated, false);
+        this.validate(updated, false);
+      }
+      return null;
+    } catch (error) {
+      return isAppError(error) ? error : mockError('Unknown', 'The record could not be validated.');
+    }
+  }
+
+  /** Captures the current records; the returned function restores them (all-or-nothing imports). */
+  snapshot(): () => void {
+    const saved = structuredClone(this.store());
+    return () => this.store.set(structuredClone(saved));
   }
 
   delete(id: number): Observable<void> {

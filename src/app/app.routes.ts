@@ -51,6 +51,14 @@ export const routes: Routes = [
           import('./features/recruitment/recruitment.routes').then((m) => m.RECRUITMENT_ROUTES),
       },
       {
+        path: 'data-exchange',
+        data: { breadcrumb: 'Data Exchange' },
+        loadChildren: () =>
+          import('./features/data-exchange/data-exchange.routes').then(
+            (m) => m.DATA_EXCHANGE_ROUTES,
+          ),
+      },
+      {
         path: 'settings',
         data: { breadcrumb: 'Settings' },
         loadChildren: () =>

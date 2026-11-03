@@ -1,6 +1,22 @@
 @let cfg = config();
 @if (!cfg.embedded) {
   <app-page-header [title]="cfg.title" [description]="cfg.description">
+    @if (cfg.excel; as excel) {
+      <ng-container pageActions>
+        <button mat-stroked-button type="button" (click)="openExport()">
+          <mat-icon>download</mat-icon>Export
+        </button>
+        @if (excel.import !== false) {
+          <a
+            mat-stroked-button
+            routerLink="/data-exchange/import"
+            [queryParams]="{ module: excel.moduleCode }"
+          >
+            <mat-icon>upload_file</mat-icon>Import
+          </a>
+        }
+      </ng-container>
+    }
     @if (cfg.canCreate !== false) {
       <button pageActions mat-flat-button type="button" (click)="openForm()">
         <mat-icon>add</mat-icon>Add {{ cfg.entityLabel.toLowerCase() }}
@@ -55,6 +71,11 @@
   @if (query.activeFilterCount() > 0) {
     <button mat-button type="button" (click)="query.reset()">
       <mat-icon>filter_alt_off</mat-icon>Clear filters
+    </button>
+  }
+  @if (cfg.embedded && cfg.excel) {
+    <button mat-stroked-button type="button" (click)="openExport()">
+      <mat-icon>download</mat-icon>Export
     </button>
   }
   @if (cfg.embedded && cfg.canCreate !== false) {
