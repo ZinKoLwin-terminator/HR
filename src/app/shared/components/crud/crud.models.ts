@@ -135,6 +135,8 @@ export interface CrudExtraAction<T extends Entity> {
   };
   run: (row: T, input: string) => Observable<unknown>;
   successMessage: (row: T) => string;
+  /** Skip the success toast and list refresh (e.g. an action that just navigates). */
+  silent?: boolean;
 }
 
 /** Two native date inputs that filter by an inclusive range (sent as `fromKey` / `toKey`). */

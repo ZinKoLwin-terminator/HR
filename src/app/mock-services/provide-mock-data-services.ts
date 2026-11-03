@@ -34,7 +34,13 @@ import {
   PositionDataService,
   SectionDataService,
 } from '../core/services/data/organization-data.services';
-import { PayrollRunDataService } from '../core/services/data/payroll-data.services';
+import {
+  PayrollRunDataService,
+  PayslipDataService,
+  SalaryAssignmentDataService,
+  SalaryComponentDataService,
+  SalaryStructureDataService,
+} from '../core/services/data/payroll-data.services';
 import { ActivityMockService } from './activity/activity-mock.service';
 import { NotificationMockService } from './activity/notification-mock.service';
 import {
@@ -72,7 +78,12 @@ import {
   PositionMockService,
   SectionMockService,
 } from './organization/organization-mock.services';
-import { PayrollRunMockService } from './payroll/payroll-mock.services';
+import { PayrollRunMockService, PayslipMockService } from './payroll/payroll-mock.services';
+import {
+  SalaryAssignmentMockService,
+  SalaryComponentMockService,
+  SalaryStructureMockService,
+} from './payroll/payroll-setup-mock.services';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AbstractType<T> = abstract new (...args: any[]) => T;
@@ -112,6 +123,10 @@ export function provideMockDataServices(): EnvironmentProviders {
     bind(LeaveBalanceDataService, LeaveBalanceMockService),
     bind(LeaveCalendarDataService, LeaveCalendarMockService),
     bind(PayrollRunDataService, PayrollRunMockService),
+    bind(PayslipDataService, PayslipMockService),
+    bind(SalaryComponentDataService, SalaryComponentMockService),
+    bind(SalaryStructureDataService, SalaryStructureMockService),
+    bind(SalaryAssignmentDataService, SalaryAssignmentMockService),
     bind(DashboardDataService, DashboardMockService),
     bind(ActivityDataService, ActivityMockService),
     bind(NotificationDataService, NotificationMockService),

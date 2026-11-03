@@ -360,6 +360,28 @@ a {
   }
 }
 
+// Printing (e.g. a payslip): hide the application chrome and keep only the page content.
+@media print {
+  mat-sidenav,
+  app-header,
+  app-footer,
+  app-breadcrumbs,
+  .skip-link,
+  .no-print {
+    display: none !important;
+  }
+
+  mat-sidenav-content {
+    margin-left: 0 !important;
+  }
+
+  html,
+  body,
+  .shell {
+    background: #fff !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -9,9 +9,9 @@ test.describe('application shell', () => {
   });
 
   test('shows an honest placeholder for screens not built yet', async ({ page }) => {
-    await page.goto('/payroll/payslips');
-    await expect(page.getByRole('heading', { level: 1, name: 'Payslips' })).toBeVisible();
-    await expect(page.getByText('Phase 8')).toBeVisible();
+    await page.goto('/recruitment/job-openings');
+    await expect(page.getByRole('heading', { level: 1, name: 'Job Openings' })).toBeVisible();
+    await expect(page.getByText('Phase 9')).toBeVisible();
   });
 
   test('shows not found for unknown URLs', async ({ page }) => {

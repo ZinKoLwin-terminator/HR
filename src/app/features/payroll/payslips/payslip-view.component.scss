@@ -1,0 +1,126 @@
+:host {
+  display: block;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.payslip {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px 32px;
+  border-radius: var(--app-radius-lg);
+  border: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface-container-lowest);
+}
+
+.sample-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 8px 12px;
+  border-radius: var(--app-radius-md);
+  background: var(--app-warning-container);
+  color: var(--app-on-warning-container);
+  font: var(--mat-sys-label-large);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--mat-sys-on-surface);
+
+  h1 {
+    margin: 0;
+    font: var(--mat-sys-headline-small);
+    font-weight: 600;
+  }
+}
+
+.company {
+  margin: 0 0 4px;
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.generated {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.person {
+  margin-bottom: 24px;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+
+  h2 {
+    margin: 0 0 8px;
+    font: var(--mat-sys-title-small);
+  }
+}
+
+.basis {
+  display: block;
+  font: var(--mat-sys-body-small);
+  font-weight: 400;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.total th,
+.total td {
+  font-weight: 600;
+  border-top: 2px solid var(--mat-sys-outline);
+}
+
+.net {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding: 16px 20px;
+  border-radius: var(--app-radius-md);
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font: var(--mat-sys-title-medium);
+
+  strong {
+    font-size: 28px;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.notes {
+  margin: 16px 0 4px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.disclaimer {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+@media (max-width: 719.98px) {
+  .payslip {
+    padding: 18px 16px;
+  }
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

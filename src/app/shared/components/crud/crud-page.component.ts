@@ -200,8 +200,10 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
     const execute = (input = '') =>
       action.run(row, input).subscribe({
         next: () => {
-          this.toast.success(action.successMessage(row));
-          this.refresh();
+          if (!action.silent) {
+            this.toast.success(action.successMessage(row));
+            this.refresh();
+          }
         },
         error: (error: unknown) => this.toast.error(error),
       });

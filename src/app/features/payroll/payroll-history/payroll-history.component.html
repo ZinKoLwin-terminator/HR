@@ -1,0 +1,75 @@
+<app-page-header
+  title="Payroll history"
+  description="Processed payroll periods and how gross and net pay moved over time. Sample figures only."
+/>
+
+<div class="toolbar" role="group" aria-label="History filters">
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Year</mat-label>
+    <mat-select [value]="year()" (selectionChange)="year.set($event.value)">
+      <mat-option [value]="null">All years</mat-option>
+      @for (y of yearOptions(); track y) {
+        <mat-option [value]="y">{{ y }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Status</mat-label>
+    <mat-select [value]="status()" (selectionChange)="status.set($event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (s of statuses; track s) {
+        <mat-option [value]="s">{{ s }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (resource.error()) {
+  <app-empty-state icon="error" title="Payroll history could not be loaded">
+    <button mat-flat-button type="button" (click)="resource.reload()">Try again</button>
+  </app-empty-state>
+} @else if (resource.value()) {
+  <section class="kpis" aria-label="Summary (sample)">
+    <app-stat-card label="Periods" [value]="totals().periods" icon="event_note" />
+    <app-stat-card
+      label="Total net paid"
+      [value]="totals().net | money"
+      icon="price_check"
+      tone="success"
+    />
+    <app-stat-card
+      label="Average net per period"
+      [value]="totals().average | money"
+      icon="functions"
+      tone="neutral"
+    />
+    <app-stat-card
+      label="Total deductions"
+      [value]="totals().deductions | money"
+      icon="remove_circle_outline"
+      tone="warning"
+    />
+  </section>
+
+  @if (rows().length) {
+    <div class="block"><app-payroll-trend-chart [runs]="trend()" /></div>
+  }
+
+  <app-data-table
+    caption="Payroll periods"
+    [columns]="columns"
+    [rows]="rows()"
+    [total]="rows().length"
+    [pageSize]="rows().length || 10"
+    [showPaginator]="false"
+    [actions]="actions"
+    [rowLabel]="rowLabel"
+    [clickableRows]="true"
+    emptyTitle="No processed periods"
+    emptyMessage="Process a payroll period to see it here."
+    (action)="onAction($event)"
+    (rowClick)="open($event)"
+  />
+} @else {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading payroll history" />
+}

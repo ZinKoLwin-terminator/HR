@@ -9,7 +9,7 @@ import { MOCK_DEPARTMENTS } from './organization/departments.mock';
 import { MOCK_JOB_GRADES } from './organization/job-grades.mock';
 import { MOCK_POSITIONS } from './organization/positions.mock';
 import { MOCK_SECTIONS } from './organization/sections.mock';
-import { MOCK_PAYROLL_RUNS } from './payroll/payroll-runs.mock';
+import { MOCK_PAYROLL_RUNS, MOCK_PAYSLIPS } from './payroll/payroll-runs.mock';
 
 const ids = (items: { id: number }[]) => new Set(items.map((i) => i.id));
 
@@ -103,10 +103,30 @@ describe('mock data integrity', () => {
     }
   });
 
-  it('produces payroll totals that add up', () => {
-    MOCK_PAYROLL_RUNS.forEach((run) => {
-      expect(run.totalGross).toBe(run.totalBasic + run.totalAllowances);
-      expect(run.totalNet).toBe(run.totalGross - run.totalDeductions);
-    });
+  it('produces payroll runs and payslips that add up to the cent', () => {
+    const cents = (n: number) => Math.round(n * 100);
+    expect(MOCK_PAYROLL_RUNS.filter((r) => r.status === 'Draft')).toHaveLength(1);
+    for (const run of MOCK_PAYROLL_RUNS) {
+      expect(cents(run.totalGross), run.periodName).toBe(
+        cents(run.totalBasic + run.totalAllowances),
+      );
+      expect(cents(run.totalNet), run.periodName).toBe(cents(run.totalGross - run.totalDeductions));
+
+      const slips = MOCK_PAYSLIPS.filter((p) => p.runId === run.id);
+      expect(slips.length).toBe(run.employeeCount);
+      expect(cents(slips.reduce((s, p) => s + p.netSalary, 0)), run.periodName).toBe(
+        cents(run.totalNet),
+      );
+      expect(cents(slips.reduce((s, p) => s + p.grossSalary, 0)), run.periodName).toBe(
+        cents(run.totalGross),
+      );
+    }
+    for (const p of MOCK_PAYSLIPS) {
+      const earnings = p.earnings.reduce((s, l) => s + l.amount, 0);
+      const deductions = p.deductions.reduce((s, l) => s + l.amount, 0);
+      expect(cents(p.grossSalary), p.employeeCode).toBe(cents(p.basicSalary + earnings));
+      expect(cents(p.totalDeductions), p.employeeCode).toBe(cents(deductions));
+      expect(cents(p.netSalary), p.employeeCode).toBe(cents(p.grossSalary - p.totalDeductions));
+    }
   });
 });

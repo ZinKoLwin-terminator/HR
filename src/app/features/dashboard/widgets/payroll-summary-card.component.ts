@@ -14,7 +14,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       <div class="card__header">
         <div>
           <h2 id="payroll-heading">Payroll summary</h2>
-          <p>Current period · <span class="sample-tag">Sample data</span></p>
+          <p>Latest processed period · <span class="sample-tag">Sample data</span></p>
         </div>
         <a routerLink="/payroll/processing" class="link-button">Open payroll</a>
       </div>

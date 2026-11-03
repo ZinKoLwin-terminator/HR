@@ -16,11 +16,18 @@ import {
 import { MOCK_EMPLOYEE_DOCUMENTS } from '../../mock-data/employees/documents.mock';
 import { MOCK_EMPLOYMENT_HISTORY } from '../../mock-data/employees/history.mock';
 import {
-  SAMPLE_PAYROLL_RULES,
-  sampleBasicSalary,
-  samplePayBreakdown,
-} from '../../mock-data/payroll/payroll-runs.mock';
-import { todayIso } from '../../shared/utilities/date.util';
+  calculatePay,
+  describeComponent,
+  periodWorkingDays,
+  round2,
+} from '../../core/utilities/payroll-calc';
+import { endOfMonth, startOfMonth, todayIso } from '../../shared/utilities/date.util';
+import { HolidayMockService } from '../attendance/attendance-mock.services';
+import {
+  SalaryAssignmentMockService,
+  SalaryComponentMockService,
+  SalaryStructureMockService,
+} from '../payroll/payroll-setup-mock.services';
 import { InMemoryCrudService } from '../in-memory-crud.service';
 import { mockError, mockResponse } from '../mock-response';
 import { JobGradeMockService } from '../organization/organization-mock.services';
@@ -93,10 +100,11 @@ export class EmploymentHistoryMockService
   }
 }
 
-/** Sample salary overview derived from configurable sample rules (not real payroll). */
+/** Sample salary overview for the employee's current salary assignment (not real payroll). */
 @Injectable({ providedIn: 'root' })
 export class EmployeeSalaryMockService implements EmployeeSalaryDataService {
   private readonly latency = inject(APP_CONFIG).mockLatencyMs;
+  private readonly weekendDays = inject(APP_CONFIG).weekendDays;
   private readonly injector = inject(Injector);
 
   getSummary(employeeId: number): Observable<EmployeeSalarySummary> {
@@ -105,23 +113,62 @@ export class EmployeeSalaryMockService implements EmployeeSalaryDataService {
       if (!employee) {
         throw mockError('NotFound', `Employee #${employeeId} was not found.`);
       }
+      const today = todayIso();
+      const assignment = this.injector
+        .get(SalaryAssignmentMockService)
+        .currentFor(employeeId, today);
+      const structure = assignment
+        ? this.injector.get(SalaryStructureMockService).findById(assignment.structureId)
+        : undefined;
+      if (!assignment || !structure) {
+        throw mockError(
+          'NotFound',
+          `${employee.firstName} ${employee.lastName} has no salary assignment yet.`,
+        );
+      }
+      const components = structure.componentIds
+        .map((id) => this.injector.get(SalaryComponentMockService).findById(id))
+        .filter((c): c is NonNullable<typeof c> => !!c);
+      const holidays = new Set(
+        this.injector
+          .get(HolidayMockService)
+          .records()
+          .map((h) => h.date),
+      );
+      const periodStart = startOfMonth(today);
+      const periodEnd = endOfMonth(today);
+      // A full month at the current salary: no proration, overtime or unpaid leave.
+      const pay = calculatePay({
+        basicSalary: assignment.basicSalary,
+        components,
+        periodStart,
+        periodEnd,
+        joiningDate: '1900-01-01',
+        exitDate: null,
+        workingDays: periodWorkingDays(periodStart, periodEnd, holidays, this.weekendDays),
+        unpaidLeaveDays: 0,
+        overtimeMinutes: 0,
+      })!;
       const grade = this.injector.get(JobGradeMockService).findById(employee.jobGradeId);
-      const basic = sampleBasicSalary(employee);
-      const pay = samplePayBreakdown(basic);
-      const min = grade?.minSalary ?? basic;
-      const max = grade?.maxSalary ?? basic;
+      const min = grade?.minSalary ?? assignment.basicSalary;
+      const max = grade?.maxSalary ?? assignment.basicSalary;
+      const active = components.filter((c) => c.status === 'Active');
       return {
         employeeId,
-        ...pay,
+        basic: pay.basic,
+        allowances: round2(pay.gross - pay.basic),
+        gross: pay.gross,
+        deductions: pay.totalDeductions,
+        net: pay.net,
         gradeCode: grade?.code ?? '—',
         gradeName: grade?.name ?? '—',
         bandMin: min,
         bandMax: max,
-        bandPosition: max > min ? Math.round(((basic - min) / (max - min)) * 100) : 0,
+        bandPosition:
+          max > min ? Math.round(((assignment.basicSalary - min) / (max - min)) * 100) : 0,
         assumptions: [
-          `Basic salary is a sample value inside the grade band.`,
-          `Housing allowance: ${SAMPLE_PAYROLL_RULES.housingAllowanceRate * 100}% of basic, plus a fixed transport allowance.`,
-          `Deductions: sample income tax ${SAMPLE_PAYROLL_RULES.sampleIncomeTaxRate * 100}% and social contribution ${SAMPLE_PAYROLL_RULES.sampleSocialSecurityRate * 100}% of gross.`,
+          `Basic salary comes from the current assignment: ${structure.name}, effective ${assignment.effectiveFrom}.`,
+          ...active.map((c) => `${c.name} (${c.type.toLowerCase()}): ${describeComponent(c)}.`),
           `These are demonstration rules, not real tax or statutory calculations.`,
         ],
       };

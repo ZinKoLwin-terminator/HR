@@ -1,0 +1,153 @@
+@if (resource.error()) {
+  <app-empty-state
+    icon="receipt_long"
+    title="Payslip not found"
+    message="It may have been removed when its period was returned to draft."
+  >
+    <a mat-flat-button routerLink="/payroll/payslips">Back to payslips</a>
+  </app-empty-state>
+} @else if (payslip(); as p) {
+  <div class="actions no-print">
+    <button mat-stroked-button type="button" (click)="back()">
+      <mat-icon>arrow_back</mat-icon>Back
+    </button>
+    <button mat-flat-button type="button" (click)="print()"><mat-icon>print</mat-icon>Print</button>
+  </div>
+
+  <article class="payslip" aria-label="Payslip">
+    <p class="sample-banner" role="note">
+      <mat-icon aria-hidden="true">science</mat-icon>
+      SAMPLE PAYSLIP — figures come from demonstration rules, not real tax or statutory
+      calculations.
+    </p>
+
+    <header class="head">
+      <div>
+        <p class="company">{{ p.companyName }}</p>
+        <h1>Payslip · {{ p.periodName }}</h1>
+      </div>
+      <p class="generated">Generated {{ p.generatedOn | date }}</p>
+    </header>
+
+    <dl class="person info-grid">
+      <div>
+        <dt>Employee</dt>
+        <dd>{{ p.employeeName }}</dd>
+      </div>
+      <div>
+        <dt>Employee code</dt>
+        <dd>{{ p.employeeCode }}</dd>
+      </div>
+      <div>
+        <dt>Department</dt>
+        <dd>{{ p.departmentName }}</dd>
+      </div>
+      <div>
+        <dt>Position</dt>
+        <dd>{{ p.positionTitle }}</dd>
+      </div>
+      <div>
+        <dt>Bank</dt>
+        <dd>{{ p.bankName }} {{ p.accountMasked }}</dd>
+      </div>
+      <div>
+        <dt>Days paid</dt>
+        <dd>{{ p.daysEmployed }} of {{ p.periodDays }} calendar days</dd>
+      </div>
+    </dl>
+
+    <div class="columns">
+      <section aria-labelledby="earn-heading">
+        <h2 id="earn-heading">Earnings</h2>
+        <table class="simple-table">
+          <caption class="cdk-visually-hidden">
+            Earnings
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Item</th>
+              <th scope="col" class="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">
+                Basic salary
+                @if (p.daysEmployed < p.periodDays) {
+                  <span class="basis">(prorated)</span>
+                }
+              </th>
+              <td class="num">{{ p.basicSalary | money: 2 }}</td>
+            </tr>
+            @for (line of p.earnings; track line.code) {
+              <tr>
+                <th scope="row">
+                  {{ line.name }} <span class="basis">{{ line.basis }}</span>
+                </th>
+                <td class="num">{{ line.amount | money: 2 }}</td>
+              </tr>
+            }
+            <tr class="total">
+              <th scope="row">Gross salary</th>
+              <td class="num">{{ p.grossSalary | money: 2 }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section aria-labelledby="ded-heading">
+        <h2 id="ded-heading">Deductions</h2>
+        <table class="simple-table">
+          <caption class="cdk-visually-hidden">
+            Deductions
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Item</th>
+              <th scope="col" class="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of p.deductions; track line.code) {
+              <tr>
+                <th scope="row">
+                  {{ line.name }} <span class="basis">{{ line.basis }}</span>
+                </th>
+                <td class="num">{{ line.amount | money: 2 }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="2" class="muted">No deductions</td>
+              </tr>
+            }
+            <tr class="total">
+              <th scope="row">Total deductions</th>
+              <td class="num">{{ p.totalDeductions | money: 2 }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <section class="net" aria-label="Net salary">
+      <span>Net salary</span>
+      <strong>{{ p.netSalary | money: 2 }}</strong>
+    </section>
+
+    <p class="notes">
+      Working days in the period: {{ p.workingDays }}
+      @if (p.unpaidLeaveDays) {
+        · Unpaid leave: {{ p.unpaidLeaveDays }} day(s)
+      }
+      @if (p.overtimeMinutes) {
+        · Approved overtime: {{ overtime() }}
+      }
+    </p>
+    <p class="disclaimer">
+      This document is generated for demonstration only. No payment has been made and no bank has
+      been contacted.
+    </p>
+  </article>
+} @else {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading payslip" />
+}

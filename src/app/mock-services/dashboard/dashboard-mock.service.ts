@@ -137,9 +137,10 @@ export class DashboardMockService implements DashboardDataService {
   }
 
   private payrollSummary(): PayrollSummary | null {
-    const runs = [...this.payrollRuns.records()].sort((a, b) =>
-      a.startDate.localeCompare(b.startDate),
-    );
+    // Only periods that have been processed carry figures (a draft has no payslips yet).
+    const runs = [...this.payrollRuns.records()]
+      .filter((r) => r.status !== 'Draft')
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
     const latest = runs.at(-1);
     if (!latest) {
       return null;

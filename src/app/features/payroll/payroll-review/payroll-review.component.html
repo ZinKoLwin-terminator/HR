@@ -1,0 +1,220 @@
+@if (notFound()) {
+  <app-empty-state
+    icon="event_busy"
+    title="Payroll period not found"
+    message="It may have been deleted."
+  >
+    <a mat-flat-button routerLink="/payroll/processing">Back to payroll processing</a>
+  </app-empty-state>
+} @else if (run(); as r) {
+  <app-page-header
+    [title]="'Payroll review · ' + r.periodName"
+    description="Sample figures from demonstration rules. Review before approving."
+  >
+    <a pageActions mat-stroked-button routerLink="/payroll/processing"
+      ><mat-icon>arrow_back</mat-icon>All periods</a
+    >
+    @if (r.status === 'Draft') {
+      <button pageActions mat-flat-button type="button" (click)="process(r)">
+        <mat-icon>calculate</mat-icon>Process payroll
+      </button>
+    }
+    @if (r.status === 'Pending Approval') {
+      <button pageActions mat-flat-button type="button" (click)="approve(r)">
+        <mat-icon>check_circle</mat-icon>Approve
+      </button>
+    }
+    @if (r.status === 'Approved') {
+      <button pageActions mat-flat-button type="button" (click)="markPaid(r)">
+        <mat-icon>paid</mat-icon>Mark as paid (sample)
+      </button>
+    }
+    @if (r.status === 'Pending Approval' || r.status === 'Approved') {
+      <button
+        pageActions
+        mat-stroked-button
+        type="button"
+        class="danger-outline"
+        (click)="returnToDraft(r)"
+      >
+        <mat-icon>undo</mat-icon>Return to draft
+      </button>
+    }
+  </app-page-header>
+
+  <!-- Status timeline -->
+  <ol class="steps" aria-label="Payroll status">
+    @for (step of steps; track step; let i = $index) {
+      <li
+        [class.done]="i < stepIndex()"
+        [class.current]="i === stepIndex()"
+        [attr.aria-current]="i === stepIndex() ? 'step' : null"
+      >
+        <span class="steps__dot" aria-hidden="true">{{ i < stepIndex() ? '✓' : i + 1 }}</span>
+        <span class="steps__label">{{ step }}</span>
+      </li>
+    }
+  </ol>
+  <p class="meta">
+    <app-status-badge [status]="r.status" />
+    <span>Pay date {{ r.payDate | date }}</span>
+    @if (r.processedOn) {
+      <span>· processed {{ r.processedOn | date }}</span>
+    }
+    @if (r.approvedBy) {
+      <span>· approved by {{ r.approvedBy }} on {{ r.approvedOn | date }}</span>
+    }
+    @if (r.paidOn) {
+      <span>· paid {{ r.paidOn | date }}</span>
+    }
+  </p>
+
+  @if (r.warnings.length) {
+    <section class="warnings" role="alert" aria-label="Processing warnings">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <div>
+        <strong>{{ r.warnings.length }} warning{{ r.warnings.length === 1 ? '' : 's' }}</strong>
+        <ul>
+          @for (w of r.warnings; track w) {
+            <li>{{ w }}</li>
+          }
+        </ul>
+      </div>
+    </section>
+  }
+
+  @if (!hasPayslips()) {
+    <app-empty-state
+      icon="calculate"
+      title="This period has not been processed yet"
+      message="Process the payroll to generate sample payslips for everyone employed in the period."
+    >
+      <button mat-flat-button type="button" (click)="process(r)">
+        <mat-icon>calculate</mat-icon>Process payroll
+      </button>
+    </app-empty-state>
+  } @else {
+    <section class="kpis" aria-label="Payroll totals (sample)">
+      <app-stat-card label="Employees paid" [value]="r.employeeCount" icon="groups" />
+      <app-stat-card
+        label="Basic salary"
+        [value]="r.totalBasic | money"
+        icon="payments"
+        tone="neutral"
+      />
+      <app-stat-card
+        label="Allowances & overtime"
+        [value]="r.totalAllowances | money"
+        icon="add_card"
+        tone="primary"
+      />
+      <app-stat-card
+        label="Gross salary"
+        [value]="r.totalGross | money"
+        icon="account_balance_wallet"
+        tone="success"
+      />
+      <app-stat-card
+        label="Deductions"
+        [value]="r.totalDeductions | money"
+        icon="remove_circle_outline"
+        tone="warning"
+      />
+      <app-stat-card
+        label="Net salary"
+        [value]="r.totalNet | money"
+        icon="price_check"
+        tone="success"
+        [hint]="
+          netChange() === null
+            ? 'No earlier period to compare'
+            : (netChange()! > 0 ? '+' : '') + netChange() + '% vs ' + previous()?.periodName
+        "
+      />
+    </section>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="dept-heading">
+        <div class="card__header">
+          <div>
+            <h2 id="dept-heading">By department</h2>
+            <p>Net salary, sample figures</p>
+          </div>
+        </div>
+        <div class="scroll">
+          <table class="simple-table">
+            <caption class="cdk-visually-hidden">
+              Payroll by department
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Department</th>
+                <th scope="col" class="num">Employees</th>
+                <th scope="col" class="num">Gross</th>
+                <th scope="col" class="num">Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (d of departments(); track d.name) {
+                <tr>
+                  <th scope="row">{{ d.name }}</th>
+                  <td class="num">{{ d.count }}</td>
+                  <td class="num">{{ d.gross | money }}</td>
+                  <td class="num">{{ d.net | money }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="payslips-heading">
+        <div class="card__header">
+          <div>
+            <h2 id="payslips-heading">Payslips</h2>
+            <p>Select a payslip to preview it.</p>
+          </div>
+        </div>
+        <div class="toolbar" role="search" aria-label="Filter payslips">
+          <app-search-field
+            class="grow"
+            label="Search by employee name or code"
+            [value]="query.search()"
+            (searchChange)="query.setSearch($event)"
+          />
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>Department</mat-label>
+            <mat-select
+              [value]="query.filters()['departmentId'] ?? null"
+              (selectionChange)="setDepartment($event.value)"
+            >
+              <mat-option [value]="null">All</mat-option>
+              @for (option of departmentOptions(); track option.value) {
+                <mat-option [value]="option.value">{{ option.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <app-data-table
+          caption="Payslips for the period"
+          [columns]="columns"
+          [rows]="result()?.items ?? []"
+          [total]="result()?.total ?? 0"
+          [pageIndex]="query.pageIndex()"
+          [pageSize]="query.pageSize()"
+          [pageSizeOptions]="pageSizeOptions"
+          [sort]="query.sort()"
+          [loading]="page.isLoading()"
+          [rowLabel]="rowLabel"
+          [clickableRows]="true"
+          emptyTitle="No payslips match"
+          (pageChange)="query.onPage($event)"
+          (sortChange)="query.setSort($event)"
+          (rowClick)="openPayslip($event)"
+        />
+      </section>
+    </div>
+  }
+} @else {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading payroll period" />
+}
