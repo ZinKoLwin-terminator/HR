@@ -7,13 +7,14 @@
   border-radius: var(--app-radius-lg);
   border: 1px solid var(--mat-sys-outline-variant);
   background: var(--mat-sys-surface-container-lowest);
+  box-shadow: var(--app-shadow-sm);
   overflow: hidden;
 }
 
 .table-progress {
   position: absolute;
   inset: 0 0 auto;
-  height: 4px;
+  height: 3px;
   z-index: 2;
 }
 
@@ -31,24 +32,40 @@ table {
 }
 
 th.mat-mdc-header-cell {
-  font: var(--mat-sys-label-large);
+  font: var(--mat-sys-label-small);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--mat-sys-on-surface-variant);
   background: var(--mat-sys-surface-container-low);
   white-space: nowrap;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
 td.mat-mdc-cell {
   font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+  border-bottom-color: color-mix(in srgb, var(--mat-sys-outline-variant) 60%, transparent);
+
+  // The first column carries the record's name/identity.
+  &.primary {
+    color: var(--mat-sys-on-surface);
+    font-weight: 600;
+  }
+}
+
+tr.mat-mdc-row:last-of-type td.mat-mdc-cell {
+  border-bottom-color: transparent;
 }
 
 th,
 td {
-  padding-inline: 16px;
+  padding-inline: 20px;
 }
 
 .select-cell {
   width: 48px;
-  padding-inline: 8px 0;
+  padding-inline: 12px 0;
 }
 
 .nowrap {
@@ -61,23 +78,32 @@ td {
 
 .num {
   font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface);
 }
 
 .actions-cell {
   width: 56px;
   text-align: end;
-  padding-inline-end: 8px;
+  padding-inline: 0 12px;
+
+  .mat-mdc-icon-button {
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+tr.mat-mdc-row {
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--mat-sys-primary) 5%, transparent);
+  }
 }
 
 tr.clickable {
   cursor: pointer;
   &:hover {
-    background: var(--mat-sys-surface-container);
+    background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
   }
-}
-
-tr.mat-mdc-row:hover {
-  background: var(--mat-sys-surface-container-low);
 }
 
 .menu-danger {
@@ -89,7 +115,7 @@ tr.mat-mdc-row:hover {
 
 mat-paginator {
   border-top: 1px solid var(--mat-sys-outline-variant);
-  background: transparent;
+  background: var(--mat-sys-surface-container-lowest);
 }
 
 @media (max-width: 1279.98px) {
@@ -105,5 +131,9 @@ mat-paginator {
 @media (max-width: 599.98px) {
   .hide-below-sm {
     display: none;
+  }
+  th,
+  td {
+    padding-inline: 14px;
   }
 }

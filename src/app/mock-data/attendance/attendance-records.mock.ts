@@ -144,12 +144,21 @@ function isEmployedOn(employee: Employee, date: string): boolean {
 
 function generateAttendance(): AttendanceRecord[] {
   const today = todayIso();
+  const clock = new Date();
+  const nowMinutes = clock.getHours() * 60 + clock.getMinutes();
   const records: AttendanceRecord[] = [];
   let id = 1;
   for (const date of eachDay(addDays(today, -ATTENDANCE_HISTORY_DAYS), today)) {
     for (const employee of MOCK_EMPLOYEES) {
       if (isEmployedOn(employee, date)) {
-        records.push(buildRecord(employee, date, id++, date === today));
+        const record = buildRecord(employee, date, id, date === today);
+        // Today: nobody can have checked in at a time that has not happened yet.
+        const arrivedYet =
+          !record.checkIn || date !== today || timeToMinutes(record.checkIn) <= nowMinutes;
+        if (arrivedYet) {
+          records.push(record);
+          id++;
+        }
       }
     }
   }

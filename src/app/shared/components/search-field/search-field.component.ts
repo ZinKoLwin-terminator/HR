@@ -1,47 +1,104 @@
 import { Component, effect, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { debounce, distinctUntilChanged, map, skip, timer } from 'rxjs';
 
-/** Debounced search box. Emits the trimmed term. */
+/** Debounced search box (pill input). Emits the trimmed term. */
 @Component({
   selector: 'app-search-field',
-  imports: [MatFormFieldModule, MatInputModule, MatIconModule, MatButtonModule],
+  imports: [MatIconModule],
   template: `
-    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search-field">
-      <mat-icon matPrefix aria-hidden="true">search</mat-icon>
-      <mat-label>{{ label() }}</mat-label>
+    <div class="search">
+      <mat-icon class="search__icon" aria-hidden="true">search</mat-icon>
       <input
-        matInput
+        class="search__input"
         type="search"
-        [placeholder]="placeholder()"
+        [attr.aria-label]="label()"
+        [placeholder]="placeholder() || label()"
         [value]="term()"
+        autocomplete="off"
         (input)="term.set($any($event.target).value)"
         (keydown.escape)="term.set('')"
       />
       @if (term()) {
         <button
-          matIconSuffix
-          mat-icon-button
           type="button"
+          class="search__clear"
           aria-label="Clear search"
           (click)="term.set('')"
         >
-          <mat-icon>close</mat-icon>
+          <mat-icon aria-hidden="true">close</mat-icon>
         </button>
       }
-    </mat-form-field>
+    </div>
   `,
   styles: `
     :host {
       display: block;
       min-width: 220px;
     }
-    .search-field {
-      width: 100%;
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 44px;
+      padding-inline: 14px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      background: var(--mat-sys-surface-container-low);
+      transition:
+        border-color 120ms ease,
+        background-color 120ms ease,
+        box-shadow 120ms ease;
+    }
+    .search:hover {
+      border-color: var(--mat-sys-outline);
+    }
+    .search:focus-within {
+      border-color: var(--mat-sys-primary);
+      background: var(--mat-sys-surface-container-lowest);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--mat-sys-primary) 18%, transparent);
+    }
+    .search__icon {
+      flex: none;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .search__input {
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--mat-sys-on-surface);
+      font: var(--mat-sys-body-large);
+    }
+    .search__input::placeholder {
+      color: var(--mat-sys-on-surface-variant);
+      opacity: 1;
+    }
+    .search__input::-webkit-search-cancel-button {
+      display: none;
+    }
+    .search__clear {
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--mat-sys-on-surface-variant);
+      cursor: pointer;
+    }
+    .search__clear:hover {
+      background: var(--mat-sys-surface-container-highest);
+    }
+    .search__clear .mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
     }
   `,
 })

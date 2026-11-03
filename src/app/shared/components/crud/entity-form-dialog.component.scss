@@ -2,16 +2,36 @@
   display: block;
 }
 
+h2[mat-dialog-title] {
+  margin: 0;
+  padding: 22px 28px 16px;
+  font: var(--mat-sys-title-large);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+  &::before {
+    display: none;
+  }
+}
+
 mat-dialog-content {
-  padding-top: 8px !important;
-  max-height: 70vh;
+  padding: 22px 28px 8px !important;
+  max-height: 68vh;
+}
+
+mat-dialog-actions {
+  padding: 14px 28px !important;
+  gap: 8px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface-container-low);
 }
 
 .form-banner {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   padding: 10px 14px;
   border-radius: var(--app-radius-md);
   background: var(--mat-sys-error-container);

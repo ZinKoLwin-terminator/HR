@@ -30,7 +30,42 @@ html {
     );
   }
 
+  // Compact, softer form fields everywhere (filters, dialogs, forms).
+  .mat-mdc-form-field {
+    @include mat.theme(
+      (
+        density: -3,
+      )
+    );
+  }
+
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: 10px,
+      outlined-outline-color: var(--mat-sys-outline-variant),
+      outlined-hover-outline-color: var(--mat-sys-outline),
+      outlined-focus-outline-color: var(--mat-sys-primary),
+      outlined-outline-width: 1px,
+      outlined-focus-outline-width: 2px,
+    )
+  );
+
+  // Roomier table rows with a calmer header.
+  .mat-mdc-table {
+    @include mat.table-overrides(
+      (
+        row-item-container-height: 54px,
+        header-container-height: 46px,
+        row-item-outline-color: var(--mat-sys-outline-variant),
+        header-headline-color: var(--mat-sys-on-surface-variant),
+      )
+    );
+  }
+
   // ---- Application tokens (light-dark aware) ------------------------------
+  --app-shadow-sm:
+    0 1px 2px light-dark(rgb(16 24 40 / 6%), rgb(0 0 0 / 35%)),
+    0 1px 3px light-dark(rgb(16 24 40 / 5%), rgb(0 0 0 / 25%));
   --app-radius-lg: 16px;
   --app-radius-md: 12px;
   --app-header-height: 64px;
@@ -96,6 +131,7 @@ a {
   border-radius: var(--app-radius-lg);
   border: 1px solid var(--mat-sys-outline-variant);
   background: var(--mat-sys-surface-container-lowest);
+  box-shadow: var(--app-shadow-sm);
   padding: 20px;
   box-sizing: border-box;
 }
@@ -127,20 +163,26 @@ a {
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--app-radius-lg);
+  background: var(--mat-sys-surface-container-lowest);
+  box-shadow: var(--app-shadow-sm);
 
   > .grow {
     flex: 1 1 260px;
   }
 
   mat-form-field {
-    min-width: 180px;
+    min-width: 170px;
   }
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 4px 16px;
+  gap: 6px 16px;
+  align-items: start;
 
   .span-2 {
     grid-column: span 2;
@@ -162,7 +204,7 @@ a {
   &--two {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     // Extra row gap so a hint never crowds the next field's floating label.
-    gap: 12px 16px;
+    gap: 8px 16px;
   }
 }
 
@@ -184,13 +226,17 @@ a {
   margin: 0;
 
   dt {
-    font: var(--mat-sys-label-medium);
+    font: var(--mat-sys-label-small);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     color: var(--mat-sys-on-surface-variant);
   }
 
   dd {
-    margin: 2px 0 0;
+    margin: 4px 0 0;
     font: var(--mat-sys-body-large);
+    font-weight: 500;
     overflow-wrap: anywhere;
   }
 }

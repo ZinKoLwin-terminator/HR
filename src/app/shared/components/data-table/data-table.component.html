@@ -22,7 +22,7 @@
         }}
       </caption>
 
-      @for (column of columns(); track column.key) {
+      @for (column of columns(); track column.key; let primary = $first) {
         <ng-container [matColumnDef]="column.key">
           <th
             mat-header-cell
@@ -42,6 +42,7 @@
             [class]="'hide-below-' + (column.hideBelow ?? 'none')"
             [class.align-end]="column.align === 'end'"
             [class.nowrap]="column.nowrap"
+            [class.primary]="primary"
           >
             @if (templates().get(column.key); as tpl) {
               <ng-container
