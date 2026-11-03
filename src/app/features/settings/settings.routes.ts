@@ -1,16 +1,34 @@
 import { Routes } from '@angular/router';
-import { placeholderRoutes } from '../../shared/utilities/placeholder-routes';
+import { unsavedChangesGuard } from '../../core/guards/unsaved-changes.guard';
 
 export const SETTINGS_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'general' },
-  ...placeholderRoutes(10, [
-    { path: 'general', label: 'General Settings', description: 'Organization-wide preferences.' },
-    { path: 'users', label: 'Users', description: 'Application users and status.' },
-    { path: 'roles', label: 'Roles', description: 'Roles and role assignment.' },
-    {
-      path: 'permissions',
-      label: 'Permissions',
-      description: 'Permission matrix (UI simulation only).',
-    },
-  ]),
+  {
+    path: 'general',
+    title: 'General Settings',
+    data: { breadcrumb: 'General Settings' },
+    canDeactivate: [unsavedChangesGuard],
+    loadComponent: () =>
+      import('./general/general-settings.component').then((m) => m.GeneralSettingsComponent),
+  },
+  {
+    path: 'users',
+    title: 'Users',
+    data: { breadcrumb: 'Users' },
+    loadComponent: () => import('./users/users-page.component').then((m) => m.UsersPageComponent),
+  },
+  {
+    path: 'roles',
+    title: 'Roles',
+    data: { breadcrumb: 'Roles' },
+    loadComponent: () => import('./roles/roles-page.component').then((m) => m.RolesPageComponent),
+  },
+  {
+    path: 'permissions',
+    title: 'Permissions',
+    data: { breadcrumb: 'Permissions' },
+    canDeactivate: [unsavedChangesGuard],
+    loadComponent: () =>
+      import('./permissions/permissions-page.component').then((m) => m.PermissionsPageComponent),
+  },
 ];

@@ -8,12 +8,6 @@ test.describe('application shell', () => {
     await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Dashboard');
   });
 
-  test('shows an honest placeholder for screens not built yet', async ({ page }) => {
-    await page.goto('/settings/users');
-    await expect(page.getByRole('heading', { level: 1, name: 'Users' })).toBeVisible();
-    await expect(page.getByText('Phase 10')).toBeVisible();
-  });
-
   test('shows not found for unknown URLs', async ({ page }) => {
     await page.goto('/nope');
     await expect(page.getByText('Page not found')).toBeVisible();

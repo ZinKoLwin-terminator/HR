@@ -1,0 +1,237 @@
+import { Component, effect, inject, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { HasUnsavedChanges } from '../../../core/guards/unsaved-changes.guard';
+import { isAppError } from '../../../core/models/common.models';
+import { DATE_FORMATS, GeneralSettings, TIMEZONES } from '../../../core/models/settings.models';
+import { GeneralSettingsDataService } from '../../../core/services/data/settings-data.services';
+import { UiNotificationService } from '../../../core/services/ui-notification.service';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/** Organization-wide preferences. Saved in memory only; other screens do not read these values. */
+@Component({
+  selector: 'app-general-settings',
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatProgressBarModule,
+    MatSelectModule,
+    MatSlideToggleModule,
+    PageHeaderComponent,
+    EmptyStateComponent,
+  ],
+  template: `
+    <app-page-header
+      title="General settings"
+      description="Organization-wide preferences. Demo only: saved in memory and not applied to other screens."
+    />
+
+    @if (resource.error()) {
+      <app-empty-state icon="error" title="Settings could not be loaded">
+        <button mat-flat-button type="button" (click)="resource.reload()">Try again</button>
+      </app-empty-state>
+    } @else if (resource.value()) {
+      <form [formGroup]="form" (ngSubmit)="save()" novalidate class="form">
+        <mat-form-field>
+          <mat-label>Organization name</mat-label>
+          <input matInput formControlName="organizationName" maxlength="80" />
+          @if (error('organizationName'); as message) {
+            <mat-error>{{ message }}</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Contact email</mat-label>
+          <input matInput type="email" formControlName="contactEmail" />
+          @if (error('contactEmail'); as message) {
+            <mat-error>{{ message }}</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Time zone</mat-label>
+          <mat-select formControlName="timezone">
+            @for (z of timezones; track z) {
+              <mat-option [value]="z">{{ z }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Date format</mat-label>
+          <mat-select formControlName="dateFormat">
+            @for (f of dateFormats; track f) {
+              <mat-option [value]="f">{{ f }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Currency code</mat-label>
+          <input matInput formControlName="currencyCode" maxlength="3" />
+          <mat-hint>Three letters, e.g. USD</mat-hint>
+          @if (error('currencyCode'); as message) {
+            <mat-error>{{ message }}</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Fiscal year starts in</mat-label>
+          <mat-select formControlName="fiscalYearStartMonth">
+            @for (m of months; track m; let i = $index) {
+              <mat-option [value]="i + 1">{{ m }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <fieldset class="toggles">
+          <legend>Notifications</legend>
+          <mat-slide-toggle formControlName="emailNotifications">
+            Send email notifications
+          </mat-slide-toggle>
+          <mat-slide-toggle formControlName="weeklyDigest">Send a weekly digest</mat-slide-toggle>
+        </fieldset>
+
+        <div class="actions">
+          <button mat-stroked-button type="button" [disabled]="form.pristine" (click)="reset()">
+            Reset
+          </button>
+          <button mat-flat-button type="submit" [disabled]="form.pristine || saving()">
+            Save settings
+          </button>
+        </div>
+      </form>
+    } @else {
+      <mat-progress-bar mode="indeterminate" aria-label="Loading settings" />
+    }
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+    .form {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 4px 16px;
+      max-width: 900px;
+    }
+    .toggles {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: var(--app-radius-md);
+      padding: 8px 16px 12px;
+      margin: 4px 0 8px;
+    }
+    .toggles legend {
+      font: var(--mat-sys-label-large);
+      padding: 0 6px;
+    }
+    .actions {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+  `,
+})
+export class GeneralSettingsComponent implements HasUnsavedChanges {
+  private readonly api = inject(GeneralSettingsDataService);
+  private readonly toast = inject(UiNotificationService);
+  private readonly fb = inject(FormBuilder).nonNullable;
+
+  protected readonly timezones = TIMEZONES;
+  protected readonly dateFormats = DATE_FORMATS;
+  protected readonly months = MONTHS;
+  protected readonly saving = signal(false);
+  protected readonly resource = rxResource({ stream: () => this.api.get() });
+
+  protected readonly form = this.fb.group({
+    organizationName: ['', [Validators.required, Validators.maxLength(80)]],
+    contactEmail: ['', [Validators.required, Validators.email]],
+    timezone: ['', Validators.required],
+    dateFormat: ['', Validators.required],
+    currencyCode: ['', [Validators.required, Validators.pattern(/^[A-Z]{3}$/)]],
+    fiscalYearStartMonth: [1, Validators.required],
+    emailNotifications: [false],
+    weeklyDigest: [false],
+  });
+
+  constructor() {
+    effect(() => {
+      const value = this.resource.value();
+      if (value) {
+        this.load(value);
+      }
+    });
+  }
+
+  hasUnsavedChanges(): boolean {
+    return this.form.dirty;
+  }
+
+  private load(value: GeneralSettings): void {
+    this.form.reset({ ...value });
+  }
+
+  protected reset(): void {
+    const value = this.resource.value();
+    if (value) this.load(value);
+  }
+
+  protected error(name: keyof typeof this.form.controls): string | null {
+    const control = this.form.controls[name];
+    if (!control.touched || !control.errors) return null;
+    if (control.hasError('server')) return String(control.getError('server'));
+    if (control.hasError('required')) return 'This field is required.';
+    if (control.hasError('email')) return 'Enter a valid email address.';
+    if (control.hasError('pattern')) return 'Use three capital letters, e.g. USD.';
+    if (control.hasError('maxlength')) return 'This value is too long.';
+    return 'Invalid value.';
+  }
+
+  protected save(): void {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+    this.saving.set(true);
+    this.api.save(this.form.getRawValue()).subscribe({
+      next: (saved) => {
+        this.saving.set(false);
+        this.load(saved);
+        this.toast.success('General settings saved (simulation).');
+      },
+      error: (error: unknown) => {
+        this.saving.set(false);
+        if (isAppError(error) && error.fieldErrors) {
+          for (const [key, message] of Object.entries(error.fieldErrors)) {
+            const control = this.form.get(key);
+            control?.setErrors({ server: message });
+            control?.markAsTouched();
+          }
+        }
+        this.toast.error(error);
+      },
+    });
+  }
+}

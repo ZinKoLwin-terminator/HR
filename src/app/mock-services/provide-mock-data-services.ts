@@ -53,6 +53,18 @@ import {
   InterviewMockService,
   JobOpeningMockService,
 } from './recruitment/recruitment-mock.services';
+import {
+  GeneralSettingsDataService,
+  RoleDataService,
+  RolePermissionDataService,
+  UserDataService,
+} from '../core/services/data/settings-data.services';
+import {
+  GeneralSettingsMockService,
+  RoleMockService,
+  RolePermissionMockService,
+  UserMockService,
+} from './settings/settings-mock.services';
 import { ActivityMockService } from './activity/activity-mock.service';
 import { NotificationMockService } from './activity/notification-mock.service';
 import {
@@ -143,6 +155,10 @@ export function provideMockDataServices(): EnvironmentProviders {
     bind(CandidateDataService, CandidateMockService),
     bind(ApplicationDataService, ApplicationMockService),
     bind(InterviewDataService, InterviewMockService),
+    bind(UserDataService, UserMockService),
+    bind(RoleDataService, RoleMockService),
+    bind(RolePermissionDataService, RolePermissionMockService),
+    bind(GeneralSettingsDataService, GeneralSettingsMockService),
     bind(DashboardDataService, DashboardMockService),
     bind(ActivityDataService, ActivityMockService),
     bind(NotificationDataService, NotificationMockService),
