@@ -1,4 +1,4 @@
-﻿import { expect, test } from './fixtures';
+import { expect, test } from './fixtures';
 
 test.describe('application shell', () => {
   test('starts on the dashboard with title and breadcrumb', async ({ page }) => {
@@ -9,9 +9,9 @@ test.describe('application shell', () => {
   });
 
   test('shows an honest placeholder for screens not built yet', async ({ page }) => {
-    await page.goto('/recruitment/job-openings');
-    await expect(page.getByRole('heading', { level: 1, name: 'Job Openings' })).toBeVisible();
-    await expect(page.getByText('Phase 9')).toBeVisible();
+    await page.goto('/settings/users');
+    await expect(page.getByRole('heading', { level: 1, name: 'Users' })).toBeVisible();
+    await expect(page.getByText('Phase 10')).toBeVisible();
   });
 
   test('shows not found for unknown URLs', async ({ page }) => {

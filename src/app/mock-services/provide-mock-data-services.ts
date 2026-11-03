@@ -41,6 +41,18 @@ import {
   SalaryComponentDataService,
   SalaryStructureDataService,
 } from '../core/services/data/payroll-data.services';
+import {
+  ApplicationDataService,
+  CandidateDataService,
+  InterviewDataService,
+  JobOpeningDataService,
+} from '../core/services/data/recruitment-data.services';
+import {
+  ApplicationMockService,
+  CandidateMockService,
+  InterviewMockService,
+  JobOpeningMockService,
+} from './recruitment/recruitment-mock.services';
 import { ActivityMockService } from './activity/activity-mock.service';
 import { NotificationMockService } from './activity/notification-mock.service';
 import {
@@ -127,6 +139,10 @@ export function provideMockDataServices(): EnvironmentProviders {
     bind(SalaryComponentDataService, SalaryComponentMockService),
     bind(SalaryStructureDataService, SalaryStructureMockService),
     bind(SalaryAssignmentDataService, SalaryAssignmentMockService),
+    bind(JobOpeningDataService, JobOpeningMockService),
+    bind(CandidateDataService, CandidateMockService),
+    bind(ApplicationDataService, ApplicationMockService),
+    bind(InterviewDataService, InterviewMockService),
     bind(DashboardDataService, DashboardMockService),
     bind(ActivityDataService, ActivityMockService),
     bind(NotificationDataService, NotificationMockService),

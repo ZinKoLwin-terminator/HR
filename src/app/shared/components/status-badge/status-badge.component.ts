@@ -32,6 +32,10 @@ const TONES: Record<string, BadgeTone> = {
   weekend: 'neutral',
   resigned: 'neutral',
   closed: 'neutral',
+  'on hold': 'warning',
+  filled: 'success',
+  scheduled: 'info',
+  completed: 'success',
 };
 
 export function badgeTone(status: string): BadgeTone {
