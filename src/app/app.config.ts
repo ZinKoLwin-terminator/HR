@@ -2,6 +2,7 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { MAT_ICON_DEFAULT_OPTIONS } from '@angular/material/icon';
 import { MAT_PAGINATOR_DEFAULT_OPTIONS } from '@angular/material/paginator';
+import { MAT_SELECT_CONFIG } from '@angular/material/select';
 import { DATE_PIPE_DEFAULT_OPTIONS } from '@angular/common';
 import {
   TitleStrategy,
@@ -32,6 +33,11 @@ export const appConfig: ApplicationConfig = {
 
     { provide: MAT_ICON_DEFAULT_OPTIONS, useValue: { fontSet: 'material-symbols-outlined' } },
     { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { appearance: 'outline' } },
+    // Dropdown panels size to their longest option (never narrower than the field).
+    {
+      provide: MAT_SELECT_CONFIG,
+      useValue: { panelWidth: 'auto', overlayPanelClass: 'app-select-panel' },
+    },
     { provide: MAT_PAGINATOR_DEFAULT_OPTIONS, useValue: { formFieldAppearance: 'outline' } },
     { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { dateFormat: DEFAULT_APP_CONFIG.dateFormat } },
   ],

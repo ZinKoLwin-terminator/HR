@@ -174,7 +174,7 @@ a {
   }
 
   mat-form-field {
-    min-width: 170px;
+    min-width: 210px;
   }
 }
 
@@ -322,6 +322,58 @@ a {
 // ---------------------------------------------------------------------------
 // Overlays (menus/snackbars render outside components)
 // ---------------------------------------------------------------------------
+// Dropdown (mat-select) panels: rounded, padded, content-width, with clear hover/selected rows.
+.app-select-panel {
+  min-width: 220px;
+  max-width: min(92vw, 420px);
+}
+
+.mat-mdc-select-panel {
+  padding: 6px !important;
+  border-radius: var(--app-radius-md) !important;
+  border: 1px solid var(--mat-sys-outline-variant);
+  box-shadow:
+    0 8px 24px light-dark(rgb(16 24 40 / 14%), rgb(0 0 0 / 55%)),
+    0 2px 6px light-dark(rgb(16 24 40 / 8%), rgb(0 0 0 / 35%)) !important;
+
+  .mat-mdc-option {
+    min-height: 40px;
+    margin-bottom: 2px;
+    padding-inline: 12px;
+    border-radius: 8px;
+    font: var(--mat-sys-body-medium);
+    transition: background-color 100ms ease;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .mdc-list-item__primary-text {
+      white-space: normal;
+      line-height: 1.35;
+    }
+
+    &:hover:not(.mdc-list-item--disabled),
+    &.mat-mdc-option-active:not(.mdc-list-item--selected) {
+      background: var(--mat-sys-surface-container-high);
+    }
+
+    &.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+      background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+
+      .mdc-list-item__primary-text {
+        color: var(--mat-sys-primary);
+        font-weight: 600;
+      }
+    }
+
+    // The "All" / "None" entries read as secondary choices.
+    &:first-child:not(.mdc-list-item--selected) .mdc-list-item__primary-text {
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+}
+
 .menu-heading {
   display: flex;
   align-items: center;
