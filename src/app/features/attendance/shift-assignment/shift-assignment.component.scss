@@ -1,0 +1,31 @@
+:host {
+  display: block;
+}
+
+.assign-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 16px;
+  border-radius: var(--app-radius-lg);
+  border: 1px dashed var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface-variant);
+
+  &.active {
+    border-style: solid;
+    border-color: var(--mat-sys-primary);
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+  }
+}
+
+.assign-bar__count {
+  font: var(--mat-sys-label-large);
+  min-width: 140px;
+}
+
+.assign-bar__shift {
+  min-width: 260px;
+}

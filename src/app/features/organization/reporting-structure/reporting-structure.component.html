@@ -1,0 +1,113 @@
+<app-page-header
+  title="Reporting structure"
+  description="Who reports to whom, based on each employee's manager. Read-only view."
+>
+  <ng-container pageActions>
+    <button mat-stroked-button type="button" (click)="expandAll()">
+      <mat-icon>unfold_more</mat-icon>Expand all
+    </button>
+    <button mat-stroked-button type="button" (click)="collapseAll()">
+      <mat-icon>unfold_less</mat-icon>Collapse all
+    </button>
+  </ng-container>
+</app-page-header>
+
+@if (data.error()) {
+  <app-empty-state
+    icon="error"
+    title="Reporting structure could not be loaded"
+    [message]="errorText()"
+  >
+    <button mat-flat-button type="button" (click)="data.reload()">Try again</button>
+  </app-empty-state>
+} @else if (data.value()) {
+  <section class="stats" aria-label="Structure summary">
+    <app-stat-card label="People in structure" [value]="stats().people" icon="groups" />
+    <app-stat-card
+      label="People managers"
+      [value]="stats().managers"
+      icon="supervisor_account"
+      tone="success"
+    />
+    <app-stat-card
+      label="Management levels"
+      [value]="stats().levels"
+      icon="stairs"
+      tone="warning"
+    />
+    <app-stat-card
+      label="Average span of control"
+      [value]="stats().span"
+      icon="account_tree"
+      tone="neutral"
+      hint="Direct reports per manager"
+    />
+  </section>
+
+  <div class="toolbar">
+    <app-search-field
+      class="grow"
+      label="Find a person"
+      placeholder="Name, code, position or department"
+      (searchChange)="search.set($event)"
+    />
+  </div>
+
+  <section class="card chart" aria-label="Organization chart">
+    @if (visibleRoots().length) {
+      <ul class="tree">
+        @for (root of visibleRoots(); track root.employee.id) {
+          <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: root }" />
+        }
+      </ul>
+    } @else {
+      <app-empty-state
+        icon="search_off"
+        title="No matching people"
+        message="Try a different name, code, position or department."
+      />
+    }
+  </section>
+
+  <ng-template #nodeTpl let-node>
+    <li>
+      <div class="node">
+        @if (node.reports.length) {
+          <button
+            type="button"
+            class="toggle"
+            (click)="toggle(node)"
+            [attr.aria-expanded]="isOpen(node)"
+            [attr.aria-label]="node.name + ' team'"
+          >
+            <mat-icon aria-hidden="true">{{
+              isOpen(node) ? 'expand_more' : 'chevron_right'
+            }}</mat-icon>
+          </button>
+        } @else {
+          <span class="toggle-spacer" aria-hidden="true"></span>
+        }
+        <app-avatar [name]="node.name" [photoUrl]="node.employee.photoUrl" [size]="36" />
+        <div class="info">
+          <span class="name">{{ node.name }}</span>
+          <span class="meta">{{ node.title }} · {{ node.department }}</span>
+        </div>
+        <span class="code">{{ node.employee.employeeCode }}</span>
+        @if (node.reports.length) {
+          <span class="count" [attr.title]="node.total + ' people in total'">
+            {{ node.reports.length }} direct · {{ node.total }} total
+          </span>
+        }
+      </div>
+      @if (node.reports.length && isOpen(node)) {
+        <ul class="children">
+          @for (child of node.reports; track child.employee.id) {
+            <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: child }" />
+          }
+        </ul>
+      }
+    </li>
+  </ng-template>
+} @else {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading reporting structure" />
+}

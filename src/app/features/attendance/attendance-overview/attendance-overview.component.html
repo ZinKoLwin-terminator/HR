@@ -1,0 +1,181 @@
+<app-page-header
+  title="Attendance dashboard"
+  description="Who is in, late, absent or on leave — for any day."
+>
+  <a pageActions mat-stroked-button routerLink="/attendance/check-in">
+    <mat-icon>touch_app</mat-icon>Check in / out
+  </a>
+  <a pageActions mat-flat-button routerLink="/attendance/records">
+    <mat-icon>fact_check</mat-icon>All records
+  </a>
+</app-page-header>
+
+<div class="toolbar" role="group" aria-label="Dashboard filters">
+  <div class="day-nav" role="group" aria-label="Day">
+    <button mat-icon-button type="button" aria-label="Previous day" (click)="shiftDay(-1)">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <mat-form-field subscriptSizing="dynamic" class="date-field">
+      <mat-label>Date</mat-label>
+      <input
+        matInput
+        type="date"
+        [value]="date()"
+        [max]="today"
+        (change)="pickDate($any($event.target).value)"
+      />
+    </mat-form-field>
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Next day"
+      [disabled]="isToday()"
+      (click)="shiftDay(1)"
+    >
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+    <button mat-stroked-button type="button" [disabled]="isToday()" (click)="pickDate(today)">
+      Today
+    </button>
+  </div>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Branch</mat-label>
+    <mat-select [value]="branchId()" (selectionChange)="branchId.set($event.value)">
+      <mat-option [value]="null">All branches</mat-option>
+      @for (option of branchOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (resource.error() && !overview()) {
+  <app-empty-state icon="error" title="Attendance could not be loaded" [message]="errorText()">
+    <button mat-flat-button type="button" (click)="resource.reload()">Try again</button>
+  </app-empty-state>
+} @else if (overview(); as o) {
+  <div
+    class="page"
+    [class.refreshing]="resource.isLoading()"
+    [attr.aria-busy]="resource.isLoading()"
+  >
+    @if (!isToday()) {
+      <p class="note" role="note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        Showing {{ o.summary.date | date: 'fullDate' }}.
+      </p>
+    }
+
+    @if (o.summary.scheduled === 0) {
+      <app-empty-state
+        icon="event_busy"
+        title="No working-day records for this date"
+        message="It may be a weekend or holiday. Choose another date."
+      />
+    } @else {
+      <section class="kpis" aria-label="Attendance summary">
+        <app-stat-card
+          label="Scheduled"
+          [value]="o.summary.scheduled"
+          icon="groups"
+          hint="Expected to work"
+        />
+        <app-stat-card
+          label="Checked in"
+          [value]="checkedIn()"
+          icon="how_to_reg"
+          tone="success"
+          [hint]="o.summary.attendanceRate + '% attendance rate'"
+        />
+        <app-stat-card
+          label="Late"
+          [value]="o.summary.late"
+          icon="alarm"
+          tone="warning"
+          hint="After the grace period"
+        />
+        <app-stat-card
+          label="Absent"
+          [value]="o.summary.absent"
+          icon="person_off"
+          tone="danger"
+          hint="No check-in recorded"
+        />
+        <app-stat-card
+          label="On leave"
+          [value]="o.summary.onLeave"
+          icon="beach_access"
+          tone="neutral"
+          hint="Approved leave"
+        />
+        <app-stat-card
+          label="Half day"
+          [value]="o.summary.halfDay"
+          icon="timelapse"
+          tone="primary"
+          hint="Under 4 hours worked"
+        />
+      </section>
+
+      <div class="grid">
+        <app-department-attendance-chart [departments]="o.byDepartment" />
+        <app-attendance-trend-chart [points]="o.trend" />
+      </div>
+
+      <div class="grid grid--halves">
+        <section class="card" aria-labelledby="late-heading">
+          <div class="card__header">
+            <div>
+              <h2 id="late-heading">Late arrivals</h2>
+              <p>Longest delays first</p>
+            </div>
+            <a routerLink="/attendance/exceptions" class="link-button">See all</a>
+          </div>
+          <ul class="people">
+            @for (p of o.late; track p.employeeId) {
+              <li>
+                <app-avatar [name]="p.name" [size]="36" />
+                <span class="people__text">
+                  <a [routerLink]="['/employees', p.employeeId]" class="people__name">{{
+                    p.name
+                  }}</a>
+                  <span class="people__meta">{{ p.department }} · {{ p.detail }}</span>
+                </span>
+              </li>
+            } @empty {
+              <li class="muted">Nobody was late.</li>
+            }
+          </ul>
+        </section>
+
+        <section class="card" aria-labelledby="absent-heading">
+          <div class="card__header">
+            <div>
+              <h2 id="absent-heading">Absent</h2>
+              <p>No check-in recorded</p>
+            </div>
+            <a routerLink="/attendance/adjustments" class="link-button">Adjustments</a>
+          </div>
+          <ul class="people">
+            @for (p of o.absent; track p.employeeId) {
+              <li>
+                <app-avatar [name]="p.name" [size]="36" />
+                <span class="people__text">
+                  <a [routerLink]="['/employees', p.employeeId]" class="people__name">{{
+                    p.name
+                  }}</a>
+                  <span class="people__meta">{{ p.department }}</span>
+                </span>
+              </li>
+            } @empty {
+              <li class="muted">Nobody was absent.</li>
+            }
+          </ul>
+        </section>
+      </div>
+    }
+  </div>
+} @else {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading attendance" />
+}

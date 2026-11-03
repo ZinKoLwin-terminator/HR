@@ -1,0 +1,119 @@
+import { EnvironmentProviders, Provider, Type, makeEnvironmentProviders } from '@angular/core';
+import {
+  ActivityDataService,
+  NotificationDataService,
+} from '../core/services/data/activity-data.service';
+import {
+  AttendanceAdjustmentDataService,
+  AttendanceOverviewDataService,
+  AttendanceRecordDataService,
+  HolidayDataService,
+  OvertimeDataService,
+  ShiftDataService,
+  WorkScheduleDataService,
+} from '../core/services/data/attendance-data.services';
+import { DashboardDataService } from '../core/services/data/dashboard-data.service';
+import { EmployeeDataService } from '../core/services/data/employee-data.service';
+import {
+  EmployeeDocumentDataService,
+  EmployeeSalaryDataService,
+  EmploymentHistoryDataService,
+} from '../core/services/data/employee-extras-data.services';
+import {
+  LeaveApplicationDataService,
+  LeaveBalanceDataService,
+  LeaveCalendarDataService,
+  LeavePolicyDataService,
+  LeaveTypeDataService,
+} from '../core/services/data/leave-data.services';
+import {
+  BranchDataService,
+  CompanyDataService,
+  DepartmentDataService,
+  JobGradeDataService,
+  PositionDataService,
+  SectionDataService,
+} from '../core/services/data/organization-data.services';
+import { PayrollRunDataService } from '../core/services/data/payroll-data.services';
+import { ActivityMockService } from './activity/activity-mock.service';
+import { NotificationMockService } from './activity/notification-mock.service';
+import {
+  AttendanceRecordMockService,
+  HolidayMockService,
+  ShiftMockService,
+} from './attendance/attendance-mock.services';
+import {
+  AttendanceAdjustmentMockService,
+  OvertimeMockService,
+} from './attendance/attendance-workflow-mock.services';
+import {
+  AttendanceOverviewMockService,
+  WorkScheduleMockService,
+} from './attendance/attendance-views-mock.services';
+import { DashboardMockService } from './dashboard/dashboard-mock.service';
+import { EmployeeMockService } from './employees/employee-mock.service';
+import {
+  EmployeeDocumentMockService,
+  EmployeeSalaryMockService,
+  EmploymentHistoryMockService,
+} from './employees/employee-extras-mock.services';
+import {
+  LeaveApplicationMockService,
+  LeaveBalanceMockService,
+  LeaveCalendarMockService,
+  LeavePolicyMockService,
+  LeaveTypeMockService,
+} from './leave/leave-mock.services';
+import {
+  BranchMockService,
+  CompanyMockService,
+  DepartmentMockService,
+  JobGradeMockService,
+  PositionMockService,
+  SectionMockService,
+} from './organization/organization-mock.services';
+import { PayrollRunMockService } from './payroll/payroll-mock.services';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AbstractType<T> = abstract new (...args: any[]) => T;
+
+/** Binds an abstract data contract to its mock singleton. */
+function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
+  return { provide: contract, useExisting: implementation };
+}
+
+/**
+ * Registers the in-memory mock implementations for every data contract.
+ * Future phase: add `provideApiDataServices()` with HTTP implementations and
+ * swap it in `app.config.ts` — components stay unchanged.
+ */
+export function provideMockDataServices(): EnvironmentProviders {
+  return makeEnvironmentProviders([
+    bind(CompanyDataService, CompanyMockService),
+    bind(BranchDataService, BranchMockService),
+    bind(DepartmentDataService, DepartmentMockService),
+    bind(SectionDataService, SectionMockService),
+    bind(JobGradeDataService, JobGradeMockService),
+    bind(PositionDataService, PositionMockService),
+    bind(EmployeeDataService, EmployeeMockService),
+    bind(EmployeeDocumentDataService, EmployeeDocumentMockService),
+    bind(EmploymentHistoryDataService, EmploymentHistoryMockService),
+    bind(EmployeeSalaryDataService, EmployeeSalaryMockService),
+    bind(ShiftDataService, ShiftMockService),
+    bind(HolidayDataService, HolidayMockService),
+    bind(AttendanceRecordDataService, AttendanceRecordMockService),
+    bind(AttendanceAdjustmentDataService, AttendanceAdjustmentMockService),
+    bind(OvertimeDataService, OvertimeMockService),
+    bind(AttendanceOverviewDataService, AttendanceOverviewMockService),
+    bind(WorkScheduleDataService, WorkScheduleMockService),
+    bind(LeaveTypeDataService, LeaveTypeMockService),
+    bind(LeaveApplicationDataService, LeaveApplicationMockService),
+    bind(LeavePolicyDataService, LeavePolicyMockService),
+    bind(LeaveBalanceDataService, LeaveBalanceMockService),
+    bind(LeaveCalendarDataService, LeaveCalendarMockService),
+    bind(PayrollRunDataService, PayrollRunMockService),
+    bind(DashboardDataService, DashboardMockService),
+    bind(ActivityDataService, ActivityMockService),
+    bind(NotificationDataService, NotificationMockService),
+  ]);
+}

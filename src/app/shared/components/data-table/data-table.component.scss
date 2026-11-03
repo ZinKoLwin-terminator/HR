@@ -1,0 +1,109 @@
+:host {
+  display: block;
+}
+
+.table-card {
+  position: relative;
+  border-radius: var(--app-radius-lg);
+  border: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface-container-lowest);
+  overflow: hidden;
+}
+
+.table-progress {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  z-index: 2;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+}
+
+table {
+  width: 100%;
+  background: transparent;
+}
+
+th.mat-mdc-header-cell {
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+  background: var(--mat-sys-surface-container-low);
+  white-space: nowrap;
+}
+
+td.mat-mdc-cell {
+  font: var(--mat-sys-body-medium);
+}
+
+th,
+td {
+  padding-inline: 16px;
+}
+
+.select-cell {
+  width: 48px;
+  padding-inline: 8px 0;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.align-end {
+  text-align: end;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.actions-cell {
+  width: 56px;
+  text-align: end;
+  padding-inline-end: 8px;
+}
+
+tr.clickable {
+  cursor: pointer;
+  &:hover {
+    background: var(--mat-sys-surface-container);
+  }
+}
+
+tr.mat-mdc-row:hover {
+  background: var(--mat-sys-surface-container-low);
+}
+
+.menu-danger {
+  color: var(--mat-sys-error);
+  .mat-icon {
+    color: var(--mat-sys-error);
+  }
+}
+
+mat-paginator {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  background: transparent;
+}
+
+@media (max-width: 1279.98px) {
+  .hide-below-lg {
+    display: none;
+  }
+}
+@media (max-width: 959.98px) {
+  .hide-below-md {
+    display: none;
+  }
+}
+@media (max-width: 599.98px) {
+  .hide-below-sm {
+    display: none;
+  }
+}

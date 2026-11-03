@@ -1,0 +1,128 @@
+<app-page-header
+  [title]="greeting()"
+  [description]="'Here is your organization today · ' + (today | date: 'fullDate')"
+>
+  <ng-container pageActions>
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="summary.reload()"
+      [disabled]="summary.isLoading()"
+    >
+      <mat-icon>refresh</mat-icon>Refresh
+    </button>
+    <a mat-flat-button routerLink="/employees/new"><mat-icon>person_add</mat-icon>Add employee</a>
+  </ng-container>
+</app-page-header>
+
+@if (summary.error()) {
+  <app-empty-state icon="error" title="Dashboard could not be loaded" [message]="errorText()">
+    <button mat-flat-button type="button" (click)="summary.reload()">Try again</button>
+  </app-empty-state>
+} @else if (summary.value(); as s) {
+  <!-- Keep the previous render on refresh (no skeleton flash). -->
+  <div
+    class="dashboard"
+    [class.refreshing]="summary.isLoading()"
+    [attr.aria-busy]="summary.isLoading()"
+  >
+    <section class="kpis" aria-label="Key figures">
+      <app-stat-card
+        label="Total employees"
+        [value]="s.headcount.total"
+        icon="groups"
+        [hint]="s.headcount.probation + ' on probation'"
+        link="/employees/list"
+      />
+      <app-stat-card
+        label="Active employees"
+        [value]="s.headcount.active"
+        icon="verified_user"
+        tone="success"
+        [hint]="percent(s.headcount.active, s.headcount.total) + ' of headcount'"
+      />
+      <app-stat-card
+        label="New employees"
+        [value]="s.headcount.newThisMonth"
+        icon="person_add"
+        [hint]="'Joined in the last 30 days · ' + s.headcount.exitsThisMonth + ' exits this month'"
+      />
+      <app-stat-card
+        label="On leave today"
+        [value]="s.attendanceToday.onLeave"
+        icon="beach_access"
+        tone="neutral"
+        hint="Approved leave"
+        link="/leave/calendar"
+      />
+      <app-stat-card
+        label="Today's attendance"
+        [value]="s.attendanceToday.attendanceRate + '%'"
+        icon="how_to_reg"
+        tone="success"
+        [hint]="
+          s.attendanceToday.present +
+          s.attendanceToday.late +
+          s.attendanceToday.halfDay +
+          ' of ' +
+          s.attendanceToday.scheduled +
+          ' checked in'
+        "
+        link="/attendance/overview"
+      />
+      <app-stat-card
+        label="Absent"
+        [value]="s.attendanceToday.absent"
+        icon="person_off"
+        tone="danger"
+        hint="No check-in recorded"
+        link="/attendance/records"
+      />
+      <app-stat-card
+        label="Late arrivals"
+        [value]="s.attendanceToday.late"
+        icon="alarm"
+        tone="warning"
+        hint="Checked in after grace period"
+        link="/attendance/records"
+      />
+      <app-stat-card
+        label="Pending approvals"
+        [value]="s.pendingLeaveApprovals"
+        icon="pending_actions"
+        tone="warning"
+        hint="Leave requests"
+        link="/leave/approvals"
+      />
+    </section>
+
+    @if (s.attendanceToday.date !== (today | date: 'yyyy-MM-dd')) {
+      <p class="note" role="note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        Today is not a working day — attendance figures show
+        {{ s.attendanceToday.date | date: 'fullDate' }}.
+      </p>
+    }
+
+    <div class="grid grid--wide">
+      <app-attendance-trend-chart [points]="s.attendanceTrend" />
+      <app-payroll-summary-card [payroll]="s.payroll" />
+    </div>
+
+    <div class="grid grid--halves">
+      <app-department-chart [departments]="s.departmentDistribution" />
+      <app-headcount-growth-chart [points]="s.headcountGrowth" />
+    </div>
+
+    <div class="grid grid--thirds">
+      <app-pending-leaves-card [items]="s.pendingLeaves" [total]="s.pendingLeaveApprovals" />
+      <app-activity-feed-card [activities]="s.recentActivities" />
+      <app-upcoming-events-card [events]="s.upcomingEvents" />
+    </div>
+  </div>
+} @else {
+  <div class="loading" role="status">
+    <mat-progress-bar mode="indeterminate" />
+    <span>Loading dashboard…</span>
+  </div>
+}

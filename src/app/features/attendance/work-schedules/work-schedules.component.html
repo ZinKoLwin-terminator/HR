@@ -1,0 +1,104 @@
+<app-page-header
+  title="Work schedules"
+  description="Weekly roster based on each employee's assigned shift, public holidays and approved leave."
+/>
+
+<div class="toolbar" role="group" aria-label="Schedule filters">
+  <div class="week-nav" role="group" aria-label="Week">
+    <button mat-icon-button type="button" aria-label="Previous week" (click)="shiftWeek(-1)">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <span class="week-label" aria-live="polite">
+      {{ weekStart() | date: 'dd MMM' }} – {{ weekEnd() | date: 'dd MMM yyyy' }}
+    </span>
+    <button mat-icon-button type="button" aria-label="Next week" (click)="shiftWeek(1)">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+    <button mat-stroked-button type="button" [disabled]="isThisWeek()" (click)="goToThisWeek()">
+      This week
+    </button>
+  </div>
+
+  <span class="grow"></span>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Department</mat-label>
+    <mat-select [value]="departmentId()" (selectionChange)="departmentId.set($event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (option of departmentOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Branch</mat-label>
+    <mat-select [value]="branchId()" (selectionChange)="branchId.set($event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (option of branchOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+<ul class="legend" aria-label="Legend">
+  <li><span class="chip" data-kind="Shift">Shift</span> Working</li>
+  <li><span class="chip" data-kind="Off">Off</span> Day off</li>
+  <li><span class="chip" data-kind="Holiday">Holiday</span> Public / company holiday</li>
+  <li><span class="chip" data-kind="Leave">Leave</span> Approved leave</li>
+</ul>
+
+@if (schedule.error()) {
+  <app-empty-state icon="error" title="Schedule could not be loaded">
+    <button mat-flat-button type="button" (click)="schedule.reload()">Try again</button>
+  </app-empty-state>
+} @else if (data(); as d) {
+  <div class="card grid-card" [class.refreshing]="schedule.isLoading()">
+    <div class="scroll" role="region" aria-label="Weekly schedule" tabindex="0">
+      <table class="schedule">
+        <caption class="cdk-visually-hidden">
+          Work schedule for the week of
+          {{
+            d.weekStart
+          }}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" class="who">Employee</th>
+            @for (day of d.days; track day) {
+              <th scope="col" [class.today]="day === today">
+                {{ day | date: 'EEE' }}<br /><span class="day-num">{{ day | date: 'dd MMM' }}</span>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of d.rows; track row.employeeId) {
+            <tr>
+              <th scope="row" class="who">
+                <span class="who__name">{{ row.employeeName }}</span>
+                <span class="who__meta">
+                  <span class="dot" [style.background]="row.shiftColor" aria-hidden="true"></span>
+                  {{ row.department }} · {{ row.shiftName }}
+                </span>
+              </th>
+              @for (cell of row.cells; track cell.date) {
+                <td [class.today]="cell.date === today">
+                  <span class="chip" [attr.data-kind]="cell.kind">{{ cell.label }}</span>
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8">
+                <app-empty-state icon="event_busy" title="No employees match the filters" />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+} @else {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading schedule" />
+}

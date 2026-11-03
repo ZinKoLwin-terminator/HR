@@ -1,0 +1,25 @@
+:host {
+  display: block;
+}
+
+mat-dialog-content {
+  padding-top: 8px !important;
+  max-height: 70vh;
+}
+
+.form-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: var(--app-radius-md);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  font: var(--mat-sys-body-medium);
+}
+
+button mat-spinner {
+  display: inline-block;
+  margin-right: 8px;
+}

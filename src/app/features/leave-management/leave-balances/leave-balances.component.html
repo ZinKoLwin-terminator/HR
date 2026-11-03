@@ -1,0 +1,65 @@
+<app-page-header
+  title="Leave balances"
+  description="Available days (available / entitled) for each employee. Entitlements follow the leave policies."
+/>
+
+<div class="toolbar" role="search" aria-label="Filter leave balances">
+  <app-search-field
+    class="grow"
+    label="Search by employee name or code"
+    [value]="search()"
+    (searchChange)="setSearch($event)"
+  />
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Year</mat-label>
+    <mat-select [value]="year()" (selectionChange)="setFilter('year', $event.value)">
+      @for (y of yearOptions; track y) {
+        <mat-option [value]="y">{{ y }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Department</mat-label>
+    <mat-select [value]="departmentId()" (selectionChange)="setFilter('department', $event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (option of departmentOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Branch</mat-label>
+    <mat-select [value]="branchId()" (selectionChange)="setFilter('branch', $event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (option of branchOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (page.error() && !result()) {
+  <app-empty-state icon="error" title="Balances could not be loaded" [message]="errorText()">
+    <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
+  </app-empty-state>
+} @else {
+  <app-data-table
+    caption="Leave balances"
+    [columns]="columns()"
+    [rows]="result()?.items ?? []"
+    [total]="result()?.total ?? 0"
+    [pageIndex]="pageIndex()"
+    [pageSize]="pageSize()"
+    [pageSizeOptions]="pageSizeOptions"
+    [sort]="sort()"
+    [loading]="page.isLoading()"
+    [actions]="actions"
+    [rowLabel]="rowLabel"
+    [clickableRows]="true"
+    emptyTitle="No employees found"
+    (pageChange)="onPage($event)"
+    (sortChange)="onSort($event)"
+    (action)="onAction($event)"
+    (rowClick)="openDetails($event)"
+  />
+}

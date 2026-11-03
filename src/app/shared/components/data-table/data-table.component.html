@@ -1,0 +1,153 @@
+<div class="table-card">
+  <div class="table-progress" aria-hidden="true">
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+  </div>
+
+  <div class="table-scroll" role="region" [attr.aria-label]="caption()" tabindex="0">
+    <table
+      mat-table
+      [dataSource]="rows()"
+      [trackBy]="trackById"
+      matSort
+      [matSortActive]="sort().active"
+      [matSortDirection]="sort().direction"
+      (matSortChange)="onSort($event)"
+      [attr.aria-busy]="loading()"
+    >
+      <caption class="cdk-visually-hidden">
+        {{
+          caption()
+        }}
+      </caption>
+
+      @for (column of columns(); track column.key) {
+        <ng-container [matColumnDef]="column.key">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            [mat-sort-header]="column.key"
+            [disabled]="!column.sortable"
+            [class]="'hide-below-' + (column.hideBelow ?? 'none')"
+            [class.align-end]="column.align === 'end'"
+            [class.nowrap]="column.nowrap"
+            [style.width]="column.width"
+          >
+            {{ column.header }}
+          </th>
+          <td
+            mat-cell
+            *matCellDef="let row"
+            [class]="'hide-below-' + (column.hideBelow ?? 'none')"
+            [class.align-end]="column.align === 'end'"
+            [class.nowrap]="column.nowrap"
+          >
+            @if (templates().get(column.key); as tpl) {
+              <ng-container
+                [ngTemplateOutlet]="tpl"
+                [ngTemplateOutletContext]="{ $implicit: row }"
+              />
+            } @else {
+              @let value = cellValue(column, row);
+              @switch (column.type) {
+                @case ('date') {
+                  {{ value ? (value | date) : '—' }}
+                }
+                @case ('currency') {
+                  <span class="num">{{ $any(value) | money }}</span>
+                }
+                @case ('number') {
+                  <span class="num">{{ $any(value) | number }}</span>
+                }
+                @case ('status') {
+                  @if (value) {
+                    <app-status-badge [status]="'' + value" />
+                  }
+                }
+                @default {
+                  {{ value ?? '—' }}
+                }
+              }
+            }
+          </td>
+        </ng-container>
+      }
+
+      <ng-container matColumnDef="__select">
+        <th mat-header-cell *matHeaderCellDef class="select-cell">
+          <mat-checkbox
+            [checked]="allSelected()"
+            [indeterminate]="someSelected()"
+            (change)="toggleAll()"
+            aria-label="Select all rows on this page"
+          />
+        </th>
+        <td mat-cell *matCellDef="let row" class="select-cell">
+          <mat-checkbox
+            [checked]="selectedIds().has(row.id)"
+            (change)="toggleRow(row)"
+            [aria-label]="'Select ' + rowLabel()(row)"
+          />
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="__actions">
+        <th mat-header-cell *matHeaderCellDef class="actions-cell">
+          <span class="cdk-visually-hidden">Actions</span>
+        </th>
+        <td mat-cell *matCellDef="let row" class="actions-cell">
+          @let rowActions = visibleActions(row);
+          @if (rowActions.length) {
+            <button
+              mat-icon-button
+              type="button"
+              [matMenuTriggerFor]="menu"
+              [attr.aria-label]="'Actions for ' + rowLabel()(row)"
+              matTooltip="Actions"
+            >
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu" xPosition="before">
+              @for (item of rowActions; track item.id) {
+                <button
+                  mat-menu-item
+                  type="button"
+                  [class.menu-danger]="item.destructive"
+                  (click)="action.emit({ action: item.id, row })"
+                >
+                  <mat-icon>{{ item.icon }}</mat-icon>
+                  <span>{{ item.label }}</span>
+                </button>
+              }
+            </mat-menu>
+          }
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns(); sticky: true"></tr>
+      <tr
+        mat-row
+        *matRowDef="let row; columns: displayedColumns()"
+        [class.clickable]="clickableRows()"
+        (click)="onRowClick(row, $event)"
+      ></tr>
+    </table>
+
+    @if (!loading() && rows().length === 0) {
+      <app-empty-state [icon]="emptyIcon()" [title]="emptyTitle()" [message]="emptyMessage()" />
+    }
+  </div>
+
+  @if (showPaginator()) {
+    <mat-paginator
+      [length]="total()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="pageSizeOptions()"
+      [showFirstLastButtons]="true"
+      (page)="pageChange.emit($event)"
+      [attr.aria-label]="'Pagination for ' + caption()"
+    />
+  }
+</div>

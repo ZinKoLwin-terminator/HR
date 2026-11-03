@@ -1,0 +1,130 @@
+<app-page-header
+  title="Employees"
+  description="Search, filter and manage employee records across the organization."
+>
+  <a pageActions mat-flat-button routerLink="/employees/new">
+    <mat-icon>person_add</mat-icon>Add employee
+  </a>
+</app-page-header>
+
+<div class="toolbar" role="search" aria-label="Filter employees">
+  <app-search-field
+    class="grow"
+    label="Search by employee code or name"
+    [value]="query.search()"
+    (searchChange)="query.setSearch($event)"
+  />
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Department</mat-label>
+    <mat-select
+      [value]="value('departmentId')"
+      (selectionChange)="setFilter('departmentId', $event.value)"
+    >
+      <mat-option [value]="null">All</mat-option>
+      @for (option of departmentOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Branch</mat-label>
+    <mat-select [value]="value('branchId')" (selectionChange)="setFilter('branchId', $event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (option of branchOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Status</mat-label>
+    <mat-select
+      [value]="value('employmentStatus')"
+      (selectionChange)="setFilter('employmentStatus', $event.value)"
+    >
+      <mat-option [value]="null">All</mat-option>
+      @for (status of statusOptions; track status) {
+        <mat-option [value]="status">{{ status }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Employment type</mat-label>
+    <mat-select
+      [value]="value('employmentType')"
+      (selectionChange)="setFilter('employmentType', $event.value)"
+    >
+      <mat-option [value]="null">All</mat-option>
+      @for (type of typeOptions; track type) {
+        <mat-option [value]="type">{{ type }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic" class="date-filter">
+    <mat-label>Joined from</mat-label>
+    <input
+      matInput
+      type="date"
+      [value]="value('joiningFrom') ?? ''"
+      [max]="value('joiningTo') ?? ''"
+      (change)="setFilter('joiningFrom', $any($event.target).value)"
+    />
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic" class="date-filter">
+    <mat-label>Joined to</mat-label>
+    <input
+      matInput
+      type="date"
+      [value]="value('joiningTo') ?? ''"
+      [min]="value('joiningFrom') ?? ''"
+      (change)="setFilter('joiningTo', $any($event.target).value)"
+    />
+  </mat-form-field>
+
+  @if (query.activeFilterCount() > 0) {
+    <button mat-button type="button" (click)="query.reset()">
+      <mat-icon>filter_alt_off</mat-icon>Clear filters
+    </button>
+  }
+</div>
+
+@if (page.error() && !result()) {
+  <app-empty-state icon="error" title="Employees could not be loaded" [message]="errorText()">
+    <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
+  </app-empty-state>
+} @else {
+  <app-data-table
+    caption="Employees"
+    [columns]="columns"
+    [rows]="result()?.items ?? []"
+    [total]="result()?.total ?? 0"
+    [pageIndex]="query.pageIndex()"
+    [pageSize]="query.pageSize()"
+    [pageSizeOptions]="pageSizeOptions"
+    [sort]="query.sort()"
+    [loading]="page.isLoading()"
+    [actions]="actions"
+    [rowLabel]="rowLabel"
+    [clickableRows]="true"
+    emptyTitle="No employees found"
+    (pageChange)="query.onPage($event)"
+    (sortChange)="query.setSort($event)"
+    (action)="onAction($event)"
+    (rowClick)="openProfile($event)"
+  >
+    <ng-template appCellTemplate="fullName" let-row>
+      <a class="person" [routerLink]="['/employees', row.id]">
+        <app-avatar [name]="row.fullName" [photoUrl]="row.photoUrl" [size]="34" />
+        <span class="person__text">
+          <span class="person__name">{{ row.fullName }}</span>
+          <span class="person__email">{{ row.workEmail }}</span>
+        </span>
+      </a>
+    </ng-template>
+  </app-data-table>
+}

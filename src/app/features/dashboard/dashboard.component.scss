@@ -1,0 +1,94 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: opacity 150ms ease;
+
+  &.refreshing {
+    opacity: 0.6;
+  }
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+  align-items: stretch;
+
+  &--wide {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+  &--halves {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  &--thirds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--app-radius-md);
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font: var(--mat-sys-body-medium);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 48px 0;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+}
+
+@media (max-width: 1279.98px) {
+  .grid--wide,
+  .grid--thirds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid--wide app-attendance-trend-chart {
+    grid-column: 1 / -1;
+  }
+  .grid--thirds app-upcoming-events-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1023.98px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid--halves {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 719.98px) {
+  .grid--wide,
+  .grid--thirds {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 479.98px) {
+  .kpis {
+    gap: 10px;
+  }
+}
+
+// Chart/list widgets fill their grid cell so cards in a row share one height.
+.grid > * {
+  display: block;
+  min-width: 0;
+}

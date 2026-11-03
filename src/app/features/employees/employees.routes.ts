@@ -1,0 +1,56 @@
+import { Routes } from '@angular/router';
+import { unsavedChangesGuard } from '../../core/guards/unsaved-changes.guard';
+
+export const EMPLOYEE_ROUTES: Routes = [
+  { path: '', pathMatch: 'full', redirectTo: 'list' },
+  {
+    path: 'list',
+    title: 'Employee List',
+    data: { breadcrumb: 'Employee List' },
+    loadComponent: () =>
+      import('./employee-list/employee-list.component').then((m) => m.EmployeeListComponent),
+  },
+  {
+    path: 'new',
+    title: 'Add Employee',
+    data: { breadcrumb: 'Add Employee' },
+    canDeactivate: [unsavedChangesGuard],
+    loadComponent: () =>
+      import('./employee-form/employee-form-page.component').then(
+        (m) => m.EmployeeFormPageComponent,
+      ),
+  },
+  {
+    path: 'documents',
+    title: 'Employee Documents',
+    data: { breadcrumb: 'Employee Documents' },
+    loadComponent: () =>
+      import('./employee-documents/employee-documents-page.component').then(
+        (m) => m.EmployeeDocumentsPageComponent,
+      ),
+  },
+  {
+    path: ':id',
+    data: { breadcrumb: 'Employee Profile' },
+    children: [
+      {
+        path: '',
+        title: 'Employee Profile',
+        loadComponent: () =>
+          import('./employee-profile/employee-profile.component').then(
+            (m) => m.EmployeeProfileComponent,
+          ),
+      },
+      {
+        path: 'edit',
+        title: 'Edit Employee',
+        data: { breadcrumb: 'Edit' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./employee-form/employee-form-page.component').then(
+            (m) => m.EmployeeFormPageComponent,
+          ),
+      },
+    ],
+  },
+];

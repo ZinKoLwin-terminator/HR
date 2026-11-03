@@ -1,0 +1,94 @@
+<app-page-header
+  title="Check in / check out"
+  description="Record your arrival and departure. Late arrivals are marked automatically using the shift's grace period."
+/>
+
+<div class="layout">
+  <section class="card punch" aria-labelledby="punch-heading">
+    <div class="punch__top">
+      <p class="date">{{ now() | date: 'fullDate' }}</p>
+      <p class="clock" aria-live="off">{{ clock() }}</p>
+    </div>
+
+    <mat-form-field subscriptSizing="dynamic" class="who">
+      <mat-label>Acting as (demo)</mat-label>
+      <mat-select [value]="employeeId()" (selectionChange)="selectEmployee($event.value)">
+        @for (option of employeeOptions(); track option.value) {
+          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (shift(); as s) {
+      <p class="shift">
+        <mat-icon aria-hidden="true">schedule</mat-icon>
+        {{ s.name }} · {{ s.startTime }} – {{ s.endTime }} · grace {{ s.graceMinutes }} min
+      </p>
+    }
+
+    <h2 id="punch-heading" class="state" [attr.data-state]="state()">{{ heading() }}</h2>
+    @if (todayRecord(); as record) {
+      <p class="state-status"><app-status-badge [status]="record.status" /></p>
+    }
+
+    <div class="actions">
+      <button
+        mat-flat-button
+        type="button"
+        class="big"
+        [disabled]="busy() || state() !== 'idle'"
+        (click)="punch('in')"
+      >
+        <mat-icon>login</mat-icon>Check in
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        class="big"
+        [disabled]="busy() || state() !== 'working'"
+        (click)="punch('out')"
+      >
+        <mat-icon>logout</mat-icon>Check out
+      </button>
+    </div>
+    @if (busy()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Saving" />
+    }
+  </section>
+
+  <section class="card" aria-labelledby="recent-heading">
+    <div class="card__header">
+      <div>
+        <h2 id="recent-heading">Recent attendance</h2>
+        <p>Last 8 records</p>
+      </div>
+    </div>
+    <div class="scroll">
+      <table class="simple-table">
+        <caption class="cdk-visually-hidden">
+          Recent attendance for the selected employee
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Status</th>
+            <th scope="col">In</th>
+            <th scope="col">Out</th>
+            <th scope="col" class="num">Worked</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of history(); track r.id) {
+            <tr>
+              <th scope="row">{{ r.date | date: 'EEE, dd MMM' }}</th>
+              <td><app-status-badge [status]="r.status" /></td>
+              <td>{{ r.checkIn ?? '—' }}</td>
+              <td>{{ r.checkOut ?? '—' }}</td>
+              <td class="num">{{ duration(r.workedMinutes) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

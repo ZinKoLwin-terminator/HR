@@ -1,0 +1,103 @@
+<app-page-header
+  title="Shift assignment"
+  description="Select employees and assign them a shift. Changes apply immediately to schedules and attendance rules."
+/>
+
+<div class="toolbar" role="search" aria-label="Filter employees">
+  <app-search-field
+    class="grow"
+    label="Search by employee code or name"
+    [value]="query.search()"
+    (searchChange)="query.setSearch($event)"
+  />
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Department</mat-label>
+    <mat-select
+      [value]="value('departmentId')"
+      (selectionChange)="setFilter('departmentId', $event.value)"
+    >
+      <mat-option [value]="null">All</mat-option>
+      @for (option of departmentOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Branch</mat-label>
+    <mat-select [value]="value('branchId')" (selectionChange)="setFilter('branchId', $event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (option of branchOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Current shift</mat-label>
+    <mat-select [value]="value('shiftId')" (selectionChange)="setFilter('shiftId', $event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (option of shiftOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  @if (query.activeFilterCount() > 0) {
+    <button mat-button type="button" (click)="query.reset()">
+      <mat-icon>filter_alt_off</mat-icon>Clear filters
+    </button>
+  }
+</div>
+
+<section
+  class="assign-bar"
+  [class.active]="selected().size > 0"
+  aria-label="Assign shift to selected employees"
+>
+  <span class="assign-bar__count" aria-live="polite">
+    {{ selected().size }} employee{{ selected().size === 1 ? '' : 's' }} selected
+  </span>
+  <mat-form-field subscriptSizing="dynamic" class="assign-bar__shift">
+    <mat-label>Assign shift</mat-label>
+    <mat-select [value]="targetShiftId()" (selectionChange)="targetShiftId.set($event.value)">
+      @for (shift of shifts(); track shift.id) {
+        <mat-option [value]="shift.id"
+          >{{ shift.name }} ({{ shift.startTime }}–{{ shift.endTime }})</mat-option
+        >
+      }
+    </mat-select>
+  </mat-form-field>
+  <button
+    mat-flat-button
+    type="button"
+    [disabled]="selected().size === 0 || targetShiftId() === null || saving()"
+    (click)="assign()"
+  >
+    <mat-icon>assignment_ind</mat-icon>Assign to selected
+  </button>
+  <button mat-button type="button" [disabled]="selected().size === 0" (click)="clearSelection()">
+    Clear selection
+  </button>
+</section>
+
+@if (page.error() && !result()) {
+  <app-empty-state icon="error" title="Employees could not be loaded" [message]="errorText()">
+    <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
+  </app-empty-state>
+} @else {
+  <app-data-table
+    caption="Employees and their shifts"
+    [columns]="columns"
+    [rows]="result()?.items ?? []"
+    [total]="result()?.total ?? 0"
+    [pageIndex]="query.pageIndex()"
+    [pageSize]="query.pageSize()"
+    [pageSizeOptions]="pageSizeOptions"
+    [sort]="query.sort()"
+    [loading]="page.isLoading()"
+    [rowLabel]="rowLabel"
+    [selectable]="true"
+    [(selectedIds)]="selected"
+    emptyTitle="No employees found"
+    (pageChange)="query.onPage($event)"
+    (sortChange)="query.setSort($event)"
+  />
+}

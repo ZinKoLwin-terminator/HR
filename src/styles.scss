@@ -1,0 +1,370 @@
+@use '@angular/material' as mat;
+
+// ---------------------------------------------------------------------------
+// Material 3 theme. `color-scheme` switches light/dark (see ThemeService).
+// ---------------------------------------------------------------------------
+html {
+  color-scheme: light;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$violet-palette,
+      ),
+      typography: (
+        plain-family: 'Inter, Roboto, "Segoe UI", sans-serif',
+        brand-family: 'Inter, Roboto, "Segoe UI", sans-serif',
+      ),
+      density: 0,
+    )
+  );
+
+  // Compact density for data-dense controls.
+  .mat-mdc-table,
+  .mat-mdc-paginator {
+    @include mat.theme(
+      (
+        density: -2,
+      )
+    );
+  }
+
+  // ---- Application tokens (light-dark aware) ------------------------------
+  --app-radius-lg: 16px;
+  --app-radius-md: 12px;
+  --app-header-height: 64px;
+  --app-sidebar-width: 268px;
+  --app-sidebar-collapsed-width: 76px;
+
+  --app-page-bg: light-dark(#f5f7fb, #0f1218);
+
+  --app-success-container: light-dark(#d7f5e6, #0e3b28);
+  --app-on-success-container: light-dark(#0b5233, #a9ecc9);
+  --app-warning-container: light-dark(#fdedc8, #4a3300);
+  --app-on-warning-container: light-dark(#6b4500, #ffdc9a);
+
+  // Dark navy sidebar in both modes for a strong enterprise look.
+  --app-sidebar-bg: light-dark(#14213d, #0b1220);
+  --app-sidebar-fg: #c6cfe1;
+  --app-sidebar-fg-strong: #ffffff;
+  --app-sidebar-border: rgb(255 255 255 / 8%);
+  --app-sidebar-hover: rgb(255 255 255 / 7%);
+  --app-sidebar-active-bg: rgb(122 166 255 / 18%);
+  --app-sidebar-active-fg: #ffffff;
+  --app-sidebar-accent: #7aa6ff;
+  --app-sidebar-accent-fg: #0b1a3a;
+  // Chart colors live in src/app/shared/charts/chart-theme.ts (validated palette).
+}
+
+// ---------------------------------------------------------------------------
+// Base
+// ---------------------------------------------------------------------------
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--app-page-bg);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--mat-sys-primary);
+}
+
+:focus-visible {
+  outline-color: var(--mat-sys-primary);
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+}
+
+// ---------------------------------------------------------------------------
+// Reusable layout helpers
+// ---------------------------------------------------------------------------
+.card {
+  border-radius: var(--app-radius-lg);
+  border: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface-container-lowest);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  h2,
+  h3 {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+    font-weight: 600;
+  }
+
+  p {
+    margin: 2px 0 0;
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  > .grow {
+    flex: 1 1 260px;
+  }
+
+  mat-form-field {
+    min-width: 180px;
+  }
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 4px 16px;
+
+  .span-2 {
+    grid-column: span 2;
+  }
+  .span-all {
+    grid-column: 1 / -1;
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+
+  app-form-field {
+    display: block;
+    min-width: 0;
+  }
+
+  // Fixed two-column variant used by long multi-section forms.
+  &--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    // Extra row gap so a hint never crowds the next field's floating label.
+    gap: 12px 16px;
+  }
+}
+
+@media (max-width: 599.98px) {
+  .form-grid .span-2,
+  .form-grid--two .span-2 {
+    grid-column: 1 / -1;
+  }
+  .form-grid--two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// Read-only label/value pairs (profile tabs, details).
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px 24px;
+  margin: 0;
+
+  dt {
+    font: var(--mat-sys-label-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font: var(--mat-sys-body-large);
+    overflow-wrap: anywhere;
+  }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.sample-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font: var(--mat-sys-label-small);
+  background: var(--app-warning-container);
+  color: var(--app-on-warning-container);
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// Lightweight table for small read-only data (e.g. chart table views).
+.simple-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-medium);
+
+  th,
+  td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    font: var(--mat-sys-label-large);
+    color: var(--mat-sys-on-surface-variant);
+    background: var(--mat-sys-surface-container-low);
+  }
+
+  tbody th {
+    font-weight: 500;
+  }
+
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.danger-button.mat-mdc-unelevated-button:not(:disabled) {
+  background: var(--mat-sys-error);
+  color: var(--mat-sys-on-error);
+}
+
+.link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-primary);
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Overlays (menus/snackbars render outside components)
+// ---------------------------------------------------------------------------
+.menu-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px 8px;
+  font: var(--mat-sys-title-small);
+
+  &.user-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+
+    small {
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+}
+
+.menu-empty {
+  margin: 0;
+  padding: 12px 16px 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.notification-menu.mat-mdc-menu-panel {
+  width: 360px;
+  max-width: 92vw;
+}
+
+.notification.mat-mdc-menu-item {
+  align-items: flex-start;
+  padding-block: 10px;
+  height: auto;
+  white-space: normal;
+
+  .mat-icon {
+    margin-top: 2px;
+  }
+
+  &.unread {
+    background: color-mix(in srgb, var(--mat-sys-primary) 6%, transparent);
+  }
+
+  .notification__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .notification__title {
+    font: var(--mat-sys-label-large);
+  }
+  .notification__message {
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+  .notification__time {
+    font: var(--mat-sys-label-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.app-toast {
+  &.toast-success {
+    @include mat.snack-bar-overrides(
+      (
+        container-color: #0b5233,
+        supporting-text-color: #ffffff,
+        button-color: #a9ecc9,
+      )
+    );
+  }
+  &.toast-error {
+    @include mat.snack-bar-overrides(
+      (
+        container-color: var(--mat-sys-error),
+        supporting-text-color: var(--mat-sys-on-error),
+        button-color: var(--mat-sys-on-error),
+      )
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

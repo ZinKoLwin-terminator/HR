@@ -1,0 +1,90 @@
+@if (data.error()) {
+  <app-empty-state
+    icon="person_off"
+    title="Employee not found"
+    message="This employee may have been deleted, or the link is incorrect."
+  >
+    <a mat-flat-button routerLink="/employees/list">Back to employees</a>
+  </app-empty-state>
+} @else if (view(); as v) {
+  <section class="card hero" aria-label="Employee summary">
+    <app-avatar [name]="v.name" [photoUrl]="v.employee.photoUrl" [size]="88" [decorative]="false" />
+    <div class="hero__main">
+      <div class="hero__title">
+        <h1>{{ v.name }}</h1>
+        <app-status-badge [status]="v.employee.employmentStatus" />
+      </div>
+      <p class="hero__role">{{ v.position }} · {{ v.department }}</p>
+      <ul class="hero__chips" aria-label="Key facts">
+        <li><mat-icon aria-hidden="true">badge</mat-icon>{{ v.employee.employeeCode }}</li>
+        <li><mat-icon aria-hidden="true">store</mat-icon>{{ v.branch }}</li>
+        <li><mat-icon aria-hidden="true">work</mat-icon>{{ v.employee.employmentType }}</li>
+        <li>
+          <mat-icon aria-hidden="true">event</mat-icon>Joined {{ v.employee.joiningDate | date }} ·
+          {{ v.tenure }}
+        </li>
+        <li><mat-icon aria-hidden="true">mail</mat-icon>{{ v.employee.workEmail }}</li>
+        <li><mat-icon aria-hidden="true">call</mat-icon>{{ v.employee.phone }}</li>
+      </ul>
+    </div>
+    <div class="hero__actions">
+      <a mat-flat-button [routerLink]="['/employees', v.employee.id, 'edit']">
+        <mat-icon>edit</mat-icon>Edit
+      </a>
+      <button mat-stroked-button type="button" class="delete" (click)="deleteEmployee()">
+        <mat-icon>delete</mat-icon>Delete
+      </button>
+    </div>
+  </section>
+
+  <mat-tab-group
+    class="tabs"
+    [selectedIndex]="tabIndex()"
+    (selectedIndexChange)="onTab($event)"
+    animationDuration="0ms"
+    mat-align-tabs="start"
+    aria-label="Employee information"
+  >
+    <mat-tab label="Overview">
+      <ng-template matTabContent>
+        <div class="tab-content"><app-profile-overview-tab [employee]="v.employee" /></div>
+      </ng-template>
+    </mat-tab>
+    <mat-tab label="Employment">
+      <ng-template matTabContent>
+        <div class="tab-content">
+          <app-profile-employment-tab [employee]="v.employee" [org]="v.org" />
+        </div>
+      </ng-template>
+    </mat-tab>
+    <mat-tab label="Documents">
+      <ng-template matTabContent>
+        <div class="tab-content"><app-profile-documents-tab [employee]="v.employee" /></div>
+      </ng-template>
+    </mat-tab>
+    <mat-tab label="History">
+      <ng-template matTabContent>
+        <div class="tab-content"><app-profile-history-tab [employeeId]="v.employee.id" /></div>
+      </ng-template>
+    </mat-tab>
+    <mat-tab label="Attendance">
+      <ng-template matTabContent>
+        <div class="tab-content"><app-profile-attendance-tab [employeeId]="v.employee.id" /></div>
+      </ng-template>
+    </mat-tab>
+    <mat-tab label="Leave">
+      <ng-template matTabContent>
+        <div class="tab-content">
+          <app-profile-leave-tab [employeeId]="v.employee.id" />
+        </div>
+      </ng-template>
+    </mat-tab>
+    <mat-tab label="Salary">
+      <ng-template matTabContent>
+        <div class="tab-content"><app-profile-salary-tab [employeeId]="v.employee.id" /></div>
+      </ng-template>
+    </mat-tab>
+  </mat-tab-group>
+} @else {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading employee" />
+}

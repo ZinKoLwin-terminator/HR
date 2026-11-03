@@ -1,0 +1,95 @@
+@let cfg = config();
+@if (!cfg.embedded) {
+  <app-page-header [title]="cfg.title" [description]="cfg.description">
+    @if (cfg.canCreate !== false) {
+      <button pageActions mat-flat-button type="button" (click)="openForm()">
+        <mat-icon>add</mat-icon>Add {{ cfg.entityLabel.toLowerCase() }}
+      </button>
+    }
+  </app-page-header>
+}
+
+<div class="toolbar" role="search" [attr.aria-label]="'Filter ' + cfg.title">
+  <app-search-field
+    class="grow"
+    [label]="cfg.searchLabel ?? 'Search'"
+    [value]="query.search()"
+    (searchChange)="query.setSearch($event)"
+  />
+  @for (filterConfig of cfg.filters ?? []; track filterConfig.key) {
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ filterConfig.label }}</mat-label>
+      <mat-select
+        [value]="query.filters()[filterConfig.key] ?? null"
+        (selectionChange)="setFilter(filterConfig.key, $event.value)"
+      >
+        <mat-option [value]="null">All</mat-option>
+        @for (option of filterConfig.options; track option.value) {
+          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+  @if (cfg.dateFilter; as df) {
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ df.fromLabel }}</mat-label>
+      <input
+        matInput
+        type="date"
+        [value]="dateValue(df.fromKey)"
+        [max]="dateValue(df.toKey)"
+        (change)="setDateFilter(df.fromKey, $any($event.target).value)"
+      />
+    </mat-form-field>
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ df.toLabel }}</mat-label>
+      <input
+        matInput
+        type="date"
+        [value]="dateValue(df.toKey)"
+        [min]="dateValue(df.fromKey)"
+        (change)="setDateFilter(df.toKey, $any($event.target).value)"
+      />
+    </mat-form-field>
+  }
+  @if (query.activeFilterCount() > 0) {
+    <button mat-button type="button" (click)="query.reset()">
+      <mat-icon>filter_alt_off</mat-icon>Clear filters
+    </button>
+  }
+  @if (cfg.embedded && cfg.canCreate !== false) {
+    <button mat-flat-button type="button" (click)="openForm()">
+      <mat-icon>add</mat-icon>Add {{ cfg.entityLabel.toLowerCase() }}
+    </button>
+  }
+</div>
+
+@if (page.error() && !result()) {
+  <app-empty-state
+    icon="error"
+    [title]="cfg.title + ' could not be loaded'"
+    [message]="errorText()"
+  >
+    <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
+  </app-empty-state>
+} @else {
+  <app-data-table
+    [caption]="cfg.title"
+    [columns]="cfg.columns"
+    [rows]="result()?.items ?? []"
+    [total]="result()?.total ?? 0"
+    [pageIndex]="query.pageIndex()"
+    [pageSize]="query.pageSize()"
+    [pageSizeOptions]="pageSizeOptions"
+    [sort]="query.sort()"
+    [loading]="page.isLoading()"
+    [actions]="actions()"
+    [rowLabel]="rowLabel"
+    [clickableRows]="true"
+    [emptyTitle]="'No ' + cfg.entityLabel.toLowerCase() + ' records found'"
+    (pageChange)="query.onPage($event)"
+    (sortChange)="onSort($event)"
+    (action)="onAction($event)"
+    (rowClick)="openDetails($event)"
+  />
+}

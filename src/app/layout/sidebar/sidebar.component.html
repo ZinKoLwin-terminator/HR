@@ -1,0 +1,98 @@
+<div class="brand">
+  <span class="brand__logo" aria-hidden="true"><mat-icon>diversity_3</mat-icon></span>
+  @if (!collapsed()) {
+    <span class="brand__text">
+      <span class="brand__name">{{ config.organizationName }}</span>
+      <span class="brand__product">HR Management System</span>
+    </span>
+  }
+</div>
+
+<nav class="nav" aria-label="Main navigation">
+  <ul class="nav__list">
+    @for (item of items; track item.label) {
+      <li>
+        @if (item.children) {
+          @if (collapsed()) {
+            <!-- Icon rail: groups open a flyout menu -->
+            <button
+              type="button"
+              class="nav__link"
+              [class.active]="isGroupActive(item)"
+              [matMenuTriggerFor]="flyout"
+              [matTooltip]="item.label"
+              matTooltipPosition="right"
+              [attr.aria-label]="item.label"
+            >
+              <mat-icon>{{ item.icon }}</mat-icon>
+            </button>
+            <mat-menu #flyout="matMenu" xPosition="after" class="nav-flyout">
+              <div class="flyout-title" aria-hidden="true">{{ item.label }}</div>
+              @for (child of item.children; track child.route) {
+                <a mat-menu-item [routerLink]="child.route" (click)="navigated.emit()">
+                  <mat-icon>{{ child.icon }}</mat-icon>
+                  <span>{{ child.label }}</span>
+                </a>
+              }
+            </mat-menu>
+          } @else {
+            <button
+              type="button"
+              class="nav__link nav__group"
+              [class.active]="isGroupActive(item)"
+              [attr.aria-expanded]="isExpanded(item)"
+              [attr.aria-controls]="groupId(item)"
+              (click)="toggle(item)"
+            >
+              <mat-icon>{{ item.icon }}</mat-icon>
+              <span class="nav__label">{{ item.label }}</span>
+              <mat-icon class="nav__chevron" [class.open]="isExpanded(item)" aria-hidden="true"
+                >expand_more</mat-icon
+              >
+            </button>
+            @if (isExpanded(item)) {
+              <ul class="nav__children" [id]="groupId(item)">
+                @for (child of item.children; track child.route) {
+                  <li>
+                    <a
+                      class="nav__link nav__child"
+                      [routerLink]="child.route"
+                      routerLinkActive="active"
+                      ariaCurrentWhenActive="page"
+                      (click)="navigated.emit()"
+                    >
+                      <span class="nav__label">{{ child.label }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+          }
+        } @else {
+          <a
+            class="nav__link"
+            [routerLink]="item.route"
+            routerLinkActive="active"
+            ariaCurrentWhenActive="page"
+            [matTooltip]="collapsed() ? item.label : ''"
+            matTooltipPosition="right"
+            [attr.aria-label]="collapsed() ? item.label : null"
+            (click)="navigated.emit()"
+          >
+            <mat-icon>{{ item.icon }}</mat-icon>
+            @if (!collapsed()) {
+              <span class="nav__label">{{ item.label }}</span>
+            }
+          </a>
+        }
+      </li>
+    }
+  </ul>
+</nav>
+
+@if (!collapsed()) {
+  <div class="sidebar-footer">
+    <mat-icon aria-hidden="true">science</mat-icon>
+    <span>Demo build · sample data only</span>
+  </div>
+}

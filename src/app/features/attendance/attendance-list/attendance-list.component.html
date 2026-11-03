@@ -1,0 +1,110 @@
+<div class="toolbar" role="search" aria-label="Filter attendance records">
+  <app-search-field
+    class="grow"
+    label="Search by employee name or code"
+    [value]="query.search()"
+    (searchChange)="query.setSearch($event)"
+  />
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Employee</mat-label>
+    <mat-select
+      [value]="value('employeeId')"
+      (selectionChange)="setFilter('employeeId', $event.value)"
+    >
+      <mat-option [value]="null">All</mat-option>
+      @for (option of employeeOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Department</mat-label>
+    <mat-select
+      [value]="value('departmentId')"
+      (selectionChange)="setFilter('departmentId', $event.value)"
+    >
+      <mat-option [value]="null">All</mat-option>
+      @for (option of departmentOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Branch</mat-label>
+    <mat-select [value]="value('branchId')" (selectionChange)="setFilter('branchId', $event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (option of branchOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (mode() === 'all') {
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Status</mat-label>
+      <mat-select [value]="value('status')" (selectionChange)="setFilter('status', $event.value)">
+        <mat-option [value]="null">All</mat-option>
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ status }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+
+  <mat-form-field subscriptSizing="dynamic" class="date-filter">
+    <mat-label>From</mat-label>
+    <input
+      matInput
+      type="date"
+      [value]="value('dateFrom') ?? ''"
+      [max]="value('dateTo') ?? ''"
+      (change)="setFilter('dateFrom', $any($event.target).value)"
+    />
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic" class="date-filter">
+    <mat-label>To</mat-label>
+    <input
+      matInput
+      type="date"
+      [value]="value('dateTo') ?? ''"
+      [min]="value('dateFrom') ?? ''"
+      (change)="setFilter('dateTo', $any($event.target).value)"
+    />
+  </mat-form-field>
+
+  @if (query.activeFilterCount() > 0) {
+    <button mat-button type="button" (click)="query.reset()">
+      <mat-icon>filter_alt_off</mat-icon>Clear filters
+    </button>
+  }
+</div>
+
+@if (page.error() && !result()) {
+  <app-empty-state icon="error" title="Attendance could not be loaded" [message]="errorText()">
+    <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
+  </app-empty-state>
+} @else {
+  <app-data-table
+    caption="Attendance records"
+    [columns]="columns()"
+    [rows]="result()?.items ?? []"
+    [total]="result()?.total ?? 0"
+    [pageIndex]="query.pageIndex()"
+    [pageSize]="query.pageSize()"
+    [pageSizeOptions]="pageSizeOptions"
+    [sort]="query.sort()"
+    [loading]="page.isLoading()"
+    [actions]="actions"
+    [rowLabel]="rowLabel"
+    [clickableRows]="true"
+    [emptyTitle]="emptyTitle()"
+    (pageChange)="query.onPage($event)"
+    (sortChange)="query.setSort($event)"
+    (action)="openDetails($event)"
+    (rowClick)="showDetails($event)"
+  />
+}

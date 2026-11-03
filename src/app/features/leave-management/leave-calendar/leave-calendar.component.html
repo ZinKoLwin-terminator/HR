@@ -1,0 +1,134 @@
+<app-page-header
+  title="Leave calendar"
+  description="Who is away and when. Approved leave is solid; pending requests are outlined."
+/>
+
+<div class="toolbar" role="group" aria-label="Calendar filters">
+  <div class="month-nav" role="group" aria-label="Month">
+    <button mat-icon-button type="button" aria-label="Previous month" (click)="shiftMonth(-1)">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <span class="month-label" aria-live="polite">{{ monthStart() | date: 'MMMM yyyy' }}</span>
+    <button mat-icon-button type="button" aria-label="Next month" (click)="shiftMonth(1)">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+    <button mat-stroked-button type="button" [disabled]="isCurrentMonth()" (click)="goToToday()">
+      Today
+    </button>
+  </div>
+
+  <span class="grow"></span>
+
+  <mat-slide-toggle [checked]="includePending()" (change)="includePending.set($event.checked)">
+    Show pending requests
+  </mat-slide-toggle>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Department</mat-label>
+    <mat-select [value]="departmentId()" (selectionChange)="departmentId.set($event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (option of departmentOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Leave type</mat-label>
+    <mat-select [value]="leaveTypeId()" (selectionChange)="leaveTypeId.set($event.value)">
+      <mat-option [value]="null">All</mat-option>
+      @for (option of typeOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (resource.error() && !data()) {
+  <app-empty-state icon="error" title="Calendar could not be loaded">
+    <button mat-flat-button type="button" (click)="resource.reload()">Try again</button>
+  </app-empty-state>
+} @else if (data()) {
+  <p class="summary" aria-live="polite">
+    {{ totalLeaveDays() }} day{{ totalLeaveDays() === 1 ? '' : 's' }} with leave this month. Select
+    a day for details.
+  </p>
+
+  <div class="card cal" [class.refreshing]="resource.isLoading()">
+    <table class="grid" aria-label="Leave calendar">
+      <thead>
+        <tr>
+          @for (d of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; track d) {
+            <th scope="col">{{ d }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (week of weeks(); track week[0].date) {
+          <tr>
+            @for (day of week; track day.date) {
+              <td
+                [class.out]="!day.inMonth"
+                [class.weekend]="day.isWeekend"
+                [class.holiday]="day.holiday"
+                [class.today]="day.date === today"
+              >
+                <button
+                  type="button"
+                  class="day"
+                  [attr.aria-label]="dayLabel(day)"
+                  [disabled]="!day.entries.length && !day.holiday"
+                  (click)="openDay(day)"
+                >
+                  <span class="day__num">{{ +day.date.slice(8) }}</span>
+                  @if (day.holiday) {
+                    <span class="holiday-tag">{{ day.holiday }}</span>
+                  }
+                  @for (e of day.entries.slice(0, maxChips); track e.applicationId) {
+                    <span
+                      class="chip"
+                      [class.pending]="e.status === 'Submitted'"
+                      [style.--chip]="e.color"
+                    >
+                      <span class="chip__text"
+                        >{{ e.employeeName }}{{ e.halfDay ? ' ½' : '' }}</span
+                      >
+                    </span>
+                  }
+                  @if (day.entries.length > maxChips) {
+                    <span class="more">+{{ day.entries.length - maxChips }} more</span>
+                  }
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Compact list for small screens -->
+  <section class="card agenda" aria-label="Leave this month">
+    @for (day of agenda(); track day.date) {
+      <div class="agenda__day">
+        <h2>{{ day.date | date: 'EEE, dd MMM' }}</h2>
+        @if (day.holiday) {
+          <p class="holiday-tag">{{ day.holiday }}</p>
+        }
+        <ul>
+          @for (e of day.entries; track e.applicationId) {
+            <li>
+              <span class="dot" [style.background]="e.color" aria-hidden="true"></span>
+              {{ e.employeeName }} · {{ e.leaveTypeName }}{{ e.halfDay ? ' (half day)' : '' }}
+              @if (e.status === 'Submitted') {
+                <span class="muted">(pending)</span>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    } @empty {
+      <app-empty-state icon="event_available" title="No leave this month" />
+    }
+  </section>
+} @else {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading calendar" />
+}

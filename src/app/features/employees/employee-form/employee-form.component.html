@@ -1,0 +1,172 @@
+<div class="layout">
+  <nav class="section-nav" aria-label="Form sections">
+    <ol>
+      @for (item of navItems; track item.id) {
+        <li>
+          <button type="button" (click)="goTo(item.id)" [class.has-error]="sectionHasErrors(item)">
+            <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+            <span>{{ item.title }}</span>
+            @if (sectionHasErrors(item)) {
+              <mat-icon class="nav-error" aria-label="Contains errors">error</mat-icon>
+            }
+          </button>
+        </li>
+      }
+    </ol>
+  </nav>
+
+  <form class="emp-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (formError()) {
+      <div class="form-banner" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <span>{{ formError() }}</span>
+      </div>
+    }
+
+    @for (section of sections; track section.id) {
+      <section
+        class="card form-section"
+        [id]="'sec-' + section.id"
+        tabindex="-1"
+        [attr.aria-labelledby]="'h-' + section.id"
+      >
+        <header class="section-head">
+          <span class="section-icon" aria-hidden="true"
+            ><mat-icon>{{ section.icon }}</mat-icon></span
+          >
+          <div>
+            <h2 [id]="'h-' + section.id">{{ section.title }}</h2>
+            <p>{{ section.description }}</p>
+          </div>
+        </header>
+        <div class="form-grid form-grid--two">
+          @for (field of section.fields; track field.key) {
+            <app-form-field
+              [class.span-all]="field.fullWidth"
+              [field]="field"
+              [control]="control(field)"
+              [options]="optionsFor(field)"
+            />
+          }
+        </div>
+      </section>
+    }
+
+    <!-- Profile photo -->
+    <section class="card form-section" id="sec-photo" tabindex="-1" aria-labelledby="h-photo">
+      <header class="section-head">
+        <span class="section-icon" aria-hidden="true"><mat-icon>photo_camera</mat-icon></span>
+        <div>
+          <h2 id="h-photo">Profile photo</h2>
+          <p>Optional. PNG or JPG up to 1 MB. Without a photo, initials are shown.</p>
+        </div>
+      </header>
+      <div class="photo">
+        <app-avatar
+          [name]="
+            (form.controls['firstName'].value ?? '') + ' ' + (form.controls['lastName'].value ?? '')
+          "
+          [photoUrl]="photoUrl()"
+          [size]="96"
+        />
+        <div class="photo__actions">
+          <input
+            #photoInput
+            type="file"
+            accept="image/png,image/jpeg"
+            hidden
+            (change)="onPhoto($event)"
+          />
+          <button mat-stroked-button type="button" (click)="photoInput.click()">
+            <mat-icon>upload</mat-icon>{{ photoUrl() ? 'Change photo' : 'Upload photo' }}
+          </button>
+          @if (photoUrl()) {
+            <button mat-button type="button" (click)="removePhoto()">
+              <mat-icon>delete</mat-icon>Remove
+            </button>
+          }
+          @if (photoError()) {
+            <p class="photo__error" role="alert">{{ photoError() }}</p>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- Documents -->
+    <section
+      class="card form-section"
+      id="sec-documents"
+      tabindex="-1"
+      aria-labelledby="h-documents"
+    >
+      <header class="section-head">
+        <span class="section-icon" aria-hidden="true"><mat-icon>folder_shared</mat-icon></span>
+        <div>
+          <h2 id="h-documents">Documents</h2>
+          <p>
+            Attach documents to be saved with the record.
+            @if (isEdit()) {
+              Existing documents are managed on the employee's profile.
+            }
+            <span class="muted">(Demo: only file details are kept, not file contents.)</span>
+          </p>
+        </div>
+      </header>
+
+      <div class="doc-form" [formGroup]="documentForm">
+        <app-form-field
+          [field]="documentTypeField"
+          [control]="documentControl(documentTypeField)"
+          [options]="documentTypeOptions"
+        />
+        <app-form-field
+          [field]="documentTitleField"
+          [control]="documentControl(documentTitleField)"
+        />
+        <app-form-field
+          [field]="documentFileField"
+          [control]="documentControl(documentFileField)"
+        />
+        <button mat-stroked-button type="button" class="doc-add" (click)="addDocument()">
+          <mat-icon>add</mat-icon>Add document
+        </button>
+      </div>
+
+      @if (pendingDocuments().length) {
+        <ul class="doc-list" aria-label="Documents to attach">
+          @for (doc of pendingDocuments(); track doc.key) {
+            <li>
+              <mat-icon aria-hidden="true">description</mat-icon>
+              <span class="doc-list__text">
+                <span class="doc-list__title">{{ doc.title }}</span>
+                <span class="muted">{{ doc.type }} · {{ doc.fileName }}</span>
+              </span>
+              <button
+                mat-icon-button
+                type="button"
+                [attr.aria-label]="'Remove ' + doc.title"
+                (click)="removeDocument(doc.key)"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <div class="action-bar">
+      <button mat-button type="button" (click)="cancelled.emit()" [disabled]="saving()">
+        Cancel
+      </button>
+      <button mat-flat-button type="submit" [disabled]="saving()">
+        @if (saving()) {
+          <mat-spinner diameter="18" aria-hidden="true" />
+          <span>Saving…</span>
+        } @else {
+          {{ isEdit() ? 'Save changes' : 'Create employee' }}
+        }
+      </button>
+    </div>
+  </form>
+</div>
