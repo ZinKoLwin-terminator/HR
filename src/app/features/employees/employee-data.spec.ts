@@ -66,7 +66,17 @@ describe('employee data', () => {
     await firstValueFrom(employees.update(15, { employmentStatus: 'Suspended' }));
     await firstValueFrom(employees.update(15, { employmentType: 'Contract' }));
     // Position 11 (Senior Frontend Engineer) is a higher grade than 15's current role: a promotion.
-    await firstValueFrom(employees.update(15, { positionId: 11, jobGradeId: 4 }));
+    // (the move must be consistent: position 11 belongs to Engineering, so the assignment moves too)
+    await firstValueFrom(
+      employees.update(15, {
+        companyId: 1,
+        branchId: 1,
+        departmentId: 4,
+        sectionId: null,
+        positionId: 11,
+        jobGradeId: 4,
+      }),
+    );
 
     const entries = await historyFor(15);
     expect(entries.length).toBe(before + 3);

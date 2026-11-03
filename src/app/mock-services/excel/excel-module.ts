@@ -29,6 +29,8 @@ export interface ExcelImportAdapter {
   dryRun(model: Record<string, unknown>, existingId: number | null): AppError | null;
   /** Saves the record with the module's own rules (throws an AppError when rejected). */
   apply(model: Record<string, unknown>, existingId: number | null): void;
+  /** Maps a model field named in a validation error to the column the user sees. */
+  columnForField?(field: string): string | undefined;
   /** Captures the data so an all-or-nothing import can be rolled back. */
   snapshot(): () => void;
 }
@@ -56,6 +58,8 @@ export interface ExcelModuleRegistration {
   info: ExcelModuleInfo;
   importAdapter?: ExcelImportAdapter;
   exportAdapter?: ExcelExportAdapter;
+  /** Lookup sheets added to the import template (e.g. the valid organization codes). */
+  referenceSheets?(): ExportSheet[];
 }
 
 /** Multi-provider token: each module registers itself here. */

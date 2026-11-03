@@ -56,6 +56,26 @@ providers: [
    the Playwright flows (they exercise screens, not data sources). Remove the dependence on "data resets
    on reload" in tests by seeding the test backend.
 
+## Excel import/export
+
+The contracts in `core/services/data/excel-data.services.ts` map to endpoints:
+
+| Contract method          | Suggested HTTP shape                                                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `getModules`             | `GET /api/excel/modules`                                                                                                         |
+| `getTemplate(module)`    | `GET /api/excel/templates/{module}`                                                                                              |
+| `inspect(module, file)`  | `POST /api/excel/imports/{module}/inspect` (multipart; the server keeps the file temporarily and returns an upload id)           |
+| `validate(request)`      | `POST /api/excel/imports/{module}/validate` (returns the preview and a batch id)                                                 |
+| `execute(batchId, mode)` | `POST /api/excel/imports/{batchId}/execute` (by batch id, so no file is re-uploaded and no transaction stays open during review) |
+| `getHistory`, `getBatch` | `GET /api/excel/imports/history`, `GET /api/excel/imports/{batchId}`                                                             |
+| `getErrorReport`         | `GET /api/excel/imports/{batchId}/error-report`                                                                                  |
+| `export(request)`        | `POST /api/excel/exports/{module}` (large exports: `202` + status + download link)                                               |
+
+On the server: repeat the content checks and limits, parse with a library licensed for your use
+(ClosedXML or Open XML SDK; EPPlus needs a commercial licence), reuse the same command and validation
+pipeline as normal API calls, persist batches and errors (SSDT tables), keep uploads in temporary
+storage with expiry, authorise every endpoint, and audit imports and exports.
+
 ## Things to keep or change on the frontend
 
 - Keep: models, contracts, screens, shared components, e2e flows.

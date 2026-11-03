@@ -172,6 +172,17 @@ export abstract class InMemoryCrudService<
     });
   }
 
+  /** Every row matching a search/filter, unpaged and in store order (used by Excel exports). */
+  filterNow(search: string | undefined, filters: Partial<TFilter> | undefined): TList[] {
+    return this.store()
+      .map((entity) => this.toListItem(entity))
+      .filter(
+        (row) =>
+          matchesSearch(row, search, this.searchFields) &&
+          this.matchesFilters(row, filters ?? ({} as Partial<TFilter>)),
+      );
+  }
+
   create(model: CreateModel<T>): Observable<T> {
     return this.respond(() => this.createNow(model));
   }

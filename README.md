@@ -9,16 +9,17 @@ no database, no HTTP calls and no authentication**.
 
 ## Modules
 
-| Module       | Screens                                                                                                        |
-| ------------ | -------------------------------------------------------------------------------------------------------------- |
-| Dashboard    | KPI cards, headcount/department/attendance charts, payroll summary, activity feed                              |
-| Organization | Companies, branches, departments, sections, positions, job grades, reporting structure                         |
-| Employees    | List, add/edit form, profile (tabs), documents                                                                 |
-| Attendance   | Overview, check in/out, records, late & early, shifts, shift assignment, work schedules, overtime, adjustments |
-| Leave        | Types, policies, balances, applications, approvals, calendar                                                   |
-| Payroll      | Salary structures/components, employee salaries, processing workflow, payslips, history                        |
-| Recruitment  | Job openings, candidates, interviews, pipeline board                                                           |
-| Settings     | General settings, users, roles, permissions (**UI simulation only — nothing is enforced**)                     |
+| Module        | Screens                                                                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard     | KPI cards, headcount/department/attendance charts, payroll summary, activity feed                                                                   |
+| Organization  | Companies, branches, departments, sections, positions, job grades, reporting structure                                                              |
+| Employees     | List, add/edit form, profile (tabs), documents                                                                                                      |
+| Attendance    | Overview, check in/out, records, late & early, shifts, shift assignment, work schedules, overtime, adjustments                                      |
+| Leave         | Types, policies, balances, applications, approvals, calendar                                                                                        |
+| Payroll       | Salary structures/components, employee salaries, processing workflow, payslips, history                                                             |
+| Recruitment   | Job openings, candidates, interviews, pipeline board                                                                                                |
+| Settings      | General settings, users, roles, permissions (**UI simulation only — nothing is enforced**)                                                          |
+| Data Exchange | Excel import wizard and import history; Export on lists. **Employees only so far** — see [docs/EXCEL-IMPORT-EXPORT.md](docs/EXCEL-IMPORT-EXPORT.md) |
 
 Details per screen: [docs/FEATURES.md](docs/FEATURES.md).
 
@@ -66,12 +67,14 @@ Before sharing changes, run `npm run lint`, `npm run build`, `npm run test:ci` a
 
 Angular 22 (standalone components, Signals, `rxResource`), TypeScript 6 (strict), Angular Material 22
 (Material 3 theme, light/dark), RxJS, Reactive Forms, SCSS, Chart.js via ng2-charts, Vitest,
-Playwright, ESLint + angular-eslint, Prettier.
+Playwright, ESLint + angular-eslint, Prettier, and ExcelJS (lazy-loaded, for Excel import/export; see
+the audit note in [docs/EXCEL-IMPORT-EXPORT.md](docs/EXCEL-IMPORT-EXPORT.md)).
 
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) — layers, folders, conventions, reusable building blocks
 - [Features](docs/FEATURES.md) — what each module does and its business rules
+- [Excel import/export](docs/EXCEL-IMPORT-EXPORT.md) — workflow, rules, architecture and limitations
 - [Mock data and mock services](docs/MOCK-DATA-AND-SERVICES.md) — where sample data lives, how mock services behave
 - [Testing](docs/TESTING.md) — how to run tests, what is covered, known gaps
 - [Future API integration plan](docs/API-INTEGRATION-PLAN.md) — how to swap mocks for a real API

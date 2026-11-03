@@ -32,6 +32,13 @@ role/permission editing), unsaved-changes prompts and a mobile check per module.
 checks: no console/runtime errors, exactly one `h1`, every visible button/link has an accessible
 name, every form field is labelled, images have alt text, no horizontal page scroll, page language set.
 
+**Excel import/export** — unit tests build real `.xlsx` files with ExcelJS (valid, corrupt, renamed,
+macro/link markers, formulas, wrong types, duplicates, limits), read generated templates, exports and
+reports back, and check sheet names, headers, types, formats, drop-downs, the frozen header, formula
+neutralising and sensitive-column handling (`excel-engine.spec.ts`, `excel-coercion.spec.ts`,
+`modules/employee-excel.spec.ts`). A wizard component test walks every step, and Playwright
+(`e2e/excel.spec.ts`) uploads and downloads real files in the browser and parses the downloads.
+
 ## Writing e2e tests — gotchas learned
 
 - `page.goto` **reloads the app and resets all in-memory data**. Navigate inside the app (sidebar
@@ -48,6 +55,7 @@ name, every form field is labelled, images have alt text, no horizontal page scr
 
 Be aware of these before relying on the test suite as proof of quality:
 
+- Excel files are tested up to 5,000 rows only; there is no concurrency or memory testing of large imports.
 - No component-level unit tests for Payroll, Recruitment and Settings screens (they have data-service
   unit tests and e2e coverage only).
 - The accessibility checks are **automated and partial**; a manual review with a screen reader and

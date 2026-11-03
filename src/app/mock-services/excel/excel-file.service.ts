@@ -282,7 +282,10 @@ export class ExcelFileService {
   }
 
   /** The Excel template for a module: instructions, a header-only data sheet and a field guide. */
-  async buildTemplate(info: ExcelModuleInfo): Promise<Blob> {
+  async buildTemplate(
+    info: ExcelModuleInfo,
+    reference: readonly ExportSheet[] = [],
+  ): Promise<Blob> {
     const { workbook } = await this.newWorkbook(`${info.label} import template`);
     const columns = info.columns;
     const limits = this.limits;
@@ -355,6 +358,10 @@ export class ExcelFileService {
         fieldGuide.getCell(row, c).alignment = { wrapText: true, vertical: 'top' };
     });
     this.styleHeader(fieldGuide, 6, []);
+
+    for (const sheet of reference) {
+      this.writeExportSheet(workbook, sheet);
+    }
 
     if (enumColumns.length) {
       const lists = workbook.addWorksheet('Lists');

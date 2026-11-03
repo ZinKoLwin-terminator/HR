@@ -235,11 +235,18 @@ export function coerceCell(column: ExcelColumn, cell: RawCell): CoercedCell {
     case 'text':
     case 'email':
     case 'phone': {
+      const value = column.uppercase ? text.toUpperCase() : text;
       if (column.maxLength && text.length > column.maxLength) {
         return fail(
           `${column.header} must be at most ${column.maxLength} characters (found ${text.length}).`,
           `Shorten it to ${column.maxLength} characters.`,
         );
+      }
+      if (column.minLength && text.length < column.minLength) {
+        return fail(`${column.header} must be at least ${column.minLength} characters.`);
+      }
+      if (column.pattern && !new RegExp(column.pattern).test(value)) {
+        return fail(column.patternMessage ?? `${column.header} has an invalid format.`);
       }
       if (column.type === 'email' && !EMAIL.test(text)) {
         return fail(
@@ -253,7 +260,7 @@ export function coerceCell(column: ExcelColumn, cell: RawCell): CoercedCell {
           'Use digits, spaces or dashes with an optional leading +.',
         );
       }
-      return { value: text, text, error: null };
+      return { value, text, error: null };
     }
     case 'integer':
     case 'decimal': {

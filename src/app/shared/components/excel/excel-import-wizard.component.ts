@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
-import { MatStepperModule } from '@angular/material/stepper';
+import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import {
   ColumnMapping,
@@ -228,6 +228,47 @@ export class ExcelImportWizardComponent {
 
   protected goTo(step: number): void {
     this.stepIndex.set(step);
+  }
+
+  private readonly stepper = viewChild(MatStepper);
+
+  /** A step can be opened once everything before it is done (the header cannot skip ahead). */
+  private reachable(step: number): boolean {
+    switch (step) {
+      case STEP.template:
+        return true;
+      case STEP.upload:
+        return !!this.info();
+      case STEP.columns:
+        return !!this.inspection();
+      case STEP.review:
+        return !!this.preview();
+      case STEP.confirm:
+        return this.canImport();
+      default:
+        return !!this.result();
+    }
+  }
+
+  /** Handles header clicks and programmatic moves: refuses a step that is not reachable yet. */
+  protected onStepChange(index: number): void {
+    if (this.result() && index !== STEP.result) {
+      // a finished import cannot be re-opened step by step; start another one instead
+      queueMicrotask(() => this.syncStepper());
+      return;
+    }
+    if (!this.reachable(index)) {
+      queueMicrotask(() => this.syncStepper());
+      return;
+    }
+    this.stepIndex.set(index);
+  }
+
+  private syncStepper(): void {
+    const stepper = this.stepper();
+    if (stepper && stepper.selectedIndex !== this.stepIndex()) {
+      stepper.selectedIndex = this.stepIndex();
+    }
   }
 
   protected uploadCorrected(): void {

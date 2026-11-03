@@ -151,6 +151,27 @@ export interface ExcelExportDialogData {
     </mat-dialog-actions>
   `,
   styles: `
+    h2[mat-dialog-title] {
+      margin: 0;
+      padding: 22px 28px 16px;
+      font: var(--mat-sys-title-large);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+      &::before {
+        display: none;
+      }
+    }
+    mat-dialog-content {
+      padding: 20px 28px 4px !important;
+    }
+    mat-dialog-actions {
+      padding: 14px 28px !important;
+      gap: 8px;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      background: var(--mat-sys-surface-container-low);
+    }
     .group {
       border: 0;
       padding: 0;
@@ -224,11 +245,14 @@ export class ExcelExportDialogComponent {
   /** Columns the user unticked (everything is selected by default). */
   private readonly unchecked = signal<ReadonlySet<string>>(new Set());
 
-  protected readonly plainColumns = computed(
-    () => this.info()?.columns.filter((c) => !c.sensitive) ?? [],
+  private readonly exportColumns = computed(
+    () => this.info()?.exportColumns ?? this.info()?.columns ?? [],
   );
-  protected readonly sensitiveColumns = computed(
-    () => this.info()?.columns.filter((c) => c.sensitive) ?? [],
+  protected readonly plainColumns = computed(() =>
+    this.exportColumns().filter((c) => !c.sensitive),
+  );
+  protected readonly sensitiveColumns = computed(() =>
+    this.exportColumns().filter((c) => c.sensitive),
   );
   protected readonly sensitiveNames = computed(() =>
     this.sensitiveColumns()

@@ -58,7 +58,7 @@ export class ExcelExportMockService implements ExcelExportDataService {
 
         // Sensitive columns are left out unless explicitly requested.
         const wanted = request.columnKeys?.length ? new Set(request.columnKeys) : null;
-        const columns = info.columns.filter(
+        const columns = (info.exportColumns ?? info.columns).filter(
           (c) =>
             (!wanted || wanted.has(c.key)) && (!c.sensitive || request.includeSensitive === true),
         );

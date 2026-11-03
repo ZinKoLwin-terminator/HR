@@ -9,7 +9,7 @@ import {
 } from '../../core/models/employee.models';
 import { EmployeeDataService } from '../../core/services/data/employee-data.service';
 import { MOCK_EMPLOYEES } from '../../mock-data/employees/employees.mock';
-import { isDateInRange } from '../../shared/utilities/date.util';
+import { isDateInRange, todayIso, yearsBetween } from '../../shared/utilities/date.util';
 import { matchesEqualityFilters } from '../../shared/utilities/query.util';
 import { ShiftMockService } from '../attendance/attendance-mock.services';
 import { InMemoryCrudService } from '../in-memory-crud.service';
@@ -20,8 +20,11 @@ import {
 } from './employee-extras-mock.services';
 import {
   BranchMockService,
+  CompanyMockService,
   DepartmentMockService,
+  JobGradeMockService,
   PositionMockService,
+  SectionMockService,
 } from '../organization/organization-mock.services';
 
 @Injectable({ providedIn: 'root' })
@@ -38,6 +41,9 @@ export class EmployeeMockService
     'positionTitle',
   ] as const;
 
+  private readonly companies = inject(CompanyMockService);
+  private readonly sections = inject(SectionMockService);
+  private readonly grades = inject(JobGradeMockService);
   private readonly departments = inject(DepartmentMockService);
   private readonly branches = inject(BranchMockService);
   private readonly positions = inject(PositionMockService);
@@ -91,7 +97,7 @@ export class EmployeeMockService
     );
   }
 
-  protected override validate(candidate: Employee): void {
+  protected override validate(candidate: Employee, isNew: boolean): void {
     this.ensureUnique(candidate, 'employeeCode', 'Employee code');
     this.ensureUnique(candidate, 'workEmail', 'Work email');
     if (candidate.managerId === candidate.id) {
@@ -99,8 +105,98 @@ export class EmployeeMockService
         managerId: 'Choose a different manager.',
       });
     }
+    this.validateDetails(candidate, isNew ? undefined : this.findById(candidate.id));
   }
 
+  /**
+   * Rules every employee must satisfy, however it is saved (form or Excel import): age, dates and
+   * a consistent, existing organization assignment.
+   */
+  private validateDetails(candidate: Employee, stored: Employee | undefined): void {
+    const errors: Record<string, string> = {};
+    const fail = (field: string, message: string) => (errors[field] ??= message);
+    const today = todayIso();
+
+    if (candidate.dateOfBirth) {
+      if (candidate.dateOfBirth > today) {
+        fail('dateOfBirth', 'The date of birth cannot be in the future.');
+      } else if (yearsBetween(candidate.dateOfBirth, today) < 18) {
+        fail('dateOfBirth', 'Employees must be at least 18 years old.');
+      }
+    }
+    if (candidate.probationEndDate && candidate.probationEndDate < candidate.joiningDate) {
+      fail('probationEndDate', 'The probation cannot end before the joining date.');
+    }
+    if (candidate.exitDate && candidate.exitDate < candidate.joiningDate) {
+      fail('exitDate', 'The exit date cannot be before the joining date.');
+    }
+    if (
+      (candidate.employmentStatus === 'Resigned' || candidate.employmentStatus === 'Terminated') &&
+      !candidate.exitDate
+    ) {
+      fail('exitDate', 'An exit date is required for resigned or terminated employees.');
+    }
+
+    const company = this.companies.findById(candidate.companyId);
+    const branch = this.branches.findById(candidate.branchId);
+    const department = this.departments.findById(candidate.departmentId);
+    const position = this.positions.findById(candidate.positionId);
+    if (!company) fail('companyId', 'Choose an existing company.');
+    if (!branch) fail('branchId', 'Choose an existing branch.');
+    else if (company && branch.companyId !== company.id) {
+      fail('branchId', 'This branch does not belong to the chosen company.');
+    }
+    if (!department) fail('departmentId', 'Choose an existing department.');
+    else if (branch && department.branchId !== branch.id) {
+      fail('departmentId', 'This department does not belong to the chosen branch.');
+    }
+    if (candidate.sectionId !== null && candidate.sectionId !== undefined) {
+      const section = this.sections.findById(candidate.sectionId);
+      if (!section) fail('sectionId', 'Choose an existing section.');
+      else if (department && section.departmentId !== department.id) {
+        fail('sectionId', 'This section does not belong to the chosen department.');
+      }
+    }
+    if (!position) fail('positionId', 'Choose an existing position.');
+    else if (department && position.departmentId !== department.id) {
+      fail('positionId', 'This position belongs to a different department.');
+    }
+    if (!this.grades.findById(candidate.jobGradeId)) {
+      fail('jobGradeId', 'Choose an existing job grade.');
+    }
+    if (candidate.managerId !== null && candidate.managerId !== undefined) {
+      if (!this.findById(candidate.managerId))
+        fail('managerId', 'The chosen manager does not exist.');
+    }
+    if (candidate.shiftId !== null && candidate.shiftId !== undefined) {
+      const shift = this.shifts().findById(candidate.shiftId);
+      if (!shift) fail('shiftId', 'Choose an existing shift.');
+      else if (shift.status !== 'Active' && stored?.shiftId !== candidate.shiftId) {
+        fail('shiftId', 'This shift is inactive.');
+      }
+    }
+
+    // Inactive organization units cannot receive an employee (existing assignments may stay).
+    const assigned = (key: 'companyId' | 'branchId' | 'departmentId' | 'positionId') =>
+      !stored || stored[key] !== candidate[key];
+    if (company && assigned('companyId') && company.status !== 'Active') {
+      fail('companyId', 'This company is inactive.');
+    }
+    if (branch && assigned('branchId') && branch.status !== 'Active') {
+      fail('branchId', 'This branch is inactive.');
+    }
+    if (department && assigned('departmentId') && department.status !== 'Active') {
+      fail('departmentId', 'This department is inactive.');
+    }
+    if (position && assigned('positionId') && position.status !== 'Active') {
+      fail('positionId', 'This position is inactive.');
+    }
+
+    const messages = Object.values(errors);
+    if (messages.length > 0) {
+      this.validationError(messages[0], errors);
+    }
+  }
   protected override beforeDelete(entity: Employee): void {
     const reports = this.store().filter((e) => e.managerId === entity.id).length;
     if (reports > 0) {
@@ -123,28 +219,24 @@ export class EmployeeMockService
 
   // ---- Side effects: history entries and cascade delete -----------------------
 
-  override create(model: CreateModel<Employee>): Observable<Employee> {
-    return super
-      .create(model)
-      .pipe(
-        tap((created) =>
-          this.history.record(
-            created.id,
-            'Joined',
-            `Joined as ${this.positions.findById(created.positionId)?.title ?? 'employee'}`,
-            `${created.employmentType} employee. Record created.`,
-          ),
-        ),
-      );
+  /** History entries are recorded here so every way of saving (form, import) leaves the same trail. */
+  override createNow(model: CreateModel<Employee>, log = true): Employee {
+    const created = super.createNow(model, log);
+    this.history.record(
+      created.id,
+      'Joined',
+      `Joined as ${this.positions.findById(created.positionId)?.title ?? 'employee'}`,
+      `${created.employmentType} employee. Record created.`,
+    );
+    return created;
   }
 
-  override update(id: number, changes: UpdateModel<Employee>): Observable<Employee> {
+  override updateNow(id: number, changes: UpdateModel<Employee>, log = true): Employee {
     const before = this.findById(id);
-    return super
-      .update(id, changes)
-      .pipe(tap((after) => before && this.recordChanges(before, after)));
+    const after = super.updateNow(id, changes, log);
+    if (before) this.recordChanges(before, after);
+    return after;
   }
-
   override delete(id: number): Observable<void> {
     return super.delete(id).pipe(
       tap(() => {

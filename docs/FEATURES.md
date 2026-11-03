@@ -73,3 +73,10 @@ policy, accrual and approved leave; working days exclude weekends and holidays.
   with active users cannot be deactivated.
 - **Permissions**: module × action matrix per role (granting anything grants View; removing View
   clears the module). HR Administrator is read-only. **Nothing is enforced anywhere.**
+
+## Data Exchange (Excel import and export)
+
+Import wizard (template → upload → columns → review → confirm → result), import history with problem
+details and a downloadable validation report, and an Export dialog on lists. **Implemented for
+Employees**; the other modules are planned. See [EXCEL-IMPORT-EXPORT.md](EXCEL-IMPORT-EXPORT.md) for the
+rules (strategies, all-or-nothing vs partial, formula safety, limits).

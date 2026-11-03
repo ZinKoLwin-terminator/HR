@@ -30,6 +30,7 @@ import {
   TableColumn,
 } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ExcelExportService } from '../../../shared/components/excel/excel-export.service';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ListQuery } from '../../../shared/utilities/list-query';
@@ -61,6 +62,7 @@ export class EmployeeListComponent {
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(UiNotificationService);
   private readonly appConfig = inject(APP_CONFIG);
+  private readonly excelExport = inject(ExcelExportService);
 
   /** `?search=` query parameter (bound by the router; used by the header search box). */
   readonly search = input<string>();
@@ -149,6 +151,29 @@ export class EmployeeListComponent {
 
   protected value<K extends keyof EmployeeFilter>(key: K): EmployeeFilter[K] | null {
     return (this.query.filters()[key] ?? null) as EmployeeFilter[K] | null;
+  }
+
+  /** Exports the employees matching the current search and filters (server-side, not just this page). */
+  protected openExport(): void {
+    const labelOf = (options: { value: unknown; label: string }[], value: unknown) =>
+      options.find((o) => o.value === value)?.label ?? String(value);
+    const summary: string[] = [];
+    const f = this.query.filters();
+    if (f.departmentId)
+      summary.push(`Department: ${labelOf(this.departmentOptions(), f.departmentId)}`);
+    if (f.branchId) summary.push(`Branch: ${labelOf(this.branchOptions(), f.branchId)}`);
+    if (f.employmentStatus) summary.push(`Status: ${f.employmentStatus}`);
+    if (f.employmentType) summary.push(`Type: ${f.employmentType}`);
+    if (f.joiningFrom) summary.push(`Joined from: ${f.joiningFrom}`);
+    if (f.joiningTo) summary.push(`Joined to: ${f.joiningTo}`);
+    this.excelExport
+      .open({
+        moduleCode: 'employees',
+        search: this.query.search() || undefined,
+        filters: { ...f },
+        filterSummary: summary,
+      })
+      .subscribe();
   }
 
   protected openProfile(row: EmployeeListItem): void {

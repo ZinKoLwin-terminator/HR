@@ -89,10 +89,11 @@ export class ExcelImportMockService implements ExcelImportDataService {
   getTemplate(moduleCode: string): Observable<ExcelFile> {
     return deferred(
       async () => {
-        const { info } = this.registration(moduleCode);
+        const registration = this.registration(moduleCode);
+        const { info } = registration;
         return {
           fileName: `${info.code}-import-template.xlsx`,
-          blob: await this.files.buildTemplate(info),
+          blob: await this.files.buildTemplate(info, registration.referenceSheets?.() ?? []),
         };
       },
       this.latency,
@@ -249,7 +250,7 @@ export class ExcelImportMockService implements ExcelImportDataService {
             const error = adapter.dryRun(built.model, existingId);
             if (error) {
               rejected = true;
-              rowIssues.push(...this.issuesFromError(error, info, texts));
+              rowIssues.push(...this.issuesFromError(error, info, texts, adapter));
             }
           }
           status = rejected
@@ -353,8 +354,11 @@ export class ExcelImportMockService implements ExcelImportDataService {
     error: AppError,
     info: ExcelModuleInfo,
     texts: Record<string, string>,
+    adapter: ImportRegistration['importAdapter'],
   ): ImportIssue[] {
-    const byKey = (key: string) => info.columns.find((c) => c.key === key);
+    // Errors name model fields; show the column the user actually has to correct.
+    const byKey = (key: string) =>
+      info.columns.find((c) => c.key === (adapter.columnForField?.(key) ?? key));
     const fields = Object.entries(error.fieldErrors ?? {});
     if (fields.length === 0) {
       return [

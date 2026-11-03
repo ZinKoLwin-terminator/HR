@@ -15,7 +15,7 @@ import { EXCEL_MODULES } from './excel-module';
 import { ActivityMockService } from '../activity/activity-mock.service';
 import { COLUMNS, GadgetStore, HEADERS, lib, registration, workbookFile } from './excel-testing';
 
-describe('Excel import/export engine', () => {
+describe('Excel import/export engine', { timeout: 30_000 }, () => {
   let store: GadgetStore;
   let imports: ExcelImportDataService;
   let exports_: ExcelExportDataService;

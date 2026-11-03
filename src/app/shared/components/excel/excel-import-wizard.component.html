@@ -13,10 +13,9 @@
 } @else {
   <mat-stepper
     class="wizard"
-    linear
     labelPosition="bottom"
     [selectedIndex]="stepIndex()"
-    (selectedIndexChange)="goTo($event)"
+    (selectedIndexChange)="onStepChange($event)"
   >
     <!-- 1. Template -->
     <mat-step label="Template" [completed]="!!info()" [editable]="!result()">

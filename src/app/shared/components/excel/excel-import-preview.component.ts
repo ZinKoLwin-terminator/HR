@@ -124,7 +124,15 @@ export class ExcelImportPreviewComponent {
         key: 'messages',
         header: 'Validation messages',
         value: (r) =>
-          r.issues.length ? r.issues.map((i) => `${i.field}: ${i.message}`).join(' · ') : '—',
+          r.issues.length
+            ? r.issues
+                .map((i) =>
+                  i.message.toLowerCase().includes(i.field.toLowerCase())
+                    ? i.message
+                    : `${i.field}: ${i.message}`,
+                )
+                .join(' · ')
+            : '—',
       },
     ];
   });

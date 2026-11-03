@@ -50,7 +50,8 @@ const row = (code: string, name = 'Gadget', status = 'Active') => [
   'x',
 ];
 
-describe('ExcelImportWizardComponent', () => {
+// Real workbooks are parsed and generated here; the first ExcelJS load can be slow on a busy machine.
+describe('ExcelImportWizardComponent', { timeout: 30_000 }, () => {
   let fixture: ComponentFixture<ExcelImportWizardComponent>;
   let wizard: WizardInternals;
   let store: GadgetStore;

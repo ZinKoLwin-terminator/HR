@@ -72,6 +72,8 @@ import {
 } from '../core/services/data/excel-data.services';
 import { ExcelCatalogMockService, ExcelExportMockService } from './excel/excel-export.mock.service';
 import { ExcelImportMockService } from './excel/excel-import.mock.service';
+import { EXCEL_MODULES } from './excel/excel-module';
+import { employeeExcelRegistration } from './excel/modules/employee-excel.module';
 import { ActivityMockService } from './activity/activity-mock.service';
 import { NotificationMockService } from './activity/notification-mock.service';
 import {
@@ -166,6 +168,8 @@ export function provideMockDataServices(): EnvironmentProviders {
     bind(RoleDataService, RoleMockService),
     bind(RolePermissionDataService, RolePermissionMockService),
     bind(GeneralSettingsDataService, GeneralSettingsMockService),
+    // Excel import/export modules (each module registers itself here).
+    { provide: EXCEL_MODULES, multi: true, useFactory: employeeExcelRegistration },
     bind(ExcelModuleCatalogDataService, ExcelCatalogMockService),
     bind(ExcelImportDataService, ExcelImportMockService),
     bind(ExcelExportDataService, ExcelExportMockService),

@@ -20,6 +20,12 @@ export interface ExcelColumn {
   required: boolean;
   type: ExcelColumnType;
   maxLength?: number;
+  minLength?: number;
+  /** Regular expression (source) the text must match, with the message shown otherwise. */
+  pattern?: string;
+  patternMessage?: string;
+  /** Text is converted to upper case (e.g. codes). */
+  uppercase?: boolean;
   min?: number;
   max?: number;
   /** Maximum decimal places for `decimal` columns. */
@@ -60,7 +66,10 @@ export interface ExcelModuleInfo {
   /** Name of the data worksheet. */
   sheetName: string;
   description: string;
+  /** Columns of the import template (and of the export unless exportColumns is given). */
   columns: readonly ExcelColumn[];
+  /** Columns offered by the export, when they differ from the import template. */
+  exportColumns?: readonly ExcelColumn[];
   /** Column keys that identify an existing record (the import matching key). */
   matchKey: readonly string[];
   /** Human description of the matching key, e.g. "Employee Code". */

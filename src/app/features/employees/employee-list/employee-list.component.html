@@ -2,6 +2,17 @@
   title="Employees"
   description="Search, filter and manage employee records across the organization."
 >
+  <button pageActions mat-stroked-button type="button" (click)="openExport()">
+    <mat-icon>download</mat-icon>Export
+  </button>
+  <a
+    pageActions
+    mat-stroked-button
+    routerLink="/data-exchange/import"
+    [queryParams]="{ module: 'employees' }"
+  >
+    <mat-icon>upload_file</mat-icon>Import
+  </a>
   <a pageActions mat-flat-button routerLink="/employees/new">
     <mat-icon>person_add</mat-icon>Add employee
   </a>
