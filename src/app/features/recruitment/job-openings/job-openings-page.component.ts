@@ -135,11 +135,11 @@ export class JobOpeningsPageComponent {
         { key: 'employmentType', header: 'Type', hideBelow: 'lg', nowrap: true },
         {
           key: 'vacancies',
-          header: 'Vacancies',
+          header: 'Filled / total',
           align: 'end',
           hideBelow: 'sm',
           value: (j) =>
-            `${applicants(j).filter((a) => a.stage === 'Selected').length} / ${j.vacancies} filled`,
+            `${applicants(j).filter((a) => a.stage === 'Selected').length} / ${j.vacancies}`,
         },
         {
           key: 'applicants',

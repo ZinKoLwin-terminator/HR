@@ -44,6 +44,7 @@ import { PayrollTrendChartComponent } from './payroll-trend-chart.component';
     }),
   ],
   templateUrl: './payroll-history.component.html',
+  styleUrl: './payroll-history.component.scss',
 })
 export class PayrollHistoryComponent {
   private readonly runsApi = inject(PayrollRunDataService);
