@@ -63,6 +63,12 @@
   flex: 1;
   overflow-y: auto;
   padding: 12px 10px;
+  /* Scrolling still works (wheel, touch, keyboard); only the bar is hidden. */
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .nav__list,
