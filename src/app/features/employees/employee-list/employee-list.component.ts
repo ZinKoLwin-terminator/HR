@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, linkedSignal } from '@angular/core';
+import { Component, computed, effect, inject, input, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -83,6 +83,46 @@ export class EmployeeListComponent {
   protected readonly statusOptions = EMPLOYMENT_STATUSES;
   protected readonly typeOptions = EMPLOYMENT_TYPES;
 
+  /** Whether the secondary filter panel (department, branch, type, dates) is expanded. */
+  protected readonly panelOpen = signal(false);
+
+  /** Removable chips describing every applied filter. */
+  protected readonly activeChips = computed(() => {
+    const f = this.query.filters();
+    const labelOf = (opts: { value: unknown; label: string }[], v: unknown) =>
+      opts.find((o) => o.value === v)?.label ?? String(v);
+    const chips: { key: keyof EmployeeFilter | 'search'; name: string; label: string }[] = [];
+    const term = this.query.search();
+    if (term) chips.push({ key: 'search', name: 'Search', label: term });
+    if (f.employmentStatus)
+      chips.push({ key: 'employmentStatus', name: 'Status', label: f.employmentStatus });
+    if (f.departmentId)
+      chips.push({
+        key: 'departmentId',
+        name: 'Department',
+        label: labelOf(this.departmentOptions(), f.departmentId),
+      });
+    if (f.branchId)
+      chips.push({
+        key: 'branchId',
+        name: 'Branch',
+        label: labelOf(this.branchOptions(), f.branchId),
+      });
+    if (f.employmentType)
+      chips.push({ key: 'employmentType', name: 'Type', label: f.employmentType });
+    if (f.joiningFrom)
+      chips.push({ key: 'joiningFrom', name: 'Joined from', label: f.joiningFrom });
+    if (f.joiningTo) chips.push({ key: 'joiningTo', name: 'Joined to', label: f.joiningTo });
+    return chips;
+  });
+  /** Filters that live inside the collapsible panel. */
+  protected readonly extraFilterCount = computed(
+    () =>
+      this.activeChips().filter((c) =>
+        ['departmentId', 'branchId', 'employmentType'].includes(c.key),
+      ).length,
+  );
+
   protected readonly page = rxResource({
     params: () => this.query.request(),
     stream: ({ params }) => this.employeesApi.query(params),
@@ -147,6 +187,11 @@ export class EmployeeListComponent {
     value: EmployeeFilter[K] | null,
   ): void {
     this.query.setFilter(key, value === '' ? null : value);
+  }
+
+  protected removeChip(key: keyof EmployeeFilter | 'search'): void {
+    if (key === 'search') this.query.setSearch('');
+    else this.setFilter(key, null);
   }
 
   protected value<K extends keyof EmployeeFilter>(key: K): EmployeeFilter[K] | null {

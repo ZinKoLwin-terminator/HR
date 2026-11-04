@@ -36,6 +36,7 @@ test.describe('employee list', () => {
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(rows(page)).toHaveCount(10);
 
+    await page.getByRole('button', { name: /More filters/ }).click();
     await choose(page, 'Department', 'Engineering');
     await expect(rows(page).first()).toContainText('Engineering');
     await expect(page.getByText('of 60')).toBeHidden();
