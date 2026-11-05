@@ -148,12 +148,12 @@ export class EmployeeListComponent {
   );
 
   protected readonly columns: TableColumn<EmployeeListItem>[] = [
-    { key: 'employeeCode', header: 'Code', sortable: true, width: '100px' },
+    { key: 'employeeCode', header: 'Code', sortable: true, width: '100px', nowrap: true },
     { key: 'fullName', header: 'Employee', sortable: true },
-    { key: 'gender', header: 'Gender', sortable: true, hideBelow: 'lg' },
+    { key: 'gender', header: 'Gender', sortable: true, hideBelow: 'lg', nowrap: true },
     { key: 'departmentName', header: 'Department', sortable: true, hideBelow: 'md' },
-    { key: 'positionTitle', header: 'Position', sortable: true, hideBelow: 'md' },
-    { key: 'branchName', header: 'Branch', sortable: true, hideBelow: 'lg' },
+    { key: 'positionTitle', header: 'Position', sortable: true, hideBelow: 'md', width: '140px' },
+    { key: 'branchName', header: 'Branch', sortable: true, hideBelow: 'lg', width: '130px' },
     { key: 'employmentType', header: 'Type', sortable: true, hideBelow: 'lg', nowrap: true },
     {
       key: 'joiningDate',

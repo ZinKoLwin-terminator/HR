@@ -34,23 +34,23 @@ table {
 th.mat-mdc-header-cell {
   font: var(--mat-sys-label-small);
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--mat-sys-on-surface-variant);
   background: var(--mat-sys-surface-container-low);
   white-space: nowrap;
   border-bottom: 1px solid var(--mat-sys-outline-variant);
+  vertical-align: middle;
 }
 
 td.mat-mdc-cell {
   font: var(--mat-sys-body-medium);
-  color: var(--mat-sys-on-surface-variant);
-  border-bottom-color: color-mix(in srgb, var(--mat-sys-outline-variant) 60%, transparent);
+  color: var(--mat-sys-on-surface);
+  border-bottom-color: color-mix(in srgb, var(--mat-sys-outline-variant) 50%, transparent);
 
   // The first column carries the record's name/identity.
   &.primary {
-    color: var(--mat-sys-on-surface);
-    font-weight: 600;
+    font-weight: 500;
   }
 }
 
@@ -60,12 +60,17 @@ tr.mat-mdc-row:last-of-type td.mat-mdc-cell {
 
 th,
 td {
-  padding-inline: 20px;
+  padding-inline: 16px;
+  padding-block: 12px;
+}
+
+th {
+  padding-block: 10px;
 }
 
 .select-cell {
   width: 48px;
-  padding-inline: 12px 0;
+  padding-inline: 10px 0;
 }
 
 .nowrap {
@@ -78,13 +83,12 @@ td {
 
 .num {
   font-variant-numeric: tabular-nums;
-  color: var(--mat-sys-on-surface);
 }
 
 .actions-cell {
-  width: 56px;
-  text-align: end;
-  padding-inline: 0 12px;
+  width: 52px;
+  text-align: center;
+  padding-inline: 0;
 
   .mat-mdc-icon-button {
     color: var(--mat-sys-on-surface-variant);
@@ -116,6 +120,22 @@ tr.clickable {
 mat-paginator {
   border-top: 1px solid var(--mat-sys-outline-variant);
   background: var(--mat-sys-surface-container-lowest);
+  font-size: 13px;
+
+  ::ng-deep {
+    .mat-mdc-paginator-container {
+      padding: 12px 16px;
+      min-height: 44px;
+      justify-content: flex-end;
+      gap: 16px;
+    }
+    .mat-mdc-paginator-page-size-label {
+      display: none;
+    }
+    .mat-mdc-paginator-range-label {
+      margin: 0 16px 0 0;
+    }
+  }
 }
 
 @media (max-width: 1279.98px) {

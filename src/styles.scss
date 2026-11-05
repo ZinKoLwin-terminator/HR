@@ -247,19 +247,27 @@ a {
   align-items: center;
   gap: var(--app-spacing-md);
   margin-bottom: var(--app-spacing-lg);
-  padding: var(--app-spacing-md);
+  padding: var(--app-spacing-lg);
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: var(--app-radius-lg);
   background: var(--mat-sys-surface-container-lowest);
   box-shadow: var(--app-shadow-sm);
 
   > .grow {
-    flex: 1 1 260px;
+    flex: 1 1 220px;
   }
 
   mat-form-field {
-    min-width: 210px;
-    height: 44px;
+    min-width: 180px;
+  }
+
+  button[mat-button],
+  button[mat-stroked-button],
+  button[mat-flat-button],
+  a[mat-button],
+  a[mat-stroked-button],
+  a[mat-flat-button] {
+    white-space: nowrap;
   }
 }
 
@@ -306,8 +314,8 @@ a {
 // Read-only label/value pairs (profile tabs, details).
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 16px 24px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--app-spacing-xl) var(--app-spacing-xl);
   margin: 0;
 
   dt {
@@ -319,10 +327,12 @@ a {
   }
 
   dd {
-    margin: 4px 0 0;
+    margin: var(--app-spacing-xs) 0 0;
     font: var(--mat-sys-body-large);
-    font-weight: 500;
+    font-weight: 400;
+    color: var(--mat-sys-on-surface);
     overflow-wrap: anywhere;
+    word-break: break-word;
   }
 }
 

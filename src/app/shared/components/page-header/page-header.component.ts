@@ -22,8 +22,8 @@ import { Component, input } from '@angular/core';
       flex-wrap: wrap;
       align-items: flex-end;
       justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 20px;
+      gap: var(--app-spacing-lg);
+      margin-bottom: var(--app-spacing-xl);
     }
     .page-header__title {
       margin: 0;
@@ -33,14 +33,14 @@ import { Component, input } from '@angular/core';
       color: var(--mat-sys-on-surface);
     }
     .page-header__description {
-      margin: 4px 0 0;
+      margin: var(--app-spacing-xs) 0 0;
       font: var(--mat-sys-body-medium);
       color: var(--mat-sys-on-surface-variant);
     }
     .page-header__actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: var(--app-spacing-md);
     }
     .page-header__actions:empty {
       display: none;
