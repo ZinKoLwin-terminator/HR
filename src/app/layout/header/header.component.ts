@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
@@ -6,7 +7,13 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterLink } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  NavigationEnd,
+  Router,
+  RouterLink,
+} from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 import { AppNotification } from '../../core/models/activity.models';
 import { AuthService } from '../../core/services/auth.service';
 import { CurrentUserService } from '../../core/services/current-user.service';
@@ -16,6 +23,29 @@ import { ThemeService } from '../../core/services/theme.service';
 import { UiNotificationService } from '../../core/services/ui-notification.service';
 import { ThemePickerComponent } from '../../shared/components/theme-picker/theme-picker.component';
 import { RelativeTimePipe } from '../../shared/pipes/relative-time.pipe';
+
+export interface Breadcrumb {
+  label: string;
+  url: string;
+}
+
+function buildBreadcrumbs(root: ActivatedRouteSnapshot): Breadcrumb[] {
+  const crumbs: Breadcrumb[] = [];
+  let url = '';
+  let route: ActivatedRouteSnapshot | null = root;
+  while (route) {
+    const segment = route.url.map((s) => s.path).join('/');
+    if (segment) {
+      url += `/${segment}`;
+    }
+    const label = route.data['breadcrumb'] as string | undefined;
+    if (label && crumbs.at(-1)?.label !== label) {
+      crumbs.push({ label, url: url || '/' });
+    }
+    route = route.firstChild;
+  }
+  return crumbs;
+}
 
 @Component({
   selector: 'app-header',
@@ -41,6 +71,15 @@ export class HeaderComponent {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(UiNotificationService);
   private readonly router = inject(Router);
+
+  protected readonly crumbs = toSignal(
+    this.router.events.pipe(
+      filter((e) => e instanceof NavigationEnd),
+      startWith(null),
+      map(() => buildBreadcrumbs(this.router.routerState.snapshot.root)),
+    ),
+    { initialValue: [] as Breadcrumb[] },
+  );
 
   protected readonly notifications = rxResource({
     stream: () => this.notificationsApi.getNotifications(),

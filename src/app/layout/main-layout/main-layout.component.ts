@@ -4,21 +4,13 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { LayoutService } from '../../core/services/layout.service';
-import { BreadcrumbsComponent } from '../breadcrumbs/breadcrumbs.component';
 import { FooterComponent } from '../footer/footer.component';
 import { HeaderComponent } from '../header/header.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 
 @Component({
   selector: 'app-main-layout',
-  imports: [
-    MatSidenavModule,
-    RouterOutlet,
-    SidebarComponent,
-    HeaderComponent,
-    BreadcrumbsComponent,
-    FooterComponent,
-  ],
+  imports: [MatSidenavModule, RouterOutlet, SidebarComponent, HeaderComponent, FooterComponent],
   template: `
     <a class="skip-link" href="#main-content" (click)="focusMain($event)">Skip to main content</a>
     <mat-sidenav-container class="shell" [autosize]="true">
@@ -34,7 +26,6 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
       <mat-sidenav-content class="shell__content">
         <app-header />
         <main id="main-content" class="shell__main" tabindex="-1">
-          <app-breadcrumbs />
           <router-outlet />
         </main>
         <app-footer />
@@ -65,13 +56,13 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
       width: 100%;
       max-width: 1600px;
       margin: 0 auto;
-      padding: 20px 28px 32px;
+      padding: 0 28px 32px;
       box-sizing: border-box;
       outline: none;
     }
     @media (max-width: 599.98px) {
       .shell__main {
-        padding: 16px 14px 24px;
+        padding: 0 14px 24px;
       }
     }
     .skip-link {
