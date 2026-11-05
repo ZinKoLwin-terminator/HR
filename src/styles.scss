@@ -72,10 +72,10 @@ html {
   --app-sidebar-width: 268px;
   --app-sidebar-collapsed-width: 76px;
 
-  // Page background is lightly tinted with the active accent color.
+  // Page background with mode-specific tint (darker in dark mode for contrast with sidebar)
   --app-page-bg: light-dark(
-    color-mix(in srgb, var(--mat-sys-primary) 5%, #f6f7fb),
-    color-mix(in srgb, var(--mat-sys-primary) 7%, #0d1017)
+    color-mix(in srgb, var(--app-color-primary) 6%, #f8f9fc),
+    color-mix(in srgb, var(--app-color-accent) 5%, #080d12)
   );
 
   --app-success-container: light-dark(#d7f5e6, #0e3b28);
@@ -83,17 +83,20 @@ html {
   --app-warning-container: light-dark(#fdedc8, #4a3300);
   --app-on-warning-container: light-dark(#6b4500, #ffdc9a);
 
-  // Modern gradient sidebar with vibrant primary accent.
-  --app-sidebar-bg: linear-gradient(180deg, #0f4c75 0%, #1a2c4a 100%);
-  --app-sidebar-bg-solid: #0f4c75;
-  --app-sidebar-fg: #e0e8f0;
-  --app-sidebar-fg-strong: #ffffff;
-  --app-sidebar-border: rgb(255 255 255 / 10%);
-  --app-sidebar-hover: rgb(255 255 255 / 12%);
-  --app-sidebar-active-bg: rgba(255, 255, 255, 0.15);
-  --app-sidebar-active-fg: #ffffff;
-  --app-sidebar-accent: #00d4ff;
-  --app-sidebar-accent-fg: #0f4c75;
+  // Modern sidebar with mode-specific styling
+  --app-sidebar-bg: light-dark(
+    linear-gradient(180deg, #0f4c75 0%, #1a2c4a 100%),
+    linear-gradient(180deg, #0a1f2e 0%, #051219 100%)
+  );
+  --app-sidebar-bg-solid: light-dark(#0f4c75, #0a1f2e);
+  --app-sidebar-fg: light-dark(#e0e8f0, #b0bcc8);
+  --app-sidebar-fg-strong: light-dark(#ffffff, #e8f0f8);
+  --app-sidebar-border: light-dark(rgb(255 255 255 / 10%), rgb(0 212 255 / 8%));
+  --app-sidebar-hover: light-dark(rgb(255 255 255 / 12%), rgb(0 212 255 / 15%));
+  --app-sidebar-active-bg: light-dark(rgba(255, 255, 255, 0.15), rgba(0, 212, 255, 0.12));
+  --app-sidebar-active-fg: light-dark(#ffffff, #00d4ff);
+  --app-sidebar-accent: light-dark(#00d4ff, #00e8ff);
+  --app-sidebar-accent-fg: light-dark(#0f4c75, #051219);
 
   // Density and spacing tokens for modernized list/details UI.
   --app-radius-sm: 8px;
@@ -132,14 +135,14 @@ html {
   --app-color-error: #ef4444;
   --app-color-info: #0f4c75;
 
-  // Page and card backgrounds with color harmony.
+  // Page and card backgrounds with strong mode differentiation.
   --app-card-bg: light-dark(
-    color-mix(in srgb, var(--app-color-primary) 3%, #f8fafb),
-    color-mix(in srgb, var(--app-color-primary) 8%, #0d1117)
+    color-mix(in srgb, var(--app-color-primary) 4%, #ffffff),
+    color-mix(in srgb, var(--app-color-primary) 12%, #0f1419)
   );
   --app-card-border: light-dark(
-    color-mix(in srgb, var(--app-color-accent) 20%, var(--mat-sys-outline-variant)),
-    color-mix(in srgb, var(--app-color-accent) 15%, var(--mat-sys-outline-variant))
+    color-mix(in srgb, var(--app-color-accent) 25%, var(--mat-sys-outline-variant)),
+    color-mix(in srgb, var(--app-color-accent) 30%, var(--mat-sys-outline-variant))
   );
 
   // Chart colors live in src/app/shared/charts/chart-theme.ts (validated palette).

@@ -33,13 +33,16 @@ table {
 
 th.mat-mdc-header-cell {
   font: var(--mat-sys-label-small);
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: light-dark(var(--app-color-primary), color-mix(in srgb, var(--app-color-accent) 70%, #ffffff));
+  color: light-dark(
+    var(--app-color-primary),
+    var(--app-color-accent)
+  );
   background: light-dark(
-    color-mix(in srgb, var(--app-color-primary) 5%, #f9fafb),
-    color-mix(in srgb, var(--app-color-primary) 10%, #111827)
+    color-mix(in srgb, var(--app-color-primary) 6%, #f5f7fb),
+    color-mix(in srgb, var(--app-color-primary) 15%, #1a2332)
   );
   white-space: nowrap;
   border-bottom: 2px solid var(--app-card-border);
