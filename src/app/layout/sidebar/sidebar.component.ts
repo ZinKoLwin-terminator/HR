@@ -1,5 +1,6 @@
 import { Component, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { KeyValuePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -18,6 +19,7 @@ import { NAVIGATION, NavItem } from '../../core/constants/navigation';
     MatButtonModule,
     MatTooltipModule,
     MatMenuModule,
+    KeyValuePipe,
   ],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
@@ -34,6 +36,19 @@ export class SidebarComponent {
   protected readonly items = NAVIGATION;
   protected readonly expanded = signal<ReadonlySet<string>>(new Set());
   private readonly currentUrl = signal(this.router.url);
+
+  protected get groupedItems(): Map<string, NavItem[]> {
+    const sections = new Map<string, NavItem[]>();
+    const sectionOrder = ['MAIN', 'PEOPLE', 'OPERATIONS', 'SYSTEM'];
+
+    for (const section of sectionOrder) {
+      const itemsInSection = this.items.filter((item) => item.section === section);
+      if (itemsInSection.length > 0) {
+        sections.set(section, itemsInSection);
+      }
+    }
+    return sections;
+  }
 
   constructor() {
     this.expandActiveGroup(this.router.url);

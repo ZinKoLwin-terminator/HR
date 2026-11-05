@@ -4,14 +4,17 @@ export interface NavItem {
   /** Absolute route. Groups omit it. */
   route?: string;
   children?: NavItem[];
+  /** Section name for grouping in the sidebar. */
+  section?: string;
 }
 
 /** Single source of truth for the sidebar. Routes must exist in the route config. */
 export const NAVIGATION: NavItem[] = [
-  { label: 'Dashboard', icon: 'space_dashboard', route: '/dashboard' },
+  { label: 'Dashboard', icon: 'space_dashboard', route: '/dashboard', section: 'MAIN' },
   {
     label: 'Organization',
     icon: 'corporate_fare',
+    section: 'OPERATIONS',
     children: [
       { label: 'Companies', icon: 'domain', route: '/organization/companies' },
       { label: 'Branches', icon: 'store', route: '/organization/branches' },
@@ -29,6 +32,7 @@ export const NAVIGATION: NavItem[] = [
   {
     label: 'Employees',
     icon: 'groups',
+    section: 'PEOPLE',
     children: [
       { label: 'Employee List', icon: 'badge', route: '/employees/list' },
       { label: 'Add Employee', icon: 'person_add', route: '/employees/new' },
@@ -38,6 +42,7 @@ export const NAVIGATION: NavItem[] = [
   {
     label: 'Attendance',
     icon: 'schedule',
+    section: 'PEOPLE',
     children: [
       { label: 'Dashboard', icon: 'monitoring', route: '/attendance/overview' },
       { label: 'Check In / Out', icon: 'touch_app', route: '/attendance/check-in' },
@@ -53,6 +58,7 @@ export const NAVIGATION: NavItem[] = [
   {
     label: 'Leave Management',
     icon: 'beach_access',
+    section: 'PEOPLE',
     children: [
       { label: 'Leave Types', icon: 'category', route: '/leave/types' },
       { label: 'Leave Policies', icon: 'policy', route: '/leave/policies' },
@@ -65,6 +71,7 @@ export const NAVIGATION: NavItem[] = [
   {
     label: 'Payroll',
     icon: 'payments',
+    section: 'OPERATIONS',
     children: [
       { label: 'Salary Structures', icon: 'account_balance', route: '/payroll/salary-structures' },
       { label: 'Salary Components', icon: 'list_alt', route: '/payroll/salary-components' },
@@ -77,6 +84,7 @@ export const NAVIGATION: NavItem[] = [
   {
     label: 'Recruitment',
     icon: 'person_search',
+    section: 'OPERATIONS',
     children: [
       { label: 'Job Openings', icon: 'work_outline', route: '/recruitment/job-openings' },
       { label: 'Candidates', icon: 'contacts', route: '/recruitment/candidates' },
@@ -87,6 +95,7 @@ export const NAVIGATION: NavItem[] = [
   {
     label: 'Data Exchange',
     icon: 'swap_vert',
+    section: 'SYSTEM',
     children: [
       { label: 'Import Data', icon: 'upload_file', route: '/data-exchange/import' },
       { label: 'Import History', icon: 'history', route: '/data-exchange/history' },
@@ -95,6 +104,7 @@ export const NAVIGATION: NavItem[] = [
   {
     label: 'Settings',
     icon: 'settings',
+    section: 'SYSTEM',
     children: [
       { label: 'General Settings', icon: 'tune', route: '/settings/general' },
       { label: 'Users', icon: 'manage_accounts', route: '/settings/users' },

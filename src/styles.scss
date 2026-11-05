@@ -50,12 +50,12 @@ html {
     )
   );
 
-  // Roomier table rows with a calmer header.
+  // Refined table rows with a calmer header (48px rows, 44px header).
   .mat-mdc-table {
     @include mat.table-overrides(
       (
-        row-item-container-height: 54px,
-        header-container-height: 46px,
+        row-item-container-height: 48px,
+        header-container-height: 44px,
         row-item-outline-color: var(--mat-sys-outline-variant),
         header-headline-color: var(--mat-sys-on-surface-variant),
       )
@@ -93,6 +93,31 @@ html {
   --app-sidebar-active-fg: #ffffff;
   --app-sidebar-accent: color-mix(in srgb, var(--mat-sys-primary) 45%, #ffffff);
   --app-sidebar-accent-fg: #0b1220;
+
+  // Density and spacing tokens for modernized list/details UI.
+  --app-radius-sm: 8px;
+  --app-spacing-xs: 4px;
+  --app-spacing-sm: 8px;
+  --app-spacing-md: 12px;
+  --app-spacing-lg: 16px;
+  --app-spacing-xl: 24px;
+  --app-transition: 100ms ease;
+  --app-transition-medium: 200ms ease;
+
+  // Softer shadows for elevated elements (cards, dialogs, menus).
+  --app-shadow-md:
+    0 4px 6px light-dark(rgb(16 24 40 / 7%), rgb(0 0 0 / 40%)),
+    0 2px 4px light-dark(rgb(16 24 40 / 5%), rgb(0 0 0 / 30%));
+  --app-shadow-lg:
+    0 10px 15px light-dark(rgb(16 24 40 / 10%), rgb(0 0 0 / 45%)),
+    0 4px 6px light-dark(rgb(16 24 40 / 5%), rgb(0 0 0 / 35%));
+
+  // Refined list/table density and spacing.
+  --app-list-row-height: 48px;
+  --app-list-header-height: 44px;
+  --app-list-cell-padding: 12px;
+  --app-details-field-gap: 16px;
+
   // Chart colors live in src/app/shared/charts/chart-theme.ts (validated palette).
 }
 
@@ -220,9 +245,9 @@ a {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px;
+  gap: var(--app-spacing-md);
+  margin-bottom: var(--app-spacing-lg);
+  padding: var(--app-spacing-md);
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: var(--app-radius-lg);
   background: var(--mat-sys-surface-container-lowest);
@@ -234,6 +259,7 @@ a {
 
   mat-form-field {
     min-width: 210px;
+    height: 44px;
   }
 }
 
