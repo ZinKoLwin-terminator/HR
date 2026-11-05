@@ -12,6 +12,8 @@ import {
   ShiftDataService,
   WorkScheduleDataService,
 } from '../core/services/data/attendance-data.services';
+import { AuthDataService } from '../core/services/data/auth-data.service';
+import { AuthMockService } from './auth/auth-mock.service';
 import { DashboardDataService } from '../core/services/data/dashboard-data.service';
 import { EmployeeDataService } from '../core/services/data/employee-data.service';
 import {
@@ -133,6 +135,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
  */
 export function provideMockDataServices(): EnvironmentProviders {
   return makeEnvironmentProviders([
+    bind(AuthDataService, AuthMockService),
     bind(CompanyDataService, CompanyMockService),
     bind(BranchDataService, BranchMockService),
     bind(DepartmentDataService, DepartmentMockService),

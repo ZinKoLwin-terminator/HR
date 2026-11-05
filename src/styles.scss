@@ -72,7 +72,11 @@ html {
   --app-sidebar-width: 268px;
   --app-sidebar-collapsed-width: 76px;
 
-  --app-page-bg: light-dark(#f5f7fb, #0f1218);
+  // Page background is lightly tinted with the active accent color.
+  --app-page-bg: light-dark(
+    color-mix(in srgb, var(--mat-sys-primary) 5%, #f6f7fb),
+    color-mix(in srgb, var(--mat-sys-primary) 7%, #0d1017)
+  );
 
   --app-success-container: light-dark(#d7f5e6, #0e3b28);
   --app-on-success-container: light-dark(#0b5233, #a9ecc9);
@@ -85,11 +89,66 @@ html {
   --app-sidebar-fg-strong: #ffffff;
   --app-sidebar-border: rgb(255 255 255 / 8%);
   --app-sidebar-hover: rgb(255 255 255 / 7%);
-  --app-sidebar-active-bg: rgb(122 166 255 / 18%);
+  --app-sidebar-active-bg: color-mix(in srgb, var(--app-sidebar-accent) 20%, transparent);
   --app-sidebar-active-fg: #ffffff;
-  --app-sidebar-accent: #7aa6ff;
-  --app-sidebar-accent-fg: #0b1a3a;
+  --app-sidebar-accent: color-mix(in srgb, var(--mat-sys-primary) 45%, #ffffff);
+  --app-sidebar-accent-fg: #0b1220;
   // Chart colors live in src/app/shared/charts/chart-theme.ts (validated palette).
+}
+
+// ---------------------------------------------------------------------------
+// Accent color themes (chosen via ThemeService; default is Azure above).
+// Each only re-maps the primary / tertiary palettes; everything else follows.
+// ---------------------------------------------------------------------------
+html.theme-violet {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$violet-palette,
+        tertiary: mat.$rose-palette,
+      ),
+    )
+  );
+}
+html.theme-emerald {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$green-palette,
+        tertiary: mat.$cyan-palette,
+      ),
+    )
+  );
+}
+html.theme-rose {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$rose-palette,
+        tertiary: mat.$violet-palette,
+      ),
+    )
+  );
+}
+html.theme-amber {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$orange-palette,
+        tertiary: mat.$azure-palette,
+      ),
+    )
+  );
+}
+html.theme-cyan {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$cyan-palette,
+        tertiary: mat.$violet-palette,
+      ),
+    )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -514,4 +573,10 @@ a {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.menu-heading.accent-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }

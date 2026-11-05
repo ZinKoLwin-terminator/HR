@@ -115,6 +115,10 @@
     <button mat-menu-item type="button" (click)="theme.toggle()">
       <mat-icon>contrast</mat-icon><span>Toggle theme</span>
     </button>
+    <div class="menu-heading accent-row" role="presentation">
+      <span>Accent color</span>
+      <app-theme-picker />
+    </div>
     <mat-divider />
     <button mat-menu-item type="button" (click)="signOut()">
       <mat-icon>logout</mat-icon><span>Sign out</span>

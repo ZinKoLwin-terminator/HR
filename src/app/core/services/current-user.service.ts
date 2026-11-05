@@ -1,4 +1,5 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject } from '@angular/core';
+import { AuthService } from './auth.service';
 
 export interface CurrentUser {
   id: number;
@@ -9,24 +10,26 @@ export interface CurrentUser {
   roles: string[];
 }
 
+const ANONYMOUS: CurrentUser = {
+  id: 0,
+  employeeId: null,
+  displayName: 'Guest',
+  email: '',
+  jobTitle: '',
+  roles: [],
+};
+
 /**
- * Demo identity for the frontend-only phase. There is NO authentication:
- * this is a UI simulation and provides no security.
+ * The signed-in user (from AuthService). Falls back to an anonymous placeholder
+ * when signed out; routes behind authGuard never see it.
  */
 @Injectable({ providedIn: 'root' })
 export class CurrentUserService {
-  private readonly user = signal<CurrentUser>({
-    id: 1,
-    employeeId: 2,
-    displayName: 'Su Myat Noe',
-    email: 'su.myatnoe@apexhorizon.example',
-    jobTitle: 'Director of Human Resources',
-    roles: ['HR Administrator'],
-  });
+  private readonly auth = inject(AuthService);
 
-  readonly current = this.user.asReadonly();
+  readonly current = computed<CurrentUser>(() => this.auth.session() ?? ANONYMOUS);
   readonly initials = computed(() =>
-    this.user()
+    this.current()
       .displayName.split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)

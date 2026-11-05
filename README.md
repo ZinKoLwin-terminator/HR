@@ -2,7 +2,7 @@
 
 An enterprise-style **Human Resource Management System** built as an **Angular frontend only**.
 All business data is **sample data** served by in-memory mock services. There is **no backend,
-no database, no HTTP calls and no authentication**.
+no database and no HTTP calls; sign-in is a simulation (see Authentication below)**.
 
 > The data layer is built behind abstract data-service contracts so that API-backed services can
 > replace the mocks later without changing screens. See [docs/API-INTEGRATION-PLAN.md](docs/API-INTEGRATION-PLAN.md).
@@ -92,3 +92,13 @@ src/app/
 e2e/              Playwright tests
 docs/             project documentation
 ```
+
+## Authentication (demo)
+
+All pages except `/login` sit behind `authGuard`. Sign in with any **Active** user from
+Settings → Users (e.g. `sumyat.noe@apexhorizon.example`) and the shared demo password
+`Welcome@123`. Locked/Inactive users are refused. "Keep me signed in" stores the session in
+`localStorage`, otherwise in `sessionStorage`; **Sign out** is in the header user menu.
+
+This is a UI simulation with no real security and no role enforcement. To go live, implement
+`AuthDataService` against the API and bind it in place of `AuthMockService`.

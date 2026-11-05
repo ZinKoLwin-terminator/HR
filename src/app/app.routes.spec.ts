@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { routes } from './app.routes';
+import { SESSION_STORAGE_KEY } from './core/services/auth.service';
 import { NAVIGATION } from './core/constants/navigation';
 import { buildBreadcrumbs } from './layout/breadcrumbs/breadcrumbs.component';
 import { provideMockDataServices } from './mock-services/provide-mock-data-services';
@@ -17,7 +18,26 @@ describe('app routes', () => {
       providers: [provideRouter(routes), provideMockDataServices()],
     });
     router = TestBed.inject(Router);
+    // Pages are behind the auth guard: start from a signed-in session.
+    sessionStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({
+        id: 1,
+        employeeId: 2,
+        displayName: 'Su Myat Noe',
+        email: 'sumyat.noe@apexhorizon.example',
+        jobTitle: '',
+        roles: ['HR Administrator'],
+      }),
+    );
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [provideRouter(routes), provideMockDataServices()],
+    });
+    router = TestBed.inject(Router);
   });
+
+  afterEach(() => sessionStorage.clear());
 
   it('redirects the root to the dashboard', async () => {
     await router.navigateByUrl('/');

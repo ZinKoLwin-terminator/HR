@@ -15,7 +15,7 @@ Written for: a software developer learning enterprise HR processes. Code names, 
 
 `Screen (features/*)` → `abstract data contract (core/services/data/*)` → `mock service (mock-services/*)` → `pure calc (core/utilities/*)` → `seed data (mock-data/*)`
 
-State resets on page reload. There is **no authentication**: [current-user.service.ts](../src/app/core/services/current-user.service.ts) hard-codes one user, Su Myat Noe (role "HR Administrator", `employeeId: 2`), and everything is done as that person.
+State resets on page reload. Sign-in is a **demo simulation** (see README → Authentication): the signed-in user comes from [auth.service.ts](../src/app/core/services/auth.service.ts); roles are not enforced.
 
 **Status labels:** **[I]** Implemented, **[P]** Partially implemented, **[N]** Not implemented, **[?]** Cannot be determined. A *"no code found"* claim means I searched or fully read the relevant services and found nothing.
 
