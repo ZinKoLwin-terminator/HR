@@ -468,7 +468,15 @@ a {
     padding-inline: 12px;
     border-radius: 8px;
     font: var(--mat-sys-body-medium);
-    transition: background-color 100ms ease;
+    transition:
+      background-color var(--app-transition),
+      box-shadow var(--app-transition);
+
+    .mdc-list-item__primary-text {
+      transition:
+        transform var(--app-transition),
+        color var(--app-transition);
+    }
 
     &:last-child {
       margin-bottom: 0;
@@ -485,27 +493,42 @@ a {
     }
 
     &.mdc-list-item--selected:not(.mdc-list-item--disabled) {
-      background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+      background: color-mix(in srgb, var(--app-color-primary) 12%, transparent);
 
       .mdc-list-item__primary-text {
-        color: var(--mat-sys-primary);
+        color: light-dark(var(--app-color-primary), var(--app-color-accent));
         font-weight: 600;
       }
     }
 
-    // Pointer hover: clearly stronger — blue tint, left accent bar and blue text.
+    // Pointer hover: soft cyan-blue gradient wash, thin accent edge and a small text nudge.
     &:hover:not(.mdc-list-item--disabled) {
-      background: color-mix(in srgb, var(--mat-sys-primary) 18%, transparent);
-      box-shadow: inset 4px 0 0 var(--mat-sys-primary);
+      background: linear-gradient(
+        90deg,
+        light-dark(
+          color-mix(in srgb, var(--app-color-accent) 18%, transparent),
+          color-mix(in srgb, var(--app-color-accent) 22%, transparent)
+        ),
+        light-dark(
+          color-mix(in srgb, var(--app-color-primary) 6%, transparent),
+          color-mix(in srgb, var(--app-color-accent) 6%, transparent)
+        )
+      );
+      box-shadow: inset 3px 0 0 var(--app-color-accent);
 
       .mdc-list-item__primary-text {
-        color: var(--mat-sys-primary);
+        color: light-dark(var(--app-color-primary), var(--app-color-accent));
         font-weight: 600;
+        transform: translateX(3px);
       }
+    }
+
+    &:active:not(.mdc-list-item--disabled) {
+      background: color-mix(in srgb, var(--app-color-accent) 30%, transparent);
     }
 
     &.mdc-list-item--selected:hover:not(.mdc-list-item--disabled) {
-      background: color-mix(in srgb, var(--mat-sys-primary) 26%, transparent);
+      background: color-mix(in srgb, var(--app-color-accent) 28%, transparent);
     }
   }
 
