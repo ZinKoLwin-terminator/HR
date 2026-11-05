@@ -83,16 +83,17 @@ html {
   --app-warning-container: light-dark(#fdedc8, #4a3300);
   --app-on-warning-container: light-dark(#6b4500, #ffdc9a);
 
-  // Dark navy sidebar in both modes for a strong enterprise look.
-  --app-sidebar-bg: light-dark(#14213d, #0b1220);
-  --app-sidebar-fg: #c6cfe1;
+  // Modern gradient sidebar with vibrant primary accent.
+  --app-sidebar-bg: linear-gradient(180deg, #0f4c75 0%, #1a2c4a 100%);
+  --app-sidebar-bg-solid: #0f4c75;
+  --app-sidebar-fg: #e0e8f0;
   --app-sidebar-fg-strong: #ffffff;
-  --app-sidebar-border: rgb(255 255 255 / 8%);
-  --app-sidebar-hover: rgb(255 255 255 / 7%);
-  --app-sidebar-active-bg: color-mix(in srgb, var(--app-sidebar-accent) 20%, transparent);
+  --app-sidebar-border: rgb(255 255 255 / 10%);
+  --app-sidebar-hover: rgb(255 255 255 / 12%);
+  --app-sidebar-active-bg: rgba(255, 255, 255, 0.15);
   --app-sidebar-active-fg: #ffffff;
-  --app-sidebar-accent: color-mix(in srgb, var(--mat-sys-primary) 45%, #ffffff);
-  --app-sidebar-accent-fg: #0b1220;
+  --app-sidebar-accent: #00d4ff;
+  --app-sidebar-accent-fg: #0f4c75;
 
   // Density and spacing tokens for modernized list/details UI.
   --app-radius-sm: 8px;
