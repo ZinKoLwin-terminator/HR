@@ -56,13 +56,13 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
       width: 100%;
       max-width: 1600px;
       margin: 0 auto;
-      padding: 0 28px 32px;
+      padding: 20px 28px 32px;
       box-sizing: border-box;
       outline: none;
     }
     @media (max-width: 599.98px) {
       .shell__main {
-        padding: 0 14px 24px;
+        padding: 16px 14px 24px;
       }
     }
     .skip-link {

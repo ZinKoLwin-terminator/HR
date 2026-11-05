@@ -1,118 +1,19 @@
 <header class="header">
-  <div class="header__top">
-    <button
-      mat-icon-button
-      type="button"
-      (click)="layout.toggleSidebar()"
-      [attr.aria-label]="
-        layout.isCompact()
-          ? 'Open navigation menu'
-          : layout.collapsed()
-            ? 'Expand sidebar'
-            : 'Collapse sidebar'
-      "
-      [attr.aria-expanded]="layout.isCompact() ? layout.mobileOpen() : !layout.collapsed()"
-    >
-      <mat-icon>{{ layout.isCompact() || layout.collapsed() ? 'menu' : 'menu_open' }}</mat-icon>
-    </button>
-
-    <span class="spacer"></span>
-
-    <span class="demo-chip" aria-label="Demo environment using sample data">
-      <mat-icon aria-hidden="true">science</mat-icon><span>Sample data</span>
-    </span>
-
-    <button
-      mat-icon-button
-      type="button"
-      (click)="theme.toggle()"
-      [matTooltip]="theme.scheme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-      [attr.aria-label]="theme.scheme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-    >
-      <mat-icon>{{ theme.scheme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
-    </button>
-
-    <button
-      mat-icon-button
-      type="button"
-      [matMenuTriggerFor]="notificationMenu"
-      matTooltip="Notifications"
-      [attr.aria-label]="'Notifications, ' + unreadCount() + ' unread'"
-    >
-      <mat-icon
-        [matBadge]="unreadCount()"
-        [matBadgeHidden]="unreadCount() === 0"
-        matBadgeSize="small"
-        matBadgeColor="warn"
-        aria-hidden="false"
-        >notifications</mat-icon
-      >
-    </button>
-    <mat-menu #notificationMenu="matMenu" xPosition="before" class="notification-menu">
-      <div class="menu-heading" role="presentation">
-        <span>Notifications</span>
-        @if (unreadCount() > 0) {
-          <button type="button" class="link-button" (click)="$event.stopPropagation(); markAllRead()">
-            Mark all as read
-          </button>
-        }
-      </div>
-      @for (n of notifications.value(); track n.id) {
-        <button
-          mat-menu-item
-          type="button"
-          class="notification"
-          [class.unread]="!n.read"
-          (click)="open(n)"
-        >
-          <mat-icon>{{ n.icon }}</mat-icon>
-          <span class="notification__text">
-            <span class="notification__title">{{ n.title }}</span>
-            <span class="notification__message">{{ n.message }}</span>
-            <span class="notification__time">{{ n.timestamp | relativeTime }}</span>
-          </span>
-        </button>
-      } @empty {
-        <p class="menu-empty">You're all caught up.</p>
-      }
-    </mat-menu>
-
-    <button
-      mat-button
-      type="button"
-      class="user-button"
-      [matMenuTriggerFor]="userMenu"
-      aria-label="User menu"
-    >
-      <span class="user-avatar" aria-hidden="true">{{ user.initials() }}</span>
-      <span class="user-text">
-        <span class="user-name">{{ user.current().displayName }}</span>
-        <span class="user-role">{{ user.current().roles[0] }}</span>
-      </span>
-      <mat-icon aria-hidden="true">expand_more</mat-icon>
-    </button>
-    <mat-menu #userMenu="matMenu" xPosition="before">
-      <div class="menu-heading user-heading" role="presentation">
-        <span>{{ user.current().displayName }}</span>
-        <small>{{ user.current().email }}</small>
-      </div>
-      <mat-divider />
-      <a mat-menu-item routerLink="/settings/general"
-        ><mat-icon>tune</mat-icon><span>Settings</span></a
-      >
-      <button mat-menu-item type="button" (click)="theme.toggle()">
-        <mat-icon>contrast</mat-icon><span>Toggle theme</span>
-      </button>
-      <div class="menu-heading accent-row" role="presentation">
-        <span>Accent color</span>
-        <app-theme-picker />
-      </div>
-      <mat-divider />
-      <button mat-menu-item type="button" (click)="signOut()">
-        <mat-icon>logout</mat-icon><span>Sign out</span>
-      </button>
-    </mat-menu>
-  </div>
+  <button
+    mat-icon-button
+    type="button"
+    (click)="layout.toggleSidebar()"
+    [attr.aria-label]="
+      layout.isCompact()
+        ? 'Open navigation menu'
+        : layout.collapsed()
+          ? 'Expand sidebar'
+          : 'Collapse sidebar'
+    "
+    [attr.aria-expanded]="layout.isCompact() ? layout.mobileOpen() : !layout.collapsed()"
+  >
+    <mat-icon>{{ layout.isCompact() || layout.collapsed() ? 'menu' : 'menu_open' }}</mat-icon>
+  </button>
 
   <nav aria-label="Breadcrumb" class="breadcrumbs">
     <ol>
@@ -131,4 +32,101 @@
       }
     </ol>
   </nav>
+
+  <span class="spacer"></span>
+
+  <span class="demo-chip" aria-label="Demo environment using sample data">
+    <mat-icon aria-hidden="true">science</mat-icon><span>Sample data</span>
+  </span>
+
+  <button
+    mat-icon-button
+    type="button"
+    (click)="theme.toggle()"
+    [matTooltip]="theme.scheme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+    [attr.aria-label]="theme.scheme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+  >
+    <mat-icon>{{ theme.scheme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+  </button>
+
+  <button
+    mat-icon-button
+    type="button"
+    [matMenuTriggerFor]="notificationMenu"
+    matTooltip="Notifications"
+    [attr.aria-label]="'Notifications, ' + unreadCount() + ' unread'"
+  >
+    <mat-icon
+      [matBadge]="unreadCount()"
+      [matBadgeHidden]="unreadCount() === 0"
+      matBadgeSize="small"
+      matBadgeColor="warn"
+      aria-hidden="false"
+      >notifications</mat-icon
+    >
+  </button>
+  <mat-menu #notificationMenu="matMenu" xPosition="before" class="notification-menu">
+    <div class="menu-heading" role="presentation">
+      <span>Notifications</span>
+      @if (unreadCount() > 0) {
+        <button type="button" class="link-button" (click)="$event.stopPropagation(); markAllRead()">
+          Mark all as read
+        </button>
+      }
+    </div>
+    @for (n of notifications.value(); track n.id) {
+      <button
+        mat-menu-item
+        type="button"
+        class="notification"
+        [class.unread]="!n.read"
+        (click)="open(n)"
+      >
+        <mat-icon>{{ n.icon }}</mat-icon>
+        <span class="notification__text">
+          <span class="notification__title">{{ n.title }}</span>
+          <span class="notification__message">{{ n.message }}</span>
+          <span class="notification__time">{{ n.timestamp | relativeTime }}</span>
+        </span>
+      </button>
+    } @empty {
+      <p class="menu-empty">You're all caught up.</p>
+    }
+  </mat-menu>
+
+  <button
+    mat-button
+    type="button"
+    class="user-button"
+    [matMenuTriggerFor]="userMenu"
+    aria-label="User menu"
+  >
+    <span class="user-avatar" aria-hidden="true">{{ user.initials() }}</span>
+    <span class="user-text">
+      <span class="user-name">{{ user.current().displayName }}</span>
+      <span class="user-role">{{ user.current().roles[0] }}</span>
+    </span>
+    <mat-icon aria-hidden="true">expand_more</mat-icon>
+  </button>
+  <mat-menu #userMenu="matMenu" xPosition="before">
+    <div class="menu-heading user-heading" role="presentation">
+      <span>{{ user.current().displayName }}</span>
+      <small>{{ user.current().email }}</small>
+    </div>
+    <mat-divider />
+    <a mat-menu-item routerLink="/settings/general"
+      ><mat-icon>tune</mat-icon><span>Settings</span></a
+    >
+    <button mat-menu-item type="button" (click)="theme.toggle()">
+      <mat-icon>contrast</mat-icon><span>Toggle theme</span>
+    </button>
+    <div class="menu-heading accent-row" role="presentation">
+      <span>Accent color</span>
+      <app-theme-picker />
+    </div>
+    <mat-divider />
+    <button mat-menu-item type="button" (click)="signOut()">
+      <mat-icon>logout</mat-icon><span>Sign out</span>
+    </button>
+  </mat-menu>
 </header>
