@@ -1,6 +1,13 @@
-import { Component, inject } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  inject,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenavContainer, MatSidenavModule } from '@angular/material/sidenav';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { LayoutService } from '../../core/services/layout.service';
@@ -15,6 +22,7 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
     <a class="skip-link" href="#main-content" (click)="focusMain($event)">Skip to main content</a>
     <mat-sidenav-container class="shell" [autosize]="true">
       <mat-sidenav
+        #sidenav
         class="shell__sidenav"
         [mode]="layout.isCompact() ? 'over' : 'side'"
         [opened]="layout.isCompact() ? layout.mobileOpen() : true"
@@ -85,7 +93,17 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 export class MainLayoutComponent {
   protected readonly layout = inject(LayoutService);
 
+  private readonly container = viewChild.required(MatSidenavContainer);
+  private readonly sidenav = viewChild.required('sidenav', { read: ElementRef });
+
   constructor() {
+    // The sidebar animates its own width, which Material's side-mode margin doesn't track.
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const observer = new ResizeObserver(() => this.container().updateContentMargins());
+      observer.observe(this.sidenav().nativeElement);
+      destroyRef.onDestroy(() => observer.disconnect());
+    });
     // Close the overlay drawer after any navigation on small screens.
     inject(Router)
       .events.pipe(
