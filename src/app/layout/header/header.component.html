@@ -15,19 +15,6 @@
     <mat-icon>{{ layout.isCompact() || layout.collapsed() ? 'menu' : 'menu_open' }}</mat-icon>
   </button>
 
-  <form class="search" role="search" (submit)="$event.preventDefault(); search()">
-    <mat-icon aria-hidden="true">search</mat-icon>
-    <label for="global-search" class="cdk-visually-hidden">Search employees</label>
-    <input
-      id="global-search"
-      type="search"
-      placeholder="Search employees by name or code…"
-      autocomplete="off"
-      [value]="searchTerm()"
-      (input)="searchTerm.set($any($event.target).value)"
-    />
-  </form>
-
   <span class="spacer"></span>
 
   <span class="demo-chip" aria-label="Demo environment using sample data">

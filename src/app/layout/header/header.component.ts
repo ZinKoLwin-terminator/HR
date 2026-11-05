@@ -42,8 +42,6 @@ export class HeaderComponent {
   private readonly toast = inject(UiNotificationService);
   private readonly router = inject(Router);
 
-  protected readonly searchTerm = signal('');
-
   protected readonly notifications = rxResource({
     stream: () => this.notificationsApi.getNotifications(),
     defaultValue: [] as AppNotification[],
@@ -51,13 +49,6 @@ export class HeaderComponent {
   protected readonly unreadCount = computed(
     () => this.notifications.value().filter((n) => !n.read).length,
   );
-
-  protected search(): void {
-    const term = this.searchTerm().trim();
-    if (term) {
-      this.router.navigate(['/employees/list'], { queryParams: { search: term } });
-    }
-  }
 
   protected open(notification: AppNotification): void {
     if (!notification.read) {

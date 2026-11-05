@@ -12,32 +12,6 @@
   border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
-.search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: min(420px, 40vw);
-  height: 40px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--mat-sys-surface-container-high);
-  color: var(--mat-sys-on-surface-variant);
-
-  &:focus-within {
-    outline: 2px solid var(--mat-sys-primary);
-  }
-
-  input {
-    flex: 1;
-    min-width: 0;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    color: var(--mat-sys-on-surface);
-    font: var(--mat-sys-body-medium);
-  }
-}
-
 .spacer {
   flex: 1;
 }
@@ -109,9 +83,6 @@
 }
 
 @media (max-width: 599.98px) {
-  .search {
-    display: none;
-  }
   .demo-chip {
     display: none;
   }
