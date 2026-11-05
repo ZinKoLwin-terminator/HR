@@ -68,7 +68,7 @@ html {
     0 1px 3px light-dark(rgb(16 24 40 / 5%), rgb(0 0 0 / 25%));
   --app-radius-lg: 16px;
   --app-radius-md: 12px;
-  --app-header-height: 64px;
+  --app-header-height: 56px;
   --app-sidebar-width: 268px;
   --app-sidebar-collapsed-width: 76px;
 
@@ -273,8 +273,8 @@ a {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--app-spacing-md);
-  margin-bottom: var(--app-spacing-lg);
-  padding: var(--app-spacing-lg);
+  margin-bottom: var(--app-spacing-md);
+  padding: var(--app-spacing-md);
   border: 1px solid var(--app-card-border);
   border-radius: var(--app-radius-lg);
   background: var(--app-card-bg);

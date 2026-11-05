@@ -23,7 +23,7 @@ import { Component, input } from '@angular/core';
       align-items: flex-end;
       justify-content: space-between;
       gap: var(--app-spacing-lg);
-      margin-bottom: var(--app-spacing-xl);
+      margin-bottom: var(--app-spacing-lg);
     }
     .page-header__title {
       margin: 0;
@@ -33,8 +33,8 @@ import { Component, input } from '@angular/core';
       color: var(--app-color-primary);
     }
     .page-header__description {
-      margin: var(--app-spacing-xs) 0 0;
-      font: var(--mat-sys-body-medium);
+      margin: 2px 0 0;
+      font: var(--mat-sys-body-small);
       color: var(--mat-sys-on-surface-variant);
     }
     .page-header__actions {
