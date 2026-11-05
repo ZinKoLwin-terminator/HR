@@ -25,13 +25,7 @@
   </app-page-header>
 }
 
-<div class="toolbar" role="search" [attr.aria-label]="'Filter ' + cfg.title">
-  <app-search-field
-    class="grow"
-    [label]="cfg.searchLabel ?? 'Search'"
-    [value]="query.search()"
-    (searchChange)="query.setSearch($event)"
-  />
+<div class="toolbar" role="region" [attr.aria-label]="'Filters for ' + cfg.title">
   @for (filterConfig of cfg.filters ?? []; track filterConfig.key) {
     <mat-form-field subscriptSizing="dynamic">
       <mat-label>{{ filterConfig.label }}</mat-label>
