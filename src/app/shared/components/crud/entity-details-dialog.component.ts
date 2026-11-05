@@ -51,7 +51,9 @@ interface DetailRow {
       font: var(--mat-sys-headline-small);
       font-weight: 700;
       letter-spacing: -0.01em;
-      color: var(--mat-sys-on-surface);
+      color: var(--app-color-primary);
+      border-bottom: 3px solid var(--app-color-accent);
+      padding-bottom: 12px;
 
       &::before {
         display: none;
@@ -64,8 +66,8 @@ interface DetailRow {
     mat-dialog-actions {
       padding: 12px 24px !important;
       gap: var(--app-spacing-md);
-      border-top: 1px solid var(--mat-sys-outline-variant);
-      background: var(--mat-sys-surface-container-lowest);
+      border-top: 2px solid var(--app-color-accent);
+      background: var(--app-card-bg);
     }
     .subtitle {
       margin: 0 0 var(--app-spacing-lg);

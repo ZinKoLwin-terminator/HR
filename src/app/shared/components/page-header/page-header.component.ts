@@ -30,7 +30,7 @@ import { Component, input } from '@angular/core';
       font: var(--mat-sys-headline-small);
       font-weight: 700;
       letter-spacing: -0.01em;
-      color: var(--mat-sys-on-surface);
+      color: var(--app-color-primary);
     }
     .page-header__description {
       margin: var(--app-spacing-xs) 0 0;

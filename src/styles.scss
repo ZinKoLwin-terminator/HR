@@ -119,6 +119,29 @@ html {
   --app-list-cell-padding: 12px;
   --app-details-field-gap: 16px;
 
+  // Modern HRMS color palette (based on sidebar: deep blue #0f4c75 + cyan #00d4ff).
+  --app-color-primary: #0f4c75;
+  --app-color-primary-light: #1a5fa3;
+  --app-color-primary-lighter: #2a7bc8;
+  --app-color-accent: #00d4ff;
+  --app-color-accent-light: #33e0ff;
+  --app-color-secondary: #00a884;
+  --app-color-secondary-light: #1fc5a3;
+  --app-color-success: #10b981;
+  --app-color-warning: #f59e0b;
+  --app-color-error: #ef4444;
+  --app-color-info: #0f4c75;
+
+  // Page and card backgrounds with color harmony.
+  --app-card-bg: light-dark(
+    color-mix(in srgb, var(--app-color-primary) 3%, #f8fafb),
+    color-mix(in srgb, var(--app-color-primary) 8%, #0d1117)
+  );
+  --app-card-border: light-dark(
+    color-mix(in srgb, var(--app-color-accent) 20%, var(--mat-sys-outline-variant)),
+    color-mix(in srgb, var(--app-color-accent) 15%, var(--mat-sys-outline-variant))
+  );
+
   // Chart colors live in src/app/shared/charts/chart-theme.ts (validated palette).
 }
 
@@ -214,8 +237,8 @@ a {
 // ---------------------------------------------------------------------------
 .card {
   border-radius: var(--app-radius-lg);
-  border: 1px solid var(--mat-sys-outline-variant);
-  background: var(--mat-sys-surface-container-lowest);
+  border: 1px solid var(--app-card-border);
+  background: var(--app-card-bg);
   box-shadow: var(--app-shadow-sm);
   padding: 20px;
   box-sizing: border-box;
@@ -249,9 +272,9 @@ a {
   gap: var(--app-spacing-md);
   margin-bottom: var(--app-spacing-lg);
   padding: var(--app-spacing-lg);
-  border: 1px solid var(--mat-sys-outline-variant);
+  border: 1px solid var(--app-card-border);
   border-radius: var(--app-radius-lg);
-  background: var(--mat-sys-surface-container-lowest);
+  background: var(--app-card-bg);
   box-shadow: var(--app-shadow-sm);
 
   > .grow {
@@ -260,6 +283,10 @@ a {
 
   mat-form-field {
     min-width: 180px;
+
+    ::ng-deep .mdc-text-field__input {
+      caret-color: var(--app-color-accent);
+    }
   }
 
   button[mat-button],

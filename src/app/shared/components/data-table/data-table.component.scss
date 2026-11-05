@@ -5,8 +5,8 @@
 .table-card {
   position: relative;
   border-radius: var(--app-radius-lg);
-  border: 1px solid var(--mat-sys-outline-variant);
-  background: var(--mat-sys-surface-container-lowest);
+  border: 1px solid var(--app-card-border);
+  background: var(--app-card-bg);
   box-shadow: var(--app-shadow-sm);
   overflow: hidden;
 }
@@ -36,10 +36,13 @@ th.mat-mdc-header-cell {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--mat-sys-on-surface-variant);
-  background: var(--mat-sys-surface-container-low);
+  color: light-dark(var(--app-color-primary), color-mix(in srgb, var(--app-color-accent) 70%, #ffffff));
+  background: light-dark(
+    color-mix(in srgb, var(--app-color-primary) 5%, #f9fafb),
+    color-mix(in srgb, var(--app-color-primary) 10%, #111827)
+  );
   white-space: nowrap;
-  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  border-bottom: 2px solid var(--app-card-border);
   vertical-align: middle;
 }
 
@@ -99,14 +102,20 @@ tr.mat-mdc-row {
   transition: background-color 120ms ease;
 
   &:hover {
-    background: color-mix(in srgb, var(--mat-sys-primary) 5%, transparent);
+    background: light-dark(
+      color-mix(in srgb, var(--app-color-accent) 8%, transparent),
+      color-mix(in srgb, var(--app-color-accent) 12%, transparent)
+    );
   }
 }
 
 tr.clickable {
   cursor: pointer;
   &:hover {
-    background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
+    background: light-dark(
+      color-mix(in srgb, var(--app-color-accent) 12%, transparent),
+      color-mix(in srgb, var(--app-color-accent) 18%, transparent)
+    );
   }
 }
 
@@ -118,8 +127,8 @@ tr.clickable {
 }
 
 mat-paginator {
-  border-top: 1px solid var(--mat-sys-outline-variant);
-  background: var(--mat-sys-surface-container-lowest);
+  border-top: 1px solid var(--app-card-border);
+  background: var(--app-card-bg);
   font-size: 13px;
 
   ::ng-deep {
@@ -134,6 +143,10 @@ mat-paginator {
     }
     .mat-mdc-paginator-range-label {
       margin: 0 16px 0 0;
+      color: var(--app-color-primary);
+    }
+    .mat-mdc-paginator-container .mat-mdc-icon-button:not(:disabled) {
+      color: var(--app-color-primary);
     }
   }
 }

@@ -78,24 +78,54 @@ export function badgeTone(status: string): BadgeTone {
       background: currentColor;
     }
     [data-tone='success'] {
-      --badge-bg: var(--app-success-container);
-      --badge-fg: var(--app-on-success-container);
+      --badge-bg: light-dark(
+        color-mix(in srgb, var(--app-color-success) 15%, #f0fdf4),
+        color-mix(in srgb, var(--app-color-success) 20%, #064e3b)
+      );
+      --badge-fg: light-dark(
+        var(--app-color-success),
+        color-mix(in srgb, var(--app-color-success) 40%, #ffffff)
+      );
     }
     [data-tone='warning'] {
-      --badge-bg: var(--app-warning-container);
-      --badge-fg: var(--app-on-warning-container);
+      --badge-bg: light-dark(
+        color-mix(in srgb, var(--app-color-warning) 15%, #fffbeb),
+        color-mix(in srgb, var(--app-color-warning) 20%, #78350f)
+      );
+      --badge-fg: light-dark(
+        var(--app-color-warning),
+        color-mix(in srgb, var(--app-color-warning) 40%, #ffffff)
+      );
     }
     [data-tone='danger'] {
-      --badge-bg: var(--mat-sys-error-container);
-      --badge-fg: var(--mat-sys-on-error-container);
+      --badge-bg: light-dark(
+        color-mix(in srgb, var(--app-color-error) 15%, #fef2f2),
+        color-mix(in srgb, var(--app-color-error) 20%, #7f1d1d)
+      );
+      --badge-fg: light-dark(
+        var(--app-color-error),
+        color-mix(in srgb, var(--app-color-error) 40%, #ffffff)
+      );
     }
     [data-tone='info'] {
-      --badge-bg: var(--mat-sys-primary-container);
-      --badge-fg: var(--mat-sys-on-primary-container);
+      --badge-bg: light-dark(
+        color-mix(in srgb, var(--app-color-accent) 15%, #f0f9ff),
+        color-mix(in srgb, var(--app-color-accent) 20%, #082f49)
+      );
+      --badge-fg: light-dark(
+        var(--app-color-accent),
+        color-mix(in srgb, var(--app-color-accent) 40%, #ffffff)
+      );
     }
     [data-tone='neutral'] {
-      --badge-bg: var(--mat-sys-surface-container-highest);
-      --badge-fg: var(--mat-sys-on-surface-variant);
+      --badge-bg: light-dark(
+        color-mix(in srgb, var(--app-color-primary) 8%, #f3f4f6),
+        color-mix(in srgb, var(--app-color-primary) 12%, #1f2937)
+      );
+      --badge-fg: light-dark(
+        var(--mat-sys-on-surface-variant),
+        color-mix(in srgb, var(--mat-sys-on-surface) 80%, #ffffff)
+      );
     }
   `,
 })
