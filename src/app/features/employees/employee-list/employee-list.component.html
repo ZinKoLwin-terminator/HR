@@ -27,38 +27,35 @@
       (searchChange)="query.setSearch($event)"
     />
     <mat-form-field subscriptSizing="dynamic" class="filters__field">
-      <mat-label>Status</mat-label>
-      <mat-select
-        [value]="value('employmentStatus')"
-        (selectionChange)="setFilter('employmentStatus', $event.value)"
-      >
-        <mat-option [value]="null">All</mat-option>
-        @for (status of statusOptions; track status) {
-          <mat-option [value]="status">{{ status }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-
-    <mat-form-field subscriptSizing="dynamic" class="filters__field">
       <mat-label>Joined from</mat-label>
       <input
         matInput
-        type="date"
-        [value]="value('joiningFrom') ?? ''"
-        [max]="value('joiningTo') ?? ''"
-        (change)="setFilter('joiningFrom', $any($event.target).value)"
+        placeholder="dd/mm/yyyy"
+        autocomplete="off"
+        [matDatepicker]="fromPicker"
+        [value]="value('joiningFrom')"
+        [max]="value('joiningTo')"
+        (click)="fromPicker.open()"
+        (dateInput)="setFilter('joiningFrom', $event.value)"
       />
+      <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+      <mat-datepicker #fromPicker />
     </mat-form-field>
 
     <mat-form-field subscriptSizing="dynamic" class="filters__field">
       <mat-label>Joined to</mat-label>
       <input
         matInput
-        type="date"
-        [value]="value('joiningTo') ?? ''"
-        [min]="value('joiningFrom') ?? ''"
-        (change)="setFilter('joiningTo', $any($event.target).value)"
+        placeholder="dd/mm/yyyy"
+        autocomplete="off"
+        [matDatepicker]="toPicker"
+        [value]="value('joiningTo')"
+        [min]="value('joiningFrom')"
+        (click)="toPicker.open()"
+        (dateInput)="setFilter('joiningTo', $event.value)"
       />
+      <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+      <mat-datepicker #toPicker />
     </mat-form-field>
     <button
       mat-stroked-button
@@ -80,6 +77,19 @@
 
   @if (panelOpen()) {
     <div class="filters__panel" id="employee-more-filters">
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Status</mat-label>
+        <mat-select
+          [value]="value('employmentStatus')"
+          (selectionChange)="setFilter('employmentStatus', $event.value)"
+        >
+          <mat-option [value]="null">All</mat-option>
+          @for (status of statusOptions; track status) {
+            <mat-option [value]="status">{{ status }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
       <mat-form-field subscriptSizing="dynamic">
         <mat-label>Department</mat-label>
         <mat-select

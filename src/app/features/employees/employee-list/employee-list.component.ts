@@ -1,6 +1,8 @@
 import { Component, computed, effect, inject, input, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -33,6 +35,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { ExcelExportService } from '../../../shared/components/excel/excel-export.service';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
+import { ISO_DATE_FORMATS, IsoDateAdapter } from '../../../shared/forms/iso-date-adapter';
 import { ListQuery } from '../../../shared/utilities/list-query';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
 
@@ -41,6 +44,7 @@ import { OrganizationLookupService, options } from '../../organization/organizat
   imports: [
     RouterLink,
     MatButtonModule,
+    MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -51,6 +55,10 @@ import { OrganizationLookupService, options } from '../../organization/organizat
     CellTemplateDirective,
     AvatarComponent,
     EmptyStateComponent,
+  ],
+  providers: [
+    { provide: DateAdapter, useClass: IsoDateAdapter },
+    { provide: MAT_DATE_FORMATS, useValue: ISO_DATE_FORMATS },
   ],
   templateUrl: './employee-list.component.html',
   styleUrl: './employee-list.component.scss',
@@ -83,7 +91,7 @@ export class EmployeeListComponent {
   protected readonly statusOptions = EMPLOYMENT_STATUSES;
   protected readonly typeOptions = EMPLOYMENT_TYPES;
 
-  /** Whether the secondary filter panel (department, branch, type, dates) is expanded. */
+  /** Whether the secondary filter panel (status, department, branch, type) is expanded. */
   protected readonly panelOpen = signal(false);
 
   /** Removable chips describing every applied filter. */
@@ -119,7 +127,7 @@ export class EmployeeListComponent {
   protected readonly extraFilterCount = computed(
     () =>
       this.activeChips().filter((c) =>
-        ['departmentId', 'branchId', 'employmentType'].includes(c.key),
+        ['employmentStatus', 'departmentId', 'branchId', 'employmentType'].includes(c.key),
       ).length,
   );
 

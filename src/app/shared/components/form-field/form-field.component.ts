@@ -11,10 +11,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FieldConfig, FieldOption } from '../crud/crud.models';
 import { FieldErrorComponent } from '../field-error/field-error.component';
+import { ISO_DATE_FORMATS, IsoDateAdapter } from '../../forms/iso-date-adapter';
+import { addMonths, todayIso } from '../../utilities/date.util';
 
 export const ALLOWED_FILE_EXTENSIONS = ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'] as const;
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -31,6 +35,7 @@ export const MAX_FILE_BYTES = 5 * 1024 * 1024;
     MatInputModule,
     MatSelectModule,
     MatSlideToggleModule,
+    MatDatepickerModule,
     MatButtonModule,
     MatIconModule,
     FieldErrorComponent,
@@ -38,6 +43,10 @@ export const MAX_FILE_BYTES = 5 * 1024 * 1024;
   // Intentional: cross-field validators update control errors without emitting events.
   // eslint-disable-next-line @angular-eslint/prefer-on-push-component-change-detection
   changeDetection: ChangeDetectionStrategy.Eager,
+  providers: [
+    { provide: DateAdapter, useClass: IsoDateAdapter },
+    { provide: MAT_DATE_FORMATS, useValue: ISO_DATE_FORMATS },
+  ],
   template: `
     @if (field().type === 'toggle') {
       <div class="toggle">
@@ -88,6 +97,17 @@ export const MAX_FILE_BYTES = 5 * 1024 * 1024;
               autocomplete="off"
             />
           }
+          @case ('date') {
+            <!-- Type the date, or pick it: the calendar opens on click or via the icon. -->
+            <input
+              matInput
+              [formControl]="ctl()"
+              [matDatepicker]="datePicker"
+              [placeholder]="field().placeholder ?? 'dd/mm/yyyy'"
+              autocomplete="off"
+              (click)="datePicker.open()"
+            />
+          }
           @case ('file') {
             <input
               matInput
@@ -118,6 +138,14 @@ export const MAX_FILE_BYTES = 5 * 1024 * 1024;
           }
         }
 
+        @if (field().type === 'date') {
+          <mat-datepicker-toggle matIconSuffix [for]="datePicker" />
+        }
+        <mat-datepicker
+          #datePicker
+          [startAt]="ctl().value || startAt()"
+          [startView]="field().minAge ? 'multi-year' : 'month'"
+        />
         @if (field().type === 'file') {
           <button
             matSuffix
@@ -164,6 +192,12 @@ export class FormFieldComponent {
 
   protected readonly ctl = computed(() => this.control() as FormControl);
   private readonly picker = viewChild<ElementRef<HTMLInputElement>>('picker');
+
+  /** Where the calendar opens when empty: the youngest allowed birth date, else today. */
+  protected readonly startAt = computed(() => {
+    const { minAge } = this.field();
+    return minAge ? addMonths(todayIso(), -12 * minAge) : todayIso();
+  });
 
   protected openPicker(): void {
     this.picker()?.nativeElement.click();
