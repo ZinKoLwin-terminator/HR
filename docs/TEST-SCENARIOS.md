@@ -109,6 +109,7 @@ Scenarios below use these seeded records (`src/app/mock-data`). **Fixed** data n
 | EMP-25 | + | Edit EMP050 Rahul Sharma (Probation, joined 23 Oct 2026): status → Active | History "Status Change"; no automatic probation confirmation exists |
 | EMP-26 | + | Edit EMP054 Zarni Tun: status Resigned, exit date `20/11/2026` | History "Exit"; no other record changes (see XMOD-06) |
 | EMP-27 | + | Edit EMP047 Lwin Mar Htwe: Part-time → Full-time | History "Contract Change" |
+
 | EMP-28 | + | Search by code/name/email/position, then filter. Status is under **More filters** with department, branch and type | As of 2026-11-04: Resigned 1 (EMP034), Terminated 1 (EMP044), Suspended 1 (EMP042), On Leave 1 (EMP035), Probation 5 (EMP050, 053, 057, 058, 060); type Contract 3 (038, 044, 054), Intern 2, Part-time 1; department Customer Support 6; joined 01/01/2014–31/12/2015 = 3. Filters combine with AND |
 | EMP-29 | + | Add a document (file name only) and delete it | Listed on the profile Documents tab |
 | EMP-30 | + | Open EMP001 Thura Aung › Salary | Full-month figures from the assignment effective 01/01/2026 (annual revision) |
