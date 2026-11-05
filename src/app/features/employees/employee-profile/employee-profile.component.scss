@@ -5,8 +5,8 @@
 .hero {
   display: flex;
   align-items: center;
-  gap: 24px;
-  margin-bottom: 20px;
+  gap: var(--app-spacing-xl);
+  margin-bottom: var(--app-spacing-xl);
 }
 
 .hero__main {
@@ -18,17 +18,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: var(--app-spacing-md);
 
   h1 {
     margin: 0;
     font: var(--mat-sys-headline-small);
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.01em;
   }
 }
 
 .hero__role {
-  margin: 2px 0 10px;
+  margin: var(--app-spacing-xs) 0 var(--app-spacing-md);
   font: var(--mat-sys-body-large);
   color: var(--mat-sys-on-surface-variant);
 }
@@ -36,7 +37,7 @@
 .hero__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 18px;
+  gap: var(--app-spacing-xs) var(--app-spacing-lg);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -53,13 +54,14 @@
     font-size: 18px;
     width: 18px;
     height: 18px;
+    opacity: 0.8;
   }
 }
 
 .hero__actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--app-spacing-md);
 }
 
 .delete {
@@ -67,7 +69,7 @@
 }
 
 .tab-content {
-  padding-top: 20px;
+  padding-top: var(--app-spacing-lg);
 }
 
 @media (max-width: 899.98px) {

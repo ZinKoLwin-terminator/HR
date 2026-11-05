@@ -47,43 +47,53 @@ interface DetailRow {
   styles: `
     h2[mat-dialog-title] {
       margin: 0;
-      padding: 24px 28px 2px;
+      padding: 20px 24px 0;
       font: var(--mat-sys-headline-small);
       font-weight: 700;
       letter-spacing: -0.01em;
+      color: var(--mat-sys-on-surface);
 
       &::before {
         display: none;
       }
     }
     mat-dialog-content {
-      padding: 6px 28px 8px !important;
+      padding: 16px 24px 20px !important;
       max-height: 68vh;
     }
     mat-dialog-actions {
-      padding: 14px 28px !important;
-      gap: 8px;
+      padding: 12px 24px !important;
+      gap: var(--app-spacing-md);
       border-top: 1px solid var(--mat-sys-outline-variant);
-      background: var(--mat-sys-surface-container-low);
+      background: var(--mat-sys-surface-container-lowest);
     }
     .subtitle {
-      margin: 0 0 18px;
+      margin: 0 0 var(--app-spacing-lg);
       font: var(--mat-sys-label-large);
       font-weight: 600;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: var(--mat-sys-primary);
+      color: var(--mat-sys-on-surface-variant);
     }
     .details {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px 12px;
+      gap: var(--app-spacing-lg);
       margin: 0;
     }
     .details > div {
-      padding: 10px 14px 12px;
-      border-radius: var(--app-radius-md);
-      background: var(--mat-sys-surface-container-low);
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+      padding-bottom: var(--app-spacing-md);
+    }
+    .details > div:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
     }
     .wide {
       grid-column: 1 / -1;
@@ -91,15 +101,17 @@ interface DetailRow {
     dt {
       font: var(--mat-sys-label-small);
       font-weight: 600;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
       color: var(--mat-sys-on-surface-variant);
     }
     dd {
-      margin: 4px 0 0;
+      margin: var(--app-spacing-xs) 0 0;
       font: var(--mat-sys-body-large);
-      font-weight: 500;
+      font-weight: 400;
+      color: var(--mat-sys-on-surface);
       overflow-wrap: anywhere;
+      word-break: break-word;
     }
     @media (max-width: 599.98px) {
       .details {
