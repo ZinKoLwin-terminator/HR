@@ -52,6 +52,7 @@ import {
     EmptyStateComponent,
   ],
   templateUrl: './payslips-list.component.html',
+  styleUrl: './payslips-list.component.scss',
 })
 export class PayslipsListComponent {
   private readonly payslipsApi = inject(PayslipDataService);
@@ -82,6 +83,46 @@ export class PayslipsListComponent {
   protected readonly departmentOptions = computed(() =>
     options(this.lookups.value()?.org.departments ?? [], (d) => d.name),
   );
+
+  /** Whether the secondary filter panel (period, employee, department) is expanded. */
+  protected readonly panelOpen = signal(false);
+
+  /** Removable chips describing every applied filter. */
+  protected readonly activeChips = computed(() => {
+    const f = this.query.filters();
+    const labelOf = (opts: { value: unknown; label: string }[], v: unknown) =>
+      opts.find((o) => o.value === v)?.label ?? String(v);
+    const chips: { key: keyof PayslipFilter | 'search'; name: string; label: string }[] = [];
+    const term = this.query.search();
+    if (term) chips.push({ key: 'search', name: 'Search', label: term });
+    if (f.runId)
+      chips.push({
+        key: 'runId',
+        name: 'Period',
+        label: labelOf(this.periodOptions(), f.runId),
+      });
+    if (f.employeeId)
+      chips.push({
+        key: 'employeeId',
+        name: 'Employee',
+        label: labelOf(this.employeeOptions(), f.employeeId),
+      });
+    if (f.departmentId)
+      chips.push({
+        key: 'departmentId',
+        name: 'Department',
+        label: labelOf(this.departmentOptions(), f.departmentId),
+      });
+    return chips;
+  });
+  /** Filters that live inside the collapsible panel. */
+  protected readonly extraFilterCount = computed(
+    () =>
+      this.activeChips().filter((c) =>
+        ['runId', 'employeeId', 'departmentId'].includes(c.key),
+      ).length,
+  );
+
   protected readonly defaulted = signal(false);
 
   protected readonly page = rxResource({
@@ -152,6 +193,11 @@ export class PayslipsListComponent {
 
   protected setFilter<K extends keyof PayslipFilter>(key: K, value: PayslipFilter[K] | null): void {
     this.query.setFilter(key, value);
+  }
+
+  protected removeChip(key: keyof PayslipFilter | 'search'): void {
+    if (key === 'search') this.query.setSearch('');
+    else this.setFilter(key, null);
   }
 
   protected open(row: Payslip): void {

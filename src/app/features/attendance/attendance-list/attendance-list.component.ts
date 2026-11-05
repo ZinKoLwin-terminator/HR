@@ -1,6 +1,8 @@
-import { Component, computed, inject, input, linkedSignal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,6 +33,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { formatDuration } from '../../../shared/utilities/date.util';
 import { ListQuery } from '../../../shared/utilities/list-query';
+import { ISO_DATE_FORMATS, IsoDateAdapter } from '../../../shared/forms/iso-date-adapter';
 import {
   OrganizationLookupService,
   employeeOptions,
@@ -65,6 +68,7 @@ const DETAIL_FIELDS: FieldConfig[] = [
   selector: 'app-attendance-list',
   imports: [
     MatButtonModule,
+    MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -73,7 +77,12 @@ const DETAIL_FIELDS: FieldConfig[] = [
     DataTableComponent,
     EmptyStateComponent,
   ],
+  providers: [
+    { provide: DateAdapter, useClass: IsoDateAdapter },
+    { provide: MAT_DATE_FORMATS, useValue: ISO_DATE_FORMATS },
+  ],
   templateUrl: './attendance-list.component.html',
+  styleUrl: './attendance-list.component.scss',
 })
 export class AttendanceListComponent {
   readonly mode = input<AttendanceListMode>('all');
@@ -99,6 +108,48 @@ export class AttendanceListComponent {
   );
   protected readonly branchOptions = computed(() =>
     options(this.lookups.value()?.branches ?? [], (b) => b.name),
+  );
+
+  /** Whether the secondary filter panel (employee, department, branch, status) is expanded. */
+  protected readonly panelOpen = signal(false);
+
+  /** Removable chips describing every applied filter. */
+  protected readonly activeChips = computed(() => {
+    const f = this.query.filters();
+    const labelOf = (opts: { value: unknown; label: string }[], v: unknown) =>
+      opts.find((o) => o.value === v)?.label ?? String(v);
+    const chips: { key: keyof AttendanceFilter | 'search'; name: string; label: string }[] = [];
+    const term = this.query.search();
+    if (term) chips.push({ key: 'search', name: 'Search', label: term });
+    if (f.employeeId)
+      chips.push({
+        key: 'employeeId',
+        name: 'Employee',
+        label: labelOf(this.employeeOptions(), f.employeeId),
+      });
+    if (f.departmentId)
+      chips.push({
+        key: 'departmentId',
+        name: 'Department',
+        label: labelOf(this.departmentOptions(), f.departmentId),
+      });
+    if (f.branchId)
+      chips.push({
+        key: 'branchId',
+        name: 'Branch',
+        label: labelOf(this.branchOptions(), f.branchId),
+      });
+    if (f.status) chips.push({ key: 'status', name: 'Status', label: f.status });
+    if (f.dateFrom) chips.push({ key: 'dateFrom', name: 'From', label: f.dateFrom });
+    if (f.dateTo) chips.push({ key: 'dateTo', name: 'To', label: f.dateTo });
+    return chips;
+  });
+  /** Filters that live inside the collapsible panel. */
+  protected readonly extraFilterCount = computed(
+    () =>
+      this.activeChips().filter((c) =>
+        ['employeeId', 'departmentId', 'branchId', 'status'].includes(c.key),
+      ).length,
   );
 
   protected readonly page = rxResource({
@@ -233,6 +284,11 @@ export class AttendanceListComponent {
 
   protected value<K extends keyof AttendanceFilter>(key: K): AttendanceFilter[K] | null {
     return (this.query.filters()[key] ?? null) as AttendanceFilter[K] | null;
+  }
+
+  protected removeChip(key: keyof AttendanceFilter | 'search'): void {
+    if (key === 'search') this.query.setSearch('');
+    else this.setFilter(key, null);
   }
 
   protected openDetails({ row }: TableActionEvent<AttendanceListItem>): void {

@@ -1,87 +1,133 @@
-<div class="toolbar" role="search" aria-label="Filter attendance records">
-  <app-search-field
-    class="grow"
-    label="Search by employee name or code"
-    [value]="query.search()"
-    (searchChange)="query.setSearch($event)"
-  />
-
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Employee</mat-label>
-    <mat-select
-      [value]="value('employeeId')"
-      (selectionChange)="setFilter('employeeId', $event.value)"
-    >
-      <mat-option [value]="null">All</mat-option>
-      @for (option of employeeOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Department</mat-label>
-    <mat-select
-      [value]="value('departmentId')"
-      (selectionChange)="setFilter('departmentId', $event.value)"
-    >
-      <mat-option [value]="null">All</mat-option>
-      @for (option of departmentOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Branch</mat-label>
-    <mat-select [value]="value('branchId')" (selectionChange)="setFilter('branchId', $event.value)">
-      <mat-option [value]="null">All</mat-option>
-      @for (option of branchOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-
-  @if (mode() === 'all') {
-    <mat-form-field subscriptSizing="dynamic">
-      <mat-label>Status</mat-label>
-      <mat-select [value]="value('status')" (selectionChange)="setFilter('status', $event.value)">
-        <mat-option [value]="null">All</mat-option>
-        @for (status of statuses; track status) {
-          <mat-option [value]="status">{{ status }}</mat-option>
-        }
-      </mat-select>
+<section class="filters" role="search" aria-label="Filter attendance records">
+  <div class="filters__bar">
+    <app-search-field
+      class="filters__search"
+      label="Search by employee name or code"
+      [value]="query.search()"
+      (searchChange)="query.setSearch($event)"
+    />
+    <mat-form-field subscriptSizing="dynamic" class="filters__field">
+      <mat-label>From</mat-label>
+      <input
+        matInput
+        placeholder="dd/mm/yyyy"
+        autocomplete="off"
+        [matDatepicker]="fromPicker"
+        [value]="value('dateFrom')"
+        [max]="value('dateTo')"
+        (click)="fromPicker.open()"
+        (dateInput)="setFilter('dateFrom', $event.value)"
+      />
+      <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+      <mat-datepicker #fromPicker />
     </mat-form-field>
-  }
 
-  <mat-form-field subscriptSizing="dynamic" class="date-filter">
-    <mat-label>From</mat-label>
-    <input
-      matInput
-      type="date"
-      [value]="value('dateFrom') ?? ''"
-      [max]="value('dateTo') ?? ''"
-      (change)="setFilter('dateFrom', $any($event.target).value)"
-    />
-  </mat-form-field>
-
-  <mat-form-field subscriptSizing="dynamic" class="date-filter">
-    <mat-label>To</mat-label>
-    <input
-      matInput
-      type="date"
-      [value]="value('dateTo') ?? ''"
-      [min]="value('dateFrom') ?? ''"
-      (change)="setFilter('dateTo', $any($event.target).value)"
-    />
-  </mat-form-field>
-
-  @if (query.activeFilterCount() > 0) {
-    <button mat-button type="button" (click)="query.reset()">
-      <mat-icon>filter_alt_off</mat-icon>Clear filters
+    <mat-form-field subscriptSizing="dynamic" class="filters__field">
+      <mat-label>To</mat-label>
+      <input
+        matInput
+        placeholder="dd/mm/yyyy"
+        autocomplete="off"
+        [matDatepicker]="toPicker"
+        [value]="value('dateTo')"
+        [min]="value('dateFrom')"
+        (click)="toPicker.open()"
+        (dateInput)="setFilter('dateTo', $event.value)"
+      />
+      <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+      <mat-datepicker #toPicker />
+    </mat-form-field>
+    <button
+      mat-stroked-button
+      type="button"
+      class="filters__toggle"
+      [class.is-open]="panelOpen()"
+      [attr.aria-expanded]="panelOpen()"
+      aria-controls="attendance-more-filters"
+      (click)="panelOpen.set(!panelOpen())"
+    >
+      <mat-icon>tune</mat-icon>
+      More filters
+      @if (extraFilterCount() > 0) {
+        <span class="filters__badge">{{ extraFilterCount() }}</span>
+      }
+      <mat-icon iconPositionEnd class="filters__chevron">expand_more</mat-icon>
     </button>
+  </div>
+
+  @if (panelOpen()) {
+    <div class="filters__panel" id="attendance-more-filters">
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Employee</mat-label>
+        <mat-select
+          [value]="value('employeeId')"
+          (selectionChange)="setFilter('employeeId', $event.value)"
+        >
+          <mat-option [value]="null">All</mat-option>
+          @for (option of employeeOptions(); track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Department</mat-label>
+        <mat-select
+          [value]="value('departmentId')"
+          (selectionChange)="setFilter('departmentId', $event.value)"
+        >
+          <mat-option [value]="null">All</mat-option>
+          @for (option of departmentOptions(); track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Branch</mat-label>
+        <mat-select [value]="value('branchId')" (selectionChange)="setFilter('branchId', $event.value)">
+          <mat-option [value]="null">All</mat-option>
+          @for (option of branchOptions(); track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (mode() === 'all') {
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Status</mat-label>
+          <mat-select [value]="value('status')" (selectionChange)="setFilter('status', $event.value)">
+            <mat-option [value]="null">All</mat-option>
+            @for (status of statuses; track status) {
+              <mat-option [value]="status">{{ status }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+    </div>
   }
-</div>
+
+  @if (activeChips().length > 0) {
+    <div class="filters__active" aria-label="Active filters">
+      @for (chip of activeChips(); track chip.key) {
+        <span class="chip">
+          <span class="chip__key">{{ chip.name }}:</span> {{ chip.label }}
+          <button
+            type="button"
+            class="chip__remove"
+            [attr.aria-label]="'Remove ' + chip.name + ' filter'"
+            (click)="removeChip(chip.key)"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        </span>
+      }
+      <button mat-button type="button" class="filters__clear" (click)="query.reset()">
+        <mat-icon>filter_alt_off</mat-icon>Clear filters
+      </button>
+    </div>
+  }
+</section>
 
 @if (page.error() && !result()) {
   <app-empty-state icon="error" title="Attendance could not be loaded" [message]="errorText()">
