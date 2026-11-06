@@ -118,9 +118,8 @@ export class PayslipsListComponent {
   /** Filters that live inside the collapsible panel. */
   protected readonly extraFilterCount = computed(
     () =>
-      this.activeChips().filter((c) =>
-        ['runId', 'employeeId', 'departmentId'].includes(c.key),
-      ).length,
+      this.activeChips().filter((c) => ['runId', 'employeeId', 'departmentId'].includes(c.key))
+        .length,
   );
 
   protected readonly defaulted = signal(false);

@@ -36,10 +36,7 @@ th.mat-mdc-header-cell {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: light-dark(
-    var(--app-color-primary),
-    var(--app-color-accent)
-  );
+  color: light-dark(var(--app-color-primary), var(--app-color-accent));
   background: light-dark(
     color-mix(in srgb, var(--app-color-primary) 6%, #f5f7fb),
     color-mix(in srgb, var(--app-color-primary) 15%, #1a2332)

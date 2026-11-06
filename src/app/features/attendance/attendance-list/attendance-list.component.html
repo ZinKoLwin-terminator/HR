@@ -85,7 +85,10 @@
 
       <mat-form-field subscriptSizing="dynamic">
         <mat-label>Branch</mat-label>
-        <mat-select [value]="value('branchId')" (selectionChange)="setFilter('branchId', $event.value)">
+        <mat-select
+          [value]="value('branchId')"
+          (selectionChange)="setFilter('branchId', $event.value)"
+        >
           <mat-option [value]="null">All</mat-option>
           @for (option of branchOptions(); track option.value) {
             <mat-option [value]="option.value">{{ option.label }}</mat-option>
@@ -96,7 +99,10 @@
       @if (mode() === 'all') {
         <mat-form-field subscriptSizing="dynamic">
           <mat-label>Status</mat-label>
-          <mat-select [value]="value('status')" (selectionChange)="setFilter('status', $event.value)">
+          <mat-select
+            [value]="value('status')"
+            (selectionChange)="setFilter('status', $event.value)"
+          >
             <mat-option [value]="null">All</mat-option>
             @for (status of statuses; track status) {
               <mat-option [value]="status">{{ status }}</mat-option>
