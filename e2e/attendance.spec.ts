@@ -91,6 +91,7 @@ test.describe('attendance records', () => {
     const all = await total(page);
     expect(all).toBeGreaterThan(1000);
 
+    await page.getByRole('button', { name: /More filters/ }).click();
     await choose(page, 'Department', 'Engineering');
     await expect(rows(page).first()).toContainText('Engineering');
     expect(await total(page)).toBeLessThan(all);

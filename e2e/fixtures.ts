@@ -1,4 +1,20 @@
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
+
+/**
+ * Opens the employee list through the sidebar and searches it. The app has no global search,
+ * and navigating inside the app (not page.goto) keeps the in-memory sample data.
+ */
+export async function searchEmployeesInApp(page: Page, term: string) {
+  const nav = page.getByRole('navigation', { name: 'Main navigation' });
+  const group = nav.getByRole('button', { name: 'Employees' });
+  if ((await group.getAttribute('aria-expanded')) !== 'true') {
+    await group.click();
+  }
+  await expect(group).toHaveAttribute('aria-expanded', 'true');
+  await nav.getByRole('link', { name: 'Employee List' }).click();
+  await expect(page).toHaveURL(/\/employees\/list/);
+  await page.getByRole('searchbox', { name: /Search by employee code/ }).fill(term);
+}
 
 /** Mirrors AuthService's stored session (frontend-only demo auth). */
 export const ADMIN_SESSION = {

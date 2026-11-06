@@ -1,5 +1,5 @@
 import { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, searchEmployeesInApp, test } from './fixtures';
 
 test.skip(({ isMobile }) => isMobile, 'Employee workflows are exercised on desktop');
 
@@ -59,11 +59,9 @@ test.describe('employee list', () => {
     await expect(rows(page)).toHaveCount(3);
   });
 
-  test('header search jumps to the list with the term applied', async ({ page }) => {
-    const search = page.getByRole('search').getByRole('searchbox', { name: 'Search employees' });
-    await search.fill('carter');
-    await search.press('Enter');
-    await expect(page).toHaveURL(/\/employees\/list\?search=carter/);
+  test('searches the list after navigating from another page', async ({ page }) => {
+    await page.getByRole('link', { name: 'Dashboard' }).first().click();
+    await searchEmployeesInApp(page, 'carter');
     await expect(rows(page)).toHaveCount(1);
   });
 
@@ -229,11 +227,7 @@ test.describe('add, edit and delete an employee', () => {
     await expect(page.getByText('Status changed to Active')).toBeVisible();
 
     // Appears in the list. Navigate inside the app: a full page load would reset the sample data.
-    const headerSearch = page
-      .getByRole('search')
-      .getByRole('searchbox', { name: 'Search employees' });
-    await headerSearch.fill('nilar htay');
-    await headerSearch.press('Enter');
+    await searchEmployeesInApp(page, 'nilar htay');
     await expect(rows(page)).toHaveCount(1);
     await rows(page)
       .first()

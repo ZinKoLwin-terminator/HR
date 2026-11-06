@@ -1,5 +1,5 @@
 import { Locator, Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, searchEmployeesInApp, test } from './fixtures';
 
 type ExcelJSModule = typeof import('exceljs');
 async function lib(): Promise<ExcelJSModule> {
@@ -44,6 +44,7 @@ test.describe('Excel export', () => {
   }) => {
     await page.goto('/employees/list');
     await expect(page.locator('tr.mat-mdc-row').first()).toBeVisible();
+    await page.getByRole('button', { name: /More filters/ }).click();
     await choose(page, 'Department', 'Engineering');
     await expect.poll(() => total(page)).toBeLessThan(60);
     const engineering = await total(page);
@@ -239,13 +240,8 @@ test.describe('Excel import', () => {
     await expect(dialog(page)).toContainText('Recorded problems (2)');
     await dialog(page).getByRole('button', { name: 'Close' }).click();
 
-    // The header search opens the employee list in-app (a page reload would reset the data).
-    const headerSearch = page
-      .getByRole('search')
-      .getByRole('searchbox', { name: 'Search employees' });
-    await headerSearch.fill('EMP50');
-    await headerSearch.press('Enter');
-    await expect(page).toHaveURL(/\/employees\/list/);
+    // Open the employee list in-app from the sidebar (a page reload would reset the data).
+    await searchEmployeesInApp(page, 'EMP50');
     await expect(page.locator('tr.mat-mdc-row')).toHaveCount(2);
     await expect(page.locator('tr.mat-mdc-row').first()).toContainText('EMP501');
   });
