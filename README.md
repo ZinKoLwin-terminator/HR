@@ -1,4 +1,4 @@
-# Apex Horizon HRMS — Angular frontend (mock data)
+# APEX HRMS — Angular frontend (mock data)
 
 An enterprise-style **Human Resource Management System** built as an **Angular frontend only**.
 All business data is **sample data** served by in-memory mock services. There is **no backend,
@@ -74,6 +74,7 @@ the audit note in [docs/EXCEL-IMPORT-EXPORT.md](docs/EXCEL-IMPORT-EXPORT.md)).
 
 - [Architecture](docs/ARCHITECTURE.md) — layers, folders, conventions, reusable building blocks
 - [Features](docs/FEATURES.md) — what each module does and its business rules
+- [Customer module guide](docs/CLIENT-MODULE-GUIDE.md) — module-by-module explanation for customers/sales demos (မြန်မာ)
 - [Excel import/export](docs/EXCEL-IMPORT-EXPORT.md) — workflow, rules, architecture and limitations
 - [Mock data and mock services](docs/MOCK-DATA-AND-SERVICES.md) — where sample data lives, how mock services behave
 - [Testing](docs/TESTING.md) — how to run tests, what is covered, known gaps

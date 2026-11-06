@@ -5,8 +5,8 @@ export const MOCK_COMPANIES: Company[] = [
   {
     id: 1,
     code: 'AHT',
-    name: 'Apex Horizon Technologies',
-    legalName: 'Apex Horizon Technologies Co., Ltd.',
+    name: 'APEX Technologies',
+    legalName: 'APEX Technologies Co., Ltd.',
     registrationNumber: 'REG-2014-001872',
     taxId: 'TIN-100-245-881',
     industry: 'Information Technology',
@@ -22,8 +22,8 @@ export const MOCK_COMPANIES: Company[] = [
   {
     id: 2,
     code: 'AHL',
-    name: 'Apex Horizon Logistics',
-    legalName: 'Apex Horizon Logistics Co., Ltd.',
+    name: 'APEX Logistics',
+    legalName: 'APEX Logistics Co., Ltd.',
     registrationNumber: 'REG-2018-004410',
     taxId: 'TIN-100-377-120',
     industry: 'Logistics & Supply Chain',
@@ -39,8 +39,8 @@ export const MOCK_COMPANIES: Company[] = [
   {
     id: 3,
     code: 'AHV',
-    name: 'Apex Horizon Ventures',
-    legalName: 'Apex Horizon Ventures Pte. Ltd.',
+    name: 'APEX Ventures',
+    legalName: 'APEX Ventures Pte. Ltd.',
     registrationNumber: 'UEN-202110455K',
     taxId: 'GST-M9-0011234-5',
     industry: 'Investment Holding',

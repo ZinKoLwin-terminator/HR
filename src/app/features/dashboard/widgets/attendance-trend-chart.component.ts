@@ -27,7 +27,7 @@ const SERIES = [
     <app-chart-panel
       title="Attendance trend"
       subtitle="Scheduled employees per working day, last {{ points().length }} days"
-      [height]="300"
+      [height]="240"
     >
       <canvas
         chart

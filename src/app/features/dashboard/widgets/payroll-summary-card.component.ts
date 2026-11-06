@@ -71,15 +71,16 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       font: var(--mat-sys-title-small);
     }
     .payroll__label {
-      margin: 16px 0 0;
+      margin: 14px 0 0;
       font: var(--mat-sys-label-large);
       color: var(--mat-sys-on-surface-variant);
     }
     .payroll__hero {
       margin: 2px 0 0;
-      font-size: 34px;
+      font-size: 28px;
       line-height: 1.15;
-      font-weight: 600;
+      letter-spacing: -0.02em;
+      font-weight: 650;
       color: var(--mat-sys-on-surface);
     }
     .payroll__delta {

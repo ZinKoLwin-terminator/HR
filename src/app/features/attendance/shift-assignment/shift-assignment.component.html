@@ -1,51 +1,62 @@
 <app-page-header
   title="Shift assignment"
   description="Select employees and assign them a shift. Changes apply immediately to schedules and attendance rules."
-/>
-
-<div class="toolbar" role="search" aria-label="Filter employees">
-  <app-search-field
-    class="grow"
-    label="Search by employee code or name"
-    [value]="query.search()"
-    (searchChange)="query.setSearch($event)"
-  />
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Department</mat-label>
-    <mat-select
-      [value]="value('departmentId')"
-      (selectionChange)="setFilter('departmentId', $event.value)"
-    >
-      <mat-option [value]="null">All</mat-option>
-      @for (option of departmentOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Branch</mat-label>
-    <mat-select [value]="value('branchId')" (selectionChange)="setFilter('branchId', $event.value)">
-      <mat-option [value]="null">All</mat-option>
-      @for (option of branchOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Current shift</mat-label>
-    <mat-select [value]="value('shiftId')" (selectionChange)="setFilter('shiftId', $event.value)">
-      <mat-option [value]="null">All</mat-option>
-      @for (option of shiftOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-  @if (query.activeFilterCount() > 0) {
-    <button mat-button type="button" (click)="query.reset()">
-      <mat-icon>filter_alt_off</mat-icon>Clear filters
-    </button>
-  }
-</div>
+>
+  <ng-container pageSearch>
+    <app-search-field
+      label="Search by employee code or name"
+      [value]="query.search()"
+      (searchChange)="query.setSearch($event)"
+    />
+    <app-filter-popup [activeCount]="query.activeFilterCount()" (cleared)="query.reset()">
+      <app-filter-field label="Department">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Department"
+            [value]="value('departmentId')"
+            (selectionChange)="setFilter('departmentId', $event.value)"
+          >
+            <mat-option [value]="null">All</mat-option>
+            @for (option of departmentOptions(); track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+      <app-filter-field label="Branch">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Branch"
+            [value]="value('branchId')"
+            (selectionChange)="setFilter('branchId', $event.value)"
+          >
+            <mat-option [value]="null">All</mat-option>
+            @for (option of branchOptions(); track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+      <app-filter-field label="Current shift">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Current shift"
+            [value]="value('shiftId')"
+            (selectionChange)="setFilter('shiftId', $event.value)"
+          >
+            <mat-option [value]="null">All</mat-option>
+            @for (option of shiftOptions(); track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+    </app-filter-popup>
+  </ng-container>
+</app-page-header>
 
 <section
   class="assign-bar"

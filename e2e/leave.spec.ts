@@ -1,5 +1,6 @@
 import { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
+import { closeFilters, openFilters } from './filters';
 
 const rows = (page: Page) => page.locator('tr.mat-mdc-row');
 const dialog = (page: Page) => page.getByRole('dialog');
@@ -15,9 +16,11 @@ async function openSelect(select: Locator) {
   await select.click({ position: { x: box.width - 22, y: box.height / 2 } });
 }
 async function choose(page: Page, name: string, option: string | RegExp, exact = true) {
+  const inFilters = await openFilters(page);
   await openSelect(page.getByRole('combobox', { name }));
   await page.getByRole('option', { name: option, exact }).click();
   await expect(page.getByRole('listbox')).toHaveCount(0); // let the panel close before the next action
+  if (inFilters) await closeFilters(page);
 }
 
 /** Same, for a dropdown inside the open dialog (page filters can share the label). */

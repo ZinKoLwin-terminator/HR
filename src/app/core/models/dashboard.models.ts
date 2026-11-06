@@ -74,6 +74,15 @@ export interface PendingLeaveItem {
   appliedOn: string;
 }
 
+export interface RecruitmentSummary {
+  openJobs: number;
+  openPositions: number;
+  activeCandidates: number;
+  upcomingInterviews: number;
+  /** Applications per pipeline stage (Applied → Selected). */
+  funnel: CountByLabel[];
+}
+
 export interface DashboardSummary {
   generatedAt: string;
   headcount: HeadcountSummary;
@@ -81,6 +90,7 @@ export interface DashboardSummary {
   pendingLeaveApprovals: number;
   pendingLeaves: PendingLeaveItem[];
   payroll: PayrollSummary | null;
+  recruitment: RecruitmentSummary;
   departmentDistribution: CountByLabel[];
   attendanceTrend: AttendanceTrendPoint[];
   headcountGrowth: HeadcountGrowthPoint[];

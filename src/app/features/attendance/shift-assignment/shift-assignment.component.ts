@@ -18,6 +18,10 @@ import { DataTableComponent } from '../../../shared/components/data-table/data-t
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import {
+  FilterFieldComponent,
+  FilterPopupComponent,
+} from '../../../shared/components/filter-popup/filter-popup.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ListQuery } from '../../../shared/utilities/list-query';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
@@ -26,6 +30,8 @@ import { OrganizationLookupService, options } from '../../organization/organizat
 @Component({
   selector: 'app-shift-assignment',
   imports: [
+    FilterFieldComponent,
+    FilterPopupComponent,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,

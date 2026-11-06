@@ -105,11 +105,11 @@ export const MOCK_USERS: AppUser[] = USER_SEED.map(([employeeId, roleId, status,
 
 export const MOCK_GENERAL_SETTINGS: GeneralSettings = {
   id: 1,
-  organizationName: 'Apex Horizon Group',
+  organizationName: 'APEX Group',
   contactEmail: 'hr@apexhorizon.example',
   timezone: 'Asia/Yangon',
   dateFormat: 'yyyy-MM-dd',
-  currencyCode: 'USD',
+  currencyCode: 'MMK',
   fiscalYearStartMonth: 1,
   emailNotifications: true,
   weeklyDigest: false,

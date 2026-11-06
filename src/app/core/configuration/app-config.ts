@@ -24,10 +24,10 @@ export interface AppConfig {
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
-  appName: 'Apex Horizon HRMS',
+  appName: 'APEX HRMS',
   appShortName: 'HRMS',
-  organizationName: 'Apex Horizon Group',
-  currency: 'USD',
+  organizationName: 'APEX Group',
+  currency: 'MMK',
   locale: 'en-US',
   dateFormat: 'dd MMM yyyy',
   defaultPageSize: 10,

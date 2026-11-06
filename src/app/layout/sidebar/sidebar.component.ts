@@ -1,9 +1,9 @@
 import { Component, inject, input, output, signal } from '@angular/core';
+import { ConnectedPosition, OverlayModule } from '@angular/cdk/overlay';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { KeyValuePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter } from 'rxjs';
@@ -18,7 +18,7 @@ import { NAVIGATION, NavItem } from '../../core/constants/navigation';
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    MatMenuModule,
+    OverlayModule,
     KeyValuePipe,
   ],
   templateUrl: './sidebar.component.html',
@@ -34,6 +34,21 @@ export class SidebarComponent {
   readonly navigated = output<void>();
 
   protected readonly items = NAVIGATION;
+
+  /** Label of the group whose flyout is open in the collapsed icon rail. */
+  protected readonly flyout = signal<string | null>(null);
+  private closeTimer: ReturnType<typeof setTimeout> | undefined;
+  protected readonly flyoutPositions: ConnectedPosition[] = [
+    { originX: 'end', originY: 'top', overlayX: 'start', overlayY: 'top', offsetX: 8, offsetY: -4 },
+    {
+      originX: 'end',
+      originY: 'bottom',
+      overlayX: 'start',
+      overlayY: 'bottom',
+      offsetX: 8,
+      offsetY: 4,
+    },
+  ];
   protected readonly expanded = signal<ReadonlySet<string>>(new Set());
   private readonly currentUrl = signal(this.router.url);
 
@@ -61,6 +76,55 @@ export class SidebarComponent {
         this.currentUrl.set(e.urlAfterRedirects);
         this.expandActiveGroup(e.urlAfterRedirects);
       });
+  }
+
+  /** Pointer over a group: show its flyout (skipped when it is already open inline). */
+  protected hoverGroup(group: NavItem): void {
+    if (this.collapsed() || !this.isExpanded(group)) {
+      this.openFlyout(group.label);
+    }
+  }
+
+  protected focusGroup(group: NavItem): void {
+    if (this.collapsed()) {
+      this.openFlyout(group.label);
+    }
+  }
+
+  protected clickGroup(group: NavItem): void {
+    if (this.collapsed()) {
+      this.openFlyout(group.label);
+    } else {
+      this.closeFlyout();
+      this.toggle(group);
+    }
+  }
+
+  protected openFlyout(label: string): void {
+    this.cancelClose();
+    this.flyout.set(label);
+  }
+
+  /** Short delay so the pointer can cross the gap between the rail and the panel. */
+  protected scheduleClose(): void {
+    this.cancelClose();
+    this.closeTimer = setTimeout(() => this.flyout.set(null), 180);
+  }
+
+  protected cancelClose(): void {
+    clearTimeout(this.closeTimer);
+  }
+
+  /** Only reset when the detached overlay is still the active one (not when switching groups). */
+  protected onFlyoutDetach(label: string): void {
+    if (this.flyout() === label) {
+      this.closeFlyout();
+    }
+  }
+
+  protected closeFlyout(): void {
+    this.cancelClose();
+    this.flyout.set(null);
   }
 
   protected isExpanded(group: NavItem): boolean {

@@ -62,9 +62,9 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
     .shell__main {
       flex: 1;
       width: 100%;
-      max-width: 1600px;
+      max-width: 2000px;
       margin: 0 auto;
-      padding: 20px 28px 32px;
+      padding: 16px 20px 28px;
       box-sizing: border-box;
       outline: none;
     }

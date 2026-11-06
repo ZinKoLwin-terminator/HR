@@ -10,16 +10,16 @@ test.describe('dashboard', () => {
     const kpis = page.getByRole('region', { name: 'Key figures' });
     await expect(kpis.getByText('Total employees')).toBeVisible();
     await expect(kpis.getByText('58', { exact: true })).toBeVisible();
-    await expect(kpis.getByText('Pending approvals')).toBeVisible();
+    await expect(kpis.getByText('Present today')).toBeVisible();
   });
 
   test('renders charts with accessible summaries and a table view', async ({ page }) => {
     await expect(
-      page.getByRole('img', { name: /Stacked bar chart of daily attendance/ }),
+      page.getByRole('img', { name: /Doughnut chart of today's attendance/ }),
     ).toBeVisible();
     await expect(page.getByRole('img', { name: /headcount by department/i })).toBeVisible();
     await page.getByRole('radio', { name: 'Table view' }).first().click();
-    await expect(page.locator('app-attendance-trend-chart table tbody tr')).toHaveCount(14);
+    await expect(page.locator('app-attendance-today-donut table tbody tr')).toHaveCount(4);
   });
 
   test('lists pending leave approvals and upcoming events', async ({ page }) => {

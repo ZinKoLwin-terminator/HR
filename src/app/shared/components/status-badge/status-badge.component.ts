@@ -64,12 +64,14 @@ export function badgeTone(status: string): BadgeTone {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 2px 10px;
+      padding: 3px 10px 3px 8px;
       border-radius: 999px;
       font: var(--mat-sys-label-medium);
       white-space: nowrap;
       background: var(--badge-bg);
       color: var(--badge-fg);
+      font-weight: 600;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--badge-fg) 18%, transparent);
     }
     .dot {
       width: 6px;
@@ -83,7 +85,7 @@ export function badgeTone(status: string): BadgeTone {
         color-mix(in srgb, var(--app-color-success) 20%, #064e3b)
       );
       --badge-fg: light-dark(
-        var(--app-color-success),
+        color-mix(in srgb, var(--app-color-success) 60%, #000),
         color-mix(in srgb, var(--app-color-success) 40%, #ffffff)
       );
     }
@@ -93,7 +95,7 @@ export function badgeTone(status: string): BadgeTone {
         color-mix(in srgb, var(--app-color-warning) 20%, #78350f)
       );
       --badge-fg: light-dark(
-        var(--app-color-warning),
+        color-mix(in srgb, var(--app-color-warning) 60%, #000),
         color-mix(in srgb, var(--app-color-warning) 40%, #ffffff)
       );
     }
@@ -103,17 +105,17 @@ export function badgeTone(status: string): BadgeTone {
         color-mix(in srgb, var(--app-color-error) 20%, #7f1d1d)
       );
       --badge-fg: light-dark(
-        var(--app-color-error),
+        color-mix(in srgb, var(--app-color-error) 60%, #000),
         color-mix(in srgb, var(--app-color-error) 40%, #ffffff)
       );
     }
     [data-tone='info'] {
       --badge-bg: light-dark(
-        color-mix(in srgb, var(--app-color-accent) 15%, #f0f9ff),
+        color-mix(in srgb, var(--app-color-primary) 12%, #f0f9ff),
         color-mix(in srgb, var(--app-color-accent) 20%, #082f49)
       );
       --badge-fg: light-dark(
-        var(--app-color-accent),
+        var(--app-color-primary),
         color-mix(in srgb, var(--app-color-accent) 40%, #ffffff)
       );
     }

@@ -25,9 +25,16 @@ import { DepartmentAttendanceChartComponent } from './department-attendance-char
 /** How many days back to look for the latest working day when today has no records. */
 const MAX_STEP_BACK = 7;
 
+import {
+  FilterFieldComponent,
+  FilterPopupComponent,
+} from '../../../shared/components/filter-popup/filter-popup.component';
+
 @Component({
   selector: 'app-attendance-overview',
   imports: [
+    FilterFieldComponent,
+    FilterPopupComponent,
     DatePipe,
     RouterLink,
     MatButtonModule,
@@ -60,6 +67,12 @@ export class AttendanceOverviewComponent {
   protected readonly branchId = signal<number | null>(null);
   private userPickedDate = false;
   private steppedBack = 0;
+
+  protected readonly filterCount = computed(() => (this.branchId() === null ? 0 : 1));
+
+  protected clearFilters(): void {
+    this.branchId.set(null);
+  }
 
   private readonly lookups = rxResource({ stream: () => this.lookupService.load() });
   protected readonly branchOptions = computed(() =>

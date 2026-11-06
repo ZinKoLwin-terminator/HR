@@ -8,33 +8,62 @@
   </app-empty-state>
 } @else if (view(); as v) {
   <section class="card hero" aria-label="Employee summary">
-    <app-avatar [name]="v.name" [photoUrl]="v.employee.photoUrl" [size]="88" [decorative]="false" />
-    <div class="hero__main">
-      <div class="hero__title">
-        <h1>{{ v.name }}</h1>
-        <app-status-badge [status]="v.employee.employmentStatus" />
+    <div class="hero__top">
+      <app-avatar
+        [name]="v.name"
+        [photoUrl]="v.employee.photoUrl"
+        [size]="52"
+        [decorative]="false"
+      />
+      <div class="hero__main">
+        <div class="hero__title">
+          <h1>{{ v.name }}</h1>
+          <app-status-badge [status]="v.employee.employmentStatus" />
+        </div>
+        <p class="hero__role">{{ v.position }} · {{ v.department }}</p>
       </div>
-      <p class="hero__role">{{ v.position }} · {{ v.department }}</p>
-      <ul class="hero__chips" aria-label="Key facts">
-        <li><mat-icon aria-hidden="true">badge</mat-icon>{{ v.employee.employeeCode }}</li>
-        <li><mat-icon aria-hidden="true">store</mat-icon>{{ v.branch }}</li>
-        <li><mat-icon aria-hidden="true">work</mat-icon>{{ v.employee.employmentType }}</li>
-        <li>
-          <mat-icon aria-hidden="true">event</mat-icon>Joined {{ v.employee.joiningDate | date }} ·
-          {{ v.tenure }}
-        </li>
-        <li><mat-icon aria-hidden="true">mail</mat-icon>{{ v.employee.workEmail }}</li>
-        <li><mat-icon aria-hidden="true">call</mat-icon>{{ v.employee.phone }}</li>
-      </ul>
+      <div class="hero__actions">
+        <a mat-flat-button [routerLink]="['/employees', v.employee.id, 'edit']">
+          <mat-icon>edit</mat-icon>Edit
+        </a>
+        <button mat-stroked-button type="button" class="delete" (click)="deleteEmployee()">
+          <mat-icon>delete</mat-icon>Delete
+        </button>
+      </div>
     </div>
-    <div class="hero__actions">
-      <a mat-flat-button [routerLink]="['/employees', v.employee.id, 'edit']">
-        <mat-icon>edit</mat-icon>Edit
-      </a>
-      <button mat-stroked-button type="button" class="delete" (click)="deleteEmployee()">
-        <mat-icon>delete</mat-icon>Delete
-      </button>
-    </div>
+
+    <dl class="hero__facts" aria-label="Key facts">
+      <div title="Employee ID">
+        <mat-icon aria-hidden="true">badge</mat-icon>
+        <dt class="sr-only">Employee ID</dt>
+        <dd>{{ v.employee.employeeCode }}</dd>
+      </div>
+      <div title="Location">
+        <mat-icon aria-hidden="true">store</mat-icon>
+        <dt class="sr-only">Location</dt>
+        <dd>{{ v.branch }}</dd>
+      </div>
+      <div title="Type">
+        <mat-icon aria-hidden="true">work</mat-icon>
+        <dt class="sr-only">Type</dt>
+        <dd>{{ v.employee.employmentType }}</dd>
+      </div>
+      <div title="Joined">
+        <mat-icon aria-hidden="true">event</mat-icon>
+        <dt class="sr-only">Joined</dt>
+        <dd>{{ v.employee.joiningDate | date }} · {{ v.tenure }}</dd>
+      </div>
+      <div title="Email">
+        <mat-icon aria-hidden="true">mail</mat-icon>
+        <dt class="sr-only">Email</dt>
+        <dd>{{ v.employee.workEmail }}</dd>
+      </div>
+      <div title="Phone">
+        <mat-icon aria-hidden="true">call</mat-icon>
+        <dt class="sr-only">Phone</dt>
+        <dd>{{ v.employee.phone }}</dd>
+      </div>
+    </dl>
   </section>
 
   <mat-tab-group

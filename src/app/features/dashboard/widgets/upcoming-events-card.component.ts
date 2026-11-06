@@ -54,9 +54,13 @@ const ICONS: Record<UpcomingEventType, string> = {
       width: 44px;
       height: 44px;
       flex: none;
-      border-radius: 10px;
-      background: var(--mat-sys-primary-container);
-      color: var(--mat-sys-on-primary-container);
+      border-radius: 12px;
+      background: linear-gradient(
+        160deg,
+        var(--app-color-primary-lighter),
+        var(--app-color-primary)
+      );
+      color: #fff;
       line-height: 1;
     }
     .date-badge__month {

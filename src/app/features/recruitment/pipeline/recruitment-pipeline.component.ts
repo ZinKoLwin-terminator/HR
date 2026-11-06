@@ -39,9 +39,16 @@ interface Card {
 }
 
 /** Kanban-style view of applications by hiring stage (Applied → Screening → Interview → Selected / Rejected). */
+import {
+  FilterFieldComponent,
+  FilterPopupComponent,
+} from '../../../shared/components/filter-popup/filter-popup.component';
+
 @Component({
   selector: 'app-recruitment-pipeline',
   imports: [
+    FilterFieldComponent,
+    FilterPopupComponent,
     FormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -57,6 +64,25 @@ interface Card {
       title="Recruitment pipeline"
       description="Applications by hiring stage. Move candidates forward from each card's menu."
     >
+      <ng-container pageSearch>
+        <app-filter-popup [activeCount]="jobId() === null ? 0 : 1" (cleared)="jobId.set(null)">
+          <app-filter-field label="Job opening">
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-select
+                placeholder="All openings"
+                aria-label="Job opening"
+                [value]="jobId()"
+                (selectionChange)="jobId.set($event.value)"
+              >
+                <mat-option [value]="null">All openings</mat-option>
+                @for (j of jobOptions(); track j.id) {
+                  <mat-option [value]="j.id">{{ j.title }} ({{ j.code }})</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </app-filter-field>
+        </app-filter-popup>
+      </ng-container>
       <button
         pageActions
         mat-flat-button
@@ -67,18 +93,6 @@ interface Card {
         <mat-icon>person_add</mat-icon>Add application
       </button>
     </app-page-header>
-
-    <div class="toolbar" role="group" aria-label="Pipeline filters">
-      <mat-form-field subscriptSizing="dynamic">
-        <mat-label>Job opening</mat-label>
-        <mat-select [value]="jobId()" (selectionChange)="jobId.set($event.value)">
-          <mat-option [value]="null">All openings</mat-option>
-          @for (j of jobOptions(); track j.id) {
-            <mat-option [value]="j.id">{{ j.title }} ({{ j.code }})</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    </div>
 
     @if (data.error()) {
       <app-empty-state icon="error" title="The pipeline could not be loaded">

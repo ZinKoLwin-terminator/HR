@@ -17,12 +17,13 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 0;
-  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding: 10px 10px;
+  margin: 0 -10px;
+  border-radius: 12px;
+  transition: background-color 120ms ease;
 
-  &:first-child {
-    border-top: 0;
-    padding-top: 0;
+  &:hover {
+    background: color-mix(in srgb, var(--app-color-primary) 5%, transparent);
   }
 }
 
@@ -32,9 +33,9 @@
   width: 36px;
   height: 36px;
   flex: none;
-  border-radius: 10px;
-  background: var(--mat-sys-surface-container-high);
-  color: var(--mat-sys-on-surface-variant);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--app-color-primary-lighter) 14%, transparent);
+  color: light-dark(var(--app-color-primary), var(--app-color-accent));
 
   mat-icon {
     font-size: 20px;

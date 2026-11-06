@@ -134,19 +134,47 @@ import { todayIso, yearsBetween } from '../../../../shared/utilities/date.util';
     .cards {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 20px;
+      gap: 12px;
+    }
+    .card {
+      padding: 12px 16px 14px;
+    }
+    .card__header {
+      min-height: 0;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+    }
+    .card__header h2 {
+      font: var(--mat-sys-title-small);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    // As many columns as fit, so a card is short and wide instead of tall and narrow.
+    .info-grid {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px 16px;
+    }
+    .info-grid dt {
+      font-size: 10.5px;
+    }
+    .info-grid dd {
+      margin-top: 1px;
+      font: var(--mat-sys-body-medium);
+      font-size: 13px;
     }
     .wide {
       grid-column: 1 / -1;
     }
     .address {
       font-style: normal;
-      font: var(--mat-sys-body-large);
-      line-height: 1.6;
+      font: var(--mat-sys-body-medium);
+      font-size: 13px;
+      line-height: 1.5;
     }
     .note {
-      margin: 12px 0 0;
+      margin: 8px 0 0;
       font: var(--mat-sys-body-small);
+      font-size: 11px;
     }
     @media (max-width: 899.98px) {
       .cards {

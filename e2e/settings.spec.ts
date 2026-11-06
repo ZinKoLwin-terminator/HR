@@ -43,11 +43,11 @@ test.describe('settings', () => {
 
   test('saves general settings, validating the currency code', async ({ page }) => {
     await page.goto('/settings/general');
-    await expect(page.getByLabel('Organization name')).toHaveValue('Apex Horizon Group');
+    await expect(page.getByLabel('Organization name')).toHaveValue('APEX Group');
     await expect(page.getByRole('button', { name: 'Save settings' })).toBeDisabled();
     await page.getByLabel('Currency code').fill('us');
     await page.getByRole('button', { name: 'Save settings' }).click();
-    await expect(page.getByText('Use three capital letters, e.g. USD.')).toBeVisible();
+    await expect(page.getByText('Use three capital letters, e.g. MMK.')).toBeVisible();
     await page.getByLabel('Currency code').fill('EUR');
     await page.getByRole('button', { name: 'Save settings' }).click();
     await expect(page.getByText('General settings saved (simulation).')).toBeVisible();

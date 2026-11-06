@@ -9,6 +9,7 @@ import {
   HeadcountGrowthPoint,
   PayrollSummary,
   PendingLeaveItem,
+  RecruitmentSummary,
   TodayAttendanceSummary,
   UpcomingEvent,
 } from '../../core/models/dashboard.models';
@@ -32,6 +33,11 @@ import { LeaveApplicationMockService, LeaveTypeMockService } from '../leave/leav
 import { mockResponse } from '../mock-response';
 import { DepartmentMockService } from '../organization/organization-mock.services';
 import { PayrollRunMockService } from '../payroll/payroll-mock.services';
+import {
+  ApplicationMockService,
+  InterviewMockService,
+  JobOpeningMockService,
+} from '../recruitment/recruitment-mock.services';
 
 const NON_WORKING = new Set(['Weekend', 'Holiday']);
 const UPCOMING_WINDOW_DAYS = 30;
@@ -48,6 +54,9 @@ export class DashboardMockService implements DashboardDataService {
   private readonly leaveTypes = inject(LeaveTypeMockService);
   private readonly payrollRuns = inject(PayrollRunMockService);
   private readonly activity = inject(ActivityMockService);
+  private readonly jobOpenings = inject(JobOpeningMockService);
+  private readonly applications = inject(ApplicationMockService);
+  private readonly interviews = inject(InterviewMockService);
 
   getSummary(): Observable<DashboardSummary> {
     return mockResponse(() => this.buildSummary(), this.latency);
@@ -84,11 +93,31 @@ export class DashboardMockService implements DashboardDataService {
       pendingLeaveApprovals: pending.length,
       pendingLeaves: pending.slice(0, 5).map((l) => this.toPendingItem(l.id)),
       payroll: this.payrollSummary(),
+      recruitment: this.recruitmentSummary(today),
       departmentDistribution: this.departmentDistribution(current),
       attendanceTrend: this.attendanceTrend(today, 14),
       headcountGrowth: this.headcountGrowth(today, employees),
       recentActivities: this.activity.snapshot(6),
       upcomingEvents: this.upcomingEvents(today, current),
+    };
+  }
+
+  private recruitmentSummary(today: string): RecruitmentSummary {
+    const open = this.jobOpenings.records().filter((j) => j.status === 'Open');
+    const applications = this.applications.records();
+    const stages = ['Applied', 'Screening', 'Interview', 'Selected'] as const;
+    return {
+      openJobs: open.length,
+      openPositions: open.reduce((sum, j) => sum + j.vacancies, 0),
+      activeCandidates: applications.filter((a) => a.stage !== 'Rejected' && a.stage !== 'Selected')
+        .length,
+      upcomingInterviews: this.interviews
+        .records()
+        .filter((i) => i.status === 'Scheduled' && i.date >= today).length,
+      funnel: stages.map((stage) => ({
+        label: stage,
+        count: applications.filter((a) => a.stage === stage).length,
+      })),
     };
   }
 

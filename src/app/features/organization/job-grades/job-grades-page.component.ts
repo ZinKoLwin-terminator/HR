@@ -90,7 +90,7 @@ export class JobGradesPageComponent extends OrganizationPageBase<JobGrade> {
           type: 'number',
           required: true,
           min: 0,
-          max: 1_000_000,
+          max: 1_000_000_000,
         },
         {
           key: 'maxSalary',
@@ -98,7 +98,7 @@ export class JobGradesPageComponent extends OrganizationPageBase<JobGrade> {
           type: 'number',
           required: true,
           min: 0,
-          max: 1_000_000,
+          max: 1_000_000_000,
         },
         { key: 'description', label: 'Description', type: 'textarea', maxLength: 300 },
       ],

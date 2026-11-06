@@ -35,9 +35,28 @@
 
   <span class="spacer"></span>
 
-  <span class="demo-chip" aria-label="Demo environment using sample data">
-    <mat-icon aria-hidden="true">science</mat-icon><span>Sample data</span>
-  </span>
+  <button
+    mat-icon-button
+    type="button"
+    [matMenuTriggerFor]="helpMenu"
+    matTooltip="Module guide"
+    aria-label="Module guide"
+  >
+    <mat-icon>help_outline</mat-icon>
+  </button>
+  <mat-menu #helpMenu="matMenu" xPosition="before" class="help-menu">
+    <div class="menu-heading" role="presentation"><span>Module guide</span></div>
+    @for (m of guideModules; track m.id) {
+      <a mat-menu-item routerLink="/help/modules" [queryParams]="{ module: m.id }">
+        <mat-icon>{{ m.icon }}</mat-icon
+        ><span>{{ m.name }}</span>
+      </a>
+    }
+    <mat-divider />
+    <a mat-menu-item routerLink="/help/workflows">
+      <mat-icon>account_tree</mat-icon><span>Workflows &amp; connections</span>
+    </a>
+  </mat-menu>
 
   <button
     mat-icon-button

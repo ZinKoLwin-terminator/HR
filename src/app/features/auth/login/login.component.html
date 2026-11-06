@@ -1,70 +1,248 @@
 <div class="auth">
   <aside class="hero" aria-hidden="true">
+    <span class="blob blob--1"></span>
+    <span class="blob blob--2"></span>
+    <span class="blob blob--3"></span>
+
     <div class="hero__brand">
-      <span class="logo"><mat-icon>diversity_3</mat-icon></span>
+      <span class="logo"><img src="logo.png" alt="" /></span>
       <span class="hero__name">{{ appName }}</span>
     </div>
 
     <div class="hero__body">
-      <h2>People operations, made simple.</h2>
-      <p>Everything HR needs to hire, manage and pay your team, in one workspace.</p>
+      <span class="eyebrow"><mat-icon>auto_awesome</mat-icon> All-in-one HR platform</span>
+      <h2>Every HR process, <em>one platform.</em></h2>
+      <p>
+        Manage employee records, attendance, leave, recruitment and payroll in one secure workspace,
+        so your HR team can spend less time on admin and more on people.
+      </p>
       <ul>
         @for (h of highlights; track h.icon) {
           <li>
-            <span class="tick"
-              ><mat-icon>{{ h.icon }}</mat-icon></span
-            >
+            <mat-icon>{{ h.icon }}</mat-icon>
             <span>{{ h.text }}</span>
           </li>
         }
       </ul>
     </div>
 
-    <div class="preview">
-      <div class="glass glass--a">
-        <span class="dot ok"><mat-icon>check</mat-icon></span>
-        <span><strong>Leave approved</strong><small>Annual leave · request closed</small></span>
-      </div>
-      <div class="glass glass--b">
-        <span class="dot"><mat-icon>person_add</mat-icon></span>
-        <span
-          ><strong>New hire onboarded</strong
-          ><small>Profile, contract and access ready</small></span
-        >
-      </div>
-      <div class="glass glass--c">
-        <span class="dot"><mat-icon>receipt_long</mat-icon></span>
-        <span><strong>Payslips published</strong><small>Employees notified</small></span>
+    <div class="showcase">
+      <div class="hub">
+        <svg class="hub__links" viewBox="0 0 100 100" preserveAspectRatio="none">
+          @for (m of modules; track m.label) {
+            <line x1="50" y1="50" [attr.x2]="m.x" [attr.y2]="m.y" [style.--i]="$index" />
+          }
+        </svg>
+
+        <svg viewBox="48 24 396 344" class="scene" role="presentation" focusable="false">
+          <defs>
+            <linearGradient id="leafA" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stop-color="#7c5cff" />
+              <stop offset="1" stop-color="#c9b8ff" />
+            </linearGradient>
+            <linearGradient id="leafB" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stop-color="#19b394" />
+              <stop offset="1" stop-color="#8be8d0" />
+            </linearGradient>
+            <linearGradient id="padTop" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#ffffff" />
+              <stop offset="1" stop-color="#dfe6ff" />
+            </linearGradient>
+            <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="10" />
+            </filter>
+          </defs>
+
+          <ellipse
+            cx="230"
+            cy="352"
+            rx="130"
+            ry="28"
+            fill="#000"
+            opacity=".35"
+            filter="url(#soft)"
+          />
+
+          <g class="leaf leaf--l">
+            <path d="M150 305C84 268 78 184 134 128C170 182 180 252 150 305Z" fill="url(#leafA)" />
+            <path
+              d="M150 305C142 250 140 190 134 128"
+              stroke="#fff"
+              stroke-opacity=".5"
+              stroke-width="2"
+              fill="none"
+            />
+          </g>
+          <g class="leaf leaf--r">
+            <path
+              d="M318 305C386 270 392 186 336 132C298 186 288 254 318 305Z"
+              fill="url(#leafB)"
+            />
+            <path
+              d="M318 305C326 252 330 192 336 132"
+              stroke="#fff"
+              stroke-opacity=".5"
+              stroke-width="2"
+              fill="none"
+            />
+          </g>
+
+          <g class="pad">
+            <path
+              d="M120 304L230 359L340 304V290L230 345L120 290Z"
+              fill="#aeb9ee"
+              stroke="#aeb9ee"
+              stroke-width="12"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M230 235L340 290L230 345L120 290Z"
+              fill="url(#padTop)"
+              stroke="url(#padTop)"
+              stroke-width="12"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M230 262L288 291L230 320L172 291Z"
+              fill="var(--mat-sys-primary)"
+              opacity=".18"
+            />
+          </g>
+
+          <g class="doc">
+            <rect x="62" y="84" width="104" height="146" rx="12" fill="#fff" />
+            <rect x="76" y="100" width="48" height="7" rx="3.5" fill="#c8d0f0" />
+            <rect x="76" y="114" width="72" height="6" rx="3" fill="#e1e6f7" />
+            <circle cx="114" cy="158" r="21" fill="none" stroke="#e1e6f7" stroke-width="9" />
+            <circle
+              class="ring"
+              cx="114"
+              cy="158"
+              r="21"
+              fill="none"
+              stroke="var(--mat-sys-primary)"
+              stroke-width="9"
+              stroke-linecap="round"
+              pathLength="100"
+              transform="rotate(-90 114 158)"
+            />
+            <rect x="76" y="194" width="72" height="6" rx="3" fill="#e1e6f7" />
+            <rect x="76" y="207" width="46" height="6" rx="3" fill="#e1e6f7" />
+          </g>
+
+          <g class="person">
+            <rect x="216" y="248" width="12" height="36" rx="5" fill="#141a38" />
+            <rect x="234" y="248" width="12" height="36" rx="5" fill="#141a38" />
+            <ellipse cx="221" cy="287" rx="10" ry="4" fill="#0b0f26" />
+            <ellipse cx="241" cy="287" rx="10" ry="4" fill="#0b0f26" />
+            <path
+              d="M210 196C210 186 218 180 230 180C242 180 250 186 250 196V254H210Z"
+              fill="#232c5c"
+            />
+            <path d="M248 198L276 214" stroke="#232c5c" stroke-width="12" stroke-linecap="round" />
+            <circle cx="278" cy="215" r="6" fill="#f3c7a4" />
+            <path d="M212 200L204 240" stroke="#232c5c" stroke-width="12" stroke-linecap="round" />
+            <rect x="224" y="168" width="12" height="14" rx="5" fill="#f3c7a4" />
+            <circle cx="230" cy="158" r="15" fill="#f3c7a4" />
+            <path
+              d="M215 156C214 142 224 138 232 139C241 140 246 147 245 156C240 150 230 149 215 156Z"
+              fill="#141a38"
+            />
+          </g>
+
+          <g class="tile tile--1">
+            <rect x="276" y="38" width="156" height="66" rx="14" fill="#fff" />
+            <circle cx="306" cy="71" r="14" fill="var(--mat-sys-primary)" />
+            <circle cx="306" cy="67" r="4.5" fill="#fff" />
+            <path d="M297 80C298 74 314 74 315 80" fill="#fff" />
+            <rect x="330" y="60" width="78" height="7" rx="3.5" fill="#c8d0f0" />
+            <rect x="330" y="75" width="52" height="6" rx="3" fill="#e1e6f7" />
+          </g>
+          <g class="tile tile--2">
+            <rect x="296" y="124" width="140" height="60" rx="14" fill="#fff" />
+            <circle cx="324" cy="154" r="13" fill="#19b394" />
+            <path
+              d="M317 154L322 159L331 149"
+              stroke="#fff"
+              stroke-width="3"
+              fill="none"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <rect x="346" y="144" width="70" height="7" rx="3.5" fill="#c8d0f0" />
+            <rect x="346" y="158" width="44" height="6" rx="3" fill="#e1e6f7" />
+          </g>
+
+          <g class="badge badge--ok">
+            <circle cx="290" cy="226" r="13" fill="#2ecc8f" />
+            <path
+              d="M283 226L288 231L297 221"
+              stroke="#06331f"
+              stroke-width="3"
+              fill="none"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </g>
+          <g class="badge badge--no">
+            <circle cx="302" cy="258" r="13" fill="#ff5c7a" />
+            <path
+              d="M296 252L308 264M308 252L296 264"
+              stroke="#fff"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+          </g>
+
+          <path
+            class="spark spark--1"
+            d="M70 60L74 72L86 76L74 80L70 92L66 80L54 76L66 72Z"
+            fill="#fff"
+          />
+          <path
+            class="spark spark--2"
+            d="M400 250L403 258L411 261L403 264L400 272L397 264L389 261L397 258Z"
+            fill="#fff"
+          />
+          <path
+            class="spark spark--3"
+            d="M196 36L198 42L204 44L198 46L196 52L194 46L188 44L194 42Z"
+            fill="#fff"
+          />
+        </svg>
+
+        @for (m of modules; track m.label) {
+          <div
+            class="mod"
+            [style.left.%]="m.x"
+            [style.top.%]="m.y"
+            [style.--c]="m.color"
+            [style.--i]="$index"
+          >
+            <span class="mod__icon"
+              ><mat-icon>{{ m.icon }}</mat-icon></span
+            >
+            <span class="mod__text">
+              <strong>{{ m.label }}</strong>
+              <small>{{ m.hint }}</small>
+            </span>
+          </div>
+        }
       </div>
     </div>
-
-    <p class="hero__foot">© {{ appName }}</p>
   </aside>
 
   <main class="panel">
     <header class="topbar">
       <div class="topbar__brand">
-        <span class="logo"><mat-icon>diversity_3</mat-icon></span>
+        <span class="logo"><img src="logo.png" alt="" /></span>
         <span>{{ appName }}</span>
-      </div>
-      <div class="tools">
-        <app-theme-picker />
-        <button
-          mat-icon-button
-          type="button"
-          (click)="theme.toggle()"
-          [matTooltip]="theme.scheme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-          [attr.aria-label]="
-            theme.scheme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
-          "
-        >
-          <mat-icon>{{ theme.scheme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
-        </button>
       </div>
     </header>
 
     <div class="stage">
       <section class="card" aria-labelledby="login-title">
+        <span class="badge" aria-hidden="true"><mat-icon>lock_open</mat-icon></span>
         <h1 id="login-title">Welcome back</h1>
         <p class="subtitle">Sign in to your workspace to continue.</p>
 
@@ -122,19 +300,19 @@
           </button>
         </form>
 
+        <div class="divider" aria-hidden="true"><span>or try it out</span></div>
+
         <div class="demo">
           <div class="demo__text">
             <mat-icon aria-hidden="true">science</mat-icon>
             <span>
               <strong>Demo workspace</strong>
               <small
-                >Sample data, no real security. Password: <code>{{ demoPassword }}</code></small
+                >Password: <code>{{ demoPassword }}</code></small
               >
             </span>
           </div>
-          <button mat-stroked-button type="button" (click)="fillDemo()">
-            <mat-icon>bolt</mat-icon> Use demo account
-          </button>
+          <button mat-stroked-button type="button" (click)="fillDemo()">Use demo</button>
         </div>
       </section>
     </div>

@@ -32,28 +32,30 @@ table {
 }
 
 th.mat-mdc-header-cell {
-  font: var(--mat-sys-label-small);
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: light-dark(var(--app-color-primary), var(--app-color-accent));
+  color: var(--mat-sys-on-surface-variant);
   background: light-dark(
-    color-mix(in srgb, var(--app-color-primary) 6%, #f5f7fb),
-    color-mix(in srgb, var(--app-color-primary) 15%, #1a2332)
+    color-mix(in srgb, var(--app-color-primary) 4%, #f8fafc),
+    color-mix(in srgb, var(--app-color-primary) 12%, #161e2b)
   );
   white-space: nowrap;
-  border-bottom: 2px solid var(--app-card-border);
+  border-bottom: 1px solid var(--app-card-border);
   vertical-align: middle;
 }
 
 td.mat-mdc-cell {
-  font: var(--mat-sys-body-medium);
+  font-size: 13px;
+  line-height: 20px;
   color: var(--mat-sys-on-surface);
-  border-bottom-color: color-mix(in srgb, var(--mat-sys-outline-variant) 50%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--mat-sys-outline-variant) 40%, transparent);
 
   // The first column carries the record's name/identity.
   &.primary {
-    font-weight: 500;
+    font-weight: 600;
   }
 }
 
@@ -63,12 +65,12 @@ tr.mat-mdc-row:last-of-type td.mat-mdc-cell {
 
 th,
 td {
-  padding-inline: 16px;
-  padding-block: 12px;
+  padding-inline: 14px;
+  padding-block: 8px;
 }
 
 th {
-  padding-block: 10px;
+  padding-block: 8px;
 }
 
 .select-cell {
@@ -94,28 +96,27 @@ th {
   padding-inline: 0;
 
   .mat-mdc-icon-button {
+    --mat-icon-button-state-layer-size: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 4px;
     color: var(--mat-sys-on-surface-variant);
   }
 }
 
 tr.mat-mdc-row {
+  height: 44px;
   transition: background-color 120ms ease;
 
   &:hover {
-    background: light-dark(
-      color-mix(in srgb, var(--app-color-accent) 8%, transparent),
-      color-mix(in srgb, var(--app-color-accent) 12%, transparent)
-    );
+    background: color-mix(in srgb, var(--mat-sys-primary) 5%, transparent);
   }
 }
 
 tr.clickable {
   cursor: pointer;
   &:hover {
-    background: light-dark(
-      color-mix(in srgb, var(--app-color-accent) 12%, transparent),
-      color-mix(in srgb, var(--app-color-accent) 18%, transparent)
-    );
+    background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
   }
 }
 
@@ -133,8 +134,8 @@ mat-paginator {
 
   ::ng-deep {
     .mat-mdc-paginator-container {
-      padding: 12px 16px;
-      min-height: 44px;
+      padding: 6px 12px;
+      min-height: 40px;
       justify-content: flex-end;
       gap: 16px;
     }
@@ -147,6 +148,16 @@ mat-paginator {
     }
     .mat-mdc-paginator-container .mat-mdc-icon-button:not(:disabled) {
       color: var(--app-color-primary);
+    }
+    .mat-mdc-paginator-container .mat-mdc-icon-button {
+      --mat-icon-button-state-layer-size: 32px;
+      width: 32px;
+      height: 32px;
+      padding: 4px;
+    }
+    .mat-mdc-paginator-page-size-select {
+      width: 64px;
+      margin: 0;
     }
   }
 }
@@ -169,4 +180,83 @@ mat-paginator {
   td {
     padding-inline: 14px;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Modern refinement layer
+// ---------------------------------------------------------------------------
+.table-card {
+  border-radius: 16px;
+  border-color: color-mix(in srgb, var(--mat-sys-outline-variant) 70%, transparent);
+  box-shadow:
+    0 1px 2px light-dark(rgb(16 24 40 / 4%), rgb(0 0 0 / 30%)),
+    0 8px 24px -12px light-dark(rgb(16 24 40 / 12%), rgb(0 0 0 / 45%));
+}
+
+// Tinted header band, like the reference list design.
+th.mat-mdc-header-cell {
+  background: light-dark(
+    color-mix(in srgb, var(--mat-sys-primary) 9%, #fff),
+    color-mix(in srgb, var(--mat-sys-primary) 22%, #161e2b)
+  );
+  color: color-mix(in srgb, var(--mat-sys-on-surface) 72%, transparent);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding-block: 14px;
+  border-bottom: 0;
+}
+
+td.mat-mdc-cell {
+  border-bottom-color: color-mix(in srgb, var(--mat-sys-outline-variant) 35%, transparent);
+  padding-block: 12px;
+
+  &.primary {
+    color: var(--mat-sys-on-surface);
+    letter-spacing: 0.01em;
+  }
+}
+
+// Secondary columns read quieter than the identity column.
+td.mat-mdc-cell:not(.primary):not(.actions-cell):not(.select-cell) {
+  color: color-mix(in srgb, var(--mat-sys-on-surface) 80%, transparent);
+}
+
+tr.mat-mdc-row {
+  height: 52px;
+
+  td:first-child {
+    box-shadow: inset 3px 0 0 transparent;
+    transition: box-shadow 140ms ease;
+  }
+
+  &:hover {
+    background: light-dark(
+      color-mix(in srgb, var(--mat-sys-primary) 4%, #fff),
+      color-mix(in srgb, var(--mat-sys-primary) 10%, transparent)
+    );
+
+    td:first-child {
+      box-shadow: inset 3px 0 0 var(--mat-sys-primary);
+    }
+  }
+}
+
+// Row actions stay quiet until the row is hovered / focused.
+.actions-cell .mat-mdc-icon-button {
+  opacity: 0.45;
+  border-radius: 8px;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease;
+}
+tr.mat-mdc-row:hover .actions-cell .mat-mdc-icon-button,
+.actions-cell .mat-mdc-icon-button:focus-visible,
+.actions-cell .mat-mdc-icon-button[aria-expanded='true'] {
+  opacity: 1;
+  background: color-mix(in srgb, var(--mat-sys-primary) 10%, transparent);
+}
+
+mat-paginator {
+  border-top: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 50%, transparent);
+  background: light-dark(color-mix(in srgb, var(--mat-sys-primary) 2%, #fff), var(--app-card-bg));
 }

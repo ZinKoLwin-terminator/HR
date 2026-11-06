@@ -89,7 +89,7 @@ const MONTHS = [
         <mat-form-field>
           <mat-label>Currency code</mat-label>
           <input matInput formControlName="currencyCode" maxlength="3" />
-          <mat-hint>Three letters, e.g. USD</mat-hint>
+          <mat-hint>Three letters, e.g. MMK</mat-hint>
           @if (error('currencyCode'); as message) {
             <mat-error>{{ message }}</mat-error>
           }
@@ -206,7 +206,7 @@ export class GeneralSettingsComponent implements HasUnsavedChanges {
     if (control.hasError('server')) return String(control.getError('server'));
     if (control.hasError('required')) return 'This field is required.';
     if (control.hasError('email')) return 'Enter a valid email address.';
-    if (control.hasError('pattern')) return 'Use three capital letters, e.g. USD.';
+    if (control.hasError('pattern')) return 'Use three capital letters, e.g. MMK.';
     if (control.hasError('maxlength')) return 'This value is too long.';
     return 'Invalid value.';
   }

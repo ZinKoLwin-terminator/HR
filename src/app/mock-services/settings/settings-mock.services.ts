@@ -277,7 +277,7 @@ export class GeneralSettingsMockService implements GeneralSettingsDataService {
       if (!DATE_FORMATS.includes(values.dateFormat))
         errors['dateFormat'] = 'Choose a listed format.';
       if (!/^[A-Z]{3}$/.test(values.currencyCode ?? '')) {
-        errors['currencyCode'] = 'Use a 3-letter code such as USD.';
+        errors['currencyCode'] = 'Use a 3-letter code such as MMK.';
       }
       const month = Number(values.fiscalYearStartMonth);
       if (!Number.isInteger(month) || month < 1 || month > 12) {

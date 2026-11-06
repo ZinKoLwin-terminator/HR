@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, linkedSignal, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
@@ -34,6 +34,10 @@ import {
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ExcelExportService } from '../../../shared/components/excel/excel-export.service';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import {
+  FilterFieldComponent,
+  FilterPopupComponent,
+} from '../../../shared/components/filter-popup/filter-popup.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ISO_DATE_FORMATS, IsoDateAdapter } from '../../../shared/forms/iso-date-adapter';
 import { ListQuery } from '../../../shared/utilities/list-query';
@@ -50,6 +54,8 @@ import { OrganizationLookupService, options } from '../../organization/organizat
     MatInputModule,
     MatSelectModule,
     PageHeaderComponent,
+    FilterFieldComponent,
+    FilterPopupComponent,
     SearchFieldComponent,
     DataTableComponent,
     CellTemplateDirective,
@@ -91,9 +97,6 @@ export class EmployeeListComponent {
   protected readonly statusOptions = EMPLOYMENT_STATUSES;
   protected readonly typeOptions = EMPLOYMENT_TYPES;
 
-  /** Whether the secondary filter panel (status, department, branch, type) is expanded. */
-  protected readonly panelOpen = signal(false);
-
   /** Removable chips describing every applied filter. */
   protected readonly activeChips = computed(() => {
     const f = this.query.filters();
@@ -123,12 +126,9 @@ export class EmployeeListComponent {
     if (f.joiningTo) chips.push({ key: 'joiningTo', name: 'Joined to', label: f.joiningTo });
     return chips;
   });
-  /** Filters that live inside the collapsible panel. */
-  protected readonly extraFilterCount = computed(
-    () =>
-      this.activeChips().filter((c) =>
-        ['employmentStatus', 'departmentId', 'branchId', 'employmentType'].includes(c.key),
-      ).length,
+  /** Number of applied filters (excluding the search term). */
+  protected readonly filterCount = computed(
+    () => this.activeChips().filter((c) => c.key !== 'search').length,
   );
 
   protected readonly page = rxResource({

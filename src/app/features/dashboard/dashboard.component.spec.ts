@@ -25,7 +25,7 @@ describe('DashboardComponent', () => {
 
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('h1')?.textContent).toMatch(/Good (morning|afternoon|evening), Su/);
-    expect(el.querySelectorAll('app-stat-card')).toHaveLength(8);
+    expect(el.querySelectorAll('app-stat-card')).toHaveLength(5);
     expect(el.textContent).toContain('Total employees');
     expect(el.querySelector('app-payroll-summary-card')?.textContent).toContain('Sample data');
     expect(el.querySelectorAll('app-pending-leaves-card li').length).toBe(5);

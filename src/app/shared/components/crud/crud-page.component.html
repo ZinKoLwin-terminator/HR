@@ -1,8 +1,67 @@
 @let cfg = config();
+
+<ng-template #searchAndFilters>
+  <app-search-field
+    [label]="cfg.searchLabel ?? 'Search'"
+    [value]="query.search()"
+    (searchChange)="query.setSearch($event)"
+  />
+  @if ((cfg.filters?.length ?? 0) > 0 || cfg.dateFilter) {
+    <app-filter-popup [activeCount]="query.activeFilterCount()" (cleared)="query.reset()">
+      @for (filterConfig of cfg.filters ?? []; track filterConfig.key) {
+        <app-filter-field [label]="filterConfig.label">
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-select
+              placeholder="All"
+              [attr.aria-label]="filterConfig.label"
+              [value]="query.filters()[filterConfig.key] ?? null"
+              (selectionChange)="setFilter(filterConfig.key, $event.value)"
+            >
+              <mat-option [value]="null">All</mat-option>
+              @for (option of filterConfig.options; track option.value) {
+                <mat-option [value]="option.value">{{ option.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </app-filter-field>
+      }
+      @if (cfg.dateFilter; as df) {
+        <app-filter-field [label]="df.fromLabel">
+          <mat-form-field subscriptSizing="dynamic">
+            <input
+              matInput
+              type="date"
+              [attr.aria-label]="df.fromLabel"
+              [value]="dateValue(df.fromKey)"
+              [max]="dateValue(df.toKey)"
+              (change)="setDateFilter(df.fromKey, $any($event.target).value)"
+            />
+          </mat-form-field>
+        </app-filter-field>
+        <app-filter-field [label]="df.toLabel">
+          <mat-form-field subscriptSizing="dynamic">
+            <input
+              matInput
+              type="date"
+              [attr.aria-label]="df.toLabel"
+              [value]="dateValue(df.toKey)"
+              [min]="dateValue(df.fromKey)"
+              (change)="setDateFilter(df.toKey, $any($event.target).value)"
+            />
+          </mat-form-field>
+        </app-filter-field>
+      }
+    </app-filter-popup>
+  }
+</ng-template>
+
 @if (!cfg.embedded) {
   <app-page-header [title]="cfg.title" [description]="cfg.description">
+    <ng-container pageSearch>
+      <ng-container *ngTemplateOutlet="searchAndFilters" />
+    </ng-container>
     @if (cfg.excel; as excel) {
-      <ng-container pageActions>
+      <ng-container pageTools>
         <button mat-stroked-button type="button" (click)="openExport()">
           <mat-icon>download</mat-icon>Export
         </button>
@@ -23,67 +82,21 @@
       </button>
     }
   </app-page-header>
+} @else {
+  <div class="toolbar toolbar--plain" role="search" [attr.aria-label]="'Filter ' + cfg.title">
+    <ng-container *ngTemplateOutlet="searchAndFilters" />
+    @if (cfg.excel) {
+      <button mat-stroked-button type="button" (click)="openExport()">
+        <mat-icon>download</mat-icon>Export
+      </button>
+    }
+    @if (cfg.canCreate !== false) {
+      <button mat-flat-button type="button" (click)="openForm()">
+        <mat-icon>add</mat-icon>Add {{ cfg.entityLabel.toLowerCase() }}
+      </button>
+    }
+  </div>
 }
-
-<div class="toolbar" role="search" [attr.aria-label]="'Filter ' + cfg.title">
-  <app-search-field
-    class="grow"
-    [label]="cfg.searchLabel ?? 'Search'"
-    [value]="query.search()"
-    (searchChange)="query.setSearch($event)"
-  />
-  @for (filterConfig of cfg.filters ?? []; track filterConfig.key) {
-    <mat-form-field subscriptSizing="dynamic">
-      <mat-label>{{ filterConfig.label }}</mat-label>
-      <mat-select
-        [value]="query.filters()[filterConfig.key] ?? null"
-        (selectionChange)="setFilter(filterConfig.key, $event.value)"
-      >
-        <mat-option [value]="null">All</mat-option>
-        @for (option of filterConfig.options; track option.value) {
-          <mat-option [value]="option.value">{{ option.label }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-  }
-  @if (cfg.dateFilter; as df) {
-    <mat-form-field subscriptSizing="dynamic">
-      <mat-label>{{ df.fromLabel }}</mat-label>
-      <input
-        matInput
-        type="date"
-        [value]="dateValue(df.fromKey)"
-        [max]="dateValue(df.toKey)"
-        (change)="setDateFilter(df.fromKey, $any($event.target).value)"
-      />
-    </mat-form-field>
-    <mat-form-field subscriptSizing="dynamic">
-      <mat-label>{{ df.toLabel }}</mat-label>
-      <input
-        matInput
-        type="date"
-        [value]="dateValue(df.toKey)"
-        [min]="dateValue(df.fromKey)"
-        (change)="setDateFilter(df.toKey, $any($event.target).value)"
-      />
-    </mat-form-field>
-  }
-  @if (query.activeFilterCount() > 0) {
-    <button mat-button type="button" (click)="query.reset()">
-      <mat-icon>filter_alt_off</mat-icon>Clear filters
-    </button>
-  }
-  @if (cfg.embedded && cfg.excel) {
-    <button mat-stroked-button type="button" (click)="openExport()">
-      <mat-icon>download</mat-icon>Export
-    </button>
-  }
-  @if (cfg.embedded && cfg.canCreate !== false) {
-    <button mat-flat-button type="button" (click)="openForm()">
-      <mat-icon>add</mat-icon>Add {{ cfg.entityLabel.toLowerCase() }}
-    </button>
-  }
-</div>
 
 @if (page.error() && !result()) {
   <app-empty-state

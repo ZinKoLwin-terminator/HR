@@ -13,10 +13,35 @@ html {
         tertiary: mat.$violet-palette,
       ),
       typography: (
-        plain-family: 'Inter, Roboto, "Segoe UI", sans-serif',
-        brand-family: 'Inter, Roboto, "Segoe UI", sans-serif',
+        plain-family: '"Plus Jakarta Sans", "Noto Sans Myanmar", "Segoe UI", Roboto, sans-serif',
+        brand-family: '"Plus Jakarta Sans", "Noto Sans Myanmar", "Segoe UI", Roboto, sans-serif',
       ),
       density: 0,
+    )
+  );
+
+  // Slightly smaller type scale (Material defaults read large in a dense HR app).
+  // The composite tokens are literal, so each one is overridden in full.
+  --mat-sys-display-small: 400 28px / 36px var(--mat-sys-display-small-font);
+  --mat-sys-headline-large: 400 28px / 36px var(--mat-sys-headline-large-font);
+  --mat-sys-headline-medium: 400 22px / 30px var(--mat-sys-headline-medium-font);
+  --mat-sys-headline-small: 400 19px / 26px var(--mat-sys-headline-small-font);
+  --mat-sys-title-large: 400 18px / 26px var(--mat-sys-title-large-font);
+  --mat-sys-title-medium: 500 14px / 22px var(--mat-sys-title-medium-font);
+  --mat-sys-title-small: 500 13px / 20px var(--mat-sys-title-small-font);
+  --mat-sys-body-large: 400 14px / 22px var(--mat-sys-body-large-font);
+  --mat-sys-body-medium: 400 13px / 20px var(--mat-sys-body-medium-font);
+  --mat-sys-body-small: 400 12px / 16px var(--mat-sys-body-small-font);
+  --mat-sys-label-large: 500 13px / 18px var(--mat-sys-label-large-font);
+  --mat-sys-label-medium: 500 12px / 16px var(--mat-sys-label-medium-font);
+  --mat-sys-label-small: 500 11px / 16px var(--mat-sys-label-small-font);
+
+  // Dialogs: larger radius, soft elevation.
+  @include mat.dialog-overrides(
+    (
+      container-shape: 20px,
+      container-color: var(--mat-sys-surface-container-lowest),
+      subhead-size: 18px,
     )
   );
 
@@ -50,12 +75,118 @@ html {
     )
   );
 
+  // Compact 40px inputs / selects (Material default is 56px, which reads oversized).
+  .mat-mdc-form-field {
+    --mat-form-field-container-height: 40px;
+    --mat-form-field-container-vertical-padding: 8px;
+    --mat-form-field-filled-with-label-container-padding-top: 16px;
+    --mat-form-field-filled-with-label-container-padding-bottom: 4px;
+    --mat-form-field-container-text-size: 13px;
+    --mat-form-field-container-text-line-height: 20px;
+    --mat-form-field-subscript-text-size: 11px;
+    --mat-select-trigger-text-size: 13px;
+    --mat-select-trigger-text-line-height: 20px;
+    --mat-select-trigger-text-weight: 400;
+    font-size: 13px;
+
+    .mat-mdc-form-field-infix {
+      min-height: 36px !important;
+      padding-top: 8px !important;
+      padding-bottom: 8px !important;
+    }
+
+    .mat-mdc-select-arrow-wrapper {
+      transform: scale(0.8);
+      height: 20px;
+    }
+
+    // Keep selects exactly as tall as text inputs (the trigger's default 24px line made them taller).
+    .mat-mdc-select-trigger {
+      height: 20px;
+      align-items: center;
+    }
+
+    // Label ("Status", "Department", …) shown inside the field.
+    .mat-mdc-floating-label,
+    .mdc-floating-label {
+      font-size: 13px !important;
+      line-height: 20px !important;
+      letter-spacing: 0 !important;
+    }
+
+    .mdc-floating-label--float-above {
+      font-size: 12px !important;
+    }
+
+    .mat-mdc-select,
+    .mat-mdc-select-value,
+    .mat-mdc-select-value-text,
+    .mat-mdc-select-min-line,
+    .mat-mdc-select-placeholder,
+    .mat-mdc-input-element {
+      font-size: 13px !important;
+      line-height: 20px !important;
+    }
+  }
+
+  .mat-mdc-paginator {
+    --mat-paginator-container-text-size: 12px;
+    --mat-paginator-container-size: 44px;
+    --mat-paginator-form-field-container-height: 32px;
+    --mat-paginator-form-field-container-vertical-padding: 4px;
+  }
+
+  // Compact, softly rounded buttons (36px instead of 40px+, 10px radius).
+  @include mat.button-overrides(
+    (
+      filled-container-height: 36px,
+      filled-container-shape: 10px,
+      outlined-container-height: 36px,
+      outlined-container-shape: 10px,
+      text-container-height: 36px,
+      text-container-shape: 10px,
+      protected-container-height: 36px,
+      protected-container-shape: 10px,
+      filled-horizontal-padding: 16px,
+      outlined-horizontal-padding: 16px,
+      text-horizontal-padding: 12px,
+      filled-label-text-size: 13px,
+      outlined-label-text-size: 13px,
+      text-label-text-size: 13px,
+      filled-label-text-weight: 600,
+      outlined-label-text-weight: 600,
+      // App brand colour (same family as the sidebar / page titles).
+      filled-container-color: light-dark(var(--app-color-primary), var(--app-color-accent)),
+      filled-label-text-color: light-dark(#ffffff, #051219),
+      filled-state-layer-color: light-dark(#ffffff, #051219),
+      filled-hover-state-layer-opacity: 0.1,
+      outlined-outline-color: light-dark(
+          var(--app-color-primary),
+          color-mix(in srgb, var(--app-color-accent) 70%, transparent)
+        ),
+      outlined-label-text-color: light-dark(var(--app-color-primary), var(--app-color-accent)),
+      outlined-state-layer-color: light-dark(var(--app-color-primary), var(--app-color-accent)),
+      text-label-text-color: light-dark(var(--app-color-primary), var(--app-color-accent)),
+      text-state-layer-color: light-dark(var(--app-color-primary), var(--app-color-accent)),
+    )
+  );
+
+  .mat-mdc-button-base .mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .mat-mdc-unelevated-button:not(:disabled) {
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--app-color-primary) 40%, transparent);
+  }
+
   // Refined table rows with a calmer header (48px rows, 44px header).
   .mat-mdc-table {
     @include mat.table-overrides(
       (
-        row-item-container-height: 48px,
-        header-container-height: 44px,
+        row-item-container-height: 44px,
+        header-container-height: 38px,
         row-item-outline-color: var(--mat-sys-outline-variant),
         header-headline-color: var(--mat-sys-on-surface-variant),
       )
@@ -69,8 +200,8 @@ html {
   --app-radius-lg: 16px;
   --app-radius-md: 12px;
   --app-header-height: 56px;
-  --app-sidebar-width: 268px;
-  --app-sidebar-collapsed-width: 76px;
+  --app-sidebar-width: 216px;
+  --app-sidebar-collapsed-width: 60px;
 
   // Page background with mode-specific tint (darker in dark mode for contrast with sidebar)
   --app-page-bg: light-dark(
@@ -136,13 +267,10 @@ html {
   --app-color-info: #0f4c75;
 
   // Page and card backgrounds with strong mode differentiation.
-  --app-card-bg: light-dark(
-    color-mix(in srgb, var(--app-color-primary) 4%, #ffffff),
-    color-mix(in srgb, var(--app-color-primary) 12%, #0f1419)
-  );
+  --app-card-bg: light-dark(#ffffff, color-mix(in srgb, var(--app-color-primary) 12%, #0f1419));
   --app-card-border: light-dark(
-    color-mix(in srgb, var(--app-color-accent) 25%, var(--mat-sys-outline-variant)),
-    color-mix(in srgb, var(--app-color-accent) 30%, var(--mat-sys-outline-variant))
+    color-mix(in srgb, var(--app-color-primary) 9%, #e4e8ee),
+    color-mix(in srgb, var(--app-color-accent) 22%, var(--mat-sys-outline-variant))
   );
 
   // Chart colors live in src/app/shared/charts/chart-theme.ts (validated palette).
@@ -240,25 +368,30 @@ a {
 // ---------------------------------------------------------------------------
 .card {
   border-radius: var(--app-radius-lg);
-  border: 1px solid var(--app-card-border);
   background: var(--app-card-bg);
-  box-shadow: var(--app-shadow-sm);
-  padding: 20px;
+  box-shadow:
+    0 0 0 1px light-dark(rgb(16 24 40 / 2%), rgb(255 255 255 / 4%)),
+    0 1px 3px light-dark(rgb(16 24 40 / 6%), rgb(0 0 0 / 30%)),
+    0 8px 24px -12px light-dark(rgb(15 76 117 / 16%), rgb(0 0 0 / 50%));
+  padding: 20px 22px 22px;
   box-sizing: border-box;
 }
 
 .card__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
 
   h2,
   h3 {
     margin: 0;
     font: var(--mat-sys-title-medium);
-    font-weight: 600;
+    font-weight: 650;
+    letter-spacing: -0.01em;
   }
 
   p {
@@ -274,7 +407,7 @@ a {
   align-items: center;
   gap: var(--app-spacing-md);
   margin-bottom: var(--app-spacing-md);
-  padding: var(--app-spacing-md);
+  padding: 6px 10px;
   border: 1px solid var(--app-card-border);
   border-radius: var(--app-radius-lg);
   background: var(--app-card-bg);
@@ -283,9 +416,28 @@ a {
   > .grow {
     flex: 1 1 220px;
   }
+  // Embedded lists (profile tabs): no card behind the controls, search on the left and
+  // everything else (filter, export, add) pushed to the right.
+  &--plain {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+
+    > app-search-field {
+      margin-right: auto;
+    }
+  }
 
   mat-form-field {
-    min-width: 180px;
+    min-width: 160px;
+    max-width: 200px;
+    // Compact density so filters match the 36px search box.
+    --mat-form-field-container-height: 40px;
+    --mat-form-field-container-vertical-padding: 8px;
+    --mat-form-field-filled-with-label-container-padding-top: 16px;
+    --mat-form-field-filled-with-label-container-padding-bottom: 4px;
 
     ::ng-deep .mdc-text-field__input {
       caret-color: var(--app-color-accent);
@@ -328,7 +480,12 @@ a {
   &--two {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     // Extra row gap so a hint never crowds the next field's floating label.
-    gap: 8px 16px;
+    gap: 12px 20px;
+
+    // Hints/errors stay on one line so every row keeps the same height.
+    .mat-mdc-form-field-subscript-wrapper {
+      white-space: nowrap;
+    }
   }
 }
 
@@ -586,6 +743,114 @@ a {
   }
 }
 
+// Sidebar flyout (collapsed rail): opens on hover, rendered in the CDK overlay.
+.nav-flyout-panel {
+  min-width: 220px;
+  max-width: 280px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid var(--app-card-border);
+  background: light-dark(#ffffff, #141b24);
+  color: var(--mat-sys-on-surface);
+  box-shadow:
+    0 16px 40px -8px light-dark(rgb(15 40 70 / 28%), rgb(0 0 0 / 65%)),
+    0 2px 6px light-dark(rgb(16 24 40 / 8%), rgb(0 0 0 / 40%));
+  animation: nav-flyout-in 140ms ease-out;
+  transform-origin: left top;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 4px;
+    padding: 8px 10px 10px;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    font: var(--mat-sys-label-small);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: light-dark(var(--app-color-primary), var(--app-color-accent));
+
+    mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+    }
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px 6px 6px;
+    border-radius: 10px;
+    color: inherit;
+    text-decoration: none;
+    font: var(--mat-sys-body-medium);
+    font-weight: 500;
+    transition:
+      background-color 100ms ease,
+      color 100ms ease;
+
+    &:hover,
+    &:focus-visible {
+      outline: 0;
+      background: color-mix(in srgb, var(--app-color-primary) 8%, transparent);
+      color: light-dark(var(--app-color-primary), var(--app-color-accent));
+
+      .nav-flyout-panel__icon {
+        background: light-dark(var(--app-color-primary), var(--app-color-accent));
+        color: light-dark(#fff, #051219);
+      }
+    }
+
+    &.active {
+      background: color-mix(in srgb, var(--app-color-primary) 12%, transparent);
+      color: light-dark(var(--app-color-primary), var(--app-color-accent));
+      font-weight: 600;
+    }
+  }
+
+  &__icon {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--app-color-primary-lighter) 14%, transparent);
+    color: light-dark(var(--app-color-primary), var(--app-color-accent));
+    transition:
+      background-color 100ms ease,
+      color 100ms ease;
+
+    mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+    }
+  }
+
+  &__label {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@keyframes nav-flyout-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .menu-heading {
   display: flex;
   align-items: center;
@@ -705,4 +970,88 @@ a {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+}
+
+// ---------------------------------------------------------------------------
+// Menus (row actions, user menu): compact, rounded, professional.
+// ---------------------------------------------------------------------------
+.mat-mdc-menu-panel {
+  min-width: 176px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--app-card-border);
+  box-shadow: var(--app-shadow-lg) !important;
+
+  .mat-mdc-menu-content {
+    padding: 6px !important;
+  }
+
+  .mat-mdc-menu-item {
+    min-height: 34px !important;
+    padding-inline: 10px !important;
+    border-radius: 8px;
+    gap: 10px;
+
+    .mat-mdc-menu-item-text,
+    .mdc-list-item__primary-text {
+      font-size: 13px !important;
+      line-height: 20px !important;
+      font-weight: 500;
+      letter-spacing: 0 !important;
+    }
+
+    .mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+      margin-right: 0 !important;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    &:hover:not([disabled]),
+    &.cdk-keyboard-focused {
+      background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
+    }
+
+    &.menu-danger {
+      .mat-icon,
+      .mat-mdc-menu-item-text {
+        color: var(--mat-sys-error);
+      }
+      &:hover:not([disabled]) {
+        background: color-mix(in srgb, var(--mat-sys-error) 8%, transparent);
+      }
+    }
+  }
+
+  .mat-divider {
+    margin: 4px 0;
+  }
+}
+
+// Select / autocomplete dropdown options match the compact scale.
+.mat-mdc-select-panel,
+.mat-mdc-autocomplete-panel {
+  border-radius: 12px !important;
+  .mat-mdc-option {
+    min-height: 36px;
+    font-size: 13px;
+    border-radius: 8px;
+    margin-inline: 6px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dialog backdrop: dimmed + blurred, gentle fade; panel gets deep soft shadow.
+// ---------------------------------------------------------------------------
+.cdk-overlay-dark-backdrop {
+  background: light-dark(rgb(15 23 42 / 42%), rgb(2 6 14 / 62%)) !important;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.mat-mdc-dialog-surface {
+  border: 1px solid var(--app-card-border);
+  box-shadow:
+    0 24px 48px -12px light-dark(rgb(15 23 42 / 28%), rgb(0 0 0 / 65%)),
+    0 4px 12px light-dark(rgb(15 23 42 / 8%), rgb(0 0 0 / 40%)) !important;
 }

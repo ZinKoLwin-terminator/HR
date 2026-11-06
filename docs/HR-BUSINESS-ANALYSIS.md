@@ -27,7 +27,7 @@ State resets on page reload. Sign-in is a **demo simulation** (see README → Au
 
 ## 1. System overview
 
-**Purpose:** a demo HRMS ("Apex Horizon HRMS") for managing people, working time, leave and monthly pay. [FEATURES.md](FEATURES.md) states that payroll figures are sample data and that permissions are a simulation.
+**Purpose:** a demo HRMS ("APEX HRMS") for managing people, working time, leave and monthly pay. [FEATURES.md](FEATURES.md) states that payroll figures are sample data and that permissions are a simulation.
 
 | Area | Modules |
 |---|---|
@@ -462,7 +462,7 @@ Page ကို reload လုပ်ရင် data အားလုံး ပြန
 
 ## ၁။ စနစ်အကျဉ်းချုပ်
 
-ဒါက "Apex Horizon HRMS" ဆိုတဲ့ demo စနစ်ဖြစ်ပြီး လူ၊ အလုပ်ချိန်၊ ခွင့်နှင့် လစာကို စီမံသည်။ Payroll ကိန်းဂဏန်းတွေက နမူနာသာဖြစ်ပြီး permission တွေက simulation သာ ဖြစ်သည်။
+ဒါက "APEX HRMS" ဆိုတဲ့ demo စနစ်ဖြစ်ပြီး လူ၊ အလုပ်ချိန်၊ ခွင့်နှင့် လစာကို စီမံသည်။ Payroll ကိန်းဂဏန်းတွေက နမူနာသာဖြစ်ပြီး permission တွေက simulation သာ ဖြစ်သည်။
 
 | အပိုင်း | Module |
 |---|---|

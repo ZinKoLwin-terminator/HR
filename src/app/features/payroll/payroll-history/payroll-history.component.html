@@ -1,28 +1,42 @@
 <app-page-header
   title="Payroll history"
   description="Processed payroll periods and how gross and net pay moved over time. Sample figures only."
-/>
-
-<div class="toolbar" role="group" aria-label="History filters">
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Year</mat-label>
-    <mat-select [value]="year()" (selectionChange)="year.set($event.value)">
-      <mat-option [value]="null">All years</mat-option>
-      @for (y of yearOptions(); track y) {
-        <mat-option [value]="y">{{ y }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Status</mat-label>
-    <mat-select [value]="status()" (selectionChange)="status.set($event.value)">
-      <mat-option [value]="null">All</mat-option>
-      @for (s of statuses; track s) {
-        <mat-option [value]="s">{{ s }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-</div>
+>
+  <ng-container pageSearch>
+    <app-filter-popup [activeCount]="filterCount()" (cleared)="clearFilters()">
+      <app-filter-field label="Year">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Year"
+            [value]="year()"
+            (selectionChange)="year.set($event.value)"
+          >
+            <mat-option [value]="null">All years</mat-option>
+            @for (y of yearOptions(); track y) {
+              <mat-option [value]="y">{{ y }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+      <app-filter-field label="Status">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Status"
+            [value]="status()"
+            (selectionChange)="status.set($event.value)"
+          >
+            <mat-option [value]="null">All</mat-option>
+            @for (s of statuses; track s) {
+              <mat-option [value]="s">{{ s }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+    </app-filter-popup>
+  </ng-container>
+</app-page-header>
 
 @if (resource.error()) {
   <app-empty-state icon="error" title="Payroll history could not be loaded">

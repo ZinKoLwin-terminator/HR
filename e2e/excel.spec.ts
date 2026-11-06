@@ -1,5 +1,6 @@
 import { Locator, Page } from '@playwright/test';
 import { expect, searchEmployeesInApp, test } from './fixtures';
+import { closeFilters, openFilters } from './filters';
 
 type ExcelJSModule = typeof import('exceljs');
 async function lib(): Promise<ExcelJSModule> {
@@ -16,9 +17,11 @@ async function openSelect(select: Locator) {
   await select.click({ position: { x: box.width - 22, y: box.height / 2 } });
 }
 async function choose(page: Page, name: string, option: string) {
+  const inFilters = await openFilters(page);
   await openSelect(page.getByRole('combobox', { name }));
   await page.getByRole('option', { name: option, exact: true }).click();
   await expect(page.getByRole('listbox')).toHaveCount(0);
+  if (inFilters) await closeFilters(page);
 }
 async function total(page: Page): Promise<number> {
   const text = await page.locator('mat-paginator .mat-mdc-paginator-range-label').innerText();
@@ -44,7 +47,6 @@ test.describe('Excel export', () => {
   }) => {
     await page.goto('/employees/list');
     await expect(page.locator('tr.mat-mdc-row').first()).toBeVisible();
-    await page.getByRole('button', { name: /More filters/ }).click();
     await choose(page, 'Department', 'Engineering');
     await expect.poll(() => total(page)).toBeLessThan(60);
     const engineering = await total(page);

@@ -25,7 +25,7 @@ const COMPONENT_SEED: ComponentSeed[] = [
     name: 'Transport allowance',
     type: 'Earning',
     calculation: 'Fixed',
-    value: 50,
+    value: 50_000,
     description: 'Fixed monthly commuting allowance.',
     status: 'Active',
   },
@@ -34,7 +34,7 @@ const COMPONENT_SEED: ComponentSeed[] = [
     name: 'Meal allowance',
     type: 'Earning',
     calculation: 'Fixed',
-    value: 30,
+    value: 30_000,
     description: 'Fixed monthly meal allowance.',
     status: 'Active',
   },
@@ -52,7 +52,7 @@ const COMPONENT_SEED: ComponentSeed[] = [
     name: 'Executive allowance',
     type: 'Earning',
     calculation: 'Fixed',
-    value: 300,
+    value: 300_000,
     description: 'Fixed monthly allowance for executive roles.',
     status: 'Active',
   },
@@ -128,8 +128,8 @@ export function sampleBasicSalary(employee: { id: number; jobGradeId: number }):
     Math.round(
       (grade.minSalary +
         (grade.maxSalary - grade.minSalary) * seededRandom(`salary-${employee.id}`)) /
-        10,
-    ) * 10
+        10_000,
+    ) * 10_000
   );
 }
 
@@ -152,7 +152,7 @@ function generateAssignments(): SalaryAssignment[] {
         id: list.length + 1,
         employeeId: e.id,
         structureId,
-        basicSalary: Math.round((current * 0.92) / 10) * 10,
+        basicSalary: Math.round((current * 0.92) / 10_000) * 10_000,
         effectiveFrom: e.joiningDate,
         remarks: 'Starting salary',
       });

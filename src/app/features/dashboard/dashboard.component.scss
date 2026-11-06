@@ -1,7 +1,7 @@
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   transition: opacity 150ms ease;
 
   &.refreshing {
@@ -11,17 +11,23 @@
 
 .kpis {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .grid {
   display: grid;
-  gap: 20px;
+  gap: 16px;
   align-items: stretch;
 
   &--wide {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+  &--ops {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  &--overview {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
   }
   &--halves {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -52,16 +58,24 @@
   text-align: center;
 }
 
-@media (max-width: 1279.98px) {
-  .grid--wide,
-  .grid--thirds {
+@media (max-width: 1439.98px) {
+  .grid--ops {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .grid--wide app-attendance-trend-chart {
-    grid-column: 1 / -1;
+}
+
+@media (max-width: 1279.98px) {
+  .kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .grid--thirds app-upcoming-events-card {
+  .grid--wide,
+  .grid--thirds,
+  .grid--overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid--overview app-headcount-growth-chart {
     grid-column: 1 / -1;
+    order: -1;
   }
 }
 
@@ -76,7 +90,9 @@
 
 @media (max-width: 719.98px) {
   .grid--wide,
-  .grid--thirds {
+  .grid--thirds,
+  .grid--ops,
+  .grid--overview {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
+import { clearAllFilters, closeFilters, openFilters } from './filters';
 
 const rows = (page: Page) => page.locator('tr.mat-mdc-row');
 const dialog = (page: Page) => page.getByRole('dialog');
@@ -7,8 +8,10 @@ const confirmDialog = (page: Page) => page.getByRole('alertdialog');
 
 async function choose(page: Page, name: string, option: string | RegExp, exact = true) {
   // Material's label receives the click (and opens the select); Playwright's hit-test would refuse it.
+  const inFilters = await openFilters(page);
   await page.getByRole('combobox', { name }).click({ force: true });
   await page.getByRole('option', { name: option, exact }).click();
+  if (inFilters) await closeFilters(page);
 }
 
 /** Same, but for a dropdown inside the open dialog (page filters can share the label). */
@@ -91,7 +94,6 @@ test.describe('attendance records', () => {
     const all = await total(page);
     expect(all).toBeGreaterThan(1000);
 
-    await page.getByRole('button', { name: /More filters/ }).click();
     await choose(page, 'Department', 'Engineering');
     await expect(rows(page).first()).toContainText('Engineering');
     expect(await total(page)).toBeLessThan(all);
@@ -100,8 +102,10 @@ test.describe('attendance records', () => {
     await expect(rows(page).first()).toBeVisible();
     await expect(rows(page).filter({ hasNotText: 'Late' })).toHaveCount(0);
 
+    await openFilters(page);
     await page.getByRole('textbox', { name: 'From' }).fill(localIso(10));
     await page.getByRole('textbox', { name: 'To', exact: true }).fill(localIso(3));
+    await closeFilters(page);
     await expect(rows(page).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Clear filters' })).toBeVisible();
 
@@ -321,7 +325,7 @@ test.describe('overtime', () => {
     await expect.poll(() => total(page)).toBe(pending - 2);
 
     // Decided entries can only be viewed
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await clearAllFilters(page);
     await choose(page, 'Status', 'Approved');
     await rows(page)
       .first()
@@ -416,7 +420,7 @@ test.describe('attendance adjustments', () => {
       page.getByText(/Adjustment request "ADJ-\d{4}" created successfully\./),
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await clearAllFilters(page);
     await page.getByRole('searchbox', { name: 'Search by reason' }).fill('forgot to punch');
     await expect(rows(page)).toHaveCount(1);
     await expect(rows(page).first()).toContainText('08:50 – 18:20');

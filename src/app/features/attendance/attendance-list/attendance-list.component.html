@@ -1,65 +1,51 @@
-<section class="filters" role="search" aria-label="Filter attendance records">
-  <div class="filters__bar">
-    <app-search-field
-      class="filters__search"
-      label="Search by employee name or code"
-      [value]="query.search()"
-      (searchChange)="query.setSearch($event)"
-    />
-    <mat-form-field subscriptSizing="dynamic" class="filters__field">
-      <mat-label>From</mat-label>
-      <input
-        matInput
-        placeholder="dd/mm/yyyy"
-        autocomplete="off"
-        [matDatepicker]="fromPicker"
-        [value]="value('dateFrom')"
-        [max]="value('dateTo')"
-        (click)="fromPicker.open()"
-        (dateInput)="setFilter('dateFrom', $event.value)"
-      />
-      <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
-      <mat-datepicker #fromPicker />
-    </mat-form-field>
-
-    <mat-form-field subscriptSizing="dynamic" class="filters__field">
-      <mat-label>To</mat-label>
-      <input
-        matInput
-        placeholder="dd/mm/yyyy"
-        autocomplete="off"
-        [matDatepicker]="toPicker"
-        [value]="value('dateTo')"
-        [min]="value('dateFrom')"
-        (click)="toPicker.open()"
-        (dateInput)="setFilter('dateTo', $event.value)"
-      />
-      <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
-      <mat-datepicker #toPicker />
-    </mat-form-field>
-    <button
-      mat-stroked-button
-      type="button"
-      class="filters__toggle"
-      [class.is-open]="panelOpen()"
-      [attr.aria-expanded]="panelOpen()"
-      aria-controls="attendance-more-filters"
-      (click)="panelOpen.set(!panelOpen())"
-    >
-      <mat-icon>tune</mat-icon>
-      More filters
-      @if (extraFilterCount() > 0) {
-        <span class="filters__badge">{{ extraFilterCount() }}</span>
-      }
-      <mat-icon iconPositionEnd class="filters__chevron">expand_more</mat-icon>
-    </button>
-  </div>
-
-  @if (panelOpen()) {
-    <div class="filters__panel" id="attendance-more-filters">
+<ng-template #bar>
+  <app-search-field
+    label="Search by employee name or code"
+    [value]="query.search()"
+    (searchChange)="query.setSearch($event)"
+  />
+  <app-filter-popup [activeCount]="filterCount()" (cleared)="query.reset()">
+    <app-filter-field label="From">
       <mat-form-field subscriptSizing="dynamic">
-        <mat-label>Employee</mat-label>
+        <input
+          aria-label="From"
+          matInput
+          placeholder="dd/mm/yyyy"
+          autocomplete="off"
+          [matDatepicker]="fromPicker"
+          [value]="value('dateFrom')"
+          [max]="value('dateTo')"
+          (click)="fromPicker.open()"
+          (dateInput)="setFilter('dateFrom', $event.value)"
+        />
+        <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+        <mat-datepicker #fromPicker />
+      </mat-form-field>
+    </app-filter-field>
+
+    <app-filter-field label="To">
+      <mat-form-field subscriptSizing="dynamic">
+        <input
+          aria-label="To"
+          matInput
+          placeholder="dd/mm/yyyy"
+          autocomplete="off"
+          [matDatepicker]="toPicker"
+          [value]="value('dateTo')"
+          [min]="value('dateFrom')"
+          (click)="toPicker.open()"
+          (dateInput)="setFilter('dateTo', $event.value)"
+        />
+        <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+        <mat-datepicker #toPicker />
+      </mat-form-field>
+    </app-filter-field>
+
+    <app-filter-field label="Employee">
+      <mat-form-field subscriptSizing="dynamic">
         <mat-select
+          placeholder="All"
+          aria-label="Employee"
           [value]="value('employeeId')"
           (selectionChange)="setFilter('employeeId', $event.value)"
         >
@@ -69,10 +55,13 @@
           }
         </mat-select>
       </mat-form-field>
+    </app-filter-field>
 
+    <app-filter-field label="Department">
       <mat-form-field subscriptSizing="dynamic">
-        <mat-label>Department</mat-label>
         <mat-select
+          placeholder="All"
+          aria-label="Department"
           [value]="value('departmentId')"
           (selectionChange)="setFilter('departmentId', $event.value)"
         >
@@ -82,10 +71,13 @@
           }
         </mat-select>
       </mat-form-field>
+    </app-filter-field>
 
+    <app-filter-field label="Branch">
       <mat-form-field subscriptSizing="dynamic">
-        <mat-label>Branch</mat-label>
         <mat-select
+          placeholder="All"
+          aria-label="Branch"
           [value]="value('branchId')"
           (selectionChange)="setFilter('branchId', $event.value)"
         >
@@ -95,11 +87,14 @@
           }
         </mat-select>
       </mat-form-field>
+    </app-filter-field>
 
-      @if (mode() === 'all') {
+    @if (mode() === 'all') {
+      <app-filter-field label="Status">
         <mat-form-field subscriptSizing="dynamic">
-          <mat-label>Status</mat-label>
           <mat-select
+            placeholder="All"
+            aria-label="Status"
             [value]="value('status')"
             (selectionChange)="setFilter('status', $event.value)"
           >
@@ -109,31 +104,42 @@
             }
           </mat-select>
         </mat-form-field>
-      }
-    </div>
-  }
+      </app-filter-field>
+    }
+  </app-filter-popup>
+</ng-template>
 
-  @if (activeChips().length > 0) {
-    <div class="filters__active" aria-label="Active filters">
-      @for (chip of activeChips(); track chip.key) {
-        <span class="chip">
-          <span class="chip__key">{{ chip.name }}:</span> {{ chip.label }}
-          <button
-            type="button"
-            class="chip__remove"
-            [attr.aria-label]="'Remove ' + chip.name + ' filter'"
-            (click)="removeChip(chip.key)"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
-        </span>
-      }
-      <button mat-button type="button" class="filters__clear" (click)="query.reset()">
-        <mat-icon>filter_alt_off</mat-icon>Clear filters
-      </button>
-    </div>
-  }
-</section>
+@if (title()) {
+  <app-page-header [title]="title()" [description]="description()">
+    <ng-container pageSearch>
+      <ng-container *ngTemplateOutlet="bar" />
+    </ng-container>
+  </app-page-header>
+} @else {
+  <div class="filters" role="search" aria-label="Filters">
+    <ng-container *ngTemplateOutlet="bar" />
+  </div>
+}
+@if (activeChips().length > 0) {
+  <div class="filters__active" aria-label="Active filters">
+    @for (chip of activeChips(); track chip.key) {
+      <span class="chip">
+        <span class="chip__key">{{ chip.name }}:</span> {{ chip.label }}
+        <button
+          type="button"
+          class="chip__remove"
+          [attr.aria-label]="'Remove ' + chip.name + ' filter'"
+          (click)="removeChip(chip.key)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </span>
+    }
+    <button mat-button type="button" class="filters__clear" (click)="query.reset()">
+      <mat-icon>filter_alt_off</mat-icon>Clear filters
+    </button>
+  </div>
+}
 
 @if (page.error() && !result()) {
   <app-empty-state icon="error" title="Attendance could not be loaded" [message]="errorText()">

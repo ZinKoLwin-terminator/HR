@@ -75,6 +75,11 @@ export const routes: Routes = [
           import('./features/settings/settings.routes').then((m) => m.SETTINGS_ROUTES),
       },
       {
+        path: 'help',
+        data: { breadcrumb: 'Help' },
+        loadChildren: () => import('./features/help/help.routes').then((m) => m.HELP_ROUTES),
+      },
+      {
         path: '**',
         title: 'Page not found',
         data: { breadcrumb: 'Not found' },

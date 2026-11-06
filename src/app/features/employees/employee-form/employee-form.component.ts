@@ -1,5 +1,7 @@
 import {
+  AfterViewInit,
   Component,
+  DestroyRef,
   Injector,
   OnInit,
   Signal,
@@ -72,7 +74,7 @@ const MAX_PHOTO_BYTES = 1024 * 1024;
   templateUrl: './employee-form.component.html',
   styleUrl: './employee-form.component.scss',
 })
-export class EmployeeFormComponent implements OnInit {
+export class EmployeeFormComponent implements OnInit, AfterViewInit {
   readonly data = input.required<EmployeeFormData>();
   readonly saved = output<Employee>();
   readonly cancelled = output<void>();
@@ -80,6 +82,10 @@ export class EmployeeFormComponent implements OnInit {
   private readonly employeesApi = inject(EmployeeDataService);
   private readonly documentsApi = inject(EmployeeDocumentDataService);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
+
+  /** Section currently in view, highlighted in the side navigation. */
+  protected readonly activeId = signal('personal');
 
   protected sections: FormSection[] = [];
   protected navItems: NavItem[] = [];
@@ -175,6 +181,38 @@ export class EmployeeFormComponent implements OnInit {
     this.photoUrl.set(employee?.photoUrl ?? null);
   }
 
+  ngAfterViewInit(): void {
+    if (typeof IntersectionObserver === 'undefined') {
+      return;
+    }
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = entry.target.id.replace('sec-', '');
+          if (entry.isIntersecting) {
+            visible.add(id);
+          } else {
+            visible.delete(id);
+          }
+        }
+        // First section (in page order) that is on screen wins.
+        const first = this.navItems.find((item) => visible.has(item.id));
+        if (first) {
+          this.activeId.set(first.id);
+        }
+      },
+      { rootMargin: '-20% 0px -60% 0px' },
+    );
+    for (const item of this.navItems) {
+      const el = document.getElementById(`sec-${item.id}`);
+      if (el) {
+        observer.observe(el);
+      }
+    }
+    this.destroyRef.onDestroy(() => observer.disconnect());
+  }
+
   hasUnsavedChanges(): boolean {
     if (this.completed || !this.form) {
       return false;
@@ -207,6 +245,7 @@ export class EmployeeFormComponent implements OnInit {
   }
 
   protected goTo(id: string): void {
+    this.activeId.set(id);
     const el = document.getElementById(`sec-${id}`);
     el?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
     el?.focus({ preventScroll: true });

@@ -19,9 +19,16 @@ export function mondayOf(date: string): string {
 }
 
 /** Weekly roster grid: shifts, days off, holidays and approved leave per employee. */
+import {
+  FilterFieldComponent,
+  FilterPopupComponent,
+} from '../../../shared/components/filter-popup/filter-popup.component';
+
 @Component({
   selector: 'app-work-schedules',
   imports: [
+    FilterFieldComponent,
+    FilterPopupComponent,
     DatePipe,
     MatButtonModule,
     MatFormFieldModule,
@@ -42,6 +49,15 @@ export class WorkSchedulesComponent {
   protected readonly weekStart = signal(mondayOf(todayIso()));
   protected readonly departmentId = signal<number | null>(null);
   protected readonly branchId = signal<number | null>(null);
+
+  protected readonly filterCount = computed(
+    () => (this.departmentId() === null ? 0 : 1) + (this.branchId() === null ? 0 : 1),
+  );
+
+  protected clearFilters(): void {
+    this.departmentId.set(null);
+    this.branchId.set(null);
+  }
 
   private readonly lookups = rxResource({ stream: () => this.lookupService.load() });
   protected readonly departmentOptions = computed(() =>

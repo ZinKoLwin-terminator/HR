@@ -5,13 +5,13 @@ import { AttendanceListComponent } from './attendance-list.component';
 
 @Component({
   selector: 'app-attendance-records-page',
-  imports: [PageHeaderComponent, AttendanceListComponent],
+  imports: [AttendanceListComponent],
   template: `
-    <app-page-header
+    <app-attendance-list
+      mode="all"
       title="Attendance records"
       description="Daily check-in and check-out records. Filter by employee, department, branch, date range or status."
     />
-    <app-attendance-list mode="all" />
   `,
 })
 export class AttendanceRecordsPageComponent {}

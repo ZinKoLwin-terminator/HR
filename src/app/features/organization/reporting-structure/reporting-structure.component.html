@@ -2,6 +2,13 @@
   title="Reporting structure"
   description="Who reports to whom, based on each employee's manager. Read-only view."
 >
+  <ng-container pageSearch>
+    <app-search-field
+      label="Find a person"
+      placeholder="Name, code, position or department"
+      (searchChange)="search.set($event)"
+    />
+  </ng-container>
   <ng-container pageActions>
     <button mat-stroked-button type="button" (click)="expandAll()">
       <mat-icon>unfold_more</mat-icon>Expand all
@@ -43,15 +50,6 @@
       hint="Direct reports per manager"
     />
   </section>
-
-  <div class="toolbar">
-    <app-search-field
-      class="grow"
-      label="Find a person"
-      placeholder="Name, code, position or department"
-      (searchChange)="search.set($event)"
-    />
-  </div>
 
   <section class="card chart" aria-label="Organization chart">
     @if (visibleRoots().length) {

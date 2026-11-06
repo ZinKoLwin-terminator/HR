@@ -9,6 +9,7 @@ import {
   output,
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -35,6 +36,7 @@ import { ExcelExportService } from '../excel/excel-export.service';
 import { DataTableComponent } from '../data-table/data-table.component';
 import { TableAction, TableActionEvent } from '../data-table/data-table.models';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
+import { FilterFieldComponent, FilterPopupComponent } from '../filter-popup/filter-popup.component';
 import { PageHeaderComponent } from '../page-header/page-header.component';
 import { SearchFieldComponent } from '../search-field/search-field.component';
 import {
@@ -56,13 +58,16 @@ type Row = Entity & { status?: string };
 @Component({
   selector: 'app-crud-page',
   imports: [
+    NgTemplateOutlet,
+    FilterFieldComponent,
+    FilterPopupComponent,
+    PageHeaderComponent,
     MatButtonModule,
     MatIconModule,
     MatInputModule,
     MatFormFieldModule,
     MatSelectModule,
     RouterLink,
-    PageHeaderComponent,
     SearchFieldComponent,
     DataTableComponent,
     EmptyStateComponent,

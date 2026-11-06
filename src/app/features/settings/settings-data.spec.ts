@@ -227,7 +227,7 @@ describe('settings data services', () => {
         'organizationName',
         'timezone',
       ]);
-      expect((await firstValueFrom(general.get())).organizationName).toBe('Apex Horizon Group'); // unchanged
+      expect((await firstValueFrom(general.get())).organizationName).toBe('APEX Group'); // unchanged
     });
   });
 });

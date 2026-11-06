@@ -23,9 +23,16 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { PayrollTrendChartComponent } from './payroll-trend-chart.component';
 
 /** Past payroll periods with a gross vs net trend (sample data). */
+import {
+  FilterFieldComponent,
+  FilterPopupComponent,
+} from '../../../shared/components/filter-popup/filter-popup.component';
+
 @Component({
   selector: 'app-payroll-history',
   imports: [
+    FilterFieldComponent,
+    FilterPopupComponent,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -64,6 +71,15 @@ export class PayrollHistoryComponent {
   protected readonly yearOptions = computed(() =>
     [...new Set(this.processed().map((r) => r.year))].sort((a, b) => b - a),
   );
+  protected readonly filterCount = computed(
+    () => (this.year() === null ? 0 : 1) + (this.status() === null ? 0 : 1),
+  );
+
+  protected clearFilters(): void {
+    this.year.set(null);
+    this.status.set(null);
+  }
+
   protected readonly rows = computed(() =>
     this.processed().filter(
       (r) =>

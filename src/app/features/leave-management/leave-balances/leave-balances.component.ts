@@ -24,6 +24,10 @@ import {
 } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import {
+  FilterFieldComponent,
+  FilterPopupComponent,
+} from '../../../shared/components/filter-popup/filter-popup.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { SortState } from '../../../core/models/common.models';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
@@ -120,6 +124,8 @@ export class LeaveBalanceDialogComponent {
 @Component({
   selector: 'app-leave-balances',
   imports: [
+    FilterFieldComponent,
+    FilterPopupComponent,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -182,6 +188,17 @@ export class LeaveBalancesComponent {
         ? { ...value, items: value.items.map((r) => ({ ...r, id: r.employeeId })) }
         : previous?.value,
   });
+  /** Applied filters (year always has a value, so it is not counted). */
+  protected readonly filterCount = computed(
+    () => (this.departmentId() === null ? 0 : 1) + (this.branchId() === null ? 0 : 1),
+  );
+
+  protected clearFilters(): void {
+    this.departmentId.set(null);
+    this.branchId.set(null);
+    this.pageIndex.set(0);
+  }
+
   protected readonly errorText = computed(() =>
     this.page.error() ? errorMessage(this.page.error()) : '',
   );

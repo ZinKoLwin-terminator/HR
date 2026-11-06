@@ -6,6 +6,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import {
+  ArcElement,
+  DoughnutController,
+  Filler,
   BarController,
   BarElement,
   CategoryScale,
@@ -24,11 +27,14 @@ import { EmptyStateComponent } from '../../shared/components/empty-state/empty-s
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 import { ActivityFeedCardComponent } from './widgets/activity-feed-card.component';
-import { AttendanceTrendChartComponent } from './widgets/attendance-trend-chart.component';
+import { AttendanceTodayDonutComponent } from './widgets/attendance-today-donut.component';
 import { DepartmentChartComponent } from './widgets/department-chart.component';
 import { HeadcountGrowthChartComponent } from './widgets/headcount-growth-chart.component';
 import { PayrollSummaryCardComponent } from './widgets/payroll-summary-card.component';
 import { PendingLeavesCardComponent } from './widgets/pending-leaves-card.component';
+import { downloadDashboardReport } from './dashboard-report';
+import { RecruitmentSummaryCardComponent } from './widgets/recruitment-summary-card.component';
+import { QuickAccessCardComponent } from './widgets/quick-access-card.component';
 import { UpcomingEventsCardComponent } from './widgets/upcoming-events-card.component';
 
 @Component({
@@ -42,11 +48,13 @@ import { UpcomingEventsCardComponent } from './widgets/upcoming-events-card.comp
     PageHeaderComponent,
     StatCardComponent,
     EmptyStateComponent,
-    AttendanceTrendChartComponent,
+    AttendanceTodayDonutComponent,
     DepartmentChartComponent,
     HeadcountGrowthChartComponent,
     PayrollSummaryCardComponent,
     PendingLeavesCardComponent,
+    QuickAccessCardComponent,
+    RecruitmentSummaryCardComponent,
     ActivityFeedCardComponent,
     UpcomingEventsCardComponent,
   ],
@@ -54,6 +62,9 @@ import { UpcomingEventsCardComponent } from './widgets/upcoming-events-card.comp
   providers: [
     provideCharts({
       registerables: [
+        ArcElement,
+        DoughnutController,
+        Filler,
         BarController,
         BarElement,
         LineController,
@@ -74,6 +85,13 @@ export class DashboardComponent {
   protected readonly user = inject(CurrentUserService);
 
   protected readonly summary = rxResource({ stream: () => this.dashboardApi.getSummary() });
+  protected downloadReport(): void {
+    const s = this.summary.value();
+    if (s) {
+      downloadDashboardReport(s);
+    }
+  }
+
   protected readonly errorText = computed(() =>
     this.summary.error() ? errorMessage(this.summary.error()) : '',
   );

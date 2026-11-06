@@ -130,9 +130,9 @@ describe('payroll data', () => {
 
   describe('salary assignments', () => {
     const model = (overrides: Partial<SalaryAssignment> = {}): Omit<SalaryAssignment, 'id'> => ({
-      employeeId: 15, // grade G3: band 900 – 1,500
+      employeeId: 15, // grade G3: band 900,000 – 1,500,000 MMK
       structureId: 1,
-      basicSalary: 1200,
+      basicSalary: 1_200_000,
       effectiveFrom: today,
       remarks: 'Revision',
       ...overrides,
@@ -140,12 +140,12 @@ describe('payroll data', () => {
 
     it('enforces the grade band, joining date and one assignment per start date', async () => {
       const band = await expectError(
-        firstValueFrom(assignments.create(model({ basicSalary: 5000 }))),
+        firstValueFrom(assignments.create(model({ basicSalary: 5_000_000 }))),
         'Validation',
       );
       expect(band.fieldErrors?.['basicSalary']).toMatch(/G3 band/);
       await expectError(
-        firstValueFrom(assignments.create(model({ basicSalary: 100 }))),
+        firstValueFrom(assignments.create(model({ basicSalary: 100_000 }))),
         'Validation',
       );
       await expectError(
@@ -163,7 +163,7 @@ describe('payroll data', () => {
 
       await firstValueFrom(assignments.create(model()));
       const clash = await expectError(
-        firstValueFrom(assignments.create(model({ basicSalary: 1250 }))),
+        firstValueFrom(assignments.create(model({ basicSalary: 1_250_000 }))),
         'Validation',
       );
       expect(clash.fieldErrors?.['effectiveFrom']).toBeTruthy();
@@ -184,9 +184,9 @@ describe('payroll data', () => {
     it('drives the salary summary shown on the employee profile', async () => {
       const summary = TestBed.inject(EmployeeSalaryDataService);
       const before = await firstValueFrom(summary.getSummary(15));
-      await firstValueFrom(assignments.create(model({ basicSalary: 1400 })));
+      await firstValueFrom(assignments.create(model({ basicSalary: 1_400_000 })));
       const after = await firstValueFrom(summary.getSummary(15));
-      expect(after.basic).toBe(1400);
+      expect(after.basic).toBe(1_400_000);
       expect(after.basic).not.toBe(before.basic);
       expect(after.gross).toBeCloseTo(after.basic + after.allowances, 2);
       expect(after.net).toBeCloseTo(after.gross - after.deductions, 2);

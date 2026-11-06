@@ -25,7 +25,7 @@ Scenarios below use these seeded records (`src/app/mock-data`). **Fixed** data n
 
 | Area | Records |
 |---|---|
-| Companies | AHT Apex Horizon Technologies (Active), AHL Apex Horizon Logistics (Active), AHV Apex Horizon Ventures (**Inactive**, no branches or staff) |
+| Companies | AHT APEX Technologies (Active), AHL APEX Logistics (Active), AHV APEX Ventures (**Inactive**, no branches or staff) |
 | Branches | YGN-HQ Yangon Head Office, MDY-BR Mandalay Branch, NPT-BR Nay Pyi Taw Office, SG-RO Singapore Regional Office (AHT); MDY-DC Mandalay Distribution Center, YGN-LH Yangon Logistics Hub (AHL) |
 | Departments (11) | Executive, Human Resources, Finance & Accounts, Engineering, Product Management, Sales (Mandalay), IT Infrastructure, Customer Support (Nay Pyi Taw), Warehouse Operations (MDY-DC), Fleet & Logistics (YGN-LH), Marketing (Singapore) |
 | Job grades | G1 400–700, G2 600–1000, G3 900–1500, G4 1400–2200, G5 2000–3000, G6 2800–4200, G7 4000–6000, G8 5500–8500, G9 8000–14000 |
@@ -91,11 +91,11 @@ Scenarios below use these seeded records (`src/app/mock-data`). **Fixed** data n
 | EMP-07 | − | Joining date `02/11/2026`, probation end `01/10/2026` | Rejected on probation end |
 | EMP-08 | − | Joining date `02/11/2026`, exit date `01/10/2026` | Rejected on exit date |
 | EMP-09 | − | Edit EMP054 Zarni Tun: status Resigned, exit date empty | "An exit date is required ..." |
-| EMP-10 | − | Company Apex Horizon Logistics with branch Yangon Head Office (an AHT branch) | "branch does not belong to the chosen company" |
+| EMP-10 | − | Company APEX Logistics with branch Yangon Head Office (an AHT branch) | "branch does not belong to the chosen company" |
 | EMP-11 | − | Branch Yangon Head Office with department Warehouse Operations (which sits in Mandalay Distribution Center) | Rejected on department |
 | EMP-12 | − | Department Engineering with position Customer Support Agent | "belongs to a different department" |
 | EMP-13 | − | Department Engineering with section Tier 1 Support | Rejected on section |
-| EMP-14 | − | Choose company Apex Horizon Ventures (Inactive) or shift Night Shift (Inactive). For other units, deactivate one first (e.g. Marketing) | "This ... is inactive" |
+| EMP-14 | − | Choose company APEX Ventures (Inactive) or shift Night Shift (Inactive). For other units, deactivate one first (e.g. Marketing) | "This ... is inactive" |
 | EMP-15 | + | Deactivate department Marketing, then edit EMP032 Emily Wong (Digital Marketing Specialist) changing only a phone number | Saves (existing assignment may stay) |
 | EMP-16 | − | (a) Edit EMP005 Daniel Carter and open the *Reporting manager* list. (b) Excel import, Update only: row with employee code `EMP005` and manager code `EMP005` | (a) Daniel Carter is **not in the list** (the form hides the employee themselves). (b) Rejected: "An employee cannot be their own manager." / "Choose a different manager." on the manager field |
 | EMP-17 | − | Excel import row with manager code `EMP999` | "manager does not exist" |
@@ -123,14 +123,14 @@ Scenarios below use these seeded records (`src/app/mock-data`). **Fixed** data n
 |---|---|---|---|
 | ORG-01 | + | Create company, branch, department, section, position, job grade (valid chain) | Saved |
 | ORG-02 | − | Duplicate code: company `AHT`, branch `YGN-HQ`, department `ENG`, section `HR-TA`, position `POS-001`, grade `G1` | "must be unique" |
-| ORG-03 | − | Create a company named "Apex Horizon Technologies" | Rejected |
-| ORG-04 | − | New department with branch Yangon Head Office but company Apex Horizon Logistics | Rejected on branch |
+| ORG-03 | − | Create a company named "APEX Technologies" | Rejected |
+| ORG-04 | − | New department with branch Yangon Head Office but company APEX Logistics | Rejected on branch |
 | ORG-05 | − | New position in department Engineering with section Tier 1 Support | Rejected on section |
 | ORG-06 | − | Position set to report to itself | "cannot report to itself" |
 | ORG-07 | B | Job grade with min 400: max 400 / max 300 | Accepted / Rejected |
 | ORG-08 | − | Delete company AHT, branch YGN-HQ, department Engineering, section ENG-FE, grade G1 or position POS-001 | Conflict listing the usage counts, "Deactivate it instead" |
 | ORG-09 | + | Deactivate department Marketing | Allowed; it can no longer be newly assigned to employees (EMP-14) |
-| ORG-10 | + | Delete company Apex Horizon Ventures (Inactive, no branches or employees) | Deleted |
+| ORG-10 | + | Delete company APEX Ventures (Inactive, no branches or employees) | Deleted |
 | ORG-11 | X | Change grade G1 band from 400–700 to 450–650 after salaries exist | Existing assignments unchanged; new assignments validated against the new band |
 | ORG-12 | + | Open the Reporting Structure view | Renders (detail not covered by this document) |
 
@@ -499,7 +499,7 @@ Not automated yet: the calendar popup itself (DT-01 to DT-13, DT-16, DT-20), tim
 
 | အပိုင်း | Record များ |
 |---|---|
-| Company | AHT Apex Horizon Technologies (Active), AHL Apex Horizon Logistics (Active), AHV Apex Horizon Ventures (**Inactive**၊ branch/staff မရှိ) |
+| Company | AHT APEX Technologies (Active), AHL APEX Logistics (Active), AHV APEX Ventures (**Inactive**၊ branch/staff မရှိ) |
 | Branch | AHT: YGN-HQ Yangon Head Office, MDY-BR Mandalay Branch, NPT-BR Nay Pyi Taw Office, SG-RO Singapore Regional Office; AHL: MDY-DC Mandalay Distribution Center, YGN-LH Yangon Logistics Hub |
 | Department (၁၁) | Executive, Human Resources, Finance & Accounts, Engineering, Product Management, Sales (Mandalay), IT Infrastructure, Customer Support (Nay Pyi Taw), Warehouse Operations (MDY-DC), Fleet & Logistics (YGN-LH), Marketing (Singapore) |
 | Job grade | G1 400–700, G2 600–1000, G3 900–1500, G4 1400–2200, G5 2000–3000, G6 2800–4200, G7 4000–6000, G8 5500–8500, G9 8000–14000 |
@@ -565,11 +565,11 @@ Not automated yet: the calendar popup itself (DT-01 to DT-13, DT-16, DT-20), tim
 | EMP-07 | − | Joining date `02/11/2026`၊ probation ကုန်ရက် `01/10/2026` | Probation ကုန်ရက်ပေါ်တွင် ငြင်း |
 | EMP-08 | − | Joining date `02/11/2026`၊ exit date `01/10/2026` | Exit date ပေါ်တွင် ငြင်း |
 | EMP-09 | − | EMP054 Zarni Tun ကို edit: status Resigned၊ exit date ဗလာ | "An exit date is required ..." |
-| EMP-10 | − | Company Apex Horizon Logistics နှင့် branch Yangon Head Office (AHT ၏ branch) | "branch does not belong to the chosen company" |
+| EMP-10 | − | Company APEX Logistics နှင့် branch Yangon Head Office (AHT ၏ branch) | "branch does not belong to the chosen company" |
 | EMP-11 | − | Branch Yangon Head Office နှင့် department Warehouse Operations (Mandalay Distribution Center တွင်ရှိ) | Department ပေါ်တွင် ငြင်း |
 | EMP-12 | − | Department Engineering နှင့် position Customer Support Agent | "belongs to a different department" |
 | EMP-13 | − | Department Engineering နှင့် section Tier 1 Support | Section ပေါ်တွင် ငြင်း |
-| EMP-14 | − | Company Apex Horizon Ventures (Inactive) သို့မဟုတ် shift Night Shift (Inactive) ကိုရွေး။ တခြား unit အတွက် အရင်ဆုံး deactivate လုပ် (ဥပမာ Marketing) | "This ... is inactive" |
+| EMP-14 | − | Company APEX Ventures (Inactive) သို့မဟုတ် shift Night Shift (Inactive) ကိုရွေး။ တခြား unit အတွက် အရင်ဆုံး deactivate လုပ် (ဥပမာ Marketing) | "This ... is inactive" |
 | EMP-15 | + | Department Marketing ကို deactivate ပြီး EMP032 Emily Wong (Digital Marketing Specialist) ကို ဖုန်းနံပါတ်သာပြောင်း၍ edit | Save ရသည် (ရှိပြီးသား assignment ကျန်နိုင်သည်) |
 | EMP-16 | − | (က) EMP005 Daniel Carter ကို edit ပြီး *Reporting manager* စာရင်းကိုဖွင့်။ (ခ) Excel import, Update only: employee code `EMP005` နှင့် manager code `EMP005` ပါသော row | (က) Daniel Carter သည် စာရင်းထဲ**မပါ** (form က employee ကိုယ်တိုင်ကို ဖျောက်ထား)။ (ခ) ငြင်း: "An employee cannot be their own manager." / manager field တွင် "Choose a different manager." |
 | EMP-17 | − | Manager code `EMP999` ပါသော Excel import row | "manager does not exist" |
@@ -596,14 +596,14 @@ Not automated yet: the calendar popup itself (DT-01 to DT-13, DT-16, DT-20), tim
 |---|---|---|---|
 | ORG-01 | + | Company, branch, department, section, position, job grade ကို မှန်ကန်သောကွင်းဆက်ဖြင့် ဖန်တီး | Save ရ |
 | ORG-02 | − | Code ထပ်: company `AHT`, branch `YGN-HQ`, department `ENG`, section `HR-TA`, position `POS-001`, grade `G1` | "must be unique" |
-| ORG-03 | − | "Apex Horizon Technologies" အမည်ဖြင့် company ဖန်တီး | ငြင်း |
-| ORG-04 | − | Department အသစ်ကို branch Yangon Head Office နှင့် company Apex Horizon Logistics ဖြင့် | Branch ပေါ်တွင် ငြင်း |
+| ORG-03 | − | "APEX Technologies" အမည်ဖြင့် company ဖန်တီး | ငြင်း |
+| ORG-04 | − | Department အသစ်ကို branch Yangon Head Office နှင့် company APEX Logistics ဖြင့် | Branch ပေါ်တွင် ငြင်း |
 | ORG-05 | − | Department Engineering အတွက် position အသစ်ကို section Tier 1 Support ဖြင့် | Section ပေါ်တွင် ငြင်း |
 | ORG-06 | − | Position ကို ကိုယ်တိုင်သို့ report လုပ်ခိုင်း | "cannot report to itself" |
 | ORG-07 | B | Min 400 ရှိသော job grade: max 400 / max 300 | လက်ခံ / ငြင်း |
 | ORG-08 | − | Company AHT, branch YGN-HQ, department Engineering, section ENG-FE, grade G1 သို့မဟုတ် position POS-001 ကို delete | Conflict (အသုံးပြုမှုအရေအတွက်နှင့် "Deactivate it instead") |
 | ORG-09 | + | Department Marketing ကို deactivate | ရ၊ သို့သော် employee အသစ်ကို သတ်မှတ်မရတော့ (EMP-14) |
-| ORG-10 | + | Company Apex Horizon Ventures (Inactive၊ branch/employee မရှိ) ကို delete | ဖျက်ရ |
+| ORG-10 | + | Company APEX Ventures (Inactive၊ branch/employee မရှိ) ကို delete | ဖျက်ရ |
 | ORG-11 | X | လစာရှိနေပြီးနောက် grade G1 band ကို 400–700 မှ 450–650 သို့ပြောင်း | ရှိပြီးသား assignment မပြောင်း၊ assignment အသစ်ကိုသာ band အသစ်ဖြင့်စစ် |
 | ORG-12 | + | Reporting Structure view ဖွင့် | ပေါ်သည် (အသေးစိတ်ကို ဤစာတမ်းမခြေရာခံပါ) |
 

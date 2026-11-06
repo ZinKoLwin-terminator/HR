@@ -41,9 +41,9 @@ import { debounce, distinctUntilChanged, map, skip, timer } from 'rxjs';
       display: flex;
       align-items: center;
       gap: 8px;
-      height: 44px;
-      padding-inline: 14px 6px;
-      border-radius: 999px;
+      height: 36px;
+      padding-inline: 12px 6px;
+      border-radius: 10px;
       border: 1px solid var(--mat-sys-outline-variant);
       background: var(--mat-sys-surface-container-low);
       transition:
@@ -71,7 +71,7 @@ import { debounce, distinctUntilChanged, map, skip, timer } from 'rxjs';
       outline: 0;
       background: transparent;
       color: var(--mat-sys-on-surface);
-      font: var(--mat-sys-body-large);
+      font: var(--mat-sys-body-medium);
     }
     .search__input::placeholder {
       color: var(--mat-sys-on-surface-variant);
@@ -84,8 +84,8 @@ import { debounce, distinctUntilChanged, map, skip, timer } from 'rxjs';
       flex: none;
       display: grid;
       place-items: center;
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border: 0;
       border-radius: 50%;
       background: transparent;

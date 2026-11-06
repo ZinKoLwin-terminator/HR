@@ -1,7 +1,7 @@
 import { Pipe, PipeTransform, inject } from '@angular/core';
 import { APP_CONFIG } from '../../core/configuration/app-config';
 
-/** Formats amounts in the configured currency/locale, e.g. `1234 | money` → "$1,234". */
+/** Formats amounts in the configured currency/locale, e.g. `1234 | money` → "MMK 1,234". */
 @Pipe({ name: 'money' })
 export class MoneyPipe implements PipeTransform {
   private readonly config = inject(APP_CONFIG);

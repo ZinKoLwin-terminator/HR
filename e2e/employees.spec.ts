@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
 import { expect, searchEmployeesInApp, test } from './fixtures';
+import { closeFilters, openFilters } from './filters';
 
 test.skip(({ isMobile }) => isMobile, 'Employee workflows are exercised on desktop');
 
@@ -8,8 +9,10 @@ const dialog = (page: Page) => page.getByRole('dialog');
 const confirmDialog = (page: Page) => page.getByRole('alertdialog');
 
 async function choose(page: Page, name: string, option: string) {
+  const inFilters = await openFilters(page);
   await page.getByRole('combobox', { name }).click();
   await page.getByRole('option', { name: option, exact: true }).click();
+  if (inFilters) await closeFilters(page);
 }
 
 async function rowMenu(page: Page, name: string, action: string) {
@@ -36,7 +39,6 @@ test.describe('employee list', () => {
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(rows(page)).toHaveCount(10);
 
-    await page.getByRole('button', { name: /More filters/ }).click();
     await choose(page, 'Department', 'Engineering');
     await expect(rows(page).first()).toContainText('Engineering');
     await expect(page.getByText('of 60')).toBeHidden();
@@ -54,8 +56,10 @@ test.describe('employee list', () => {
   });
 
   test('filters by joining date range', async ({ page }) => {
+    await openFilters(page);
     await page.getByLabel('Joined from').fill('2014-01-01');
     await page.getByLabel('Joined to').fill('2015-12-31');
+    await closeFilters(page);
     await expect(rows(page)).toHaveCount(3);
   });
 
@@ -167,7 +171,7 @@ test.describe('add, edit and delete an employee', () => {
     await page.getByLabel('Contact phone').fill('+95 9 987 654 321');
 
     // Dependent organization dropdowns
-    await choose(page, 'Company', 'Apex Horizon Technologies');
+    await choose(page, 'Company', 'APEX Technologies');
     await page.getByRole('combobox', { name: 'Branch' }).click();
     await expect(page.getByRole('option')).toContainText([
       'Mandalay Branch',

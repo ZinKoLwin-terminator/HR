@@ -1,5 +1,4 @@
 import { Component, input, signal } from '@angular/core';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
@@ -9,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
  */
 @Component({
   selector: 'app-chart-panel',
-  imports: [MatButtonToggleModule, MatIconModule],
+  imports: [MatIconModule],
   template: `
     <section class="card chart-panel" [attr.aria-labelledby]="headingId">
       <div class="card__header">
@@ -19,19 +18,32 @@ import { MatIconModule } from '@angular/material/icon';
             <p>{{ subtitle() }}</p>
           }
         </div>
-        <mat-button-toggle-group
-          hideSingleSelectionIndicator
-          [value]="view()"
-          (change)="view.set($event.value)"
-          [attr.aria-label]="'View for ' + title()"
-        >
-          <mat-button-toggle value="chart" aria-label="Chart view"
-            ><mat-icon>bar_chart</mat-icon></mat-button-toggle
+        <div class="seg" role="radiogroup" [attr.aria-label]="'View for ' + title()">
+          <button
+            type="button"
+            class="seg__btn"
+            role="radio"
+            aria-label="Chart view"
+            title="Chart view"
+            [attr.aria-checked]="view() === 'chart'"
+            [class.on]="view() === 'chart'"
+            (click)="view.set('chart')"
           >
-          <mat-button-toggle value="table" aria-label="Table view"
-            ><mat-icon>table_rows</mat-icon></mat-button-toggle
+            <mat-icon>bar_chart</mat-icon>
+          </button>
+          <button
+            type="button"
+            class="seg__btn"
+            role="radio"
+            aria-label="Table view"
+            title="Table view"
+            [attr.aria-checked]="view() === 'table'"
+            [class.on]="view() === 'table'"
+            (click)="view.set('table')"
           >
-        </mat-button-toggle-group>
+            <mat-icon>table_rows</mat-icon>
+          </button>
+        </div>
       </div>
       @if (view() === 'chart') {
         <div class="chart-panel__chart" [style.height.px]="height()">
@@ -60,9 +72,67 @@ import { MatIconModule } from '@angular/material/icon';
       max-height: 320px;
       overflow: auto;
     }
-    mat-button-toggle-group {
-      --mat-button-toggle-height: 32px;
+    /* Segmented icon switch: soft track, raised white active segment. */
+    .seg {
+      display: inline-flex;
       flex: none;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 10px;
+      background: var(--mat-sys-surface-container-high);
+    }
+    .seg__btn {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 28px;
+      padding: 0;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--mat-sys-on-surface-variant);
+      cursor: pointer;
+      transition:
+        background-color 120ms ease,
+        color 120ms ease,
+        box-shadow 120ms ease;
+    }
+    .seg__btn:hover:not(.on) {
+      color: var(--mat-sys-on-surface);
+    }
+    .seg__btn.on {
+      background: var(--app-card-bg);
+      color: light-dark(var(--app-color-primary), var(--app-color-accent));
+      box-shadow:
+        0 1px 2px rgb(16 24 40 / 12%),
+        0 0 0 1px rgb(16 24 40 / 4%);
+    }
+    .seg__btn:focus-visible {
+      outline: 2px solid var(--app-color-accent);
+      outline-offset: 1px;
+    }
+    .seg__btn mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+    .card__header {
+      margin-bottom: 8px;
+      padding-bottom: 10px;
+      align-items: center;
+    }
+    .card__header > div {
+      min-width: 0;
+    }
+    .card__header h2 {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card__header p {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   `,
 })

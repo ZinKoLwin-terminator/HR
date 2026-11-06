@@ -1,4 +1,5 @@
-import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
@@ -30,6 +31,11 @@ import {
   TableColumn,
 } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import {
+  FilterFieldComponent,
+  FilterPopupComponent,
+} from '../../../shared/components/filter-popup/filter-popup.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { formatDuration } from '../../../shared/utilities/date.util';
 import { ListQuery } from '../../../shared/utilities/list-query';
@@ -67,12 +73,16 @@ const DETAIL_FIELDS: FieldConfig[] = [
 @Component({
   selector: 'app-attendance-list',
   imports: [
+    NgTemplateOutlet,
+    PageHeaderComponent,
     MatButtonModule,
     MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    FilterFieldComponent,
+    FilterPopupComponent,
     SearchFieldComponent,
     DataTableComponent,
     EmptyStateComponent,
@@ -86,6 +96,9 @@ const DETAIL_FIELDS: FieldConfig[] = [
 })
 export class AttendanceListComponent {
   readonly mode = input<AttendanceListMode>('all');
+  /** When set, the list renders its own page header with search + filters on the title row. */
+  readonly title = input('');
+  readonly description = input('');
 
   private readonly api = inject(AttendanceRecordDataService);
   private readonly lookupService = inject(OrganizationLookupService);
@@ -109,9 +122,6 @@ export class AttendanceListComponent {
   protected readonly branchOptions = computed(() =>
     options(this.lookups.value()?.branches ?? [], (b) => b.name),
   );
-
-  /** Whether the secondary filter panel (employee, department, branch, status) is expanded. */
-  protected readonly panelOpen = signal(false);
 
   /** Removable chips describing every applied filter. */
   protected readonly activeChips = computed(() => {
@@ -144,12 +154,9 @@ export class AttendanceListComponent {
     if (f.dateTo) chips.push({ key: 'dateTo', name: 'To', label: f.dateTo });
     return chips;
   });
-  /** Filters that live inside the collapsible panel. */
-  protected readonly extraFilterCount = computed(
-    () =>
-      this.activeChips().filter((c) =>
-        ['employeeId', 'departmentId', 'branchId', 'status'].includes(c.key),
-      ).length,
+  /** Number of applied filters (excluding the search term). */
+  protected readonly filterCount = computed(
+    () => this.activeChips().filter((c) => c.key !== 'search').length,
   );
 
   protected readonly page = rxResource({

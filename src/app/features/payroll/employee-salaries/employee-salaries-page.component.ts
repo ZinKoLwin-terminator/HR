@@ -138,7 +138,7 @@ export class EmployeeSalariesPageComponent {
           type: 'number',
           required: true,
           min: 1,
-          max: 1_000_000,
+          max: 1_000_000_000,
           hint: "Must stay inside the employee's job-grade band",
         },
         { key: 'effectiveFrom', label: 'Effective from', type: 'date', required: true },

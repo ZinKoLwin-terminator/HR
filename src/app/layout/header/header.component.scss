@@ -16,23 +16,6 @@
   flex: 1;
 }
 
-.demo-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font: var(--mat-sys-label-medium);
-  background: var(--app-warning-container);
-  color: var(--app-on-warning-container);
-
-  mat-icon {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
-  }
-}
-
 .user-button {
   height: 48px;
   padding: 0 8px;
@@ -76,14 +59,7 @@
 }
 
 @media (max-width: 959.98px) {
-  .user-text,
-  .demo-chip span {
-    display: none;
-  }
-}
-
-@media (max-width: 599.98px) {
-  .demo-chip {
+  .user-text {
     display: none;
   }
 }

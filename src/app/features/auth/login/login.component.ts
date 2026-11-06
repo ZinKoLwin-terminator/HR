@@ -5,14 +5,11 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import { isAppError } from '../../../core/models/common.models';
 import { AuthService } from '../../../core/services/auth.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
-import { ThemeService } from '../../../core/services/theme.service';
-import { ThemePickerComponent } from '../../../shared/components/theme-picker/theme-picker.component';
 import { DEMO_PASSWORD } from '../../../mock-services/auth/auth-mock.service';
 
 @Component({
@@ -25,8 +22,6 @@ import { DEMO_PASSWORD } from '../../../mock-services/auth/auth-mock.service';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatTooltipModule,
-    ThemePickerComponent,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
@@ -37,12 +32,62 @@ export class LoginComponent {
   private readonly route = inject(ActivatedRoute);
 
   private readonly toast = inject(UiNotificationService);
-  protected readonly theme = inject(ThemeService);
   protected readonly appName = inject(APP_CONFIG).appName;
   protected readonly demoPassword = DEMO_PASSWORD;
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly showPassword = signal(false);
+
+  protected readonly modules = [
+    {
+      icon: 'domain',
+      label: 'Organization',
+      hint: 'Companies & structure',
+      x: 14,
+      y: 30,
+      color: '#3b82f6',
+    },
+    {
+      icon: 'badge',
+      label: 'Employees',
+      hint: 'Profiles & documents',
+      x: 50,
+      y: 10,
+      color: '#8b5cf6',
+    },
+    {
+      icon: 'fact_check',
+      label: 'Attendance',
+      hint: 'Shifts & overtime',
+      x: 86,
+      y: 30,
+      color: '#14b8a6',
+    },
+    {
+      icon: 'beach_access',
+      label: 'Leave',
+      hint: 'Requests & approvals',
+      x: 14,
+      y: 72,
+      color: '#f59e0b',
+    },
+    {
+      icon: 'payments',
+      label: 'Payroll',
+      hint: 'Payslips & history',
+      x: 50,
+      y: 90,
+      color: '#10b981',
+    },
+    {
+      icon: 'person_search',
+      label: 'Recruitment',
+      hint: 'Openings & pipeline',
+      x: 86,
+      y: 72,
+      color: '#ec4899',
+    },
+  ];
 
   protected readonly highlights = [
     { icon: 'groups', text: 'One home for people, org structure and records' },

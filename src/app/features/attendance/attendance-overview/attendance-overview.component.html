@@ -8,47 +8,53 @@
   <a pageActions mat-flat-button routerLink="/attendance/records">
     <mat-icon>fact_check</mat-icon>All records
   </a>
+  <ng-container pageSearch>
+    <div class="day-nav" role="group" aria-label="Day">
+      <button mat-icon-button type="button" aria-label="Previous day" (click)="shiftDay(-1)">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <mat-form-field subscriptSizing="dynamic" class="date-field">
+        <mat-label>Date</mat-label>
+        <input
+          matInput
+          type="date"
+          [value]="date()"
+          [max]="today"
+          (change)="pickDate($any($event.target).value)"
+        />
+      </mat-form-field>
+      <button
+        mat-icon-button
+        type="button"
+        aria-label="Next day"
+        [disabled]="isToday()"
+        (click)="shiftDay(1)"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      <button mat-stroked-button type="button" [disabled]="isToday()" (click)="pickDate(today)">
+        Today
+      </button>
+    </div>
+    <app-filter-popup [activeCount]="filterCount()" (cleared)="clearFilters()">
+      <app-filter-field label="Branch">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Branch"
+            [value]="branchId()"
+            (selectionChange)="branchId.set($event.value)"
+          >
+            <mat-option [value]="null">All branches</mat-option>
+            @for (option of branchOptions(); track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+    </app-filter-popup>
+  </ng-container>
 </app-page-header>
-
-<div class="toolbar" role="group" aria-label="Dashboard filters">
-  <div class="day-nav" role="group" aria-label="Day">
-    <button mat-icon-button type="button" aria-label="Previous day" (click)="shiftDay(-1)">
-      <mat-icon>chevron_left</mat-icon>
-    </button>
-    <mat-form-field subscriptSizing="dynamic" class="date-field">
-      <mat-label>Date</mat-label>
-      <input
-        matInput
-        type="date"
-        [value]="date()"
-        [max]="today"
-        (change)="pickDate($any($event.target).value)"
-      />
-    </mat-form-field>
-    <button
-      mat-icon-button
-      type="button"
-      aria-label="Next day"
-      [disabled]="isToday()"
-      (click)="shiftDay(1)"
-    >
-      <mat-icon>chevron_right</mat-icon>
-    </button>
-    <button mat-stroked-button type="button" [disabled]="isToday()" (click)="pickDate(today)">
-      Today
-    </button>
-  </div>
-
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Branch</mat-label>
-    <mat-select [value]="branchId()" (selectionChange)="branchId.set($event.value)">
-      <mat-option [value]="null">All branches</mat-option>
-      @for (option of branchOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-</div>
 
 @if (resource.error() && !overview()) {
   <app-empty-state icon="error" title="Attendance could not be loaded" [message]="errorText()">

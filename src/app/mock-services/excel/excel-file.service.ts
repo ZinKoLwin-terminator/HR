@@ -253,7 +253,7 @@ export class ExcelFileService {
   private async newWorkbook(title: string): Promise<{ workbook: Workbook; lib: ExcelLibrary }> {
     const lib = await this.lib();
     const workbook = new lib.Workbook();
-    workbook.creator = 'Apex Horizon HRMS (sample data)';
+    workbook.creator = 'APEX HRMS (sample data)';
     workbook.title = title;
     workbook.created = new Date();
     return { workbook, lib };

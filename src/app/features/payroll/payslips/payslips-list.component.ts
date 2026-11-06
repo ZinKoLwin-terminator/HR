@@ -30,6 +30,10 @@ import {
 } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import {
+  FilterFieldComponent,
+  FilterPopupComponent,
+} from '../../../shared/components/filter-popup/filter-popup.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ListQuery } from '../../../shared/utilities/list-query';
 import {
@@ -47,6 +51,8 @@ import {
     MatIconModule,
     MatSelectModule,
     PageHeaderComponent,
+    FilterFieldComponent,
+    FilterPopupComponent,
     SearchFieldComponent,
     DataTableComponent,
     EmptyStateComponent,
@@ -84,9 +90,6 @@ export class PayslipsListComponent {
     options(this.lookups.value()?.org.departments ?? [], (d) => d.name),
   );
 
-  /** Whether the secondary filter panel (period, employee, department) is expanded. */
-  protected readonly panelOpen = signal(false);
-
   /** Removable chips describing every applied filter. */
   protected readonly activeChips = computed(() => {
     const f = this.query.filters();
@@ -115,11 +118,9 @@ export class PayslipsListComponent {
       });
     return chips;
   });
-  /** Filters that live inside the collapsible panel. */
-  protected readonly extraFilterCount = computed(
-    () =>
-      this.activeChips().filter((c) => ['runId', 'employeeId', 'departmentId'].includes(c.key))
-        .length,
+  /** Number of applied filters (excluding the search term). */
+  protected readonly filterCount = computed(
+    () => this.activeChips().filter((c) => c.key !== 'search').length,
   );
 
   protected readonly defaulted = signal(false);

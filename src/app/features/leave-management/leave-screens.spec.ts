@@ -77,8 +77,8 @@ describe('leave screens', () => {
     const { fixture, el } = await render(LeaveApplicationsPageComponent);
     expect(el.querySelector('h1')?.textContent).toContain('Leave applications');
     expect(rows(fixture)).toHaveLength(10);
-    expect(el.textContent).toContain('Leave from');
-    expect(el.textContent).toContain('Leave to');
+    // Date-range filters live in the filter popup, opened from the filter icon.
+    expect(el.querySelector('button[aria-label="Toggle filters"]')).toBeTruthy();
     expect(el.textContent).toMatch(/LV-\d{4}-\d{4}/);
     expect(el.querySelector('button[mat-flat-button]')?.textContent).toContain(
       'Add leave application',

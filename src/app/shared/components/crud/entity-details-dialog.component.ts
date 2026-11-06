@@ -17,9 +17,17 @@ interface DetailRow {
   selector: 'app-entity-details-dialog',
   imports: [MatDialogModule, MatButtonModule, MatIconModule, StatusBadgeComponent],
   template: `
-    <h2 mat-dialog-title>{{ data.title }}</h2>
+    <div class="dialog-head">
+      <span class="dialog-head__icon" aria-hidden="true"><mat-icon>badge</mat-icon></span>
+      <div class="dialog-head__text">
+        <h2 mat-dialog-title>{{ data.title }}</h2>
+        <p class="subtitle">{{ data.subtitle }}</p>
+      </div>
+      <button mat-icon-button type="button" class="close-btn" mat-dialog-close aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
     <mat-dialog-content>
-      <p class="subtitle">{{ data.subtitle }}</p>
       <dl class="details">
         @for (row of rows; track row.label) {
           <div [class.wide]="row.wide">
@@ -45,72 +53,108 @@ interface DetailRow {
     </mat-dialog-actions>
   `,
   styles: `
+    :host {
+      display: block;
+    }
+    .dialog-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 22px 24px 16px;
+    }
+    .dialog-head__icon {
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+      color: var(--mat-sys-primary);
+      .mat-icon {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
+    }
+    .dialog-head__text {
+      flex: 1;
+      min-width: 0;
+    }
     h2[mat-dialog-title] {
       margin: 0;
-      padding: 20px 24px 0;
-      font: var(--mat-sys-headline-small);
+      padding: 0;
+      font-size: 18px;
+      line-height: 24px;
       font-weight: 700;
       letter-spacing: -0.01em;
-      color: var(--app-color-primary);
-      border-bottom: 3px solid var(--app-color-accent);
-      padding-bottom: 12px;
+      color: var(--mat-sys-on-surface);
+      overflow-wrap: anywhere;
 
       &::before {
         display: none;
       }
     }
+    .subtitle {
+      margin: 2px 0 0;
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 500;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .close-btn {
+      flex: none;
+      margin: -4px -8px 0 0;
+      color: var(--mat-sys-on-surface-variant);
+    }
     mat-dialog-content {
-      padding: 16px 24px 20px !important;
-      max-height: 68vh;
+      padding: 4px 24px 22px !important;
+      max-height: 64vh;
+      border-top: 1px solid var(--app-card-border);
+      padding-top: 18px !important;
     }
     mat-dialog-actions {
       padding: 12px 24px !important;
-      gap: var(--app-spacing-md);
-      border-top: 2px solid var(--app-color-accent);
-      background: var(--app-card-bg);
-    }
-    .subtitle {
-      margin: 0 0 var(--app-spacing-lg);
-      font: var(--mat-sys-label-large);
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--mat-sys-on-surface-variant);
+      gap: 8px;
+      border-top: 1px solid var(--app-card-border);
+      background: light-dark(
+        color-mix(in srgb, var(--mat-sys-primary) 3%, #f8fafc),
+        color-mix(in srgb, var(--mat-sys-primary) 8%, transparent)
+      );
     }
     .details {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--app-spacing-lg);
+      gap: 10px 12px;
       margin: 0;
     }
     .details > div {
       display: flex;
       flex-direction: column;
-      padding: 0;
-      border: none;
-      border-radius: 0;
-      background: transparent;
-      border-bottom: 1px solid var(--mat-sys-outline-variant);
-      padding-bottom: var(--app-spacing-md);
-    }
-    .details > div:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
+      padding: 10px 14px 12px;
+      border-radius: 10px;
+      border: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 55%, transparent);
+      background: light-dark(
+        color-mix(in srgb, var(--mat-sys-primary) 2.5%, #fff),
+        color-mix(in srgb, var(--mat-sys-on-surface) 4%, transparent)
+      );
     }
     .wide {
       grid-column: 1 / -1;
     }
     dt {
-      font: var(--mat-sys-label-small);
+      font-size: 11px;
+      line-height: 16px;
       font-weight: 600;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--mat-sys-on-surface-variant);
     }
     dd {
-      margin: var(--app-spacing-xs) 0 0;
-      font: var(--mat-sys-body-large);
-      font-weight: 400;
+      margin: 3px 0 0;
+      font-size: 13.5px;
+      line-height: 20px;
+      font-weight: 500;
       color: var(--mat-sys-on-surface);
       overflow-wrap: anywhere;
       word-break: break-word;

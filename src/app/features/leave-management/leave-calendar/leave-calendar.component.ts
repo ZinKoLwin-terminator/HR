@@ -21,6 +21,11 @@ import { addMonths, todayIso } from '../../../shared/utilities/date.util';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
 
 /** Everyone on leave on one day. */
+import {
+  FilterFieldComponent,
+  FilterPopupComponent,
+} from '../../../shared/components/filter-popup/filter-popup.component';
+
 @Component({
   selector: 'app-leave-day-dialog',
   imports: [DatePipe, MatDialogModule, MatButtonModule, StatusBadgeComponent],
@@ -102,6 +107,8 @@ const MAX_CHIPS = 3;
 @Component({
   selector: 'app-leave-calendar',
   imports: [
+    FilterFieldComponent,
+    FilterPopupComponent,
     DatePipe,
     MatButtonModule,
     MatFormFieldModule,
@@ -127,6 +134,19 @@ export class LeaveCalendarComponent {
   protected readonly departmentId = signal<number | null>(null);
   protected readonly leaveTypeId = signal<number | null>(null);
   protected readonly includePending = signal(true);
+
+  protected readonly filterCount = computed(
+    () =>
+      (this.departmentId() === null ? 0 : 1) +
+      (this.leaveTypeId() === null ? 0 : 1) +
+      (this.includePending() ? 0 : 1),
+  );
+
+  protected clearFilters(): void {
+    this.departmentId.set(null);
+    this.leaveTypeId.set(null);
+    this.includePending.set(true);
+  }
 
   private readonly lookups = rxResource({
     stream: () => forkJoin({ org: this.lookupService.load(), types: this.typesApi.getAll() }),

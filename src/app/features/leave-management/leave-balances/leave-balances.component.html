@@ -1,42 +1,61 @@
 <app-page-header
   title="Leave balances"
   description="Available days (available / entitled) for each employee. Entitlements follow the leave policies."
-/>
-
-<div class="toolbar" role="search" aria-label="Filter leave balances">
-  <app-search-field
-    class="grow"
-    label="Search by employee name or code"
-    [value]="search()"
-    (searchChange)="setSearch($event)"
-  />
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Year</mat-label>
-    <mat-select [value]="year()" (selectionChange)="setFilter('year', $event.value)">
-      @for (y of yearOptions; track y) {
-        <mat-option [value]="y">{{ y }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Department</mat-label>
-    <mat-select [value]="departmentId()" (selectionChange)="setFilter('department', $event.value)">
-      <mat-option [value]="null">All</mat-option>
-      @for (option of departmentOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Branch</mat-label>
-    <mat-select [value]="branchId()" (selectionChange)="setFilter('branch', $event.value)">
-      <mat-option [value]="null">All</mat-option>
-      @for (option of branchOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-</div>
+>
+  <ng-container pageSearch>
+    <app-search-field
+      label="Search by employee name or code"
+      [value]="search()"
+      (searchChange)="setSearch($event)"
+    />
+    <app-filter-popup [activeCount]="filterCount()" (cleared)="clearFilters()">
+      <app-filter-field label="Year">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Year"
+            [value]="year()"
+            (selectionChange)="setFilter('year', $event.value)"
+          >
+            @for (y of yearOptions; track y) {
+              <mat-option [value]="y">{{ y }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+      <app-filter-field label="Department">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Department"
+            [value]="departmentId()"
+            (selectionChange)="setFilter('department', $event.value)"
+          >
+            <mat-option [value]="null">All</mat-option>
+            @for (option of departmentOptions(); track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+      <app-filter-field label="Branch">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Branch"
+            [value]="branchId()"
+            (selectionChange)="setFilter('branch', $event.value)"
+          >
+            <mat-option [value]="null">All</mat-option>
+            @for (option of branchOptions(); track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+    </app-filter-popup>
+  </ng-container>
+</app-page-header>
 
 @if (page.error() && !result()) {
   <app-empty-state icon="error" title="Balances could not be loaded" [message]="errorText()">

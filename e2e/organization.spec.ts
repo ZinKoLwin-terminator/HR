@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
+import { closeFilters, openFilters } from './filters';
 
 test.skip(({ isMobile }) => isMobile, 'Organization CRUD flows are exercised on desktop');
 
@@ -30,15 +31,17 @@ test.describe('companies', () => {
   test('searches and filters', async ({ page }) => {
     await page.getByRole('searchbox', { name: /Search by code/ }).fill('logistics');
     await expect(rows(page)).toHaveCount(1);
-    await expect(rows(page).first()).toContainText('Apex Horizon Logistics');
+    await expect(rows(page).first()).toContainText('APEX Logistics');
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.getByRole('searchbox', { name: /Search by code/ }).fill('');
     await expect(rows(page)).toHaveCount(3);
 
+    await openFilters(page);
     await page.getByRole('combobox', { name: 'Status' }).click();
     await page.getByRole('option', { name: 'Inactive' }).click();
+    await closeFilters(page);
     await expect(rows(page)).toHaveCount(1);
-    await expect(rows(page).first()).toContainText('Apex Horizon Ventures');
+    await expect(rows(page).first()).toContainText('APEX Ventures');
   });
 
   test('validates, creates, edits, deactivates and deletes a company', async ({ page }) => {
@@ -99,14 +102,14 @@ test.describe('companies', () => {
   });
 
   test('refuses to delete a company that is still in use', async ({ page }) => {
-    await rowMenu(page, 'Apex Horizon Technologies', 'Delete');
+    await rowMenu(page, 'APEX Technologies', 'Delete');
     await confirmDialog(page).getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByText(/cannot be deleted because it is used by/)).toBeVisible();
     await expect(rows(page)).toHaveCount(3);
   });
 
   test('shows record details and can switch to edit', async ({ page }) => {
-    await rows(page).filter({ hasText: 'Apex Horizon Logistics' }).click();
+    await rows(page).filter({ hasText: 'APEX Logistics' }).click();
     await expect(dialog(page)).toContainText('Company details');
     await expect(dialog(page)).toContainText('REG-2018-004410');
     await dialog(page).getByRole('button', { name: 'Edit' }).click();
@@ -134,7 +137,7 @@ test.describe('departments', () => {
 
   test('branch dropdown depends on the selected company', async ({ page }) => {
     await page.getByRole('button', { name: 'Add department' }).click();
-    await choose(page, 'Company', 'Apex Horizon Logistics');
+    await choose(page, 'Company', 'APEX Logistics');
     await dialog(page).getByRole('combobox', { name: 'Branch' }).click();
     // Branch is required, so there is no "None" entry; only this company's branches are offered.
     await expect(page.getByRole('option')).toHaveText([
@@ -144,15 +147,17 @@ test.describe('departments', () => {
     await page.getByRole('option', { name: 'Yangon Logistics Hub' }).click();
 
     // Changing the company clears the now-invalid branch
-    await choose(page, 'Company', 'Apex Horizon Technologies');
+    await choose(page, 'Company', 'APEX Technologies');
     await expect(dialog(page).getByRole('combobox', { name: 'Branch' })).not.toContainText(
       'Yangon Logistics Hub',
     );
   });
 
   test('filters by company', async ({ page }) => {
+    await openFilters(page);
     await page.getByRole('combobox', { name: 'Company' }).click();
-    await page.getByRole('option', { name: 'Apex Horizon Logistics' }).click();
+    await page.getByRole('option', { name: 'APEX Logistics' }).click();
+    await closeFilters(page);
     await expect(rows(page)).toHaveCount(2);
   });
 });

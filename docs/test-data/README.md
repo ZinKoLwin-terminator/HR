@@ -21,7 +21,7 @@ so after a successful import reload the app before the next file.
 | 4 | EMP005 | Code already exists | A record with this Employee Code already exists |
 | 5 | EMP064 | Work email of Daniel Carter | Work email must be unique |
 | 6 | EMP065 | Born 2010-01-01 | Employees must be at least 18 years old |
-| 7 | EMP066 | Company AHL + branch YGN-HQ | Branch "YGN-HQ" does not exist in company Apex Horizon Logistics |
+| 7 | EMP066 | Company AHL + branch YGN-HQ | Branch "YGN-HQ" does not exist in company APEX Logistics |
 | 8 | EMP067 | Manager EMP999 | Manager "EMP999" does not exist |
 | 9 | EMP068 | Resigned, no exit date | An exit date is required for resigned or terminated employees |
 | 10 | EMP069 | First Name is a formula | Formulas are not allowed |

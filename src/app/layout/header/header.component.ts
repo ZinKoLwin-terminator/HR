@@ -9,6 +9,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
+import { MODULE_GUIDE } from '../../core/constants/module-guide';
 import { AppNotification } from '../../core/models/activity.models';
 import { AuthService } from '../../core/services/auth.service';
 import { CurrentUserService } from '../../core/services/current-user.service';
@@ -59,6 +60,7 @@ function buildBreadcrumbs(root: ActivatedRouteSnapshot): Breadcrumb[] {
   styleUrl: './header.component.scss',
 })
 export class HeaderComponent {
+  protected readonly guideModules = MODULE_GUIDE;
   protected readonly layout = inject(LayoutService);
   protected readonly theme = inject(ThemeService);
   protected readonly user = inject(CurrentUserService);

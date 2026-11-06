@@ -106,7 +106,7 @@ describe('mock data services', () => {
   it('records activity for changes', async () => {
     const activity = TestBed.inject(ActivityMockService);
     await firstValueFrom(companies.update(2, { phone: '+95 2 555 0299' }));
-    expect(activity.snapshot(1)[0].message).toContain('Apex Horizon Logistics');
+    expect(activity.snapshot(1)[0].message).toContain('APEX Logistics');
   });
 
   it('builds a consistent dashboard summary', async () => {

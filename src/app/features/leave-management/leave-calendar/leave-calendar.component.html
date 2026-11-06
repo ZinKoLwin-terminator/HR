@@ -1,46 +1,58 @@
 <app-page-header
   title="Leave calendar"
   description="Who is away and when. Approved leave is solid; pending requests are outlined."
-/>
+>
+  <ng-container pageSearch>
+    <div class="month-nav" role="group" aria-label="Month">
+      <button mat-icon-button type="button" aria-label="Previous month" (click)="shiftMonth(-1)">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <span class="month-label" aria-live="polite">{{ monthStart() | date: 'MMMM yyyy' }}</span>
+      <button mat-icon-button type="button" aria-label="Next month" (click)="shiftMonth(1)">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      <button mat-stroked-button type="button" [disabled]="isCurrentMonth()" (click)="goToToday()">
+        Today
+      </button>
+    </div>
 
-<div class="toolbar" role="group" aria-label="Calendar filters">
-  <div class="month-nav" role="group" aria-label="Month">
-    <button mat-icon-button type="button" aria-label="Previous month" (click)="shiftMonth(-1)">
-      <mat-icon>chevron_left</mat-icon>
-    </button>
-    <span class="month-label" aria-live="polite">{{ monthStart() | date: 'MMMM yyyy' }}</span>
-    <button mat-icon-button type="button" aria-label="Next month" (click)="shiftMonth(1)">
-      <mat-icon>chevron_right</mat-icon>
-    </button>
-    <button mat-stroked-button type="button" [disabled]="isCurrentMonth()" (click)="goToToday()">
-      Today
-    </button>
-  </div>
-
-  <span class="grow"></span>
-
-  <mat-slide-toggle [checked]="includePending()" (change)="includePending.set($event.checked)">
-    Show pending requests
-  </mat-slide-toggle>
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Department</mat-label>
-    <mat-select [value]="departmentId()" (selectionChange)="departmentId.set($event.value)">
-      <mat-option [value]="null">All</mat-option>
-      @for (option of departmentOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Leave type</mat-label>
-    <mat-select [value]="leaveTypeId()" (selectionChange)="leaveTypeId.set($event.value)">
-      <mat-option [value]="null">All</mat-option>
-      @for (option of typeOptions(); track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-</div>
+    <app-filter-popup [activeCount]="filterCount()" (cleared)="clearFilters()">
+      <mat-slide-toggle [checked]="includePending()" (change)="includePending.set($event.checked)">
+        Show pending requests
+      </mat-slide-toggle>
+      <app-filter-field label="Department">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Department"
+            [value]="departmentId()"
+            (selectionChange)="departmentId.set($event.value)"
+          >
+            <mat-option [value]="null">All</mat-option>
+            @for (option of departmentOptions(); track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+      <app-filter-field label="Leave type">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-select
+            placeholder="All"
+            aria-label="Leave type"
+            [value]="leaveTypeId()"
+            (selectionChange)="leaveTypeId.set($event.value)"
+          >
+            <mat-option [value]="null">All</mat-option>
+            @for (option of typeOptions(); track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-field>
+    </app-filter-popup>
+  </ng-container>
+</app-page-header>
 
 @if (resource.error() && !data()) {
   <app-empty-state icon="error" title="Calendar could not be loaded">

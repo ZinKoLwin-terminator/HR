@@ -104,7 +104,7 @@ export class SalaryComponentsPageComponent {
           type: 'number',
           required: true,
           min: 0,
-          max: 1_000_000,
+          max: 1_000_000_000,
           hint: 'An amount for fixed components, a percentage (up to 100) otherwise',
         },
         {
