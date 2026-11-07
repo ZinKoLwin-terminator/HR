@@ -1,5 +1,6 @@
 import { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
+import { closeFilters, openFilters } from './filters';
 
 const rows = (page: Page) => page.locator('tr.mat-mdc-row');
 const dialog = (page: Page) => page.getByRole('dialog');
@@ -90,7 +91,9 @@ test.describe('settings', () => {
     await dialog(page).getByRole('button', { name: 'Create user' }).click();
     await expect(page.getByText(/created successfully/)).toBeVisible();
 
+    await openFilters(page);
     await chooseIn(page.locator('body'), page, 'Status', 'Locked');
+    await closeFilters(page);
     await expect(rows(page)).toHaveCount(1);
     await rowMenu(page, 'Locked', 'Unlock account');
     await expect(page.getByText(/unlocked\./)).toBeVisible();

@@ -4,7 +4,7 @@ test.describe('application shell', () => {
   test('starts on the dashboard with title and breadcrumb', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page).toHaveTitle(/Dashboard · Apex Horizon HRMS/);
+    await expect(page).toHaveTitle(/Dashboard · APEX HRMS/);
     await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Dashboard');
   });
 

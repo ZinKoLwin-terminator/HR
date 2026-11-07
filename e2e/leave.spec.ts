@@ -373,10 +373,12 @@ test.describe('leave calendar', () => {
 
     // Pending requests are drawn dashed and can be hidden
     await expect(grid.locator('.chip.pending').first()).toBeVisible();
+    await openFilters(page);
     await page.getByRole('switch', { name: 'Show pending requests' }).click();
     await expect(grid.locator('.chip.pending')).toHaveCount(0);
     await expect(grid.locator('.chip').first()).toBeVisible();
     await page.getByRole('switch', { name: 'Show pending requests' }).click();
+    await closeFilters(page);
 
     // Day details
     await grid

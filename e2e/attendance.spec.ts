@@ -121,13 +121,16 @@ test.describe('attendance records', () => {
     await expect(dialog(page)).toContainText('Daniel Carter');
     await expect(dialog(page)).toContainText('Check-in');
     await expect(dialog(page).getByRole('button', { name: 'Edit' })).toHaveCount(0);
-    await dialog(page).getByRole('button', { name: 'Close' }).click();
+    await dialog(page).getByRole('button', { name: 'Close', exact: true }).last().click();
 
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(rows(page)).toHaveCount(10);
     await page.getByRole('columnheader', { name: 'Date' }).click();
-    await page.getByRole('button', { name: 'Next page' }).click();
-    await expect(page.getByText(/11 – 20 of/)).toBeVisible();
+    // The sort click resets paging asynchronously, so retry the click until the page changes.
+    await expect(async () => {
+      await page.getByRole('button', { name: 'Next page' }).click();
+      await expect(page.getByText(/11 – 20 of/)).toBeVisible({ timeout: 1500 });
+    }).toPass();
   });
 
   test('lists late arrivals and early departures', async ({ page }) => {
@@ -476,8 +479,10 @@ test.describe('attendance adjustments', () => {
       .getByRole('link', { name: 'Attendance Records' })
       .click();
     await page.getByRole('searchbox', { name: /Search by employee name/ }).fill('daniel carter');
+    await openFilters(page);
     await page.getByRole('textbox', { name: 'From' }).fill(date);
     await page.getByRole('textbox', { name: 'To', exact: true }).fill(date);
+    await closeFilters(page);
     await expect(rows(page)).toHaveCount(1);
     await expect(rows(page).first()).toContainText('07:11');
     await expect(rows(page).first()).toContainText('19:44');

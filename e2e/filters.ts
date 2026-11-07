@@ -16,8 +16,10 @@ export async function closeFilters(page: Page): Promise<void> {
   const button = toggle(page);
   if ((await button.count()) === 0) return;
   if ((await button.first().getAttribute('aria-expanded')) === 'true') {
-    await page.keyboard.press('Escape');
-    await page.getByRole('dialog', { name: 'Filters' }).waitFor({ state: 'detached' });
+    const dialog = page.getByRole('dialog', { name: 'Filters' });
+    // Use the popup's own button: Escape is swallowed when focus is in a closed select/datepicker.
+    await dialog.getByRole('button', { name: 'Done' }).click();
+    await dialog.waitFor({ state: 'detached' });
   }
 }
 

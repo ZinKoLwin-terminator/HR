@@ -1,5 +1,13 @@
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
-import { Component, input, output, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  ElementRef,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -7,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-filter-field',
   template: `
-    <span class="label">{{ label() }}</span>
+    <span class="label" [id]="labelId">{{ label() }}</span>
     <ng-content />
   `,
   styles: `
@@ -25,7 +33,19 @@ import { MatIconModule } from '@angular/material/icon';
   `,
 })
 export class FilterFieldComponent {
+  private static nextId = 0;
   readonly label = input.required<string>();
+  protected readonly labelId = `filter-field-label-${FilterFieldComponent.nextId++}`;
+
+  constructor() {
+    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    // Name the projected control by this label (a select would otherwise be named by its value).
+    afterNextRender(() => {
+      host
+        .querySelector('[role="combobox"], input, textarea, select')
+        ?.setAttribute('aria-labelledby', this.labelId);
+    });
+  }
 }
 
 /**

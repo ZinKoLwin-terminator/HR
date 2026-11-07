@@ -29,10 +29,14 @@ async function total(page: Page): Promise<number> {
 }
 
 /** Clicks a button that starts a download and returns the downloaded workbook. */
-async function downloadWorkbook(page: Page, click: () => Promise<void>) {
+async function downloadWorkbook(page: Page, click: () => Promise<void>, expectToast = false) {
   const downloadPromise = page.waitForEvent('download');
   await click();
   const download = await downloadPromise;
+  // The "is ready" toast is short-lived, so check it before parsing the file.
+  if (expectToast) {
+    await expect(page.getByText(/employees-export-.*is ready\./).first()).toBeVisible();
+  }
   const path = await download.path();
   const workbook = new (await lib()).Workbook();
   await workbook.xlsx.readFile(path);
@@ -64,8 +68,10 @@ test.describe('Excel export', () => {
       dialog(page).getByRole('checkbox', { name: /Include personal and financial columns/ }),
     ).not.toBeChecked();
 
-    const { workbook, fileName } = await downloadWorkbook(page, () =>
-      dialog(page).getByRole('button', { name: 'Export to Excel' }).click(),
+    const { workbook, fileName } = await downloadWorkbook(
+      page,
+      () => dialog(page).getByRole('button', { name: 'Export to Excel' }).click(),
+      true,
     );
     expect(fileName).toMatch(/^employees-export-\d{8}-\d{4}\.xlsx$/);
     expect(workbook.worksheets.map((w) => w.name)).toEqual([
@@ -81,7 +87,6 @@ test.describe('Excel export', () => {
     const headers = (sheet.getRow(1).values as unknown[]).slice(1);
     expect(headers).not.toContain('National ID');
     expect(headers).not.toContain('Bank Account Number');
-    await expect(page.getByText(/employees-export-.*is ready\./)).toBeVisible();
   });
 
   test('exports everything with sensitive columns only when requested', async ({ page }) => {
@@ -92,8 +97,10 @@ test.describe('Excel export', () => {
     await dialog(page)
       .getByRole('checkbox', { name: /Include personal and financial columns/ })
       .check();
-    const { workbook } = await downloadWorkbook(page, () =>
-      dialog(page).getByRole('button', { name: 'Export to Excel' }).click(),
+    const { workbook } = await downloadWorkbook(
+      page,
+      () => dialog(page).getByRole('button', { name: 'Export to Excel' }).click(),
+      true,
     );
     const sheet = workbook.getWorksheet('Employees')!;
     expect(sheet.rowCount).toBe(61);
