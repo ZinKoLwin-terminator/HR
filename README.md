@@ -4,6 +4,8 @@ An enterprise-style **Human Resource Management System** built as an **Angular f
 All business data is **sample data** served by in-memory mock services. There is **no backend,
 no database and no HTTP calls; sign-in is a simulation (see Authentication below)**.
 
+**Live demo:** <https://zinkolwin-terminator.github.io/HR/>
+
 > The data layer is built behind abstract data-service contracts so that API-backed services can
 > replace the mocks later without changing screens. See [docs/API-INTEGRATION-PLAN.md](docs/API-INTEGRATION-PLAN.md).
 
