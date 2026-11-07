@@ -5,7 +5,11 @@ import { APP_CONFIG } from '../../core/configuration/app-config';
   selector: 'app-footer',
   template: `
     <footer class="footer">
-      <span>© {{ year }} {{ config.organizationName }} · {{ config.appName }} · v{{ config.version }}</span>
+      <span
+        >© {{ year }} {{ config.organizationName }} · {{ config.appName }} · v{{
+          config.version
+        }}</span
+      >
       <span>Frontend demo · all figures are sample data</span>
     </footer>
   `,
