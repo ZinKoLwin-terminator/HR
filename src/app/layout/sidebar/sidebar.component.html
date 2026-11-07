@@ -64,7 +64,12 @@
                   <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
                   <span>{{ item.label }}</span>
                 </div>
-                @for (child of item.children; track child.route) {
+                @for (child of item.children; track child.route; let i = $index) {
+                  @if (child.group && child.group !== item.children![i - 1]?.group) {
+                    <div class="nav-flyout-panel__group" role="presentation">
+                      {{ child.group }}
+                    </div>
+                  }
                   <a
                     class="nav-flyout-panel__item"
                     role="menuitem"
@@ -82,7 +87,10 @@
             </ng-template>
             @if (!collapsed() && isExpanded(item)) {
               <ul class="nav__children" [id]="groupId(item)">
-                @for (child of item.children; track child.route) {
+                @for (child of item.children; track child.route; let i = $index) {
+                  @if (child.group && child.group !== item.children![i - 1]?.group) {
+                    <li class="nav__group-title" role="presentation">{{ child.group }}</li>
+                  }
                   <li>
                     <a
                       class="nav__link nav__child"

@@ -170,10 +170,21 @@
   color: var(--app-sidebar-accent);
 }
 
+.nav__group-title {
+  padding: 10px 10px 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-sidebar-accent);
+  opacity: 0.75;
+  line-height: 1;
+}
+
 .nav__child {
   min-height: 32px;
   font-size: 12.5px;
-  padding-left: 10px;
+  padding-left: 22px;
 
   &.active {
     background: var(--app-sidebar-active-bg);

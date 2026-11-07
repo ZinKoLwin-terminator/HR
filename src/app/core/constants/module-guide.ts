@@ -1,3 +1,10 @@
+import { ATTENDANCE_GUIDE } from './attendance-guide';
+import { EMPLOYEES_GUIDE } from './employees-guide';
+import { LEAVE_GUIDE } from './leave-guide';
+import { ORGANIZATION_GUIDE } from './organization-guide';
+import { PAYROLL_GUIDE } from './payroll-guide';
+import { RECRUITMENT_GUIDE } from './recruitment-guide';
+
 /** A string in both supported guide languages. */
 export interface Bilingual {
   en: string;
@@ -10,6 +17,17 @@ export interface GuideScreen {
   text: Bilingual;
 }
 
+/** A block of a long-form guide article shown under the rules of a module. */
+export type GuideBlock =
+  | { type: 'heading'; text: Bilingual }
+  | { type: 'paragraph'; text: Bilingual }
+  | { type: 'flow'; steps: readonly Bilingual[] }
+  | { type: 'list'; items: readonly Bilingual[] }
+  | { type: 'steps'; items: readonly Bilingual[] }
+  | { type: 'code'; lines: readonly string[] }
+  | { type: 'table'; head: readonly Bilingual[]; rows: readonly (readonly Bilingual[])[] }
+  | { type: 'note'; text: Bilingual };
+
 export interface GuideModule {
   id: string;
   name: string;
@@ -17,6 +35,8 @@ export interface GuideModule {
   summary: Bilingual;
   screens: readonly GuideScreen[];
   rules: readonly Bilingual[];
+  /** Optional long-form walkthrough (setup, calculation, examples). */
+  article?: readonly GuideBlock[];
   /** Honest limitation shown to the reader, when there is one. */
   note?: Bilingual;
 }
@@ -114,6 +134,7 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         my: 'Job Grade ၏ လစာအကွာအဝေးသည် Payroll ရှိ Basic လစာကို ကန့်သတ်သည်။',
       },
     ],
+    article: ORGANIZATION_GUIDE,
   },
   {
     id: 'employees',
@@ -159,6 +180,7 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         my: 'Email နှင့် ဝန်ထမ်းကုဒ် မထပ်ရ။',
       },
     ],
+    article: EMPLOYEES_GUIDE,
     note: {
       en: 'Only the file name of a document is stored in this version.',
       my: 'ဤ Version တွင် စာရွက်စာတမ်း၏ ဖိုင်အမည်သာ သိမ်းသည်။',
@@ -231,6 +253,7 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         my: 'နေ့စဉ် Status ကို Shift စည်းမျဉ်း၊ အားလပ်ရက်နှင့် ခွင့်ပြုပြီးခွင့်တို့မှ အလိုအလျောက်သတ်မှတ်သည်။',
       },
     ],
+    article: ATTENDANCE_GUIDE,
   },
   {
     id: 'leave',
@@ -294,6 +317,7 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         my: 'အလုပ်ရက်ရေတွင် စနေ၊ တနင်္ဂနွေနှင့် အားလပ်ရက်များ မပါ။',
       },
     ],
+    article: LEAVE_GUIDE,
   },
   {
     id: 'payroll',
@@ -362,6 +386,7 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         my: 'Payslip သည် Snapshot ဖြစ်၍ နောက်ပိုင်း Setup ပြောင်းလည်း မပြောင်းပါ။',
       },
     ],
+    article: PAYROLL_GUIDE,
     note: {
       en: 'Figures are demonstration rules only. Tax, social security and bank payment are not included.',
       my: 'ကိန်းဂဏန်းများသည် Demo စည်းမျဉ်းသာဖြစ်သည်။ အခွန်၊ လူမှုဖူလုံရေးနှင့် ဘဏ်ငွေပေးချေမှု မပါဝင်ပါ။',
@@ -416,6 +441,7 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         my: 'လူလုံလောက်စွာ ရွေးပြီးလျှင် Opening သည် Filled ဖြစ်သွားသည်။',
       },
     ],
+    article: RECRUITMENT_GUIDE,
   },
   {
     id: 'data-exchange',

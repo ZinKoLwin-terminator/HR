@@ -6,7 +6,7 @@ export type HelpLang = 'en' | 'my';
 /** Shared so the chosen language stays when moving between the Help pages. */
 @Injectable({ providedIn: 'root' })
 export class HelpLanguageService {
-  readonly lang = signal<HelpLang>('en');
+  readonly lang = signal<HelpLang>('my');
 }
 
 /** Language switch shown in the header of every Help page. */

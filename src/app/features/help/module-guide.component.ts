@@ -75,6 +75,72 @@ const LABELS = {
         }
       </ul>
 
+      @if (current().article; as article) {
+        <article class="article">
+          @for (b of article; track $index) {
+            @switch (b.type) {
+              @case ('heading') {
+                <h4>{{ b.text[lang()] }}</h4>
+              }
+              @case ('paragraph') {
+                <p>{{ b.text[lang()] }}</p>
+              }
+              @case ('flow') {
+                <ol class="flow">
+                  @for (s of b.steps; track s.en) {
+                    <li>{{ s[lang()] }}</li>
+                  }
+                </ol>
+              }
+              @case ('list') {
+                <ul class="bullets">
+                  @for (i of b.items; track i.en) {
+                    <li>{{ i[lang()] }}</li>
+                  }
+                </ul>
+              }
+              @case ('steps') {
+                <ol class="numbered">
+                  @for (i of b.items; track i.en) {
+                    <li>{{ i[lang()] }}</li>
+                  }
+                </ol>
+              }
+              @case ('code') {
+                <pre class="code">{{ b.lines.join('\n') }}</pre>
+              }
+              @case ('table') {
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        @for (h of b.head; track h.en) {
+                          <th scope="col">{{ h[lang()] }}</th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of b.rows; track $index) {
+                        <tr>
+                          @for (cell of row; track $index) {
+                            <td>{{ cell[lang()] }}</td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+              @case ('note') {
+                <p class="note" role="note">
+                  <mat-icon aria-hidden="true">info</mat-icon><span>{{ b.text[lang()] }}</span>
+                </p>
+              }
+            }
+          }
+        </article>
+      }
+
       @if (current().note; as note) {
         <p class="note" role="note">
           <mat-icon aria-hidden="true">info</mat-icon>
@@ -197,6 +263,83 @@ const LABELS = {
       content: '•';
       position: absolute;
       left: 4px;
+    }
+    .article {
+      margin-top: 24px;
+      padding-top: 8px;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      line-height: 1.8;
+    }
+    .article h4 {
+      margin: 20px 0 6px;
+      font: var(--mat-sys-title-medium);
+    }
+    .article p {
+      margin: 4px 0;
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0;
+      padding: 0;
+      list-style: none;
+    }
+    .flow li {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+      font-weight: 500;
+    }
+    .flow li:not(:last-child)::after {
+      content: '→';
+      margin-left: 10px;
+    }
+    .bullets {
+      margin: 4px 0;
+    }
+    .bullets li {
+      position: relative;
+      padding: 2px 0 2px 18px;
+    }
+    .bullets li::before {
+      content: '•';
+      position: absolute;
+      left: 4px;
+    }
+    .numbered {
+      margin: 4px 0;
+      padding-left: 22px;
+    }
+    .numbered li {
+      padding: 2px 0;
+    }
+    .code {
+      margin: 8px 0;
+      padding: 12px 14px;
+      overflow-x: auto;
+      border-radius: 10px;
+      background: var(--mat-sys-surface-container);
+      font: 0.875rem/1.7 ui-monospace, Consolas, monospace;
+    }
+    .table-wrap {
+      margin: 8px 0;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th,
+    td {
+      padding: 8px 12px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      text-align: left;
+    }
+    th {
+      background: var(--mat-sys-surface-container);
+      font-weight: 600;
     }
     .note {
       display: flex;
