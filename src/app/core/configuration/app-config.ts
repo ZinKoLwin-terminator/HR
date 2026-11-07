@@ -1,5 +1,6 @@
 import { InjectionToken } from '@angular/core';
 import { ExcelLimits } from '../models/excel.models';
+import packageInfo from '../../../../package.json';
 
 /**
  * Centralized, environment-independent application configuration.
@@ -9,6 +10,8 @@ export interface AppConfig {
   readonly appName: string;
   readonly appShortName: string;
   readonly organizationName: string;
+  /** Application version, read from package.json at build time. */
+  readonly version: string;
   /** ISO 4217 code used to format all sample payroll figures. */
   readonly currency: string;
   readonly locale: string;
@@ -27,6 +30,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   appName: 'APEX HRMS',
   appShortName: 'HRMS',
   organizationName: 'APEX Group',
+  version: packageInfo.version,
   currency: 'MMK',
   locale: 'en-US',
   dateFormat: 'dd MMM yyyy',
