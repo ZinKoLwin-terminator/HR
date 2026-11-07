@@ -1,0 +1,1 @@
+import{mr as h}from"./chunk-CEgV3Q6Q.js";import{t as Y}from"./chunk-Bo4-1Kse.js";var o=n=>!n.hasUnsavedChanges()||h(Y).confirm({title:`Discard unsaved changes?`,message:`You have changes that have not been saved. If you leave now they will be lost.`,confirmText:`Discard changes`,cancelText:`Keep editing`,destructive:!0});export{o as t};

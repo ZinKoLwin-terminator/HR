@@ -1,0 +1,1 @@
+var e=[`Present`,`Absent`,`Late`,`Half Day`,`On Leave`,`Holiday`,`Weekend`];var t=[`Pending`,`Approved`,`Rejected`];export{t as n,e as t};

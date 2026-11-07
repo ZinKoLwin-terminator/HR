@@ -1,0 +1,1 @@
+var e=[`National ID`,`Passport`,`Resume`,`Offer Letter`,`Employment Contract`,`Certificate`,`Work Permit`,`Medical Report`,`Other`];export{e as t};

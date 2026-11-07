@@ -1,0 +1,1 @@
+import{an as Ut,cn as We,mr as h}from"./chunk-CEgV3Q6Q.js";import{i as V}from"./main-JPN53XDU.js";import{a as u}from"./chunk-DDgWsYIa.js";var c=class t{lookupService=h(u);lookups=V({stream:()=>this.lookupService.load()});config=Ut(()=>{let o=this.lookups.value();return o?this.buildConfig(o):null});static ɵfac=function(p){return new(p||t)};static ɵdir=We({type:t})};export{c as t};

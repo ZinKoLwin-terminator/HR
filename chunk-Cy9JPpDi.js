@@ -1,0 +1,1 @@
+var e=[`InsertOnly`,`UpdateOnly`,`InsertOrUpdate`];var t={InsertOnly:`Insert only`,UpdateOnly:`Update only`,InsertOrUpdate:`Insert or update`};var r={AllOrNothing:`All or nothing`,Partial:`Import valid rows only`};export{r as n,t as r,e as t};
