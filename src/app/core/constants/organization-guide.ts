@@ -7,7 +7,10 @@ const same = (text: string): Bilingual => ({ en: text, my: text });
 export const ORGANIZATION_GUIDE: readonly GuideBlock[] = [
   {
     type: 'heading',
-    text: { en: 'Why set up Organization first', my: 'Organization ကို ဘာကြောင့် အရင်ဆုံး Setup လုပ်ရလဲ' },
+    text: {
+      en: 'Why set up Organization first',
+      my: 'Organization ကို ဘာကြောင့် အရင်ဆုံး Setup လုပ်ရလဲ',
+    },
   },
   {
     type: 'paragraph',
@@ -59,7 +62,10 @@ export const ORGANIZATION_GUIDE: readonly GuideBlock[] = [
     rows: [
       [
         same('Companies'),
-        { en: 'Legal entities. Name and code must be unique.', my: 'ကုမ္ပဏီ (Legal Entity)။ အမည်နှင့် ကုဒ် မထပ်ရ။' },
+        {
+          en: 'Legal entities. Name and code must be unique.',
+          my: 'ကုမ္ပဏီ (Legal Entity)။ အမည်နှင့် ကုဒ် မထပ်ရ။',
+        },
         same('APEX Group'),
       ],
       [
@@ -84,7 +90,10 @@ export const ORGANIZATION_GUIDE: readonly GuideBlock[] = [
       ],
       [
         same('Job Grades'),
-        { en: 'Seniority levels with a minimum and maximum salary.', my: 'ရာထူးအဆင့်နှင့် အနည်းဆုံး/အများဆုံးလစာ။' },
+        {
+          en: 'Seniority levels with a minimum and maximum salary.',
+          my: 'ရာထူးအဆင့်နှင့် အနည်းဆုံး/အများဆုံးလစာ။',
+        },
         same('Grade 3: 600,000 – 900,000'),
       ],
     ],
@@ -165,10 +174,7 @@ export const ORGANIZATION_GUIDE: readonly GuideBlock[] = [
         same('Attendance'),
         { en: 'Department breakdown chart.', my: 'ဌာနအလိုက် တက်ရောက်မှု Chart။' },
       ],
-      [
-        same('Leave'),
-        { en: 'Leave policy by job grade.', my: 'Grade အလိုက် ခွင့် Policy။' },
-      ],
+      [same('Leave'), { en: 'Leave policy by job grade.', my: 'Grade အလိုက် ခွင့် Policy။' }],
       [
         same('Payroll'),
         {

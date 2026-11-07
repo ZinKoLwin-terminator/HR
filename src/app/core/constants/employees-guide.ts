@@ -165,7 +165,10 @@ export const EMPLOYEES_GUIDE: readonly GuideBlock[] = [
           my: 'အလုပ်အကိုင်အသေးစိတ်၊ ဖွဲ့စည်းပုံ (ကုမ္ပဏီမှ ရာထူးနှင့် Grade)၊ လက်အောက်ဝန်ထမ်းများ။',
         },
       ],
-      [same('History'), { en: 'Employment history events.', my: 'အလုပ်အကိုင် ပြောင်းလဲမှု မှတ်တမ်းများ။' }],
+      [
+        same('History'),
+        { en: 'Employment history events.', my: 'အလုပ်အကိုင် ပြောင်းလဲမှု မှတ်တမ်းများ။' },
+      ],
       [same('Documents'), { en: 'Documents of this employee.', my: 'ဤဝန်ထမ်း၏ စာရွက်စာတမ်းများ။' }],
       [
         same('Salary'),
@@ -175,7 +178,10 @@ export const EMPLOYEES_GUIDE: readonly GuideBlock[] = [
         },
       ],
       [same('Attendance'), { en: 'Attendance records.', my: 'တက်ရောက်မှု မှတ်တမ်းများ။' }],
-      [same('Leave'), { en: 'Leave balances and requests.', my: 'ခွင့်လက်ကျန်နှင့် လျှောက်လွှာများ။' }],
+      [
+        same('Leave'),
+        { en: 'Leave balances and requests.', my: 'ခွင့်လက်ကျန်နှင့် လျှောက်လွှာများ။' },
+      ],
     ],
   },
 

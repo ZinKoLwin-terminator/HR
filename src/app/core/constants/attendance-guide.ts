@@ -99,7 +99,10 @@ export const ATTENDANCE_GUIDE: readonly GuideBlock[] = [
   },
   {
     type: 'heading',
-    text: { en: '④ Records, Dashboard and Late & Early', my: '④ Records၊ Dashboard နှင့် Late & Early' },
+    text: {
+      en: '④ Records, Dashboard and Late & Early',
+      my: '④ Records၊ Dashboard နှင့် Late & Early',
+    },
   },
   {
     type: 'list',
@@ -137,7 +140,10 @@ export const ATTENDANCE_GUIDE: readonly GuideBlock[] = [
     rows: [
       [
         same('Present'),
-        { en: 'Checked in on time (within start + grace).', my: 'အချိန်မီ ဝင်ခြင်း (စချိန် + Grace အတွင်း)။' },
+        {
+          en: 'Checked in on time (within start + grace).',
+          my: 'အချိန်မီ ဝင်ခြင်း (စချိန် + Grace အတွင်း)။',
+        },
       ],
       [
         same('Late'),
@@ -155,7 +161,10 @@ export const ATTENDANCE_GUIDE: readonly GuideBlock[] = [
       ],
       [
         same('On Leave'),
-        { en: 'The day is covered by approved leave.', my: 'ထိုနေ့သည် ခွင့်ပြုပြီးခွင့်ဖြင့် ဖုံးလွှမ်းနေခြင်း။' },
+        {
+          en: 'The day is covered by approved leave.',
+          my: 'ထိုနေ့သည် ခွင့်ပြုပြီးခွင့်ဖြင့် ဖုံးလွှမ်းနေခြင်း။',
+        },
       ],
       [
         same('Absent'),

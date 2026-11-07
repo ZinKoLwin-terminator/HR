@@ -107,7 +107,12 @@ const LABELS = {
                 </ol>
               }
               @case ('code') {
-                <pre class="code">{{ b.lines.join('\n') }}</pre>
+                <pre class="code">{{
+                  b.lines.join(
+                    '
+'
+                  )
+                }}</pre>
               }
               @case ('table') {
                 <div class="table-wrap">
@@ -321,7 +326,10 @@ const LABELS = {
       overflow-x: auto;
       border-radius: 10px;
       background: var(--mat-sys-surface-container);
-      font: 0.875rem/1.7 ui-monospace, Consolas, monospace;
+      font:
+        0.875rem/1.7 ui-monospace,
+        Consolas,
+        monospace;
     }
     .table-wrap {
       margin: 8px 0;

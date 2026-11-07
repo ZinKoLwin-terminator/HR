@@ -128,7 +128,12 @@ export const NAVIGATION: NavItem[] = [
         route: '/leave/balances',
         group: 'Report',
       },
-      { label: 'Leave Calendar', icon: 'calendar_month', route: '/leave/calendar', group: 'Report' },
+      {
+        label: 'Leave Calendar',
+        icon: 'calendar_month',
+        route: '/leave/calendar',
+        group: 'Report',
+      },
     ],
   },
   {

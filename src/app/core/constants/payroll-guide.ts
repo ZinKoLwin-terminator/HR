@@ -49,16 +49,8 @@ export const PAYROLL_GUIDE: readonly GuideBlock[] = [
       { en: 'Sample', my: 'နမူနာ' },
     ],
     rows: [
-      [
-        same('Fixed'),
-        { en: 'Fixed amount', my: 'ပုံသေပမာဏ' },
-        same('TRANSPORT = 50,000'),
-      ],
-      [
-        same('PercentOfBasic'),
-        { en: '% of basic', my: 'Basic ၏ %' },
-        same('HOUSING = 10%'),
-      ],
+      [same('Fixed'), { en: 'Fixed amount', my: 'ပုံသေပမာဏ' }, same('TRANSPORT = 50,000')],
+      [same('PercentOfBasic'), { en: '% of basic', my: 'Basic ၏ %' }, same('HOUSING = 10%')],
       [
         same('PercentOfGross'),
         { en: '% of gross', my: 'Gross ၏ %' },
@@ -220,7 +212,10 @@ export const PAYROLL_GUIDE: readonly GuideBlock[] = [
   },
   {
     type: 'code',
-    lines: ['proration = daysEmployed ÷ periodDays   (calendar days)', 'basic     = Basic × proration'],
+    lines: [
+      'proration = daysEmployed ÷ periodDays   (calendar days)',
+      'basic     = Basic × proration',
+    ],
   },
   {
     type: 'paragraph',

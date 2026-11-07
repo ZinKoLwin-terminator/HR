@@ -52,7 +52,10 @@ export const RECRUITMENT_GUIDE: readonly GuideBlock[] = [
       [same('Closed'), same('Open (Reopen)')],
       [
         same('Filled'),
-        { en: 'Automatic only — cannot be changed by hand', my: 'အလိုအလျောက်သာ — လက်ဖြင့် မပြောင်းနိုင်' },
+        {
+          en: 'Automatic only — cannot be changed by hand',
+          my: 'အလိုအလျောက်သာ — လက်ဖြင့် မပြောင်းနိုင်',
+        },
       ],
     ],
   },

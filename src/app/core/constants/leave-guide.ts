@@ -214,7 +214,10 @@ export const LEAVE_GUIDE: readonly GuideBlock[] = [
   // ───────────── Links ─────────────
   {
     type: 'heading',
-    text: { en: 'What approval changes elsewhere', my: 'ခွင့်ပြုပြီးနောက် တခြား Module များတွင် ဖြစ်သည်များ' },
+    text: {
+      en: 'What approval changes elsewhere',
+      my: 'ခွင့်ပြုပြီးနောက် တခြား Module များတွင် ဖြစ်သည်များ',
+    },
   },
   {
     type: 'table',
