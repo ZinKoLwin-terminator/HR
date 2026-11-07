@@ -413,7 +413,9 @@ describe('attendance data', () => {
 
   describe('dashboard and schedule views', () => {
     it('summarises a working day consistently', async () => {
-      const day = (await query({ status: 'Present' }, 1))[0].date;
+      // Newest Present record on a weekday, so the test does not depend on today's weekday.
+      const isWeekday = (iso: string) => ![0, 6].includes(new Date(`${iso}T00:00:00Z`).getUTCDay());
+      const day = (await query({ status: 'Present' })).find((r) => isWeekday(r.date))!.date;
       const overview = await firstValueFrom(
         TestBed.inject(AttendanceOverviewDataService).getOverview(day, null),
       );
@@ -432,7 +434,7 @@ describe('attendance data', () => {
 
       const weekend = await firstValueFrom(
         TestBed.inject(AttendanceOverviewDataService).getOverview(
-          (await query({ status: 'Weekend' }, 1))[0].date,
+          (await query({ status: 'Weekend' })).find((r) => r.date < todayIso())!.date,
           null,
         ),
       );
