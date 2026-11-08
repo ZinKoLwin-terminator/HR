@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(npm run lint*)",
+      "Bash(npm run format:check*)",
+      "Bash(npm run test:ci*)",
+      "Bash(npm run build*)",
+      "Bash(npx playwright test*)",
+      "PowerShell(git status*)",
+      "PowerShell(git diff*)",
+      "PowerShell(git log*)",
+      "PowerShell(npm.cmd run lint*)",
+      "PowerShell(npm.cmd run format:check*)",
+      "PowerShell(npm.cmd run test:ci*)",
+      "PowerShell(npm.cmd run build*)",
+      "PowerShell(npx.cmd playwright test*)"
+    ],
+    "ask": [
+      "Edit(.github/workflows/**)",
+      "Write(.github/workflows/**)",
+      "Edit(.claude/settings.json)",
+      "Write(.claude/settings.json)",
+      "Edit(.claude/hooks/**)",
+      "Write(.claude/hooks/**)",
+      "Edit(src/app/features/settings/permissions/**)",
+      "Edit(**/Migrations/**)",
+      "Write(**/Migrations/**)",
+      "Bash(git push*)",
+      "Bash(rm -rf *)",
+      "PowerShell(git push*)",
+      "PowerShell(Remove-Item *-Recurse*)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/appsettings.Production*.json)",
+      "Read(**/secrets.json)",
+      "Read(**/*.pem)",
+      "Read(**/*.pfx)",
+      "Read(**/*.p12)",
+      "Read(**/*.key)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Edit(**/appsettings.Production*.json)",
+      "Edit(**/secrets.json)",
+      "Write(**/.env)",
+      "Write(**/.env.*)",
+      "Write(**/appsettings.Production*.json)",
+      "Write(**/secrets.json)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-commands.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-files.js\""
+          }
+        ]
+      }
+    ]
+  }
+}
