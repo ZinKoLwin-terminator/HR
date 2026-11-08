@@ -54,7 +54,7 @@ export class EmployeeMockService
   private readonly documents = inject(EmployeeDocumentMockService);
 
   constructor() {
-    super(MOCK_EMPLOYEES);
+    super(MOCK_EMPLOYEES, 'employees');
   }
 
   protected override describe(entity: Employee): string {

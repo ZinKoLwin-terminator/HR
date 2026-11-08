@@ -33,7 +33,7 @@ export class AttendanceAdjustmentMockService
   protected override readonly searchFields = ['reason'] as const;
 
   constructor() {
-    super(MOCK_ATTENDANCE_ADJUSTMENTS);
+    super(MOCK_ATTENDANCE_ADJUSTMENTS, 'attendance_adjustments');
     // Seeded approvals are already reflected in the attendance records.
     for (const adjustment of this.store().filter((a) => a.status === 'Approved')) {
       this.applyToRecord(adjustment);
@@ -170,7 +170,7 @@ export class OvertimeMockService
   protected override readonly searchFields = ['reason'] as const;
 
   constructor() {
-    super(MOCK_OVERTIME_RECORDS);
+    super(MOCK_OVERTIME_RECORDS, 'overtime_records');
   }
 
   protected override describe(entity: OvertimeRecord): string {

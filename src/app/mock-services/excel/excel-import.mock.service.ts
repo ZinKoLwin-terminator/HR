@@ -26,6 +26,7 @@ import { deferred } from './deferred';
 import { ParsedRow, coerceCell, matchHeaders, matchKeyOf, mappingProblems } from './excel-coercion';
 import { ExcelFileService, ParsedSheet } from './excel-file.service';
 import { EXCEL_MODULES, ExcelModuleRegistration } from './excel-module';
+import { onDataReset } from '../persistence';
 
 type IssueWithRow = ImportIssue & { rowNumber: number };
 type ImportRegistration = ExcelModuleRegistration & {
@@ -75,6 +76,15 @@ export class ExcelImportMockService implements ExcelImportDataService {
   private readonly uploads = new Map<string, StoredUpload>();
   private readonly batches = new Map<string, StoredBatch>();
   private readonly history = signal<ImportBatchSummary[]>([]);
+
+  constructor() {
+    // Import history describes records that a data reset removes, so it goes too.
+    onDataReset(() => {
+      this.history.set([]);
+      this.uploads.clear();
+      this.batches.clear();
+    });
+  }
 
   private registration(code: string): ImportRegistration {
     const registration = this.modules.get(code);

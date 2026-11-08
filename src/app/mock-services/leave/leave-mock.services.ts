@@ -60,7 +60,7 @@ export class LeaveTypeMockService
   protected override readonly searchFields = ['code', 'name'] as const;
 
   constructor() {
-    super(MOCK_LEAVE_TYPES);
+    super(MOCK_LEAVE_TYPES, 'leave_types');
   }
 
   protected override describe(entity: LeaveType): string {
@@ -107,7 +107,7 @@ export class LeavePolicyMockService
   protected override readonly searchFields = ['name'] as const;
 
   constructor() {
-    super(MOCK_LEAVE_POLICIES);
+    super(MOCK_LEAVE_POLICIES, 'leave_policies');
   }
 
   protected override describe(entity: LeavePolicy): string {
@@ -154,7 +154,7 @@ export class LeaveApplicationMockService
   protected override readonly searchFields = ['applicationNo', 'reason'] as const;
 
   constructor() {
-    super(MOCK_LEAVE_APPLICATIONS);
+    super(MOCK_LEAVE_APPLICATIONS, 'leave_applications');
   }
 
   protected override describe(entity: LeaveApplication): string {

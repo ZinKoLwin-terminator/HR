@@ -1,4 +1,4 @@
-import { Signal, WritableSignal, inject, signal } from '@angular/core';
+import { Signal, WritableSignal, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { APP_CONFIG } from '../core/configuration/app-config';
 import { ActivityCategory } from '../core/models/activity.models';
@@ -20,6 +20,8 @@ import {
 } from '../shared/utilities/query.util';
 import { ActivityMockService } from './activity/activity-mock.service';
 import { mockError, mockResponse } from './mock-response';
+import { persistedSignal } from './persistence';
+import { initialRecords } from './seed-mode';
 
 /**
  * Generic in-memory implementation of {@link CrudDataService}.
@@ -47,9 +49,17 @@ export abstract class InMemoryCrudService<
   /** List-item fields matched by the free-text search box. */
   protected readonly searchFields: readonly (keyof TList)[] = [];
 
-  protected constructor(seed: readonly T[]) {
+  /**
+   * @param seed Sample records the store starts with.
+   * @param storageKey Unique name used when the store is saved in the browser (see persistence.ts).
+   * @param emptyModeSeed Records to start with instead when empty-data mode is on (default none).
+   */
+  protected constructor(seed: readonly T[], storageKey: string, emptyModeSeed: readonly T[] = []) {
     super();
-    this.store = signal(structuredClone(seed) as T[]);
+    this.store = persistedSignal(
+      storageKey,
+      () => structuredClone(initialRecords(seed, emptyModeSeed)) as T[],
+    );
     this.records = this.store.asReadonly();
   }
 

@@ -49,7 +49,7 @@ export class CompanyMockService extends InMemoryCrudService<Company> implements 
   protected override readonly searchFields = ['code', 'name', 'legalName', 'city'] as const;
 
   constructor() {
-    super(MOCK_COMPANIES);
+    super(MOCK_COMPANIES, 'companies');
   }
 
   protected override describe(entity: Company): string {
@@ -79,7 +79,7 @@ export class BranchMockService extends InMemoryCrudService<Branch> implements Br
   protected override readonly searchFields = ['code', 'name', 'city'] as const;
 
   constructor() {
-    super(MOCK_BRANCHES);
+    super(MOCK_BRANCHES, 'branches');
   }
 
   protected override describe(entity: Branch): string {
@@ -111,7 +111,7 @@ export class DepartmentMockService
   protected override readonly searchFields = ['code', 'name', 'costCenter'] as const;
 
   constructor() {
-    super(MOCK_DEPARTMENTS);
+    super(MOCK_DEPARTMENTS, 'departments');
   }
 
   protected override describe(entity: Department): string {
@@ -146,7 +146,7 @@ export class SectionMockService extends InMemoryCrudService<Section> implements 
   protected override readonly searchFields = ['code', 'name'] as const;
 
   constructor() {
-    super(MOCK_SECTIONS);
+    super(MOCK_SECTIONS, 'sections');
   }
 
   protected override describe(entity: Section): string {
@@ -177,7 +177,7 @@ export class JobGradeMockService
   protected override readonly searchFields = ['code', 'name'] as const;
 
   constructor() {
-    super(MOCK_JOB_GRADES);
+    super(MOCK_JOB_GRADES, 'job_grades');
   }
 
   protected override describe(entity: JobGrade): string {
@@ -213,7 +213,7 @@ export class PositionMockService
   protected override readonly searchFields = ['code', 'title'] as const;
 
   constructor() {
-    super(MOCK_POSITIONS);
+    super(MOCK_POSITIONS, 'positions');
   }
 
   protected override describe(entity: Position): string {

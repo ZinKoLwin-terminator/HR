@@ -44,7 +44,7 @@ export class EmployeeDocumentMockService
   protected override readonly searchFields = ['title', 'fileName', 'type'] as const;
 
   constructor() {
-    super(MOCK_EMPLOYEE_DOCUMENTS);
+    super(MOCK_EMPLOYEE_DOCUMENTS, 'employee_documents');
   }
 
   protected override describe(entity: EmployeeDocument): string {
@@ -76,7 +76,7 @@ export class EmploymentHistoryMockService
   protected readonly activityCategory = 'employee';
 
   constructor() {
-    super(MOCK_EMPLOYMENT_HISTORY);
+    super(MOCK_EMPLOYMENT_HISTORY, 'employment_history');
   }
 
   /** Appends an entry (called by the employee service when key fields change). */

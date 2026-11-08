@@ -1,9 +1,10 @@
-import { Injectable, Injector, inject, signal } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { APP_CONFIG } from '../../core/configuration/app-config';
 import {
   ADMIN_ROLE_NAME,
   AppUser,
+  BUILT_IN_ADMIN_EMPLOYEE_ID,
   DATE_FORMATS,
   GeneralSettings,
   PERMISSION_MODULES,
@@ -30,6 +31,7 @@ import { ActivityMockService } from '../activity/activity-mock.service';
 import { EmployeeMockService } from '../employees/employee-mock.service';
 import { InMemoryCrudService } from '../in-memory-crud.service';
 import { mockError, mockResponse } from '../mock-response';
+import { persistedSignal } from '../persistence';
 
 @Injectable({ providedIn: 'root' })
 export class RoleMockService extends InMemoryCrudService<Role> implements RoleDataService {
@@ -39,7 +41,7 @@ export class RoleMockService extends InMemoryCrudService<Role> implements RoleDa
   protected override readonly searchFields = ['name', 'description'] as const;
 
   constructor() {
-    super(MOCK_ROLES);
+    super(MOCK_ROLES, 'roles', MOCK_ROLES);
   }
 
   protected override describe(entity: Role): string {
@@ -104,7 +106,9 @@ export class UserMockService extends InMemoryCrudService<AppUser> implements Use
   protected override readonly searchFields = ['displayName', 'email'] as const;
 
   constructor() {
-    super(MOCK_USERS);
+    // Empty mode keeps only the first account (HR Administrator) so someone can sign in. It is
+    // detached from the sample employee, so real employees can all get their own accounts.
+    super(MOCK_USERS, 'users', [{ ...MOCK_USERS[0], employeeId: BUILT_IN_ADMIN_EMPLOYEE_ID }]);
   }
 
   protected override describe(entity: AppUser): string {
@@ -140,12 +144,16 @@ export class UserMockService extends InMemoryCrudService<AppUser> implements Use
 
   protected override validate(candidate: AppUser, isNew: boolean): void {
     const employee = this.employees.findById(candidate.employeeId);
-    if (!employee || employee.exitDate) {
+    const builtIn = candidate.employeeId === BUILT_IN_ADMIN_EMPLOYEE_ID;
+    if (!builtIn && (!employee || employee.exitDate)) {
       this.validationError('Choose a current employee.', {
         employeeId: 'Choose a current employee.',
       });
     }
-    if (this.store().some((u) => u.id !== candidate.id && u.employeeId === candidate.employeeId)) {
+    if (
+      !builtIn &&
+      this.store().some((u) => u.id !== candidate.id && u.employeeId === candidate.employeeId)
+    ) {
       this.validationError('This employee already has a user account.', {
         employeeId: 'A user already exists for this employee.',
       });
@@ -191,7 +199,9 @@ export class RolePermissionMockService implements RolePermissionDataService {
   private readonly latency = inject(APP_CONFIG).mockLatencyMs;
   private readonly roles = inject(RoleMockService);
   private readonly activity = inject(ActivityMockService);
-  private readonly store = signal<RolePermissions[]>(structuredClone(MOCK_ROLE_PERMISSIONS));
+  private readonly store = persistedSignal<RolePermissions[]>('role_permissions', () =>
+    structuredClone(MOCK_ROLE_PERMISSIONS),
+  );
 
   getAll(): Observable<RolePermissions[]> {
     return mockResponse(() => this.store(), this.latency);
@@ -259,7 +269,9 @@ export class RolePermissionMockService implements RolePermissionDataService {
 export class GeneralSettingsMockService implements GeneralSettingsDataService {
   private readonly latency = inject(APP_CONFIG).mockLatencyMs;
   private readonly activity = inject(ActivityMockService);
-  private readonly store = signal<GeneralSettings>(structuredClone(MOCK_GENERAL_SETTINGS));
+  private readonly store = persistedSignal<GeneralSettings>('general_settings', () =>
+    structuredClone(MOCK_GENERAL_SETTINGS),
+  );
 
   get(): Observable<GeneralSettings> {
     return mockResponse(() => this.store(), this.latency);

@@ -45,7 +45,7 @@ export class PayslipMockService
   protected override readonly searchFields = ['employeeName', 'employeeCode'] as const;
 
   constructor() {
-    super(MOCK_PAYSLIPS);
+    super(MOCK_PAYSLIPS, 'payslips');
   }
 
   protected override describe(entity: Payslip): string {
@@ -90,7 +90,7 @@ export class PayrollRunMockService
   protected override readonly searchFields = ['periodName', 'status'] as const;
 
   constructor() {
-    super(MOCK_PAYROLL_RUNS);
+    super(MOCK_PAYROLL_RUNS, 'payroll_runs');
   }
 
   protected override describe(entity: PayrollRun): string {

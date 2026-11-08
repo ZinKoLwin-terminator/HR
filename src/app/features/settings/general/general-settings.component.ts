@@ -3,6 +3,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
@@ -10,6 +11,9 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { HasUnsavedChanges } from '../../../core/guards/unsaved-changes.guard';
 import { isAppError } from '../../../core/models/common.models';
 import { DATE_FORMATS, GeneralSettings, TIMEZONES } from '../../../core/models/settings.models';
+import { AuthService } from '../../../core/services/auth.service';
+import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
+import { DemoDataDataService } from '../../../core/services/data/demo-data-data.service';
 import { GeneralSettingsDataService } from '../../../core/services/data/settings-data.services';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -37,6 +41,7 @@ const MONTHS = [
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatProgressBarModule,
     MatSelectModule,
@@ -123,6 +128,29 @@ const MONTHS = [
     } @else {
       <mat-progress-bar mode="indeterminate" aria-label="Loading settings" />
     }
+
+    @if (demoData.canReset) {
+      <section class="reset-panel" aria-labelledby="reset-heading">
+        <div>
+          <h2 id="reset-heading">Demo data</h2>
+          <p>
+            Everything you create or change is kept in this browser, so it is still here after a
+            reload. Reset data deletes all of it and brings back the starting data. You will be
+            signed out.
+          </p>
+        </div>
+        <button
+          mat-stroked-button
+          type="button"
+          class="reset-button"
+          [disabled]="resetting()"
+          (click)="resetData()"
+        >
+          <mat-icon>restart_alt</mat-icon>
+          Reset data
+        </button>
+      </section>
+    }
   `,
   styles: `
     :host {
@@ -148,6 +176,30 @@ const MONTHS = [
       font: var(--mat-sys-label-large);
       padding: 0 6px;
     }
+    .reset-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      max-width: 900px;
+      margin-top: 24px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: var(--app-radius-md);
+      padding: 16px;
+    }
+    .reset-panel h2 {
+      font: var(--mat-sys-title-medium);
+      margin: 0 0 4px;
+    }
+    .reset-panel p {
+      margin: 0;
+      max-width: 60ch;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .reset-button {
+      color: var(--mat-sys-error);
+    }
     .actions {
       grid-column: 1 / -1;
       display: flex;
@@ -160,6 +212,10 @@ export class GeneralSettingsComponent implements HasUnsavedChanges {
   private readonly api = inject(GeneralSettingsDataService);
   private readonly toast = inject(UiNotificationService);
   private readonly fb = inject(FormBuilder).nonNullable;
+  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly auth = inject(AuthService);
+  protected readonly demoData = inject(DemoDataDataService);
+  protected readonly resetting = signal(false);
 
   protected readonly timezones = TIMEZONES;
   protected readonly dateFormats = DATE_FORMATS;
@@ -198,6 +254,34 @@ export class GeneralSettingsComponent implements HasUnsavedChanges {
   protected reset(): void {
     const value = this.resource.value();
     if (value) this.load(value);
+  }
+
+  protected resetData(): void {
+    this.confirmDialog
+      .confirm({
+        title: 'Reset all data?',
+        message:
+          'Every record you created or changed will be deleted and the starting data restored. This cannot be undone.',
+        confirmText: 'Reset data',
+        destructive: true,
+      })
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.resetting.set(true);
+        this.demoData.reset().subscribe({
+          next: () => {
+            this.resetting.set(false);
+            // Unsaved edits are moot now; do not let the leave-page guard block the sign-out.
+            this.form.markAsPristine();
+            this.toast.success('Data reset. Sign in again to continue.');
+            this.auth.signOut();
+          },
+          error: (error: unknown) => {
+            this.resetting.set(false);
+            this.toast.error(error);
+          },
+        });
+      });
   }
 
   protected error(name: keyof typeof this.form.controls): string | null {

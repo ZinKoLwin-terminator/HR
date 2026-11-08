@@ -29,7 +29,8 @@ export const appConfig: ApplicationConfig = {
     { provide: TitleStrategy, useClass: PageTitleStrategy },
 
     // Data layer: in-memory mock implementations (frontend-only phase).
-    provideMockDataServices(),
+    // Branch feature/empty-data: lists start empty. Use provideMockDataServices() for sample data.
+    provideMockDataServices({ emptyData: true, persist: true }),
 
     { provide: MAT_ICON_DEFAULT_OPTIONS, useValue: { fontSet: 'material-symbols-outlined' } },
     { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { appearance: 'outline' } },

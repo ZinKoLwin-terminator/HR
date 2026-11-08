@@ -92,6 +92,10 @@ import {
   WorkScheduleMockService,
 } from './attendance/attendance-views-mock.services';
 import { DashboardMockService } from './dashboard/dashboard-mock.service';
+import { DemoDataDataService } from '../core/services/data/demo-data-data.service';
+import { DemoDataMockService } from './demo-data/demo-data-mock.service';
+import { setPersistence } from './persistence';
+import { setEmptyData } from './seed-mode';
 import { EmployeeMockService } from './employees/employee-mock.service';
 import {
   EmployeeDocumentMockService,
@@ -120,6 +124,13 @@ import {
   SalaryStructureMockService,
 } from './payroll/payroll-setup-mock.services';
 
+export interface MockDataOptions {
+  /** Start every list empty (except roles, permissions, settings and one admin user). */
+  emptyData?: boolean;
+  /** Keep created and edited records in the browser across reloads (see persistence.ts). */
+  persist?: boolean;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AbstractType<T> = abstract new (...args: any[]) => T;
 
@@ -133,9 +144,12 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
  * Future phase: add `provideApiDataServices()` with HTTP implementations and
  * swap it in `app.config.ts` — components stay unchanged.
  */
-export function provideMockDataServices(): EnvironmentProviders {
+export function provideMockDataServices(options: MockDataOptions = {}): EnvironmentProviders {
+  setEmptyData(options.emptyData ?? false);
+  setPersistence(options.persist ?? false);
   return makeEnvironmentProviders([
     bind(AuthDataService, AuthMockService),
+    bind(DemoDataDataService, DemoDataMockService),
     bind(CompanyDataService, CompanyMockService),
     bind(BranchDataService, BranchMockService),
     bind(DepartmentDataService, DepartmentMockService),

@@ -44,7 +44,7 @@ export class JobOpeningMockService
   protected override readonly searchFields = ['code', 'title'] as const;
 
   constructor() {
-    super(MOCK_JOB_OPENINGS);
+    super(MOCK_JOB_OPENINGS, 'job_openings');
   }
 
   private get applications(): ApplicationMockService {
@@ -174,7 +174,7 @@ export class CandidateMockService
   ] as const;
 
   constructor() {
-    super(MOCK_CANDIDATES);
+    super(MOCK_CANDIDATES, 'candidates');
   }
 
   protected override describe(entity: Candidate): string {
@@ -215,7 +215,7 @@ export class ApplicationMockService
   protected readonly activityCategory = 'recruitment';
 
   constructor() {
-    super(MOCK_APPLICATIONS);
+    super(MOCK_APPLICATIONS, 'applications');
   }
 
   private get jobs(): JobOpeningMockService {
@@ -380,7 +380,7 @@ export class InterviewMockService
   protected override readonly searchFields = ['location', 'feedback'] as const;
 
   constructor() {
-    super(MOCK_INTERVIEWS);
+    super(MOCK_INTERVIEWS, 'interviews');
   }
 
   protected override describe(entity: Interview): string {

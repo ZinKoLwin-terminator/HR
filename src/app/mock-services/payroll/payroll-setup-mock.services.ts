@@ -29,7 +29,7 @@ export class SalaryComponentMockService
   protected override readonly searchFields = ['code', 'name'] as const;
 
   constructor() {
-    super(MOCK_SALARY_COMPONENTS);
+    super(MOCK_SALARY_COMPONENTS, 'salary_components');
   }
 
   protected override describe(entity: SalaryComponent): string {
@@ -71,7 +71,7 @@ export class SalaryStructureMockService
   protected override readonly searchFields = ['code', 'name'] as const;
 
   constructor() {
-    super(MOCK_SALARY_STRUCTURES);
+    super(MOCK_SALARY_STRUCTURES, 'salary_structures');
   }
 
   protected override describe(entity: SalaryStructure): string {
@@ -120,7 +120,7 @@ export class SalaryAssignmentMockService
   protected override readonly searchFields = ['remarks'] as const;
 
   constructor() {
-    super(MOCK_SALARY_ASSIGNMENTS);
+    super(MOCK_SALARY_ASSIGNMENTS, 'salary_assignments');
   }
 
   protected override describe(entity: SalaryAssignment): string {

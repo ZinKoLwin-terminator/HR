@@ -90,3 +90,9 @@ export const DATE_FORMATS: readonly string[] = [
 
 /** The built-in role that always keeps full access and at least one active user. */
 export const ADMIN_ROLE_NAME = 'HR Administrator';
+
+/**
+ * Employee id of the built-in administrator account in empty-data mode. It is linked to no
+ * real employee, so every real employee (including id 2) can still be given a user account.
+ */
+export const BUILT_IN_ADMIN_EMPLOYEE_ID = 0;

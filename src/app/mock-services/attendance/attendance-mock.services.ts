@@ -36,7 +36,7 @@ export class ShiftMockService extends InMemoryCrudService<Shift> implements Shif
   protected override readonly searchFields = ['code', 'name'] as const;
 
   constructor() {
-    super(MOCK_SHIFTS);
+    super(MOCK_SHIFTS, 'shifts');
   }
 
   protected override describe(entity: Shift): string {
@@ -73,7 +73,7 @@ export class HolidayMockService extends InMemoryCrudService<Holiday> implements 
   protected override readonly searchFields = ['name'] as const;
 
   constructor() {
-    super(MOCK_HOLIDAYS);
+    super(MOCK_HOLIDAYS, 'holidays');
   }
 
   protected override describe(entity: Holiday): string {
@@ -96,7 +96,7 @@ export class AttendanceRecordMockService
   protected override readonly searchFields = ['employeeName', 'employeeCode'] as const;
 
   constructor() {
-    super(MOCK_ATTENDANCE_RECORDS);
+    super(MOCK_ATTENDANCE_RECORDS, 'attendance_records');
   }
 
   protected override describe(entity: AttendanceRecord): string {
