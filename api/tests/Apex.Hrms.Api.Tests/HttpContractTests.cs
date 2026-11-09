@@ -97,6 +97,102 @@ public sealed class HttpContractTests : IClassFixture<WebApplicationFactory<Prog
     }
 
     [Fact]
+    public async Task Update_without_a_row_version_is_a_validation_problem_on_rowVersion()
+    {
+        var body = new { code = "G1", name = "Junior", level = 1, minSalary = 10, maxSalary = 20 };
+
+        var response = await client.PutAsJsonAsync("/api/job-grades/1", body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = (await ReadAsync(response)).GetProperty("errors");
+        Assert.True(errors.TryGetProperty("rowVersion", out _));
+        Assert.False(errors.TryGetProperty("status", out _));
+    }
+
+    [Fact]
+    public async Task Update_ignores_a_status_sent_by_an_old_client_because_status_has_its_own_commands()
+    {
+        var body = new { code = "G1", name = "Junior", level = 1, minSalary = 10, maxSalary = 20, status = "Maybe", rowVersion = "nope" };
+
+        var response = await client.PutAsJsonAsync("/api/job-grades/1", body);
+
+        var errors = (await ReadAsync(response)).GetProperty("errors");
+        Assert.True(errors.TryGetProperty("rowVersion", out _));
+        Assert.False(errors.TryGetProperty("status", out _));
+    }
+
+    [Fact]
+    public async Task Delete_requires_a_row_version_in_a_json_body()
+    {
+        var noBody = await client.DeleteAsync("/api/branches/3");
+        using var empty = new HttpRequestMessage(HttpMethod.Delete, "/api/branches/3") { Content = JsonContent.Create(new { }) };
+        using var invalid = new HttpRequestMessage(HttpMethod.Delete, "/api/branches/3") { Content = JsonContent.Create(new { rowVersion = "###" }) };
+
+        foreach (var response in new[] { noBody, await client.SendAsync(empty), await client.SendAsync(invalid) })
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var body = await ReadAsync(response);
+            Assert.Equal("Validation", body.GetProperty("code").GetString());
+            Assert.True(body.GetProperty("errors").TryGetProperty("rowVersion", out _));
+        }
+    }
+
+    [Theory]
+    [InlineData("companies")]
+    [InlineData("branches")]
+    [InlineData("departments")]
+    [InlineData("sections")]
+    [InlineData("job-grades")]
+    [InlineData("positions")]
+    [InlineData("companies", "deactivate")]
+    public async Task Every_organization_resource_has_activate_and_deactivate_commands_that_require_a_row_version(string resource, string action = "activate")
+    {
+        var withoutBody = await client.PostAsync($"/api/{resource}/4/{action}", content: null);
+        var withEmptyJson = await client.PostAsJsonAsync($"/api/{resource}/4/{action}", new { });
+
+        foreach (var response in new[] { withoutBody, withEmptyJson })
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.True((await ReadAsync(response)).GetProperty("errors").TryGetProperty("rowVersion", out _));
+        }
+    }
+
+    [Fact]
+    public async Task Search_longer_than_100_characters_is_rejected()
+    {
+        var response = await client.GetAsync($"/api/companies/query?search={new string('a', 101)}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.True((await ReadAsync(response)).GetProperty("errors").TryGetProperty("search", out _));
+    }
+
+    [Fact]
+    public async Task Problem_responses_carry_a_trace_id_and_every_response_has_the_security_headers()
+    {
+        var response = await client.GetAsync("/api/companies/query?sort=salary:asc");
+
+        var body = await ReadAsync(response);
+        Assert.False(string.IsNullOrWhiteSpace(body.GetProperty("traceId").GetString()));
+        Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+    }
+
+    [Fact]
+    public async Task Not_found_problems_and_the_openapi_document_also_carry_the_security_headers()
+    {
+        var notFound = await client.GetAsync("/api/nothing-here");
+        var openApi = await client.GetAsync("/openapi/v1.json");
+
+        foreach (var response in new[] { notFound, openApi })
+        {
+            Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
+            Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        }
+
+        Assert.False(string.IsNullOrWhiteSpace((await ReadAsync(notFound)).GetProperty("traceId").GetString()));
+    }
+
+    [Fact]
     public async Task OpenApi_document_lists_the_organization_routes()
     {
         var response = await client.GetAsync("/openapi/v1.json");
@@ -105,5 +201,7 @@ public sealed class HttpContractTests : IClassFixture<WebApplicationFactory<Prog
         var paths = (await ReadAsync(response)).GetProperty("paths");
         Assert.True(paths.TryGetProperty("/api/companies/query", out _));
         Assert.True(paths.TryGetProperty("/api/job-grades/{id}", out _));
+        Assert.True(paths.TryGetProperty("/api/positions/{id}/activate", out _));
+        Assert.True(paths.TryGetProperty("/api/positions/{id}/deactivate", out _));
     }
 }

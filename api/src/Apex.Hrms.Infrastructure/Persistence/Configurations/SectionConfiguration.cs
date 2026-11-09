@@ -1,3 +1,4 @@
+using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Domain.Organization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -14,9 +15,8 @@ internal sealed class SectionConfiguration() : CodedRecordConfiguration<Section>
 
     protected override void ConfigureRelationships(EntityTypeBuilder<Section> builder)
     {
-        // Target of the composite foreign keys that keep Position and Employee inside the section's department.
-        builder.HasAlternateKey(s => new { s.Id, s.DepartmentId }).HasName("UQ_Section_Id_DepartmentId");
-
+        // UQ_Section_Id_DepartmentId and the composite foreign keys from Position and Employee are enforced by the
+        // database only (see BranchConfiguration); SectionRules explains violations first.
         builder.HasOne<Department>().WithMany()
             .HasForeignKey(s => s.DepartmentId)
             .HasConstraintName("FK_Section_Department")

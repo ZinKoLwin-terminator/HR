@@ -1,4 +1,6 @@
 using Apex.Hrms.Application.UseCases;
+using Apex.Hrms.Domain.Common;
+using Apex.Hrms.Domain.Organization;
 
 namespace Apex.Hrms.Application.Organization.Departments;
 
@@ -15,7 +17,26 @@ public sealed record DepartmentDto(
     string Status,
     byte[] RowVersion) : IIdentified;
 
-public sealed record DepartmentRequest(
+/// <summary>The fields a department has on create and update.</summary>
+internal interface IDepartmentFields
+{
+    int CompanyId { get; }
+
+    int BranchId { get; }
+
+    string Code { get; }
+
+    string Name { get; }
+
+    string? Description { get; }
+
+    int? HeadEmployeeId { get; }
+
+    string? CostCenter { get; }
+}
+
+/// <summary>POST body. Status is the status the new department starts with.</summary>
+public sealed record DepartmentCreateRequest(
     int CompanyId,
     int BranchId,
     string Code,
@@ -23,7 +44,37 @@ public sealed record DepartmentRequest(
     string? Description,
     int? HeadEmployeeId,
     string? CostCenter,
-    string Status,
-    byte[]? RowVersion = null) : IVersionedRequest;
+    string Status) : IDepartmentFields, ICreateRequest<DepartmentDetails>
+{
+    public DepartmentDetails ToDetails() => DepartmentDetailsFactory.From(this);
+
+    public RecordStatus ParseStatus() => Enum.Parse<RecordStatus>(Status);
+}
+
+/// <summary>PUT body. It has no status (use activate and deactivate) and requires the row version.</summary>
+public sealed record DepartmentUpdateRequest(
+    int CompanyId,
+    int BranchId,
+    string Code,
+    string Name,
+    string? Description,
+    int? HeadEmployeeId,
+    string? CostCenter,
+    string? RowVersion) : IDepartmentFields, IDetailsRequest<DepartmentDetails>, IVersionedRequest
+{
+    public DepartmentDetails ToDetails() => DepartmentDetailsFactory.From(this);
+}
+
+internal static class DepartmentDetailsFactory
+{
+    public static DepartmentDetails From(IDepartmentFields fields) => new DepartmentDetails(
+        fields.CompanyId,
+        fields.BranchId,
+        fields.Code,
+        fields.Name,
+        fields.Description,
+        fields.HeadEmployeeId,
+        fields.CostCenter).Normalized();
+}
 
 public sealed record DepartmentFilter(int? CompanyId = null, int? BranchId = null, string? Status = null);

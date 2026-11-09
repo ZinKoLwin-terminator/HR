@@ -5,12 +5,14 @@ namespace Apex.Hrms.Application.UseCases;
 
 internal sealed class GetAllHandler<TEntity, TDto>(
     IRepository<TEntity> repository,
+    IAccessScope<TEntity> scope,
+    ICurrentUser user,
     IDtoMapper<TEntity, TDto> mapper) : IGetAllHandler<TDto>
     where TEntity : Entity
 {
     public async Task<Result<IReadOnlyList<TDto>>> HandleAsync(CancellationToken cancellationToken)
     {
-        var entities = await repository.ListAsync(cancellationToken);
+        var entities = await repository.ListAsync(scope.PredicateFor(user), cancellationToken);
         return Result.Success<IReadOnlyList<TDto>>([.. entities.Select(mapper.ToDto)]);
     }
 }

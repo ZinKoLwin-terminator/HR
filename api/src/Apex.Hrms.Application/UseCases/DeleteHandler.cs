@@ -1,50 +1,36 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.References;
 using Apex.Hrms.Domain.Common;
 
 namespace Apex.Hrms.Application.UseCases;
 
 /// <summary>Deletes a record unless other records still reference it (there is no soft delete).</summary>
+/// <typeparam name="TEntity">The entity to delete.</typeparam>
 /// <typeparam name="TDto">Only the key the API layer resolves this handler by.</typeparam>
 internal sealed class DeleteHandler<TEntity, TDto>(
-    IRepository<TEntity> repository,
+    EntityLoader<TEntity> loader,
     IEntityDescriptor<TEntity> descriptor,
-    IDeletionPolicy<TEntity> policy,
-    IReferenceUsageReader usageReader,
+    IEnumerable<IReferenceCheck<TEntity>> references,
+    IRepository<TEntity> repository,
     IUnitOfWork unitOfWork) : IDeleteHandler<TDto>
-    where TEntity : Entity
+    where TEntity : AuditedEntity
 {
-    public async Task<Result> HandleAsync(int id, CancellationToken cancellationToken)
+    public async Task<Result> HandleAsync(int id, string? rowVersion, CancellationToken cancellationToken)
     {
-        var entity = await repository.FindAsync(id, cancellationToken);
-        if (entity is null)
+        var loaded = await loader.LoadForChangeAsync(id, rowVersion, cancellationToken);
+        if (loaded.IsFailure)
         {
-            return Result.Failure(NotFoundError.For(descriptor.Label, id));
+            return Result.Failure(loaded.Error);
         }
 
-        var usages = await CountUsagesAsync(id, cancellationToken);
-        if (usages.Count > 0)
+        var usage = await ReferenceUsage.SummarizeAsync(references, ReferenceUse.Delete, id, cancellationToken);
+        if (usage is not null)
         {
-            var summary = string.Join(", ", usages.Select(usage => $"{usage.Count} {usage.Label}"));
             return Result.Failure(AppError.Conflict(
-                $"\"{descriptor.Describe(entity)}\" cannot be deleted because it is used by {summary}. Deactivate it instead."));
+                $"\"{descriptor.Describe(loaded.Value)}\" cannot be deleted because it is used by {usage}. Deactivate it instead."));
         }
 
-        repository.Remove(entity);
+        repository.Remove(loaded.Value);
         return await unitOfWork.SaveChangesAsync(cancellationToken);
-    }
-
-    private async Task<List<(string Label, int Count)>> CountUsagesAsync(int id, CancellationToken cancellationToken)
-    {
-        var usages = new List<(string Label, int Count)>();
-        foreach (var reference in policy.References)
-        {
-            var count = await usageReader.CountAsync(reference.Query, id, cancellationToken);
-            if (count > 0)
-            {
-                usages.Add((reference.Label, count));
-            }
-        }
-
-        return usages;
     }
 }

@@ -140,7 +140,7 @@ public sealed class QueryHandlerTests : IDisposable
     public async Task Job_grade_query_sorts_numbers_numerically()
     {
         await host.CreateJobGradeAsync("G1");
-        var update = host.Get<ICreateHandler<JobGradeRequest, JobGradeDto>>();
+        var update = host.Get<ICreateHandler<JobGradeCreateRequest, JobGradeDto>>();
         ResultAssert.Succeeded(await update.HandleAsync(Requests.JobGrade("G2") with { Level = 10 }, default));
         ResultAssert.Succeeded(await update.HandleAsync(Requests.JobGrade("G3") with { Level = 2 }, default));
 
@@ -148,5 +148,15 @@ public sealed class QueryHandlerTests : IDisposable
             new PageRequest<JobGradeFilter>(0, 10, new SortState("level", "desc"), null, new JobGradeFilter()), default));
 
         Assert.Equal([10, 2, 1], page.Items.Select(g => (int)g.Level));
+    }
+
+    [Fact]
+    public async Task Query_rejects_a_search_longer_than_the_limit_but_accepts_exactly_the_limit()
+    {
+        var tooLong = await Companies.HandleAsync(Page(search: new string('a', Paging.MaxSearchLength + 1)), default);
+        var atLimit = await Companies.HandleAsync(Page(search: new string('a', Paging.MaxSearchLength)), default);
+
+        ResultAssert.FailedOnField(tooLong, "search");
+        Assert.True(atLimit.IsSuccess);
     }
 }

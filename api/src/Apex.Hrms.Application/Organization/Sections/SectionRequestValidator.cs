@@ -2,14 +2,25 @@ using FluentValidation;
 
 namespace Apex.Hrms.Application.Organization.Sections;
 
-internal sealed class SectionRequestValidator : RequestValidator<SectionRequest>
+/// <summary>Shape rules shared by the create and update requests. Labels match the domain wording.</summary>
+internal abstract class SectionFieldsValidator<TRequest> : RequestValidator<TRequest>
+    where TRequest : ISectionFields
 {
-    public SectionRequestValidator()
+    protected SectionFieldsValidator()
     {
         RuleFor(x => x.DepartmentId).GreaterThan(0).WithMessage("Department is required.");
-        RuleFor(x => x.Code).RequiredCode(20);
-        RuleFor(x => x.Name).RequiredText(100);
-        RuleFor(x => x.Description).OptionalText(300);
-        RuleFor(x => x.Status).RequiredStatus();
+        RuleForText(x => x.Code, "Code").RequiredCode(20);
+        RuleForText(x => x.Name, "Section name").RequiredText(100);
+        RuleForText(x => x.Description, "Description").OptionalText(300);
     }
+}
+
+internal sealed class SectionCreateRequestValidator : SectionFieldsValidator<SectionCreateRequest>
+{
+    public SectionCreateRequestValidator() => RuleFor(x => x.Status).RequiredStatus();
+}
+
+internal sealed class SectionUpdateRequestValidator : SectionFieldsValidator<SectionUpdateRequest>
+{
+    public SectionUpdateRequestValidator() => RuleForText(x => x.RowVersion).RequiredRowVersion();
 }

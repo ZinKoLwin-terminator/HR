@@ -7,7 +7,7 @@ namespace Apex.Hrms.Application.Organization.JobGrades;
 internal sealed class JobGradeMapping :
     IEntityDescriptor<JobGrade>,
     IDtoMapper<JobGrade, JobGradeDto>,
-    IEntityFactory<JobGrade, JobGradeRequest>
+    IEntityFactory<JobGrade, JobGradeDetails>
 {
     public string Label => "Job grade";
 
@@ -24,16 +24,9 @@ internal sealed class JobGradeMapping :
         entity.Status.ToString(),
         entity.RowVersion);
 
-    public Result<JobGrade> Create(JobGradeRequest request) => JobGrade.Create(ToDetails(request));
+    public Result Validate(JobGradeDetails details, JobGrade? existing) => JobGrade.Validate(details);
 
-    public Result Update(JobGrade entity, JobGradeRequest request) => entity.Update(ToDetails(request));
+    public Result<JobGrade> Create(JobGradeDetails details, RecordStatus status) => JobGrade.Create(details, status);
 
-    private static JobGradeDetails ToDetails(JobGradeRequest request) => new(
-        request.Code,
-        request.Name,
-        request.Level,
-        request.MinSalary,
-        request.MaxSalary,
-        request.Description,
-        Enum.Parse<RecordStatus>(request.Status));
+    public Result Update(JobGrade entity, JobGradeDetails details) => entity.Update(details);
 }

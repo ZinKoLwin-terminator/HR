@@ -1,3 +1,4 @@
+using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Domain.Organization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -15,13 +16,11 @@ internal sealed class DepartmentConfiguration() : CodedRecordConfiguration<Depar
 
     protected override void ConfigureRelationships(EntityTypeBuilder<Department> builder)
     {
-        // Target of the composite foreign key that keeps Employee inside the department's branch.
-        builder.HasAlternateKey(d => new { d.Id, d.BranchId }).HasName("UQ_Department_Id_BranchId");
-
-        // The branch must belong to the same company.
+        // In the database FK_Department_Branch is composite (BranchId, CompanyId) so the branch must belong to the
+        // same company, and UQ_Department_Id_BranchId backs the Employee foreign key. Neither composite is modeled
+        // (see BranchConfiguration): the database enforces them, DepartmentRules explains violations first.
         builder.HasOne<Branch>().WithMany()
-            .HasForeignKey(d => new { d.BranchId, d.CompanyId })
-            .HasPrincipalKey(b => new { b.Id, b.CompanyId })
+            .HasForeignKey(d => d.BranchId)
             .HasConstraintName("FK_Department_Branch")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne<EmployeeReference>().WithMany()

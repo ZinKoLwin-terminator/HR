@@ -2,6 +2,7 @@ using Apex.Hrms.Domain.Common;
 
 namespace Apex.Hrms.Domain.Organization;
 
+/// <summary>The editable fields of a position. Status changes through Activate and Deactivate.</summary>
 public sealed record PositionDetails(
     int DepartmentId,
     int? SectionId,
@@ -10,8 +11,16 @@ public sealed record PositionDetails(
     string Title,
     string? Description,
     short Headcount,
-    int? ReportsToPositionId,
-    RecordStatus Status);
+    int? ReportsToPositionId)
+{
+    /// <summary>Trims text and turns blank optional text into null. Idempotent.</summary>
+    public PositionDetails Normalized() => this with
+    {
+        Code = TextNormalization.Clean(Code),
+        Title = TextNormalization.Clean(Title),
+        Description = TextNormalization.CleanOptional(Description),
+    };
+}
 
 public sealed class Position : CodedRecord
 {
@@ -34,22 +43,32 @@ public sealed class Position : CodedRecord
 
     public int? ReportsToPositionId { get; private set; }
 
-    public static Result<Position> Create(PositionDetails details)
+    public static Result<Position> Create(PositionDetails details, RecordStatus status)
     {
         var position = new Position();
         var result = position.Update(details);
-        return result.IsFailure ? Result.Failure<Position>(result.Error) : Result.Success(position);
+        if (result.IsFailure)
+        {
+            return Result.Failure<Position>(result.Error);
+        }
+
+        position.SetInitialStatus(status);
+        return Result.Success(position);
     }
 
-    /// <summary>Applies the details, or changes nothing when any rule is violated.</summary>
-    public Result Update(PositionDetails details)
+    /// <summary>
+    /// Checks the rules that need no other record, without changing anything. <paramref name="ownId"/> is the id of
+    /// the position being changed (0 for a new one).
+    /// </summary>
+    public static Result Validate(PositionDetails details, int ownId = 0)
     {
+        var normalized = details.Normalized();
         var violations = new Violations();
-        CheckCode(violations, details.Code);
+        CheckCode(violations, normalized.Code);
         violations
-            .Require("title", "Position title", details.Title)
-            .AddIf(details.Headcount < 1, "headcount", "Headcount must be at least 1.");
-        if (Id != 0 && details.ReportsToPositionId == Id)
+            .Require("title", "Position title", normalized.Title)
+            .AddIf(normalized.Headcount < 1, "headcount", "Headcount must be at least 1.");
+        if (ownId != 0 && normalized.ReportsToPositionId == ownId)
         {
             violations.Add(
                 "reportsToPositionId",
@@ -57,19 +76,27 @@ public sealed class Position : CodedRecord
                 "A position cannot report to itself.");
         }
 
-        if (violations.Any)
+        return violations.ToResult();
+    }
+
+    /// <summary>Applies the details, or changes nothing when any rule is violated. Status is left untouched.</summary>
+    public Result Update(PositionDetails details)
+    {
+        var valid = Validate(details, Id);
+        if (valid.IsFailure)
         {
-            return violations.ToResult();
+            return valid;
         }
 
-        AssignCodeAndStatus(details.Code, details.Status);
-        DepartmentId = details.DepartmentId;
-        SectionId = details.SectionId;
-        JobGradeId = details.JobGradeId;
-        Title = TextNormalization.Clean(details.Title);
-        Description = TextNormalization.CleanOptional(details.Description);
-        Headcount = details.Headcount;
-        ReportsToPositionId = details.ReportsToPositionId;
+        var normalized = details.Normalized();
+        AssignCode(normalized.Code);
+        DepartmentId = normalized.DepartmentId;
+        SectionId = normalized.SectionId;
+        JobGradeId = normalized.JobGradeId;
+        Title = normalized.Title;
+        Description = normalized.Description;
+        Headcount = normalized.Headcount;
+        ReportsToPositionId = normalized.ReportsToPositionId;
         return Result.Success();
     }
 }

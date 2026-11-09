@@ -5,18 +5,18 @@ using Apex.Hrms.Domain.Organization;
 
 namespace Apex.Hrms.Application.Organization.Companies;
 
-internal sealed class CompanyRules(IRepository<Company> companies) : ISaveRules<Company, CompanyRequest>
+internal sealed class CompanyRules(IRepository<Company> companies) : ISaveRules<Company, CompanyDetails>
 {
-    public Task<Result> CheckCreateAsync(CompanyRequest request, CancellationToken cancellationToken) =>
-        EnsureUniqueAsync(request, excludedId: 0, cancellationToken);
+    public Task<Result> CheckCreateAsync(CompanyDetails details, CancellationToken cancellationToken) =>
+        EnsureUniqueAsync(details, excludedId: 0, cancellationToken);
 
-    public Task<Result> CheckUpdateAsync(Company existing, CompanyRequest request, CancellationToken cancellationToken) =>
-        EnsureUniqueAsync(request, existing.Id, cancellationToken);
+    public Task<Result> CheckUpdateAsync(Company existing, CompanyDetails details, CancellationToken cancellationToken) =>
+        EnsureUniqueAsync(details, existing.Id, cancellationToken);
 
-    private async Task<Result> EnsureUniqueAsync(CompanyRequest request, int excludedId, CancellationToken cancellationToken)
+    private async Task<Result> EnsureUniqueAsync(CompanyDetails details, int excludedId, CancellationToken cancellationToken)
     {
-        var code = request.Code.Trim();
-        var name = request.Name.Trim();
+        var code = details.Code;
+        var name = details.Name;
         var codeCheck = await HierarchyChecks.EnsureUniqueAsync(
             companies, c => c.Code == code && c.Id != excludedId, "Company code", "code", code, cancellationToken);
         if (codeCheck.IsFailure)

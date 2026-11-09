@@ -7,7 +7,7 @@ namespace Apex.Hrms.Application.Organization.Departments;
 internal sealed class DepartmentMapping :
     IEntityDescriptor<Department>,
     IDtoMapper<Department, DepartmentDto>,
-    IEntityFactory<Department, DepartmentRequest>
+    IEntityFactory<Department, DepartmentDetails>
 {
     public string Label => "Department";
 
@@ -25,17 +25,10 @@ internal sealed class DepartmentMapping :
         entity.Status.ToString(),
         entity.RowVersion);
 
-    public Result<Department> Create(DepartmentRequest request) => Department.Create(ToDetails(request));
+    public Result Validate(DepartmentDetails details, Department? existing) => Department.Validate(details);
 
-    public Result Update(Department entity, DepartmentRequest request) => entity.Update(ToDetails(request));
+    public Result<Department> Create(DepartmentDetails details, RecordStatus status) =>
+        Department.Create(details, status);
 
-    private static DepartmentDetails ToDetails(DepartmentRequest request) => new(
-        request.CompanyId,
-        request.BranchId,
-        request.Code,
-        request.Name,
-        request.Description,
-        request.HeadEmployeeId,
-        request.CostCenter,
-        Enum.Parse<RecordStatus>(request.Status));
+    public Result Update(Department entity, DepartmentDetails details) => entity.Update(details);
 }

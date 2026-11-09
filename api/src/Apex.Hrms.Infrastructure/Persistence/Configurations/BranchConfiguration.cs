@@ -1,3 +1,4 @@
+using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Domain.Organization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -26,9 +27,10 @@ internal sealed class BranchConfiguration() : CodedRecordConfiguration<Branch>("
 
     protected override void ConfigureRelationships(EntityTypeBuilder<Branch> builder)
     {
-        // Target of the composite foreign keys that keep Department (and Employee) inside the branch's company.
-        builder.HasAlternateKey(b => new { b.Id, b.CompanyId }).HasName("UQ_Branch_Id_CompanyId");
-
+        // The database also has UQ_Branch_Id_CompanyId and composite foreign keys that keep Department (and
+        // Employee) inside the branch's company. They are deliberately not modeled: an alternate key would make
+        // CompanyId immutable in EF, so moving a branch to another company would throw. The database still
+        // enforces them, and BranchRules reports a clear error before the database has to.
         builder.HasOne<Company>().WithMany()
             .HasForeignKey(b => b.CompanyId)
             .HasConstraintName("FK_Branch_Company")

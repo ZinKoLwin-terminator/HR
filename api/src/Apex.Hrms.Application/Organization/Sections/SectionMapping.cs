@@ -7,7 +7,7 @@ namespace Apex.Hrms.Application.Organization.Sections;
 internal sealed class SectionMapping :
     IEntityDescriptor<Section>,
     IDtoMapper<Section, SectionDto>,
-    IEntityFactory<Section, SectionRequest>
+    IEntityFactory<Section, SectionDetails>
 {
     public string Label => "Section";
 
@@ -23,15 +23,9 @@ internal sealed class SectionMapping :
         entity.Status.ToString(),
         entity.RowVersion);
 
-    public Result<Section> Create(SectionRequest request) => Section.Create(ToDetails(request));
+    public Result Validate(SectionDetails details, Section? existing) => Section.Validate(details);
 
-    public Result Update(Section entity, SectionRequest request) => entity.Update(ToDetails(request));
+    public Result<Section> Create(SectionDetails details, RecordStatus status) => Section.Create(details, status);
 
-    private static SectionDetails ToDetails(SectionRequest request) => new(
-        request.DepartmentId,
-        request.Code,
-        request.Name,
-        request.Description,
-        request.SupervisorEmployeeId,
-        Enum.Parse<RecordStatus>(request.Status));
+    public Result Update(Section entity, SectionDetails details) => entity.Update(details);
 }

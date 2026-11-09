@@ -15,7 +15,7 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
-    <!-- Transitive pin: Microsoft.Data.SqlClient pulls 9.0.11, which has known vulnerabilities. -->
+    <!-- Transitive pin: Microsoft.Data.SqlClient 6.1.7 (via EF Core SqlServer) pulls System.Security.Cryptography.Pkcs 9.0.11, which has known vulnerabilities. CentralPackageTransitivePinningEnabled raises it to 10.0.14. Re-check when SqlClient is upgraded and drop the pin once it ships a fixed version. -->
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
 </Project>

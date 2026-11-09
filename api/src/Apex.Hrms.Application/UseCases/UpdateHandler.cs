@@ -4,16 +4,19 @@ using Apex.Hrms.Domain.Common;
 
 namespace Apex.Hrms.Application.UseCases;
 
-internal sealed class UpdateHandler<TEntity, TRequest, TDto>(
+/// <summary>
+/// Update flow: request shape (validator, including the required row version), load inside the access scope and
+/// against the row version, normalized details, domain rules, cross-record rules, then save. Status never changes here.
+/// </summary>
+internal sealed class UpdateHandler<TEntity, TRequest, TDetails, TDto>(
     IValidator<TRequest> validator,
-    ISaveRules<TEntity, TRequest> rules,
-    IEntityFactory<TEntity, TRequest> factory,
-    IEntityDescriptor<TEntity> descriptor,
-    IRepository<TEntity> repository,
+    IEntityFactory<TEntity, TDetails> factory,
+    ISaveRules<TEntity, TDetails> rules,
+    EntityLoader<TEntity> loader,
     IUnitOfWork unitOfWork,
     IDtoMapper<TEntity, TDto> mapper) : IUpdateHandler<TRequest, TDto>
-    where TEntity : Entity
-    where TRequest : IVersionedRequest
+    where TEntity : AuditedEntity
+    where TRequest : IDetailsRequest<TDetails>, IVersionedRequest
 {
     public async Task<Result<TDto>> HandleAsync(int id, TRequest request, CancellationToken cancellationToken)
     {
@@ -23,24 +26,27 @@ internal sealed class UpdateHandler<TEntity, TRequest, TDto>(
             return Result.Failure<TDto>(valid.Error);
         }
 
-        var entity = await repository.FindAsync(id, cancellationToken);
-        if (entity is null)
+        var loaded = await loader.LoadForChangeAsync(id, request.RowVersion, cancellationToken);
+        if (loaded.IsFailure)
         {
-            return Result.Failure<TDto>(NotFoundError.For(descriptor.Label, id));
+            return Result.Failure<TDto>(loaded.Error);
         }
 
-        var allowed = await rules.CheckUpdateAsync(entity, request, cancellationToken);
+        var entity = loaded.Value;
+        var details = request.ToDetails();
+        var consistent = factory.Validate(details, entity);
+        if (consistent.IsFailure)
+        {
+            return Result.Failure<TDto>(consistent.Error);
+        }
+
+        var allowed = await rules.CheckUpdateAsync(entity, details, cancellationToken);
         if (allowed.IsFailure)
         {
             return Result.Failure<TDto>(allowed.Error);
         }
 
-        if (request.RowVersion is { Length: > 0 } rowVersion)
-        {
-            repository.ExpectRowVersion(entity, rowVersion);
-        }
-
-        var updated = factory.Update(entity, request);
+        var updated = factory.Update(entity, details);
         if (updated.IsFailure)
         {
             return Result.Failure<TDto>(updated.Error);

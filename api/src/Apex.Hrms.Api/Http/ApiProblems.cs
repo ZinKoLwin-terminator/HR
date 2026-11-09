@@ -5,12 +5,14 @@ namespace Apex.Hrms.Api.Http;
 
 /// <summary>
 /// Builds RFC 9457 problem details. Extension <c>code</c> is one of NotFound, Validation, Conflict, Unauthorized,
-/// Forbidden, Unknown; extension <c>errors</c> maps a field to its messages. The frontend maps them to AppError.
+/// Forbidden, Unknown; extension <c>errors</c> maps a field to its messages; extension <c>traceId</c> correlates the
+/// response with the server log. The frontend maps them to AppError.
 /// </summary>
 internal static class ApiProblems
 {
     public const string CodeKey = "code";
     public const string ErrorsKey = "errors";
+    public const string TraceIdKey = "traceId";
 
     public static ProblemDetails From(AppError error)
     {

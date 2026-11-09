@@ -5,6 +5,8 @@ using Apex.Hrms.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+ApiApplicationExtensions.EnsureHostFilteringIsConfigured(builder.Configuration, builder.Environment);
+
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
@@ -12,9 +14,7 @@ builder.Services
 
 var app = builder.Build();
 
-app.UseExceptionHandler();
-app.UseStatusCodePages();
-app.UseCors(ApiServiceCollectionExtensions.CorsPolicyName);
+app.UseApiPipeline();
 
 if (app.Environment.IsDevelopment())
 {

@@ -15,18 +15,17 @@ internal sealed class PositionConfiguration() : CodedRecordConfiguration<Positio
 
     protected override void ConfigureRelationships(EntityTypeBuilder<Position> builder)
     {
-        // Target of the composite foreign key that keeps Employee.PositionId inside the employee's department.
-        builder.HasAlternateKey(p => new { p.Id, p.DepartmentId }).HasName("UQ_Position_Id_DepartmentId");
-
+        // UQ_Position_Id_DepartmentId and the composite foreign key from Employee are enforced by the database only
+        // (see BranchConfiguration); PositionRules explains violations first.
         builder.HasOne<Department>().WithMany()
             .HasForeignKey(p => p.DepartmentId)
             .HasConstraintName("FK_Position_Department")
             .OnDelete(DeleteBehavior.NoAction);
 
-        // The section must belong to the same department; the database skips the check when SectionId is NULL.
+        // In the database FK_Position_Section is composite (SectionId, DepartmentId): the section must belong to the
+        // same department, and it is skipped when SectionId is NULL. Only SectionId is modeled.
         builder.HasOne<Section>().WithMany()
-            .HasForeignKey(p => new { p.SectionId, p.DepartmentId })
-            .HasPrincipalKey(s => new { s.Id, s.DepartmentId })
+            .HasForeignKey(p => p.SectionId)
             .HasConstraintName("FK_Position_Section")
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne<JobGrade>().WithMany()

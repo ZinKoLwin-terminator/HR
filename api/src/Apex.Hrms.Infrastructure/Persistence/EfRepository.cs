@@ -14,8 +14,16 @@ internal sealed class EfRepository<TEntity>(HrmsDbContext context) : IRepository
     public async Task<TEntity?> FindAsync(int id, CancellationToken cancellationToken) =>
         await Set.FindAsync([id], cancellationToken);
 
-    public async Task<IReadOnlyList<TEntity>> ListAsync(CancellationToken cancellationToken) =>
-        await Set.AsNoTracking().OrderBy(entity => entity.Id).ToListAsync(cancellationToken);
+    public async Task<TEntity?> FindAsync(
+        int id,
+        Expression<Func<TEntity, bool>> scope,
+        CancellationToken cancellationToken) =>
+        await Set.Where(scope).Where(entity => entity.Id == id).SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<TEntity>> ListAsync(
+        Expression<Func<TEntity, bool>> scope,
+        CancellationToken cancellationToken) =>
+        await Set.AsNoTracking().Where(scope).OrderBy(entity => entity.Id).ToListAsync(cancellationToken);
 
     public async Task<PagedResult<TEntity>> QueryAsync(EntityQuery<TEntity> query, CancellationToken cancellationToken)
     {

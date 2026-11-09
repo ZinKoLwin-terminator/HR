@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.References;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Organization;
@@ -8,23 +9,24 @@ namespace Apex.Hrms.Application.Organization.Departments;
 internal sealed class DepartmentRules(
     IRepository<Department> departments,
     IRepository<Branch> branches,
-    IRepository<Company> companies) : ISaveRules<Department, DepartmentRequest>
+    IRepository<Company> companies,
+    IEnumerable<IReferenceCheck<Department>> references) : ISaveRules<Department, DepartmentDetails>
 {
-    public Task<Result> CheckCreateAsync(DepartmentRequest request, CancellationToken cancellationToken) =>
-        CheckAsync(request, existing: null, cancellationToken);
+    public Task<Result> CheckCreateAsync(DepartmentDetails details, CancellationToken cancellationToken) =>
+        CheckAsync(details, existing: null, cancellationToken);
 
     public Task<Result> CheckUpdateAsync(
         Department existing,
-        DepartmentRequest request,
+        DepartmentDetails details,
         CancellationToken cancellationToken) =>
-        CheckAsync(request, existing, cancellationToken);
+        CheckAsync(details, existing, cancellationToken);
 
     private async Task<Result> CheckAsync(
-        DepartmentRequest request,
+        DepartmentDetails details,
         Department? existing,
         CancellationToken cancellationToken)
     {
-        var code = request.Code.Trim();
+        var code = details.Code;
         var excludedId = existing?.Id ?? 0;
         var unique = await HierarchyChecks.EnsureUniqueAsync(
             departments, d => d.Code == code && d.Id != excludedId, "Department code", "code", code, cancellationToken);
@@ -34,13 +36,13 @@ internal sealed class DepartmentRules(
         }
 
         var branch = await HierarchyChecks.FindParentAsync(
-            branches, request.BranchId, "Branch", "branchId", cancellationToken);
+            branches, details.BranchId, "Branch", "branchId", cancellationToken);
         if (branch.IsFailure)
         {
             return branch;
         }
 
-        if (branch.Value.CompanyId != request.CompanyId)
+        if (branch.Value.CompanyId != details.CompanyId)
         {
             return Result.Failure(AppError.Validation(
                 "The selected branch does not belong to the selected company.",
@@ -48,12 +50,26 @@ internal sealed class DepartmentRules(
                 "Choose a branch of the selected company."));
         }
 
-        var branchCheck = existing?.BranchId == request.BranchId
+        var branchCheck = existing?.BranchId == details.BranchId
             ? Result.Success()
             : HierarchyChecks.EnsureActive(branch.Value, "Branch", branch.Value.Name, "departments", "branchId");
-        return branchCheck.IsFailure || existing?.CompanyId == request.CompanyId
-            ? branchCheck
-            : await EnsureCompanyActiveAsync(request.CompanyId, cancellationToken);
+        if (branchCheck.IsFailure)
+        {
+            return branchCheck;
+        }
+
+        var companyCheck = existing?.CompanyId == details.CompanyId
+            ? Result.Success()
+            : await EnsureCompanyActiveAsync(details.CompanyId, cancellationToken);
+        if (companyCheck.IsFailure || existing is null)
+        {
+            return companyCheck;
+        }
+
+        return existing.BranchId == details.BranchId
+            ? Result.Success()
+            : await ReferenceUsage.EnsureCanMoveAsync(
+                references, existing.Id, "Department", existing.Name, "branch", "branchId", cancellationToken);
     }
 
     private async Task<Result> EnsureCompanyActiveAsync(int companyId, CancellationToken cancellationToken)

@@ -8,7 +8,7 @@ namespace Apex.Hrms.Application.Organization.Branches;
 internal sealed class BranchMapping(IClock clock) :
     IEntityDescriptor<Branch>,
     IDtoMapper<Branch, BranchDto>,
-    IEntityFactory<Branch, BranchRequest>
+    IEntityFactory<Branch, BranchDetails>
 {
     public string Label => "Branch";
 
@@ -30,24 +30,10 @@ internal sealed class BranchMapping(IClock clock) :
         entity.Status.ToString(),
         entity.RowVersion);
 
-    public Result<Branch> Create(BranchRequest request) => Branch.Create(ToDetails(request), clock.Today);
+    public Result Validate(BranchDetails details, Branch? existing) => Branch.Validate(details, clock.Today);
 
-    public Result Update(Branch entity, BranchRequest request) => entity.Update(ToDetails(request), clock.Today);
+    public Result<Branch> Create(BranchDetails details, RecordStatus status) =>
+        Branch.Create(details, status, clock.Today);
 
-    private static BranchDetails ToDetails(BranchRequest request)
-    {
-        return new BranchDetails(
-            request.CompanyId,
-            request.Code,
-            request.Name,
-            BranchTypeText.Parse(request.Type),
-            request.Email,
-            request.Phone,
-            request.Address,
-            request.City,
-            request.Country,
-            request.ManagerEmployeeId,
-            request.OpenedDate,
-            Enum.Parse<RecordStatus>(request.Status));
-    }
+    public Result Update(Branch entity, BranchDetails details) => entity.Update(details, clock.Today);
 }

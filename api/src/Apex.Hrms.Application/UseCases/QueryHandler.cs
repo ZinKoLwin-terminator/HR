@@ -5,6 +5,8 @@ namespace Apex.Hrms.Application.UseCases;
 
 internal sealed class QueryHandler<TEntity, TDto, TFilter>(
     IRepository<TEntity> repository,
+    IAccessScope<TEntity> scope,
+    ICurrentUser user,
     IQuerySpecification<TEntity, TFilter> specification,
     IDtoMapper<TEntity, TDto> mapper) : IQueryHandler<TDto, TFilter>
     where TEntity : Entity
@@ -19,7 +21,15 @@ internal sealed class QueryHandler<TEntity, TDto, TFilter>(
             return Result.Failure<PagedResult<TDto>>(sort.Error);
         }
 
-        var predicate = Predicates.Always<TEntity>().And(specification.Filter(request.Filters));
+        if (request.Search is { Length: > Paging.MaxSearchLength })
+        {
+            return Result.Failure<PagedResult<TDto>>(AppError.Validation(
+                $"Search must be at most {Paging.MaxSearchLength} characters.",
+                "search",
+                $"Search must be at most {Paging.MaxSearchLength} characters."));
+        }
+
+        var predicate = scope.PredicateFor(user).And(specification.Filter(request.Filters));
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             predicate = predicate.And(specification.Search(request.Search.Trim()));

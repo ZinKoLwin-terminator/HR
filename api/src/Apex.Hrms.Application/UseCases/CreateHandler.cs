@@ -4,14 +4,18 @@ using Apex.Hrms.Domain.Common;
 
 namespace Apex.Hrms.Application.UseCases;
 
-internal sealed class CreateHandler<TEntity, TRequest, TDto>(
+/// <summary>
+/// Create flow: request shape (validator), normalized details, domain rules, cross-record rules, then save.
+/// </summary>
+internal sealed class CreateHandler<TEntity, TRequest, TDetails, TDto>(
     IValidator<TRequest> validator,
-    ISaveRules<TEntity, TRequest> rules,
-    IEntityFactory<TEntity, TRequest> factory,
+    IEntityFactory<TEntity, TDetails> factory,
+    ISaveRules<TEntity, TDetails> rules,
     IRepository<TEntity> repository,
     IUnitOfWork unitOfWork,
     IDtoMapper<TEntity, TDto> mapper) : ICreateHandler<TRequest, TDto>
     where TEntity : Entity
+    where TRequest : ICreateRequest<TDetails>
 {
     public async Task<Result<TDto>> HandleAsync(TRequest request, CancellationToken cancellationToken)
     {
@@ -21,13 +25,20 @@ internal sealed class CreateHandler<TEntity, TRequest, TDto>(
             return Result.Failure<TDto>(valid.Error);
         }
 
-        var allowed = await rules.CheckCreateAsync(request, cancellationToken);
+        var details = request.ToDetails();
+        var consistent = factory.Validate(details, existing: null);
+        if (consistent.IsFailure)
+        {
+            return Result.Failure<TDto>(consistent.Error);
+        }
+
+        var allowed = await rules.CheckCreateAsync(details, cancellationToken);
         if (allowed.IsFailure)
         {
             return Result.Failure<TDto>(allowed.Error);
         }
 
-        var created = factory.Create(request);
+        var created = factory.Create(details, request.ParseStatus());
         if (created.IsFailure)
         {
             return Result.Failure<TDto>(created.Error);

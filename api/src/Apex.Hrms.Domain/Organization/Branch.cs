@@ -43,6 +43,7 @@ public static class BranchTypeText
     }
 }
 
+/// <summary>The editable fields of a branch. Status changes through Activate and Deactivate.</summary>
 public sealed record BranchDetails(
     int CompanyId,
     string Code,
@@ -54,8 +55,20 @@ public sealed record BranchDetails(
     string City,
     string Country,
     int? ManagerEmployeeId,
-    DateOnly OpenedDate,
-    RecordStatus Status);
+    DateOnly OpenedDate)
+{
+    /// <summary>Trims text and turns blank optional text into null. Idempotent.</summary>
+    public BranchDetails Normalized() => this with
+    {
+        Code = TextNormalization.Clean(Code),
+        Name = TextNormalization.Clean(Name),
+        Email = TextNormalization.CleanOptional(Email),
+        Phone = TextNormalization.CleanOptional(Phone),
+        Address = TextNormalization.CleanOptional(Address),
+        City = TextNormalization.Clean(City),
+        Country = TextNormalization.Clean(Country),
+    };
+}
 
 public sealed class Branch : CodedRecord
 {
@@ -83,39 +96,54 @@ public sealed class Branch : CodedRecord
 
     public DateOnly OpenedDate { get; private set; }
 
-    public static Result<Branch> Create(BranchDetails details, DateOnly today)
+    public static Result<Branch> Create(BranchDetails details, RecordStatus status, DateOnly today)
     {
         var branch = new Branch();
         var result = branch.Update(details, today);
-        return result.IsFailure ? Result.Failure<Branch>(result.Error) : Result.Success(branch);
-    }
-
-    /// <summary>Applies the details, or changes nothing when any rule is violated.</summary>
-    public Result Update(BranchDetails details, DateOnly today)
-    {
-        var violations = new Violations();
-        CheckCode(violations, details.Code);
-        violations
-            .Require("name", "Branch name", details.Name)
-            .Require("city", "City", details.City)
-            .Require("country", "Country", details.Country)
-            .AddIf(details.OpenedDate > today, "openedDate", "Opened date cannot be in the future.");
-        if (violations.Any)
+        if (result.IsFailure)
         {
-            return violations.ToResult();
+            return Result.Failure<Branch>(result.Error);
         }
 
-        AssignCodeAndStatus(details.Code, details.Status);
-        CompanyId = details.CompanyId;
-        Name = TextNormalization.Clean(details.Name);
-        Type = details.Type;
-        Email = TextNormalization.CleanOptional(details.Email);
-        Phone = TextNormalization.CleanOptional(details.Phone);
-        Address = TextNormalization.CleanOptional(details.Address);
-        City = TextNormalization.Clean(details.City);
-        Country = TextNormalization.Clean(details.Country);
-        ManagerEmployeeId = details.ManagerEmployeeId;
-        OpenedDate = details.OpenedDate;
+        branch.SetInitialStatus(status);
+        return Result.Success(branch);
+    }
+
+    /// <summary>Checks the rules that need no other record, without changing anything.</summary>
+    public static Result Validate(BranchDetails details, DateOnly today)
+    {
+        var normalized = details.Normalized();
+        var violations = new Violations();
+        CheckCode(violations, normalized.Code);
+        violations
+            .Require("name", "Branch name", normalized.Name)
+            .Require("city", "City", normalized.City)
+            .Require("country", "Country", normalized.Country)
+            .AddIf(normalized.OpenedDate > today, "openedDate", "Opened date cannot be in the future.");
+        return violations.ToResult();
+    }
+
+    /// <summary>Applies the details, or changes nothing when any rule is violated. Status is left untouched.</summary>
+    public Result Update(BranchDetails details, DateOnly today)
+    {
+        var valid = Validate(details, today);
+        if (valid.IsFailure)
+        {
+            return valid;
+        }
+
+        var normalized = details.Normalized();
+        AssignCode(normalized.Code);
+        CompanyId = normalized.CompanyId;
+        Name = normalized.Name;
+        Type = normalized.Type;
+        Email = normalized.Email;
+        Phone = normalized.Phone;
+        Address = normalized.Address;
+        City = normalized.City;
+        Country = normalized.Country;
+        ManagerEmployeeId = normalized.ManagerEmployeeId;
+        OpenedDate = normalized.OpenedDate;
         return Result.Success();
     }
 }

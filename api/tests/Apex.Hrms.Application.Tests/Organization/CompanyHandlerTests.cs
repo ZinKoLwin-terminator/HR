@@ -1,4 +1,3 @@
-using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Organization.Companies;
 using Apex.Hrms.Application.Tests.Fakes;
 using Apex.Hrms.Application.UseCases;
@@ -13,14 +12,14 @@ public sealed class CompanyHandlerTests : IDisposable
 
     public void Dispose() => host.Dispose();
 
-    private ICreateHandler<CompanyRequest, CompanyDto> Create => host.Get<ICreateHandler<CompanyRequest, CompanyDto>>();
+    private ICreateHandler<CompanyCreateRequest, CompanyDto> Create => host.Get<ICreateHandler<CompanyCreateRequest, CompanyDto>>();
 
-    private IUpdateHandler<CompanyRequest, CompanyDto> Update => host.Get<IUpdateHandler<CompanyRequest, CompanyDto>>();
+    private IUpdateHandler<CompanyUpdateRequest, CompanyDto> Update => host.Get<IUpdateHandler<CompanyUpdateRequest, CompanyDto>>();
 
     private IDeleteHandler<CompanyDto> Delete => host.Get<IDeleteHandler<CompanyDto>>();
 
     [Fact]
-    public async Task Create_saves_the_company_and_returns_it_with_empty_text_for_missing_optionals()
+    public async Task Create_saves_the_company_and_returns_it_with_empty_text_for_missing_optionals_and_a_row_version()
     {
         var dto = ResultAssert.Succeeded(await Create.HandleAsync(Requests.Company(), default));
 
@@ -28,8 +27,27 @@ public sealed class CompanyHandlerTests : IDisposable
         Assert.Equal("AHT", dto.Code);
         Assert.Equal("Active", dto.Status);
         Assert.Equal(string.Empty, dto.Website);
+        Assert.Equal(8, dto.RowVersion.Length);
         Assert.Equal(1, host.UnitOfWork.SaveCount);
         Assert.Single(host.Repository<Company>().Items);
+    }
+
+    [Fact]
+    public async Task Create_uses_the_status_of_the_request()
+    {
+        var dto = ResultAssert.Succeeded(await Create.HandleAsync(Requests.Company(status: "Inactive"), default));
+
+        Assert.Equal("Inactive", dto.Status);
+    }
+
+    [Fact]
+    public async Task Create_trims_text_before_the_rules_run_so_a_padded_duplicate_is_still_a_duplicate()
+    {
+        await host.CreateCompanyAsync(code: "AHT", name: "First");
+
+        var result = await Create.HandleAsync(Requests.Company(code: "  AHT  ", name: "Second"), default);
+
+        ResultAssert.FailedOnField(result, "code", "Company code \"AHT\" already exists.");
     }
 
     [Fact]
@@ -67,6 +85,25 @@ public sealed class CompanyHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Validators_measure_length_after_trimming_and_name_fields_like_the_domain()
+    {
+        var padded = Requests.Company() with { Name = "  " + new string('A', 100) + "  ", LegalName = new string('L', 151) };
+
+        var error = ResultAssert.Failed(await Create.HandleAsync(padded, default), ErrorType.Validation);
+
+        Assert.DoesNotContain("name", error.FieldErrors!.Keys);
+        Assert.Equal(["Legal name must be at most 150 characters."], error.FieldErrors["legalName"]);
+    }
+
+    [Fact]
+    public async Task A_blank_name_uses_the_domain_label_in_the_message()
+    {
+        var error = ResultAssert.Failed(await Create.HandleAsync(Requests.Company() with { Name = "   " }, default), ErrorType.Validation);
+
+        Assert.Equal(["Company name is required."], error.FieldErrors!["name"]);
+    }
+
+    [Fact]
     public async Task Create_rejects_a_founded_date_after_today()
     {
         var request = Requests.Company() with { FoundedDate = host.Clock.Today.AddDays(1) };
@@ -89,9 +126,21 @@ public sealed class CompanyHandlerTests : IDisposable
     {
         var company = await host.CreateCompanyAsync();
 
-        var result = await Update.HandleAsync(company.Id, Requests.Company() with { City = "Mandalay" }, default);
+        var result = await Update.HandleAsync(company.Id, Requests.CompanyUpdate(company.RowVersion) with { City = "Mandalay" }, default);
 
-        Assert.Equal("Mandalay", ResultAssert.Succeeded(result).City);
+        var updated = ResultAssert.Succeeded(result);
+        Assert.Equal("Mandalay", updated.City);
+        Assert.NotEqual(company.RowVersion, updated.RowVersion);
+    }
+
+    [Fact]
+    public async Task Update_does_not_change_the_status()
+    {
+        var company = await host.CreateCompanyAsync(status: "Inactive");
+
+        var updated = ResultAssert.Succeeded(await Update.HandleAsync(company.Id, Requests.CompanyUpdate(company.RowVersion), default));
+
+        Assert.Equal("Inactive", updated.Status);
     }
 
     [Fact]
@@ -100,7 +149,7 @@ public sealed class CompanyHandlerTests : IDisposable
         await host.CreateCompanyAsync(code: "AHT", name: "First");
         var second = await host.CreateCompanyAsync(code: "XYZ", name: "Second");
 
-        var result = await Update.HandleAsync(second.Id, Requests.Company(code: "AHT", name: "Second"), default);
+        var result = await Update.HandleAsync(second.Id, Requests.CompanyUpdate(second.RowVersion, code: "AHT", name: "Second"), default);
 
         ResultAssert.FailedOnField(result, "code");
     }
@@ -108,39 +157,63 @@ public sealed class CompanyHandlerTests : IDisposable
     [Fact]
     public async Task Update_of_a_missing_company_is_not_found_with_the_mock_wording()
     {
-        var result = await Update.HandleAsync(42, Requests.Company(), default);
+        var result = await Update.HandleAsync(42, Requests.CompanyUpdate([1, 2, 3, 4, 5, 6, 7, 8]), default);
 
         ResultAssert.Failed(result, ErrorType.NotFound, "Company #42 was not found.");
     }
 
     [Fact]
-    public async Task Update_passes_the_client_row_version_to_the_repository()
+    public async Task Update_requires_the_row_version()
     {
         var company = await host.CreateCompanyAsync();
-        byte[] version = [1, 2, 3, 4, 5, 6, 7, 8];
 
-        await Update.HandleAsync(company.Id, Requests.Company() with { RowVersion = version }, default);
+        var result = await Update.HandleAsync(company.Id, Requests.CompanyUpdate(company.RowVersion) with { RowVersion = null }, default);
 
-        Assert.Equal(version, host.Repository<Company>().ExpectedRowVersions.Values.Single());
+        ResultAssert.FailedOnField(result, "rowVersion");
+        Assert.Equal(1, host.UnitOfWork.SaveCount);
+    }
+
+    [Theory]
+    [InlineData("not base64!")]
+    [InlineData("AQID")]
+    public async Task Update_rejects_a_malformed_row_version(string rowVersion)
+    {
+        var company = await host.CreateCompanyAsync();
+
+        var result = await Update.HandleAsync(company.Id, Requests.CompanyUpdate(company.RowVersion) with { RowVersion = rowVersion }, default);
+
+        ResultAssert.FailedOnField(result, "rowVersion");
     }
 
     [Fact]
-    public async Task Update_without_a_row_version_does_not_check_concurrency()
+    public async Task Update_with_a_stale_row_version_is_a_conflict_and_changes_nothing()
     {
         var company = await host.CreateCompanyAsync();
+        ResultAssert.Succeeded(await Update.HandleAsync(company.Id, Requests.CompanyUpdate(company.RowVersion) with { City = "Mandalay" }, default));
 
-        await Update.HandleAsync(company.Id, Requests.Company(), default);
+        var stale = await Update.HandleAsync(company.Id, Requests.CompanyUpdate(company.RowVersion) with { City = "Bago" }, default);
 
-        Assert.Empty(host.Repository<Company>().ExpectedRowVersions);
+        ResultAssert.Failed(stale, ErrorType.Conflict, RowVersionToken.Stale.Message);
+        Assert.Equal("Mandalay", host.Repository<Company>().Items.Single().City);
     }
 
     [Fact]
-    public async Task Update_surfaces_a_concurrency_conflict()
+    public async Task Update_passes_the_row_version_to_the_repository_for_the_database_check()
     {
         var company = await host.CreateCompanyAsync();
-        host.UnitOfWork.FailNextSaveWith = AppError.Conflict("The record was changed or deleted by someone else.");
 
-        ResultAssert.Failed(await Update.HandleAsync(company.Id, Requests.Company(), default), ErrorType.Conflict);
+        await Update.HandleAsync(company.Id, Requests.CompanyUpdate(company.RowVersion), default);
+
+        Assert.Equal(company.RowVersion, host.Repository<Company>().ExpectedRowVersions.Values.Single());
+    }
+
+    [Fact]
+    public async Task Update_surfaces_a_concurrency_conflict_raised_by_the_database()
+    {
+        var company = await host.CreateCompanyAsync();
+        host.UnitOfWork.FailNextSaveWith = RowVersionToken.Stale;
+
+        ResultAssert.Failed(await Update.HandleAsync(company.Id, Requests.CompanyUpdate(company.RowVersion), default), ErrorType.Conflict);
     }
 
     [Fact]
@@ -148,29 +221,57 @@ public sealed class CompanyHandlerTests : IDisposable
     {
         var company = await host.CreateCompanyAsync();
 
-        Assert.True((await Delete.HandleAsync(company.Id, default)).IsSuccess);
+        Assert.True((await Delete.HandleAsync(company.Id, Requests.Version(company.RowVersion), default)).IsSuccess);
         Assert.Empty(host.Repository<Company>().Items);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("%%%")]
+    public async Task Delete_requires_a_valid_row_version(string? rowVersion)
+    {
+        var company = await host.CreateCompanyAsync();
+
+        var result = await Delete.HandleAsync(company.Id, rowVersion, default);
+
+        ResultAssert.FailedOnField(result, "rowVersion");
+        Assert.Single(host.Repository<Company>().Items);
+    }
+
+    [Fact]
+    public async Task Delete_with_a_stale_row_version_is_a_conflict()
+    {
+        var company = await host.CreateCompanyAsync();
+        ResultAssert.Succeeded(await Update.HandleAsync(company.Id, Requests.CompanyUpdate(company.RowVersion), default));
+
+        var result = await Delete.HandleAsync(company.Id, Requests.Version(company.RowVersion), default);
+
+        ResultAssert.Failed(result, ErrorType.Conflict);
+        Assert.Single(host.Repository<Company>().Items);
     }
 
     [Fact]
     public async Task Delete_is_blocked_while_branches_departments_or_employees_use_the_company()
     {
         var company = await host.CreateCompanyAsync();
-        host.References.Set(ReferenceQuery.BranchesOfCompany, company.Id, 2);
-        host.References.Set(ReferenceQuery.EmployeesOfCompany, company.Id, 5);
+        await host.CreateBranchAsync(company.Id, "B1");
+        await host.CreateBranchAsync(company.Id, "B2");
+        host.Employees.Add(companyId: company.Id);
+        host.Employees.Add(companyId: company.Id);
 
-        var result = await Delete.HandleAsync(company.Id, default);
+        var result = await Delete.HandleAsync(company.Id, Requests.Version(company.RowVersion), default);
 
         ResultAssert.Failed(
             result,
             ErrorType.Conflict,
-            "\"Apex Holdings\" cannot be deleted because it is used by 2 branch(es), 5 employee(s). Deactivate it instead.");
+            "\"Apex Holdings\" cannot be deleted because it is used by 2 branch(es), 2 employee(s). Deactivate it instead.");
         Assert.Single(host.Repository<Company>().Items);
     }
 
     [Fact]
     public async Task Delete_of_a_missing_company_is_not_found() =>
-        ResultAssert.Failed(await Delete.HandleAsync(9, default), ErrorType.NotFound, "Company #9 was not found.");
+        ResultAssert.Failed(await Delete.HandleAsync(9, Requests.Version([1, 2, 3, 4, 5, 6, 7, 8]), default), ErrorType.NotFound, "Company #9 was not found.");
 
     [Fact]
     public async Task GetById_returns_the_company_or_not_found()

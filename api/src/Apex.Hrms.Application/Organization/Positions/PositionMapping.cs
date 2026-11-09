@@ -7,7 +7,7 @@ namespace Apex.Hrms.Application.Organization.Positions;
 internal sealed class PositionMapping :
     IEntityDescriptor<Position>,
     IDtoMapper<Position, PositionDto>,
-    IEntityFactory<Position, PositionRequest>
+    IEntityFactory<Position, PositionDetails>
 {
     public string Label => "Position";
 
@@ -26,18 +26,10 @@ internal sealed class PositionMapping :
         entity.Status.ToString(),
         entity.RowVersion);
 
-    public Result<Position> Create(PositionRequest request) => Position.Create(ToDetails(request));
+    public Result Validate(PositionDetails details, Position? existing) =>
+        Position.Validate(details, existing?.Id ?? 0);
 
-    public Result Update(Position entity, PositionRequest request) => entity.Update(ToDetails(request));
+    public Result<Position> Create(PositionDetails details, RecordStatus status) => Position.Create(details, status);
 
-    private static PositionDetails ToDetails(PositionRequest request) => new(
-        request.DepartmentId,
-        request.SectionId,
-        request.JobGradeId,
-        request.Code,
-        request.Title,
-        request.Description,
-        request.Headcount,
-        request.ReportsToPositionId,
-        Enum.Parse<RecordStatus>(request.Status));
+    public Result Update(Position entity, PositionDetails details) => entity.Update(details);
 }

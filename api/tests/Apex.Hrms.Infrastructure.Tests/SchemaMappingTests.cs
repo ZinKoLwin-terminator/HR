@@ -1,3 +1,5 @@
+using Apex.Hrms.Application.Organization;
+using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Organization;
 using Apex.Hrms.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -89,13 +91,69 @@ public sealed class SchemaMappingTests : IDisposable
     }
 
     [Fact]
-    public void Composite_foreign_keys_keep_children_inside_their_parents()
+    public void Foreign_keys_map_the_plain_parent_columns()
     {
-        AssertForeignKey<Department>("FK_Department_Branch", "BranchId", "CompanyId");
-        AssertForeignKey<Position>("FK_Position_Section", "SectionId", "DepartmentId");
+        // The database foreign keys are composite (BranchId + CompanyId, SectionId + DepartmentId). EF maps only the
+        // parent column, so the other column stays an ordinary, changeable property.
+        AssertForeignKey<Department>("FK_Department_Branch", "BranchId");
+        AssertForeignKey<Position>("FK_Position_Section", "SectionId");
+        AssertForeignKey<Position>("FK_Position_Department", "DepartmentId");
+        AssertForeignKey<Section>("FK_Section_Department", "DepartmentId");
         AssertForeignKey<Branch>("FK_Branch_Company", "CompanyId");
         AssertForeignKey<Position>("FK_Position_Position_ReportsToPositionId", "ReportsToPositionId");
     }
+
+    [Fact]
+    public void Parent_columns_are_not_part_of_any_key_so_a_child_can_change_parent()
+    {
+        foreach (var entity in new[] { Entity<Branch>(), Entity<Department>(), Entity<Section>(), Entity<Position>() })
+        {
+            Assert.Single(entity.GetKeys());
+            Assert.Equal(["Id"], entity.FindPrimaryKey()!.Properties.Select(property => property.Name));
+        }
+    }
+
+    [Fact]
+    public void Changing_the_parent_of_a_tracked_branch_is_detected_without_error() =>
+        AssertParentChangeIsDetected(
+            Branch.Create(new BranchDetails(1, "YGN", "Yangon", BranchType.Branch, null, null, null, "Yangon", "Myanmar", null, new DateOnly(2020, 1, 1)), RecordStatus.Active, Today).Value,
+            branch => branch.Update(new BranchDetails(2, "YGN", "Yangon", BranchType.Branch, null, null, null, "Yangon", "Myanmar", null, new DateOnly(2020, 1, 1)), Today),
+            nameof(Branch.CompanyId));
+
+    [Fact]
+    public void Changing_the_parent_of_a_tracked_department_is_detected_without_error() =>
+        AssertParentChangeIsDetected(
+            Department.Create(new DepartmentDetails(1, 1, "ENG", "Engineering", null, null, null), RecordStatus.Active).Value,
+            department => department.Update(new DepartmentDetails(1, 2, "ENG", "Engineering", null, null, null)),
+            nameof(Department.BranchId));
+
+    [Fact]
+    public void Changing_the_company_of_a_tracked_department_is_detected_without_error() =>
+        AssertParentChangeIsDetected(
+            Department.Create(new DepartmentDetails(1, 1, "ENG", "Engineering", null, null, null), RecordStatus.Active).Value,
+            department => department.Update(new DepartmentDetails(2, 1, "ENG", "Engineering", null, null, null)),
+            nameof(Department.CompanyId));
+
+    [Fact]
+    public void Changing_the_parent_of_a_tracked_section_is_detected_without_error() =>
+        AssertParentChangeIsDetected(
+            Section.Create(new SectionDetails(1, "BE", "Backend", null, null), RecordStatus.Active).Value,
+            section => section.Update(new SectionDetails(2, "BE", "Backend", null, null)),
+            nameof(Section.DepartmentId));
+
+    [Fact]
+    public void Changing_the_department_of_a_tracked_position_is_detected_without_error() =>
+        AssertParentChangeIsDetected(
+            Position.Create(new PositionDetails(1, null, 1, "DEV", "Developer", null, 1, null), RecordStatus.Active).Value,
+            position => position.Update(new PositionDetails(2, null, 1, "DEV", "Developer", null, 1, null)),
+            nameof(Position.DepartmentId));
+
+    [Fact]
+    public void Changing_the_section_of_a_tracked_position_is_detected_without_error() =>
+        AssertParentChangeIsDetected(
+            Position.Create(new PositionDetails(1, 1, 1, "DEV", "Developer", null, 1, null), RecordStatus.Active).Value,
+            position => position.Update(new PositionDetails(1, 2, 1, "DEV", "Developer", null, 1, null)),
+            nameof(Position.SectionId));
 
     [Fact]
     public void Foreign_keys_never_cascade_deletes()
@@ -127,6 +185,28 @@ public sealed class SchemaMappingTests : IDisposable
 
         Assert.Contains("LIKE", sql, StringComparison.Ordinal);
         Assert.Contains("[org].[Company]", sql, StringComparison.Ordinal);
+    }
+
+    private static readonly DateOnly Today = new(2026, 11, 9);
+
+    /// <summary>
+    /// Attaches an existing row (no database), changes its parent through the domain method and lets the change
+    /// tracker detect it. With alternate keys over the parent column EF threw here ("part of a key and so cannot
+    /// be modified"), which surfaced as a 500 when a record moved to another parent.
+    /// </summary>
+    private void AssertParentChangeIsDetected<T>(T entity, Func<T, Result> change, string parentProperty)
+        where T : AuditedEntity
+    {
+        typeof(Apex.Hrms.Domain.Common.Entity).GetProperty(nameof(Apex.Hrms.Domain.Common.Entity.Id))!.SetValue(entity, 5);
+        var entry = context.Attach(entity);
+        Assert.Equal(EntityState.Unchanged, entry.State);
+
+        Assert.True(change(entity).IsSuccess);
+        var exception = Record.Exception(() => context.ChangeTracker.DetectChanges());
+
+        Assert.Null(exception);
+        Assert.Equal(EntityState.Modified, entry.State);
+        Assert.True(entry.Property(parentProperty).IsModified);
     }
 
     private static System.Linq.Expressions.Expression<Func<T, object>> Key<T>(System.Linq.Expressions.Expression<Func<T, object>> key) => key;

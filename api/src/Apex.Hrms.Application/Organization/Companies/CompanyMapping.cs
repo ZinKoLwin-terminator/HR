@@ -8,7 +8,7 @@ namespace Apex.Hrms.Application.Organization.Companies;
 internal sealed class CompanyMapping(IClock clock) :
     IEntityDescriptor<Company>,
     IDtoMapper<Company, CompanyDto>,
-    IEntityFactory<Company, CompanyRequest>
+    IEntityFactory<Company, CompanyDetails>
 {
     public string Label => "Company";
 
@@ -32,23 +32,10 @@ internal sealed class CompanyMapping(IClock clock) :
         entity.Status.ToString(),
         entity.RowVersion);
 
-    public Result<Company> Create(CompanyRequest request) => Company.Create(ToDetails(request), clock.Today);
+    public Result Validate(CompanyDetails details, Company? existing) => Company.Validate(details, clock.Today);
 
-    public Result Update(Company entity, CompanyRequest request) => entity.Update(ToDetails(request), clock.Today);
+    public Result<Company> Create(CompanyDetails details, RecordStatus status) =>
+        Company.Create(details, status, clock.Today);
 
-    private static CompanyDetails ToDetails(CompanyRequest request) => new(
-        request.Code,
-        request.Name,
-        request.LegalName,
-        request.RegistrationNumber,
-        request.TaxId,
-        request.Industry,
-        request.Email,
-        request.Phone,
-        request.Website,
-        request.Address,
-        request.City,
-        request.Country,
-        request.FoundedDate,
-        Enum.Parse<RecordStatus>(request.Status));
+    public Result Update(Company entity, CompanyDetails details) => entity.Update(details, clock.Today);
 }

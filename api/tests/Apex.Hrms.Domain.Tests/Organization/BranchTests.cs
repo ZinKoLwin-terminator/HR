@@ -18,8 +18,7 @@ public sealed class BranchTests
         "Yangon",
         "Myanmar",
         ManagerEmployeeId: null,
-        opened ?? new DateOnly(2020, 1, 1),
-        RecordStatus.Active);
+        opened ?? new DateOnly(2020, 1, 1));
 
     [Theory]
     [InlineData(BranchType.HeadOffice, "Head Office")]
@@ -43,7 +42,7 @@ public sealed class BranchTests
     [Fact]
     public void Create_rejects_an_opened_date_in_the_future()
     {
-        var result = Branch.Create(Details(opened: Today.AddDays(1)), Today);
+        var result = Branch.Create(Details(opened: Today.AddDays(1)), RecordStatus.Active, Today);
 
         Assert.True(result.IsFailure);
         Assert.Contains("openedDate", result.Error.FieldErrors!.Keys);
@@ -52,7 +51,7 @@ public sealed class BranchTests
     [Fact]
     public void Create_keeps_the_company_and_type()
     {
-        var branch = Branch.Create(Details(), Today).Value;
+        var branch = Branch.Create(Details(), RecordStatus.Active, Today).Value;
 
         Assert.Equal(1, branch.CompanyId);
         Assert.Equal(BranchType.HeadOffice, branch.Type);

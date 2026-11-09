@@ -13,6 +13,7 @@ public sealed class LayerDependencyTests
 
     private static readonly Assembly DomainAssembly = typeof(Apex.Hrms.Domain.Common.Result).Assembly;
     private static readonly Assembly ApplicationAssembly = typeof(Apex.Hrms.Application.Paging).Assembly;
+    private static readonly Assembly ApiAssembly = typeof(Program).Assembly;
     private static readonly Assembly InfrastructureAssembly = typeof(Apex.Hrms.Infrastructure.DependencyInjection).Assembly;
 
     [Fact]
@@ -42,6 +43,21 @@ public sealed class LayerDependencyTests
         AssertNoDependencies(InfrastructureAssembly, Api, "Microsoft.AspNetCore");
 
     [Fact]
+    public void Api_speaks_in_dtos_and_never_touches_domain_entities() =>
+        AssertNoDependencies(ApiAssembly, "Apex.Hrms.Domain.Organization");
+
+    [Fact]
+    public void Use_case_handler_classes_are_not_public()
+    {
+        var leaked = Types.InAssembly(ApplicationAssembly)
+            .That().AreClasses().And().HaveNameEndingWith("Handler")
+            .Should().NotBePublic()
+            .GetResult();
+
+        Assert.True(leaked.IsSuccessful, Describe(leaked));
+    }
+
+    [Fact]
     public void Handlers_validators_and_rules_are_not_public_implementation_details()
     {
         var leaked = Types.InAssembly(ApplicationAssembly)
@@ -49,7 +65,6 @@ public sealed class LayerDependencyTests
             .Or().HaveNameEndingWith("Mapping")
             .Or().HaveNameEndingWith("RequestValidator")
             .Or().HaveNameEndingWith("QuerySpecification")
-            .Or().HaveNameEndingWith("DeletionPolicy")
             .Should().NotBePublic()
             .GetResult();
 

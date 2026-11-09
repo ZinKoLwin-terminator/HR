@@ -1,3 +1,4 @@
+using Apex.Hrms.Api.Authorization;
 using Apex.Hrms.Application.Organization.Branches;
 using Apex.Hrms.Application.Organization.Companies;
 using Apex.Hrms.Application.Organization.Departments;
@@ -11,14 +12,22 @@ internal static class OrganizationEndpoints
 {
     private const string Tag = "Organization";
 
+    private static readonly PermissionModule Module = PermissionModule.Organization;
+
     public static IEndpointRouteBuilder MapOrganizationEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapCrud<CompanyDto, CompanyRequest, CompanyFilter>("/api/companies", Tag);
-        app.MapCrud<BranchDto, BranchRequest, BranchFilter>("/api/branches", Tag);
-        app.MapCrud<DepartmentDto, DepartmentRequest, DepartmentFilter>("/api/departments", Tag);
-        app.MapCrud<SectionDto, SectionRequest, SectionFilter>("/api/sections", Tag);
-        app.MapCrud<JobGradeDto, JobGradeRequest, JobGradeFilter>("/api/job-grades", Tag);
-        app.MapCrud<PositionDto, PositionRequest, PositionFilter>("/api/positions", Tag);
+        app.MapCrud<CompanyDto, CompanyCreateRequest, CompanyUpdateRequest, CompanyFilter>("/api/companies", Tag, Module)
+            .MapStatusCommands<CompanyDto>(Module);
+        app.MapCrud<BranchDto, BranchCreateRequest, BranchUpdateRequest, BranchFilter>("/api/branches", Tag, Module)
+            .MapStatusCommands<BranchDto>(Module);
+        app.MapCrud<DepartmentDto, DepartmentCreateRequest, DepartmentUpdateRequest, DepartmentFilter>("/api/departments", Tag, Module)
+            .MapStatusCommands<DepartmentDto>(Module);
+        app.MapCrud<SectionDto, SectionCreateRequest, SectionUpdateRequest, SectionFilter>("/api/sections", Tag, Module)
+            .MapStatusCommands<SectionDto>(Module);
+        app.MapCrud<JobGradeDto, JobGradeCreateRequest, JobGradeUpdateRequest, JobGradeFilter>("/api/job-grades", Tag, Module)
+            .MapStatusCommands<JobGradeDto>(Module);
+        app.MapCrud<PositionDto, PositionCreateRequest, PositionUpdateRequest, PositionFilter>("/api/positions", Tag, Module)
+            .MapStatusCommands<PositionDto>(Module);
         return app;
     }
 }

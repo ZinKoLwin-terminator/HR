@@ -15,16 +15,19 @@ public static class DependencyInjection
 
     /// <summary>
     /// Registers persistence, the clock and the placeholder current user. The connection string comes from
-    /// configuration key <c>ConnectionStrings:Hrms</c> (user-secrets or environment variables for anything with a password).
+    /// configuration key <c>ConnectionStrings:Hrms</c> (user-secrets or environment variables for anything with a
+    /// password); the business time zone from <c>Business:TimeZone</c> (default Asia/Yangon).
+    /// The current user is registered with TryAdd: the Api layer replaces it with its own <see cref="ICurrentUser"/>.
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString(ConnectionStringName)
             ?? throw new InvalidOperationException($"Connection string '{ConnectionStringName}' is not configured.");
+        var businessTimeZone = BusinessTimeZone.Resolve(configuration[BusinessTimeZone.ConfigurationKey]);
 
         services.TryAddSingleton(TimeProvider.System);
-        services.AddSingleton<IClock, SystemClock>();
-        services.AddScoped<ICurrentUser, AnonymousCurrentUser>();
+        services.TryAddSingleton<IClock>(provider => new SystemClock(provider.GetRequiredService<TimeProvider>(), businessTimeZone));
+        services.TryAddScoped<ICurrentUser, AnonymousCurrentUser>();
 
         services.AddScoped<AuditStampInterceptor>();
         services.AddDbContext<HrmsDbContext>((provider, options) => options
@@ -32,8 +35,8 @@ public static class DependencyInjection
             .AddInterceptors(provider.GetRequiredService<AuditStampInterceptor>()));
 
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
+        services.AddScoped(typeof(IRecordCounter<>), typeof(EfRecordCounter<>));
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
-        services.AddScoped<IReferenceUsageReader, EfReferenceUsageReader>();
         return services;
     }
 }

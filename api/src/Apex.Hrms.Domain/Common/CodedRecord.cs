@@ -9,6 +9,12 @@ public abstract class CodedRecord : AuditedEntity
 
     public bool IsActive => Status == RecordStatus.Active;
 
+    /// <summary>Makes the record active. Activating an active record is a no-op, so the call is idempotent.</summary>
+    public Result Activate() => ChangeStatus(RecordStatus.Active);
+
+    /// <summary>Makes the record inactive. Inactive records cannot receive new children. Idempotent.</summary>
+    public Result Deactivate() => ChangeStatus(RecordStatus.Inactive);
+
     protected static void CheckCode(Violations violations, string? code) =>
         violations
             .Require("code", "Code", code)
@@ -17,9 +23,14 @@ public abstract class CodedRecord : AuditedEntity
                 "code",
                 RecordCodeRules.InvalidMessage);
 
-    protected void AssignCodeAndStatus(string code, RecordStatus status)
+    protected void AssignCode(string code) => Code = TextNormalization.Clean(code);
+
+    /// <summary>Sets the status a new record starts with. Later changes go through Activate and Deactivate.</summary>
+    protected void SetInitialStatus(RecordStatus status) => Status = status;
+
+    private Result ChangeStatus(RecordStatus status)
     {
-        Code = TextNormalization.Clean(code);
         Status = status;
+        return Result.Success();
     }
 }

@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,7 +16,7 @@ internal sealed class EfUnitOfWork(HrmsDbContext context) : IUnitOfWork
         }
         catch (DbUpdateConcurrencyException)
         {
-            return Result.Failure(SqlConflicts.Concurrency);
+            return Result.Failure(RowVersionToken.Stale);
         }
         catch (DbUpdateException exception) when (SqlConflicts.TryTranslate(exception, out var conflict))
         {

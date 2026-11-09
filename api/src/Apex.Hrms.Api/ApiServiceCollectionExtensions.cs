@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Apex.Hrms.Api.Authorization;
 using Apex.Hrms.Api.Http;
 using Microsoft.AspNetCore.Http.Features;
 
@@ -10,6 +12,7 @@ internal static class ApiServiceCollectionExtensions
     public static IServiceCollection AddApi(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOpenApi();
+        services.AddHrmsAuthorization();
 
         // Make malformed requests flow through the exception handler so they get the same problem shape.
         services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
@@ -18,7 +21,7 @@ internal static class ApiServiceCollectionExtensions
         {
             var problem = context.ProblemDetails;
             problem.Extensions.TryAdd(ApiProblems.CodeKey, ApiProblems.TypeFor(problem.Status ?? context.HttpContext.Response.StatusCode).ToString());
-            problem.Extensions.Remove("traceId");
+            problem.Extensions[ApiProblems.TraceIdKey] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
         });
 
         var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
