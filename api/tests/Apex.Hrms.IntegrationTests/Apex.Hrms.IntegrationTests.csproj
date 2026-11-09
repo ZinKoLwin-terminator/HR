@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Microsoft.Data.SqlClient does not support invariant globalization mode (set repo-wide in Directory.Build.props). -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.SqlServer.DacFx" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <ProjectReference Include="..\..\src\Apex.Hrms.Api\Apex.Hrms.Api.csproj" />
+    <ProjectReference Include="..\..\src\Apex.Hrms.Application\Apex.Hrms.Application.csproj" />
+    <ProjectReference Include="..\..\src\Apex.Hrms.Domain\Apex.Hrms.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Apex.Hrms.Infrastructure\Apex.Hrms.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

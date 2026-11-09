@@ -140,3 +140,24 @@ No authentication exists yet, but the structure is in place so Identity (cookie,
 3. Infrastructure: entity configuration (plain foreign keys; do not model composite or alternate keys over parent columns).
 4. Api: `MapCrud(route, tag, module, operations)` and `MapCommand` / `MapStatusCommands`. A workflow resource (payroll
    run) passes `CrudOperations.Read | CrudOperations.Create` so no PUT or DELETE is exposed.
+
+## Integration tests (SQL Server)
+
+`tests/Apex.Hrms.IntegrationTests` runs the real stack (`AddApplication` + `AddInfrastructure`, and the API through
+`WebApplicationFactory`) against SQL Server, because fakes cannot catch EF model, constraint or SQL translation bugs.
+
+* **Database:** LocalDB `(localdb)\MSSQLLocalDB`, Integrated Security, throwaway database **`HR_IntegrationTests`**. The
+  name is a constant in `Support/SqlServerEnvironment.cs`; the tests never read it from configuration and never touch
+  the `HR` database.
+* **Schema:** deployed once per run from the SSDT dacpac with `DacServices.Deploy` (`CreateNewDatabase = false`,
+  `BlockOnPossibleDataLoss = true`, `DropObjectsNotInSource = false`). The default path is
+  `D:\New folder\HR DBPJ\HR DBPJ\bin\Debug\HR DBPJ.dacpac`; set the environment variable `HRMS_DACPAC` to use another.
+  Build the database project first if the dacpac is missing or out of date.
+* **Isolation:** every test runs inside a `TransactionScope` that is never completed, so all writes (handlers and raw
+  SQL) roll back. No `DROP`, `TRUNCATE` or unfiltered `DELETE`. The fixture fails the run when the `org` tables are not
+  empty before or after it, which would mean a test committed.
+* **Skipping:** without LocalDB (for example Linux CI) or without the dacpac every test is reported as skipped with the
+  reason; `dotnet test` stays green.
+* **Run:** `dotnet test api/tests/Apex.Hrms.IntegrationTests`, or everything except them with
+  `dotnet test api/Apex.Hrms.slnx --filter "Category!=Integration"`. The first run starts LocalDB (`sqllocaldb start
+  MSSQLLocalDB`) and deploys the schema, which takes longer.

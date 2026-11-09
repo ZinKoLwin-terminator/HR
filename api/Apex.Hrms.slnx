@@ -11,5 +11,6 @@
     <Project Path="tests/Apex.Hrms.ArchitectureTests/Apex.Hrms.ArchitectureTests.csproj" />
     <Project Path="tests/Apex.Hrms.Domain.Tests/Apex.Hrms.Domain.Tests.csproj" />
     <Project Path="tests/Apex.Hrms.Infrastructure.Tests/Apex.Hrms.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Apex.Hrms.IntegrationTests/Apex.Hrms.IntegrationTests.csproj" />
   </Folder>
 </Solution>
