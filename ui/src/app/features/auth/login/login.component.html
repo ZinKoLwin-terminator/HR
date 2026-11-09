@@ -246,6 +246,13 @@
         <h1 id="login-title">Welcome back</h1>
         <p class="subtitle">Sign in to your workspace to continue.</p>
 
+        @if (passwordReset) {
+          <p class="notice" role="status">
+            <mat-icon aria-hidden="true">check_circle</mat-icon>
+            <span>Your password has been reset. Sign in with your new password.</span>
+          </p>
+        }
+
         @if (error()) {
           <p class="error" role="alert">
             <mat-icon aria-hidden="true">error</mat-icon><span>{{ error() }}</span>
@@ -288,8 +295,14 @@
           </mat-form-field>
 
           <div class="options">
-            <mat-checkbox formControlName="remember">Keep me signed in</mat-checkbox>
-            <button type="button" class="link" (click)="forgot()">Forgot password?</button>
+            <mat-checkbox formControlName="remember">{{
+              serverMode ? 'Remember me' : 'Keep me signed in'
+            }}</mat-checkbox>
+            @if (serverMode) {
+              <a class="link" routerLink="/forgot-password">Forgot password?</a>
+            } @else {
+              <button type="button" class="link" (click)="forgot()">Forgot password?</button>
+            }
           </div>
 
           <button mat-flat-button type="submit" class="submit" [disabled]="busy()">
@@ -300,20 +313,22 @@
           </button>
         </form>
 
-        <div class="divider" aria-hidden="true"><span>or try it out</span></div>
+        @if (!serverMode) {
+          <div class="divider" aria-hidden="true"><span>or try it out</span></div>
 
-        <div class="demo">
-          <div class="demo__text">
-            <mat-icon aria-hidden="true">science</mat-icon>
-            <span>
-              <strong>Demo workspace</strong>
-              <small
-                >Password: <code>{{ demoPassword }}</code></small
-              >
-            </span>
+          <div class="demo">
+            <div class="demo__text">
+              <mat-icon aria-hidden="true">science</mat-icon>
+              <span>
+                <strong>Demo workspace</strong>
+                <small
+                  >Password: <code>{{ demoPassword }}</code></small
+                >
+              </span>
+            </div>
+            <button mat-stroked-button type="button" (click)="fillDemo()">Use demo</button>
           </div>
-          <button mat-stroked-button type="button" (click)="fillDemo()">Use demo</button>
-        </div>
+        }
       </section>
     </div>
   </main>

@@ -1,5 +1,6 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { AuthService, MIN_PASSWORD_LENGTH } from '../../core/services/auth.service';
 import { CurrentUser } from '../../core/services/current-user.service';
 import { AuthDataService } from '../../core/services/data/auth-data.service';
 import { MOCK_EMPLOYEES } from '../../mock-data/employees/employees.mock';
@@ -50,5 +51,37 @@ export class AuthMockService implements AuthDataService {
         roles: role ? [role.name] : [],
       } satisfies CurrentUser;
     }, 600);
+  }
+
+  me(): Observable<CurrentUser> {
+    return mockResponse(() => {
+      const session = this.injector.get(AuthService).session();
+      if (!session) throw mockError('Unauthorized', 'You need to sign in to continue.');
+      return session;
+    }, 0);
+  }
+
+  login(email: string, password: string): Observable<CurrentUser> {
+    return this.signIn(email, password);
+  }
+
+  logout(): Observable<void> {
+    return mockResponse(() => undefined, 0);
+  }
+
+  /** Stand-in: the demo has no mailbox, so the request always "succeeds". */
+  forgotPassword(): Observable<void> {
+    return mockResponse(() => undefined, 300);
+  }
+
+  /** Stand-in: enforces the same minimum length as the API; any token is accepted. */
+  resetPassword(_email: string, _token: string, newPassword: string): Observable<void> {
+    return mockResponse(() => {
+      if (newPassword.length < MIN_PASSWORD_LENGTH) {
+        throw mockError('Validation', 'Please correct the highlighted fields.', {
+          newPassword: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+        });
+      }
+    }, 300);
   }
 }

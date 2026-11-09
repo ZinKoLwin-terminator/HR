@@ -8,6 +8,8 @@ export interface CurrentUser {
   email: string;
   jobTitle: string;
   roles: string[];
+  /** Permission codes. Set only by the API build (from `/api/auth/me`). */
+  permissions?: string[];
 }
 
 const ANONYMOUS: CurrentUser = {

@@ -1,0 +1,71 @@
+/* Shared by the forgot-password and reset-password screens. */
+:host {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px;
+  background: var(--app-sidebar-bg);
+}
+
+.card {
+  width: min(440px, 100%);
+  padding: 32px 28px;
+  border-radius: 20px;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  box-shadow: var(--mat-sys-level3);
+}
+
+h1 {
+  margin: 0 0 6px;
+  font: var(--mat-sys-headline-small);
+}
+
+.subtitle {
+  margin: 0 0 20px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font: var(--mat-sys-body-medium);
+}
+
+.message--error {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+
+.message--ok {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.message mat-icon {
+  flex: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+a {
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-large);
+}
