@@ -45,9 +45,11 @@ export interface DateRange {
 
 /** Uniform error shape surfaced by all data services (mock now, API later). */
 export interface AppError {
-  code: 'NotFound' | 'Validation' | 'Conflict' | 'Unknown';
+  code: 'NotFound' | 'Validation' | 'Conflict' | 'Unauthorized' | 'Forbidden' | 'Unknown';
   message: string;
   fieldErrors?: Record<string, string>;
+  /** Correlation id from the API, for finding the server log entry. Mocks omit it. */
+  traceId?: string;
 }
 
 export function isAppError(value: unknown): value is AppError {

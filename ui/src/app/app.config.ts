@@ -14,6 +14,8 @@ import {
 import { routes } from './app.routes';
 import { DEFAULT_APP_CONFIG } from './core/configuration/app-config';
 import { PageTitleStrategy } from './core/services/page-title.strategy';
+import { API_DATA_OPTIONS } from './api-data-options';
+import { provideApiDataServices } from './api-services/provide-api-data-services';
 import { MOCK_DATA_OPTIONS } from './mock-data-options';
 import { provideMockDataServices } from './mock-services/provide-mock-data-services';
 
@@ -32,6 +34,9 @@ export const appConfig: ApplicationConfig = {
     // Data layer: in-memory mock implementations (frontend-only phase).
     // Options come from mock-data-options.ts (replaced in the e2e build).
     provideMockDataServices(MOCK_DATA_OPTIONS),
+    // Opt-in HTTP adapter for the Organization contracts (see api-data-options.ts).
+    // Registered after the mocks so it overrides them; a no-op unless enabled.
+    provideApiDataServices(API_DATA_OPTIONS),
 
     { provide: MAT_ICON_DEFAULT_OPTIONS, useValue: { fontSet: 'material-symbols-outlined' } },
     { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { appearance: 'outline' } },
