@@ -71,6 +71,17 @@
                   "with": "src/app/mock-data-options.e2e.ts"
                 }
               ]
+            },
+            "api": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/app/api-data-options.ts",
+                  "with": "src/app/api-data-options.api.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -89,6 +100,10 @@
             },
             "e2e": {
               "buildTarget": "hrms:build:e2e"
+            },
+            "api": {
+              "buildTarget": "hrms:build:api",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

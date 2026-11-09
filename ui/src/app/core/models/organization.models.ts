@@ -15,6 +15,8 @@ export interface Company extends Entity {
   country: string;
   foundedDate: string;
   status: RecordStatus;
+  /** Concurrency token (base64) issued by the API. The mock leaves it undefined. */
+  rowVersion?: string;
 }
 
 export type BranchType = 'Head Office' | 'Branch' | 'Regional Office' | 'Warehouse';
@@ -32,6 +34,8 @@ export interface Branch extends Entity {
   managerEmployeeId: number | null;
   openedDate: string;
   status: RecordStatus;
+  /** Concurrency token (base64) issued by the API. The mock leaves it undefined. */
+  rowVersion?: string;
 }
 
 export interface Department extends Entity {
@@ -43,6 +47,8 @@ export interface Department extends Entity {
   headEmployeeId: number | null;
   costCenter: string;
   status: RecordStatus;
+  /** Concurrency token (base64) issued by the API. The mock leaves it undefined. */
+  rowVersion?: string;
 }
 
 export interface Section extends Entity {
@@ -52,6 +58,8 @@ export interface Section extends Entity {
   description: string;
   supervisorEmployeeId: number | null;
   status: RecordStatus;
+  /** Concurrency token (base64) issued by the API. The mock leaves it undefined. */
+  rowVersion?: string;
 }
 
 export interface JobGrade extends Entity {
@@ -64,6 +72,8 @@ export interface JobGrade extends Entity {
   maxSalary: number;
   description: string;
   status: RecordStatus;
+  /** Concurrency token (base64) issued by the API. The mock leaves it undefined. */
+  rowVersion?: string;
 }
 
 export interface Position extends Entity {
@@ -77,4 +87,6 @@ export interface Position extends Entity {
   headcount: number;
   reportsToPositionId: number | null;
   status: RecordStatus;
+  /** Concurrency token (base64) issued by the API. The mock leaves it undefined. */
+  rowVersion?: string;
 }
