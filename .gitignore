@@ -48,3 +48,6 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Agent worktrees (nested checkouts, not project content)
+/.claude/worktrees/

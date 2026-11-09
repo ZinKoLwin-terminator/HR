@@ -318,7 +318,7 @@ Name နဲ့ email ကို employee ဆီကနေ ကူးယူတယ်
 | Annual leave: standard | Annual Leave | (any) | (any) | 15 | Upfront | 3 |
 | Annual leave: managers | Annual Leave | Manager | (any) | 18 | Upfront | 0 |
 | Casual leave: all staff | Casual Leave | (any) | (any) | 6 | Monthly | 0 |
-
+ 
 ### 7.3 Entitlement ဘယ်လိုရမလဲ (ယနေ့ 2026-11-07 ကိုက်)
 
 | Employee | Annual | Casual | ရှင်းချက် |
