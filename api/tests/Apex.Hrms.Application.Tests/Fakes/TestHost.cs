@@ -1,5 +1,6 @@
 using Apex.Hrms.Application;
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Application.Organization.Branches;
 using Apex.Hrms.Application.Organization.Companies;
@@ -9,6 +10,7 @@ using Apex.Hrms.Application.Organization.Positions;
 using Apex.Hrms.Application.Organization.Sections;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
+using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Organization;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,13 +33,15 @@ internal sealed class TestHost : IDisposable
         services.AddSingleton<ICurrentUser>(User);
         services.AddSingleton<IUnitOfWork>(UnitOfWork);
         services.AddSingleton(typeof(IRepository<>), typeof(InMemoryRepository<>));
-        services.AddSingleton<IRecordCounter<EmployeeReference>>(Employees);
+        services.AddSingleton<IRecordCounter<EmployeeOrgLink>>(Employees);
         AddCounter<Company>(services);
         AddCounter<Branch>(services);
         AddCounter<Department>(services);
         AddCounter<Section>(services);
         AddCounter<JobGrade>(services);
         AddCounter<Position>(services);
+        AddCounter<Employee>(services);
+        services.AddSingleton<IEmployeeCodeSequence>(CodeSequence);
         services.AddApplication();
         configure?.Invoke(services);
         provider = services.BuildServiceProvider();
@@ -52,6 +56,8 @@ internal sealed class TestHost : IDisposable
     public FakeCurrentUser User { get; } = new();
 
     public FakeEmployees Employees { get; } = new();
+
+    public FakeEmployeeCodeSequence CodeSequence { get; } = new();
 
     public InMemoryRepository<TEntity> Repository<TEntity>()
         where TEntity : AuditedEntity =>

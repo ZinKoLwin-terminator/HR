@@ -80,9 +80,13 @@ public static class ValidationExtensions
         var violations = new Violations();
         foreach (var failure in validation.Errors)
         {
-            violations.Add(JsonNamingPolicy.CamelCase.ConvertName(failure.PropertyName), failure.ErrorMessage);
+            violations.Add(CamelCasePath(failure.PropertyName), failure.ErrorMessage);
         }
 
         return violations.ToError();
     }
+
+    /// <summary>"Address.Line1" becomes "address.line1": every segment of a nested property path is camel-cased.</summary>
+    private static string CamelCasePath(string propertyName) =>
+        string.Join('.', propertyName.Split('.').Select(JsonNamingPolicy.CamelCase.ConvertName));
 }

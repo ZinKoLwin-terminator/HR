@@ -1,3 +1,4 @@
+using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Organization.Branches;
 using Apex.Hrms.Application.Organization.Companies;
 using Apex.Hrms.Application.Organization.Departments;
@@ -186,6 +187,73 @@ public sealed class Requests(string tag)
         Description: null,
         current.Headcount,
         current.ReportsToPositionId,
+        Version(current.RowVersion));
+
+    /// <summary>
+    /// The employee code of a test: the 8 hex characters of the tag, a dash and a suffix of at most 3 characters, 12 in
+    /// all, which is the longest code the table accepts. Employees are found for cleanup by their work email instead.
+    /// </summary>
+    public string EmployeeCode(string suffix) => $"{tag[TestRows.TagFamily.Length..]}-{suffix}";
+
+    /// <summary>The work email of a test employee: lower case (the server lower-cases it), starting with the tag.</summary>
+    public string WorkEmail(string local) => $"{tag.ToLowerInvariant()}-{local}@example.test";
+
+    /// <summary>A valid, fictional employee placed in the given organization records. A null code suffix asks for a generated code.</summary>
+    public EmployeeCreateRequest Employee(
+        int companyId,
+        int branchId,
+        int departmentId,
+        int positionId,
+        int jobGradeId,
+        string? codeSuffix = null,
+        string local = "mia",
+        string status = "Active") => new(
+        codeSuffix is null ? null : EmployeeCode(codeSuffix),
+        "Mia",
+        "Testwell",
+        "Female",
+        WorkEmail(local),
+        PhotoUrl: null,
+        companyId,
+        branchId,
+        departmentId,
+        SectionId: null,
+        positionId,
+        jobGradeId,
+        ManagerId: null,
+        ShiftId: null,
+        "Full-time",
+        new DateOnly(2024, 3, 1),
+        ProbationEndDate: null,
+        status,
+        new DateOnly(1994, 5, 17),
+        "Single",
+        "Myanmar",
+        "NRC-TEST-000001",
+        PersonalEmail: "mia.personal@example.test",
+        "+95 9 555 0101",
+        AlternatePhone: null,
+        new AddressRequest("12 Test Street", null, "Yangon", null, null, "Myanmar"),
+        new EmergencyContactRequest("Test Contact", "Sibling", "+95 9 555 0102"));
+
+    public static EmployeeUpdateRequest EmployeeUpdate(EmployeeDto current, int? positionId = null, int? jobGradeId = null, string? workEmail = null) => new(
+        current.EmployeeCode,
+        current.FirstName,
+        current.LastName,
+        current.Gender,
+        workEmail ?? current.WorkEmail,
+        current.PhotoUrl,
+        current.CompanyId,
+        current.BranchId,
+        current.DepartmentId,
+        current.SectionId,
+        positionId ?? current.PositionId,
+        jobGradeId ?? current.JobGradeId,
+        current.ManagerId,
+        current.ShiftId,
+        current.EmploymentType,
+        current.JoiningDate,
+        current.ProbationEndDate,
         Version(current.RowVersion));
 
     private string Code(string suffix) => $"{tag}-{suffix}";

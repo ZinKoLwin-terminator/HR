@@ -44,7 +44,7 @@ public sealed class LayerDependencyTests
 
     [Fact]
     public void Api_speaks_in_dtos_and_never_touches_domain_entities() =>
-        AssertNoDependencies(ApiAssembly, "Apex.Hrms.Domain.Organization");
+        AssertNoDependencies(ApiAssembly, "Apex.Hrms.Domain.Organization", "Apex.Hrms.Domain.Employees");
 
     [Fact]
     public void Use_case_handler_classes_are_not_public()

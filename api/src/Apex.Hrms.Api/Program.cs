@@ -22,6 +22,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapOrganizationEndpoints();
+app.MapEmployeeEndpoints();
 
 await app.RunAsync();
 

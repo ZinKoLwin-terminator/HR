@@ -115,6 +115,59 @@ Validation on the parent field explains it, for example
 A position cannot report to itself or, directly or indirectly, to a position that reports to it
 (`reportsToPositionId`, chains are walked up to 50 levels).
 
+## HTTP contract (employee module)
+
+The first module with personal data. Which response holds which field is a security decision (review H1/H2), pinned by
+tests: **the list row and the detail never contain a national id, date of birth, marital status, nationality, personal
+email, phones, address or emergency contact.** Those live behind `/personal`; the salary bank account behind
+`/bank-account`.
+
+| Route | Policy | Body | Returns |
+| --- | --- | --- | --- |
+| `GET /api/employees/query?pageIndex&pageSize&sort&search&departmentId&branchId&shiftId&employmentStatus&employmentType&joiningFrom&joiningTo` | `employees:View` | none | `PagedResult<EmployeeListItemDto>`, `pageSize` at most 200 |
+| `GET /api/employees/{id}` | `employees:View` | none | `EmployeeDto` |
+| `GET /api/employees/{id}/history` | `employees:View` | none | `EmploymentHistoryEntryDto[]`, oldest first (read only: the server records it) |
+| `GET /api/employees/next-code` | `employees:Create` | none | `{ "code": "EMP061" }`, consumes a number of `hr.EmployeeCodeSeq` |
+| `POST /api/employees` | `employees:Create` | `EmployeeCreateRequest` (employment and personal fields, `employmentStatus`) | `201` + `Location`, `EmployeeDto` |
+| `PUT /api/employees/{id}` | `employees:Edit` | `EmployeeUpdateRequest` (employment fields + `rowVersion`) | `EmployeeDto` |
+| `DELETE /api/employees/{id}` | `employees:Delete` | `{ "rowVersion" }` | `204` |
+| `GET /api/employees/{id}/personal` | `employees:ViewSensitive` | none | `EmployeePersonalDto` |
+| `PUT /api/employees/{id}/personal` | `employees:EditSensitive` | personal fields + `rowVersion` | `EmployeePersonalDto` |
+| `GET /api/employees/{id}/bank-account` | `employees:ViewBank` | none | `BankAccountDto` with the full number; `404` when none |
+| `PUT /api/employees/{id}/bank-account` | `employees:EditBank` | `{ bankName, branchName?, accountName, accountNumber, rowVersion? }` | `BankAccountDto` |
+| `POST /api/employees/{id}/exit` | `employees:Edit` | `{ rowVersion, exitDate, status: "Resigned"\|"Terminated" }` | `EmployeeDto` |
+| `POST /api/employees/{id}/reinstate` | `employees:Edit` | `{ rowVersion, status? }` (default `Active`) | `EmployeeDto` |
+| `POST /api/employees/{id}/status` | `employees:Edit` | `{ rowVersion, status }` (Active, Probation, On Leave, Suspended) | `EmployeeDto` |
+
+* **No unpaged list.** There is deliberately no `GET /api/employees` (it answers `405`): employees are only read in
+  pages of at most 200, so one call cannot dump the workforce.
+* **Status never changes through PUT.** `employmentStatus` is only sent on create (Active, Probation, On Leave or
+  Suspended); leaving, returning and the other status moves are the three commands above, and each leaves a history
+  entry. Activate and deactivate do not exist for employees.
+* **Bank account:** a separate row (`hr.EmployeeBankAccount`, one per employee). `EmployeeDto.bankAccountMasked` shows
+  only the last four digits (`******7890`); the full number is only in `BankAccountDto`. `rowVersion` of the PUT is the
+  one of the account row and is required to change an existing account (`400` when missing, `409` when stale); the first
+  account of an employee needs none. The number is 8 to 20 digits.
+* **Employee code:** optional on create. Without one the server takes the next number of `hr.EmployeeCodeSeq`, formats it
+  `EMP` + at least 3 digits and skips codes already in use. An explicit code is trimmed and stored upper case; at most 12
+  characters of `A-Z`, `0-9` and `-`. The work email is trimmed and stored lower case. Both are unique (`400` on
+  `employeeCode` / `workEmail`).
+* **Rules** (ported from the mock): age at least 18 on the business-time-zone "today"; probation and exit dates not
+  before the joining date; resigned or terminated needs an exit date (so only the exit command sets it); company, branch,
+  department, section and position must exist and match (branch in company, department in branch, section and position in
+  department); inactive company, branch, department or position cannot receive an employee, but an existing assignment may
+  stay; a manager must exist, must not have left, must not be the employee and must not create a reporting loop; a
+  manager with direct reports (or one who heads a branch, department or section) cannot be deleted.
+* **History** is recorded by the server: `Joined` on create, `Promotion` or `Transfer` on a position or organization
+  change (promotion when the new job grade has a higher level), `Contract Change` on a new employment type, `Status
+  Change` and `Exit` from the commands. `recordedBy` is the display name of the caller (`System` until Identity exists).
+* **Field names:** `managerId` (database `ManagerEmployeeId`), `status` in the command bodies, nested `address` and
+  `emergencyContact` objects in the personal data; validation errors on them are keyed `address.city`,
+  `emergencyContact.relationship`, and so on.
+* Documents (`hr.EmployeeDocument`) are mapped and modelled in the domain but have no endpoints yet.
+* Organization deletes and moves count employees through the view `hr.EmployeeOrgLink` (placement without personal data),
+  not through `hr.Employee`; the view and the sequence must exist in the target database.
+
 ## Authorization seams (Identity comes later)
 
 No authentication exists yet, but the structure is in place so Identity (cookie, same-site) can be added in one place:
@@ -129,7 +182,11 @@ No authentication exists yet, but the structure is in place so Identity (cookie,
 * `IAccessScope<TEntity>` returns a predicate from the `ICurrentUser`; it is applied inside the database query by get all,
   query, get by id, update, delete and every command, so a record outside the scope is `404`. The default allows all.
   Register a closed `IAccessScope<Company>` etc. to narrow a resource.
-* `Api.Tests/AuthorizationCoverageTests` fails when an `/api` endpoint is mapped without a policy.
+* `Api.Tests/AuthorizationCoverageTests` fails when an `/api` endpoint is mapped without a policy, and pins the policy of
+  every employee route (including the sensitive and bank ones).
+* A module that holds personal data declares extra permissions in `PermissionModule` (`employees` has `ViewSensitive`,
+  `EditSensitive`, `ViewBank` and `EditBank` next to the four standard ones). They are placeholders too:
+  `TODO(Identity)` replaces them with real permission checks.
 
 ## Adding a resource (pattern to copy)
 
@@ -153,9 +210,13 @@ No authentication exists yet, but the structure is in place so Identity (cookie,
   `BlockOnPossibleDataLoss = true`, `DropObjectsNotInSource = false`). The default path is
   `D:\New folder\HR DBPJ\HR DBPJ\bin\Debug\HR DBPJ.dacpac`; set the environment variable `HRMS_DACPAC` to use another.
   Build the database project first if the dacpac is missing or out of date.
-* **Isolation:** every test runs inside a `TransactionScope` that is never completed, so all writes (handlers and raw
-  SQL) roll back. No `DROP`, `TRUNCATE` or unfiltered `DELETE`. The fixture fails the run when the `org` tables are not
-  empty before or after it, which would mean a test committed.
+* **Isolation:** tests commit their rows and remove them again by their tag (`TST-` + 8 hex characters, see
+  `Support/TestRows`). Organization rows carry the tag in their code; employee rows carry it at the start of the work
+  email (an employee code holds only 12 characters). The cleanup deletes employees and the rows that hang on them
+  (documents, history, bank account) first, then the organization tables child to parent. No `DROP`, `TRUNCATE` or
+  unfiltered `DELETE`. The fixture fails the run, at the start and at the end, when a row with a test tag is left
+  behind in the `org` tables or in `hr.Employee`; delete those rows in `HR_IntegrationTests` (child tables first)
+  and run again.
 * **Skipping:** without LocalDB (for example Linux CI) or without the dacpac every test is reported as skipped with the
   reason; `dotnet test` stays green.
 * **Run:** `dotnet test api/tests/Apex.Hrms.IntegrationTests`, or everything except them with

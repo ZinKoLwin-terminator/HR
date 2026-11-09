@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Organization;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,6 @@ public static class DependencyInjection
     {
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.TryAddScoped(typeof(IAccessScope<>), typeof(AllowAllAccessScope<>));
-        return services.AddOrganization();
+        return services.AddOrganization().AddEmployees();
     }
 }

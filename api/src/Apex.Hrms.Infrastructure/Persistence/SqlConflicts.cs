@@ -33,6 +33,9 @@ internal static partial class SqlConflicts
         ["CK_JobGrade_SalaryBand"] = "maxSalary",
         ["CK_JobGrade_MinSalary"] = "minSalary",
         ["CK_Position_ReportsToNotSelf"] = "reportsToPositionId",
+        ["CK_Employee_ManagerNotSelf"] = "managerId",
+        ["CK_Employee_ExitDateRequired"] = "exitDate",
+        ["CK_Employee_EmergencyContactRelationship"] = "emergencyContact.relationship",
     };
 
     private static readonly AppError ReferenceViolation = AppError.Conflict(

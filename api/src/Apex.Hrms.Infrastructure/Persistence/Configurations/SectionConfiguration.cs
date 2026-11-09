@@ -1,4 +1,4 @@
-using Apex.Hrms.Application.Organization;
+using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Organization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -21,7 +21,7 @@ internal sealed class SectionConfiguration() : CodedRecordConfiguration<Section>
             .HasForeignKey(s => s.DepartmentId)
             .HasConstraintName("FK_Section_Department")
             .OnDelete(DeleteBehavior.NoAction);
-        builder.HasOne<EmployeeReference>().WithMany()
+        builder.HasOne<Employee>().WithMany()
             .HasForeignKey(s => s.SupervisorEmployeeId)
             .HasConstraintName("FK_Section_Employee_SupervisorEmployeeId")
             .OnDelete(DeleteBehavior.NoAction);

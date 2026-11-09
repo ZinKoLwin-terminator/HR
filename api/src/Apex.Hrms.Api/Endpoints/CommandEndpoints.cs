@@ -26,6 +26,28 @@ internal static class CommandEndpoints
         return group;
     }
 
+    /// <summary>
+    /// Like <see cref="MapCommand{TDto, TCommand}"/> for a command whose body carries more than the row version (for
+    /// example the exit date). <paramref name="build"/> turns the route id and the body into the command; a missing
+    /// body is passed as null and ends as a Validation error on <c>rowVersion</c>.
+    /// </summary>
+    public static RouteGroupBuilder MapCommand<TDto, TBody, TCommand>(
+        this RouteGroupBuilder group,
+        string action,
+        PermissionModule module,
+        Func<int, TBody?, TCommand> build,
+        Permission permission = Permission.Edit)
+        where TBody : class
+        where TCommand : IEntityCommand
+    {
+        group.MapPost(
+            $"/{{id:int}}/{action}",
+            async (int id, [FromBody] TBody? body, ICommandHandler<TCommand, TDto> handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(build(id, body), cancellationToken)).ToOk())
+            .RequireAuthorization(module.PolicyName(permission));
+        return group;
+    }
+
     /// <summary>The activate and deactivate commands every coded record (the organization resources) has.</summary>
     public static RouteGroupBuilder MapStatusCommands<TDto>(this RouteGroupBuilder group, PermissionModule module) => group
         .MapCommand<TDto, ActivateCommand>("activate", module)

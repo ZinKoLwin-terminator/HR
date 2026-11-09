@@ -30,21 +30,15 @@ internal static class OrganizationServiceCollectionExtensions
     private static IServiceCollection AddOrganizationReferences(this IServiceCollection services) => services
         .AddReference<Company, Branch>("branch(es)", ReferenceUse.Delete, ownerId => branch => branch.CompanyId == ownerId)
         .AddReference<Company, Department>("department(s)", ReferenceUse.Delete, ownerId => department => department.CompanyId == ownerId)
-        .AddReference<Company, EmployeeReference>("employee(s)", ReferenceUse.Delete, ownerId => employee => employee.CompanyId == ownerId)
 
         .AddReference<Branch, Department>("department(s)", ReferenceUse.Both, ownerId => department => department.BranchId == ownerId)
-        .AddReference<Branch, EmployeeReference>("employee(s)", ReferenceUse.Both, ownerId => employee => employee.BranchId == ownerId)
 
         .AddReference<Department, Section>("section(s)", ReferenceUse.Both, ownerId => section => section.DepartmentId == ownerId)
         .AddReference<Department, Position>("position(s)", ReferenceUse.Both, ownerId => position => position.DepartmentId == ownerId)
-        .AddReference<Department, EmployeeReference>("employee(s)", ReferenceUse.Both, ownerId => employee => employee.DepartmentId == ownerId)
 
         .AddReference<Section, Position>("position(s)", ReferenceUse.Both, ownerId => position => position.SectionId == ownerId)
-        .AddReference<Section, EmployeeReference>("employee(s)", ReferenceUse.Both, ownerId => employee => employee.SectionId == ownerId)
 
         .AddReference<JobGrade, Position>("position(s)", ReferenceUse.Delete, ownerId => position => position.JobGradeId == ownerId)
-        .AddReference<JobGrade, EmployeeReference>("employee(s)", ReferenceUse.Delete, ownerId => employee => employee.JobGradeId == ownerId)
 
-        .AddReference<Position, EmployeeReference>("employee(s)", ReferenceUse.Both, ownerId => employee => employee.PositionId == ownerId)
         .AddReference<Position, Position>("position(s) reporting to it", ReferenceUse.Delete, ownerId => position => position.ReportsToPositionId == ownerId);
 }

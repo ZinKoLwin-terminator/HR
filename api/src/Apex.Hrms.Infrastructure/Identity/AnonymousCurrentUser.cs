@@ -11,4 +11,6 @@ namespace Apex.Hrms.Infrastructure.Identity;
 internal sealed class AnonymousCurrentUser : ICurrentUser
 {
     public int? UserId => null;
+
+    public string DisplayName => "System";
 }

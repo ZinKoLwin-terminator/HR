@@ -1,10 +1,11 @@
-namespace Apex.Hrms.Application.Organization;
+namespace Apex.Hrms.Application.Employees;
 
 /// <summary>
-/// Read-only slice of hr.Employee: just the columns that point at organization records, so the reference checks can
-/// count employees before the Employee module is ported. Replace it with the real aggregate then.
+/// Read model of the view hr.EmployeeOrgLink: where each employee sits in the organization, without personal data
+/// (security review L5). The organization delete and move checks count employees through it instead of reading
+/// hr.Employee. Nothing writes to it.
 /// </summary>
-public sealed class EmployeeReference(
+public sealed class EmployeeOrgLink(
     int id,
     int companyId,
     int branchId,

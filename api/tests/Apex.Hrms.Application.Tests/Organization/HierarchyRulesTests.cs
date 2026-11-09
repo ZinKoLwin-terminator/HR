@@ -469,7 +469,7 @@ public sealed class HierarchyRulesTests : IDisposable
         ResultAssert.Failed(
             result,
             ErrorType.Conflict,
-            "\"Developer\" cannot be deleted because it is used by 1 employee(s), 2 position(s) reporting to it. Deactivate it instead.");
+            "\"Developer\" cannot be deleted because it is used by 2 position(s) reporting to it, 1 employee(s). Deactivate it instead.");
     }
 
     private Task<Result<PositionDto>> UpdatePositionAsync(

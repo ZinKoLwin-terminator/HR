@@ -1,4 +1,5 @@
-using Apex.Hrms.Application.Organization;
+using Apex.Hrms.Application.Employees;
+using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Organization;
 using Apex.Hrms.Infrastructure.Persistence;
@@ -29,7 +30,10 @@ public sealed class SchemaMappingTests : IDisposable
     [InlineData(typeof(Section), "org", "Section")]
     [InlineData(typeof(JobGrade), "org", "JobGrade")]
     [InlineData(typeof(Position), "org", "Position")]
-    [InlineData(typeof(EmployeeReference), "hr", "Employee")]
+    [InlineData(typeof(Employee), "hr", "Employee")]
+    [InlineData(typeof(EmployeeBankAccount), "hr", "EmployeeBankAccount")]
+    [InlineData(typeof(EmployeeDocument), "hr", "EmployeeDocument")]
+    [InlineData(typeof(EmploymentHistoryEntry), "hr", "EmploymentHistory")]
     public void Tables_map_to_the_ssdt_schema_and_name(Type entity, string schema, string table)
     {
         var type = context.Model.FindEntityType(entity)!;
@@ -156,12 +160,97 @@ public sealed class SchemaMappingTests : IDisposable
             nameof(Position.SectionId));
 
     [Fact]
-    public void Foreign_keys_never_cascade_deletes()
+    public void Foreign_keys_never_cascade_deletes_except_the_employee_children_the_database_cascades()
     {
-        foreach (var type in context.Model.GetEntityTypes())
+        // ON DELETE CASCADE exists in the database only for the rows an employee owns.
+        var cascading = new[] { typeof(EmployeeBankAccount), typeof(EmployeeDocument), typeof(EmploymentHistoryEntry) };
+        foreach (var type in context.Model.GetEntityTypes().Where(type => !type.IsOwned()))
         {
-            Assert.All(type.GetForeignKeys(), key => Assert.Equal(DeleteBehavior.NoAction, key.DeleteBehavior));
+            var expected = cascading.Contains(type.ClrType) ? DeleteBehavior.Cascade : DeleteBehavior.NoAction;
+            Assert.All(type.GetForeignKeys(), key => Assert.Equal(expected, key.DeleteBehavior));
         }
+    }
+
+    [Fact]
+    public void Employee_maps_the_ssdt_columns_and_keeps_the_history_tables_out_of_the_model()
+    {
+        var employee = Entity<Employee>();
+
+        Assert.Equal("EmploymentStatus", employee.FindProperty("Status")!.GetColumnName());
+        Assert.Equal("varchar(30)", employee.FindProperty("Status")!.GetColumnType());
+        Assert.Equal("varchar(30)", employee.FindProperty("Gender")!.GetColumnType());
+        Assert.Equal("varchar(30)", employee.FindProperty("EmploymentType")!.GetColumnType());
+        Assert.Equal("date", employee.FindProperty("DateOfBirth")!.GetColumnType());
+        Assert.Equal(12, employee.FindProperty("EmployeeCode")!.GetMaxLength());
+        Assert.Equal(40, employee.FindProperty("NationalId")!.GetMaxLength());
+        Assert.True(employee.FindProperty("RowVersion")!.IsConcurrencyToken);
+        Assert.Equal(ValueGenerated.OnAddOrUpdate, employee.FindProperty("RowVersion")!.ValueGenerated);
+
+        // SQL Server maintains the temporal history tables; the model must not know them.
+        Assert.DoesNotContain(
+            context.Model.GetEntityTypes(),
+            type => type.GetTableName() is { } name && name.EndsWith("History", StringComparison.Ordinal) && type.ClrType != typeof(EmploymentHistoryEntry));
+        Assert.Null(employee.FindProperty("ValidFromUtc"));
+        AssertUnique<Employee>("UQ_Employee_EmployeeCode", "EmployeeCode");
+        AssertUnique<Employee>("UQ_Employee_WorkEmail", "WorkEmail");
+        AssertUnique<EmployeeBankAccount>("UQ_EmployeeBankAccount_EmployeeId", "EmployeeId");
+        Assert.Equal("varchar(20)", Entity<EmployeeBankAccount>().FindProperty("AccountNumber")!.GetColumnType());
+    }
+
+    [Fact]
+    public void Address_and_emergency_contact_are_columns_of_the_employee_row()
+    {
+        var employee = Entity<Employee>();
+        var address = employee.FindNavigation(nameof(Employee.Address))!.TargetEntityType;
+        var contact = employee.FindNavigation(nameof(Employee.EmergencyContact))!.TargetEntityType;
+
+        Assert.Equal(AddressColumns, AddressProperties.Select(name => address.FindProperty(name)!.GetColumnName()));
+        Assert.Equal(ContactColumns, ContactProperties.Select(name => contact.FindProperty(name)!.GetColumnName()));
+        Assert.Equal("hr", address.GetSchema());
+        Assert.Equal("Employee", address.GetTableName());
+    }
+
+    [Fact]
+    public void Employee_org_link_maps_the_view_and_the_code_sequence_is_declared()
+    {
+        var link = Entity<EmployeeOrgLink>();
+
+        Assert.Equal("EmployeeOrgLink", link.GetViewName());
+        Assert.Equal("hr", link.GetViewSchema());
+        Assert.Null(link.GetTableName());
+        var sequence = context.Model.FindSequence("EmployeeCodeSeq", "hr");
+        Assert.NotNull(sequence);
+        Assert.Equal(1, sequence.StartValue);
+    }
+
+    [Fact]
+    public void Employee_foreign_keys_match_ssdt_names()
+    {
+        AssertForeignKey<Employee>("FK_Employee_Branch", "BranchId");
+        AssertForeignKey<Employee>("FK_Employee_Department", "DepartmentId");
+        AssertForeignKey<Employee>("FK_Employee_Section", "SectionId");
+        AssertForeignKey<Employee>("FK_Employee_Position", "PositionId");
+        AssertForeignKey<Employee>("FK_Employee_JobGrade", "JobGradeId");
+        AssertForeignKey<Employee>("FK_Employee_Employee_ManagerEmployeeId", "ManagerEmployeeId");
+        AssertForeignKey<EmployeeBankAccount>("FK_EmployeeBankAccount_Employee", "EmployeeId");
+        AssertForeignKey<Department>("FK_Department_Employee_HeadEmployeeId", "HeadEmployeeId");
+    }
+
+    [Fact]
+    public void Employee_list_query_with_search_filter_and_sort_translates_to_sql_without_personal_columns()
+    {
+        var status = EmploymentStatus.OnLeave;
+        var predicate = Apex.Hrms.Application.Predicates.And(
+            Apex.Hrms.Application.Predicates.ContainsAny<Employee>("mia", e => e.EmployeeCode, e => e.FirstName + " " + e.LastName, e => e.WorkEmail),
+            e => e.Status == status);
+
+        var sql = context.Set<Employee>().AsNoTracking().Where(predicate)
+            .OrderBy(Key<Employee>(e => e.FirstName + " " + e.LastName)).ThenBy(e => e.Id)
+            .ToQueryString();
+
+        Assert.Contains("[hr].[Employee]", sql, StringComparison.Ordinal);
+        Assert.Contains("LIKE", sql, StringComparison.Ordinal);
+        Assert.Contains("On Leave", sql, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -188,6 +277,11 @@ public sealed class SchemaMappingTests : IDisposable
     }
 
     private static readonly DateOnly Today = new(2026, 11, 9);
+
+    private static readonly string[] AddressProperties = ["Line1", "Line2", "City", "State", "PostalCode", "Country"];
+    private static readonly string[] AddressColumns = ["AddressLine1", "AddressLine2", "AddressCity", "AddressState", "AddressPostalCode", "AddressCountry"];
+    private static readonly string[] ContactProperties = ["Name", "Relationship", "Phone"];
+    private static readonly string[] ContactColumns = ["EmergencyContactName", "EmergencyContactRelationship", "EmergencyContactPhone"];
 
     /// <summary>
     /// Attaches an existing row (no database), changes its parent through the domain method and lets the change

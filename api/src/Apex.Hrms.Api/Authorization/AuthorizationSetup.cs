@@ -15,7 +15,7 @@ internal static class AuthorizationSetup
         {
             foreach (var module in PermissionModule.All)
             {
-                foreach (var permission in Enum.GetValues<Permission>())
+                foreach (var permission in module.Permissions)
                 {
                     options.AddPolicy(module.PolicyName(permission), Placeholder);
                 }

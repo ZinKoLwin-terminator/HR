@@ -1,5 +1,6 @@
 using Apex.Hrms.Application;
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Application.Organization.Branches;
 using Apex.Hrms.Application.Organization.Companies;
@@ -97,6 +98,10 @@ public abstract class DatabaseTest : IAsyncLifetime
 
     protected Task<Result<PositionDto>> Create(PositionCreateRequest request) => CreateAsync<PositionCreateRequest, PositionDto>(request);
 
+    protected Task<Result<EmployeeDto>> Create(EmployeeCreateRequest request) => CreateAsync<EmployeeCreateRequest, EmployeeDto>(request);
+
+    protected Task<Result<EmployeeDto>> Update(int id, EmployeeUpdateRequest request) => UpdateAsync<EmployeeUpdateRequest, EmployeeDto>(id, request);
+
     protected Task<Result<CompanyDto>> Update(int id, CompanyUpdateRequest request) => UpdateAsync<CompanyUpdateRequest, CompanyDto>(id, request);
 
     protected Task<Result<BranchDto>> Update(int id, BranchUpdateRequest request) => UpdateAsync<BranchUpdateRequest, BranchDto>(id, request);
@@ -145,6 +150,23 @@ public abstract class DatabaseTest : IAsyncLifetime
 
     protected async Task<PositionDto> SeedPositionAsync(int departmentId, int jobGradeId, string code = "A-DEV", int? sectionId = null) =>
         Succeeded(await Create(Requests.Position(departmentId, jobGradeId, code, sectionId: sectionId)));
+
+    /// <summary>A company with a branch, a department, a job grade and a position: the organization an employee needs.</summary>
+    protected async Task<(CompanyDto Company, BranchDto Branch, DepartmentDto Department, JobGradeDto Grade, PositionDto Position)> SeedOrganizationAsync()
+    {
+        var company = await SeedCompanyAsync();
+        var branch = await SeedBranchAsync(company.Id);
+        var department = await SeedDepartmentAsync(company.Id, branch.Id);
+        var grade = await SeedJobGradeAsync();
+        var position = await SeedPositionAsync(department.Id, grade.Id);
+        return (company, branch, department, grade, position);
+    }
+
+    protected async Task<EmployeeDto> SeedEmployeeAsync(
+        (CompanyDto Company, BranchDto Branch, DepartmentDto Department, JobGradeDto Grade, PositionDto Position) org,
+        string? codeSuffix = "1",
+        string local = "mia") =>
+        Succeeded(await Create(Requests.Employee(org.Company.Id, org.Branch.Id, org.Department.Id, org.Position.Id, org.Grade.Id, codeSuffix, local)));
 
     protected static T Succeeded<T>(Result<T> result)
     {

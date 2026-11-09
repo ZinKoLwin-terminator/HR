@@ -7,18 +7,37 @@ internal enum Permission
     Create,
     Edit,
     Delete,
+
+    /// <summary>Read personal data (national id, date of birth, personal contact, address, emergency contact, documents).</summary>
+    ViewSensitive,
+
+    /// <summary>Change personal data.</summary>
+    EditSensitive,
+
+    /// <summary>Read salary bank details in full.</summary>
+    ViewBank,
+
+    /// <summary>Change salary bank details.</summary>
+    EditBank,
 }
 
 /// <summary>
 /// A group of endpoints that share one permission key, e.g. "organization". Its policies are named
-/// <c>organization:View</c>, <c>organization:Create</c>, <c>organization:Edit</c> and <c>organization:Delete</c>.
+/// <c>organization:View</c>, <c>organization:Create</c>, <c>organization:Edit</c> and <c>organization:Delete</c>; a
+/// module that holds personal data also declares the sensitive and bank permissions (<c>employees:ViewSensitive</c>).
 /// Add every new module to <see cref="All"/> so its policies are registered.
 /// </summary>
-internal sealed record PermissionModule(string Key)
+internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Permissions)
 {
-    public static readonly PermissionModule Organization = new("organization");
+    private static readonly Permission[] Standard = [Permission.View, Permission.Create, Permission.Edit, Permission.Delete];
 
-    public static IReadOnlyList<PermissionModule> All { get; } = [Organization];
+    public static readonly PermissionModule Organization = new("organization", Standard);
+
+    public static readonly PermissionModule Employees = new(
+        "employees",
+        [.. Standard, Permission.ViewSensitive, Permission.EditSensitive, Permission.ViewBank, Permission.EditBank]);
+
+    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees];
 
     public string PolicyName(Permission permission) => $"{Key}:{permission}";
 }

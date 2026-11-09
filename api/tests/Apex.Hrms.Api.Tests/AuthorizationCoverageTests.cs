@@ -41,12 +41,51 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.DoesNotContain(endpoints, endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null);
     }
 
+    private static bool IsEmployeeRoute(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText!.StartsWith("/api/employees", StringComparison.Ordinal);
+
     [Fact]
     public void Six_organization_resources_map_eight_endpoints_each()
     {
-        var endpoints = ApiEndpoints();
+        var endpoints = ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint)).ToList();
 
         Assert.Equal(48, endpoints.Count);
+    }
+
+    [Fact]
+    public void Employees_map_fourteen_endpoints_and_no_unpaged_list()
+    {
+        var endpoints = ApiEndpoints().Where(IsEmployeeRoute).ToList();
+
+        Assert.Equal(14, endpoints.Count);
+        Assert.DoesNotContain(
+            endpoints,
+            endpoint => endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Contains(HttpMethods.Get)
+                && endpoint.RoutePattern.RawText!.TrimEnd('/') == "/api/employees");
+    }
+
+    [Fact]
+    public void Employee_personal_and_bank_endpoints_have_their_own_permissions()
+    {
+        var policies = ApiEndpoints().Where(IsEmployeeRoute)
+            .ToDictionary(
+                endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+                endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
+
+        Assert.Equal("employees:ViewSensitive", policies["GET /api/employees/{id:int}/personal"]);
+        Assert.Equal("employees:EditSensitive", policies["PUT /api/employees/{id:int}/personal"]);
+        Assert.Equal("employees:ViewBank", policies["GET /api/employees/{id:int}/bank-account"]);
+        Assert.Equal("employees:EditBank", policies["PUT /api/employees/{id:int}/bank-account"]);
+        Assert.Equal("employees:View", policies["GET /api/employees/query"]);
+        Assert.Equal("employees:View", policies["GET /api/employees/{id:int}"]);
+        Assert.Equal("employees:View", policies["GET /api/employees/{id:int}/history"]);
+        Assert.Equal("employees:Create", policies["GET /api/employees/next-code"]);
+        Assert.Equal("employees:Create", policies["POST /api/employees/"]);
+        Assert.Equal("employees:Edit", policies["PUT /api/employees/{id:int}"]);
+        Assert.Equal("employees:Delete", policies["DELETE /api/employees/{id:int}"]);
+        Assert.Equal("employees:Edit", policies["POST /api/employees/{id:int}/exit"]);
+        Assert.Equal("employees:Edit", policies["POST /api/employees/{id:int}/reinstate"]);
+        Assert.Equal("employees:Edit", policies["POST /api/employees/{id:int}/status"]);
     }
 
     [Fact]
@@ -65,14 +104,18 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         }
 
         Assert.Equal(
-            ["organization:Create", "organization:Delete", "organization:Edit", "organization:View"],
+            [
+                "employees:Create", "employees:Delete", "employees:Edit", "employees:EditBank", "employees:EditSensitive",
+                "employees:View", "employees:ViewBank", "employees:ViewSensitive",
+                "organization:Create", "organization:Delete", "organization:Edit", "organization:View",
+            ],
             policies.Order(StringComparer.Ordinal));
     }
 
     [Fact]
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
-        foreach (var endpoint in ApiEndpoints())
+        foreach (var endpoint in ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);

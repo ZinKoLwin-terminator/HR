@@ -1,4 +1,4 @@
-using Apex.Hrms.Application.Organization;
+using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Organization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -35,7 +35,7 @@ internal sealed class BranchConfiguration() : CodedRecordConfiguration<Branch>("
             .HasForeignKey(b => b.CompanyId)
             .HasConstraintName("FK_Branch_Company")
             .OnDelete(DeleteBehavior.NoAction);
-        builder.HasOne<EmployeeReference>().WithMany()
+        builder.HasOne<Employee>().WithMany()
             .HasForeignKey(b => b.ManagerEmployeeId)
             .HasConstraintName("FK_Branch_Employee_ManagerEmployeeId")
             .OnDelete(DeleteBehavior.NoAction);

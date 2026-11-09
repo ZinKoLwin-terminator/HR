@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
         services.AddScoped(typeof(IRecordCounter<>), typeof(EfRecordCounter<>));
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IEmployeeCodeSequence, EfEmployeeCodeSequence>();
         return services;
     }
 }
