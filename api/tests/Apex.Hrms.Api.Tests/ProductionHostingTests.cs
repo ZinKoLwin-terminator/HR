@@ -48,12 +48,12 @@ public sealed class ProductionHostingTests
         using var factory = Production("api.example.test");
         using var client = Client(factory);
 
-        var response = await client.GetAsync("/api/companies/query?sort=nope:asc");
-        using var wrongHost = new HttpRequestMessage(HttpMethod.Get, "/api/companies/query?sort=nope:asc");
+        var response = await client.GetAsync("/api/auth/antiforgery");
+        using var wrongHost = new HttpRequestMessage(HttpMethod.Get, "/api/auth/antiforgery");
         wrongHost.Headers.Host = "evil.example";
         var rejected = await client.SendAsync(wrongHost);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Contains("max-age", response.Headers.GetValues("Strict-Transport-Security").Single(), StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
         Assert.False(rejected.Headers.Contains("Access-Control-Allow-Origin"));
@@ -69,7 +69,7 @@ public sealed class ProductionHostingTests
             AllowAutoRedirect = false,
         });
 
-        var response = await client.GetAsync("/api/companies/query?sort=nope:asc");
+        var response = await client.GetAsync("/api/auth/antiforgery");
 
         Assert.Equal(HttpStatusCode.TemporaryRedirect, response.StatusCode);
         Assert.StartsWith("https://api.example.test", response.Headers.Location?.ToString(), StringComparison.Ordinal);
@@ -81,9 +81,9 @@ public sealed class ProductionHostingTests
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/api/companies/query?sort=nope:asc");
+        var response = await client.GetAsync("/api/auth/antiforgery");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.False(response.Headers.Contains("Strict-Transport-Security"));
     }
 }

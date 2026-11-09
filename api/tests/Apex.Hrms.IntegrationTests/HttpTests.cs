@@ -21,8 +21,10 @@ public sealed class HttpTests : DatabaseTest, IDisposable
     public HttpTests()
     {
         factory.EnsurePointsAtTestDatabase();
-        client = factory.CreateClient();
+        client = factory.CreateBrowserClient(out _);
     }
+
+    public override Task InitializeAsync() => client.SignInAsync(TestAdministrator.Account);
 
     protected override void Cleanup()
     {

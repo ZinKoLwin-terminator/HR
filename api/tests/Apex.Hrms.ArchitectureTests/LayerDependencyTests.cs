@@ -38,9 +38,23 @@ public sealed class LayerDependencyTests
             "Microsoft.Data.SqlClient",
             "Microsoft.AspNetCore");
 
+    /// <summary>
+    /// Infrastructure may use the ASP.NET Core Identity stores (namespace Microsoft.AspNetCore.Identity, a plain library
+    /// with no web dependency) but none of the web stack: no HttpContext, MVC, routing, hosting, authentication handlers.
+    /// </summary>
     [Fact]
-    public void Infrastructure_does_not_depend_on_the_api() =>
-        AssertNoDependencies(InfrastructureAssembly, Api, "Microsoft.AspNetCore");
+    public void Infrastructure_does_not_depend_on_the_api_or_the_web_stack() =>
+        AssertNoDependencies(
+            InfrastructureAssembly,
+            Api,
+            "Microsoft.AspNetCore.Http",
+            "Microsoft.AspNetCore.Mvc",
+            "Microsoft.AspNetCore.Builder",
+            "Microsoft.AspNetCore.Hosting",
+            "Microsoft.AspNetCore.Routing",
+            "Microsoft.AspNetCore.Authentication",
+            "Microsoft.AspNetCore.Authorization",
+            "Microsoft.AspNetCore.Antiforgery");
 
     [Fact]
     public void Api_speaks_in_dtos_and_never_touches_domain_entities() =>

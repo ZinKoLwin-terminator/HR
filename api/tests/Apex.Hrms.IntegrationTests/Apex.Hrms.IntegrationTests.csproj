@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\Shared\BrowserHandler.cs" Link="Support\BrowserHandler.cs" />
   </ItemGroup>
 
 </Project>

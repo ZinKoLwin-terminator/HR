@@ -37,6 +37,12 @@ internal sealed class FakeCurrentUser : ICurrentUser
 {
     public int? UserId { get; set; }
 
+    public int? EmployeeId { get; set; }
+
+    public bool IsAuthenticated { get; set; } = true;
+
+    public bool IsSystem { get; set; }
+
     public string DisplayName { get; set; } = "Test User";
 }
 

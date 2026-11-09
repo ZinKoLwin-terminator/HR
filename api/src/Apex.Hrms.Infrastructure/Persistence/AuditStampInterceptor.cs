@@ -32,7 +32,18 @@ internal sealed class AuditStampInterceptor(IClock clock, ICurrentUser currentUs
         }
 
         var now = clock.UtcNow.UtcDateTime;
-        foreach (var entry in context.ChangeTracker.Entries<AuditedEntity>())
+        var changed = context.ChangeTracker.Entries<AuditedEntity>()
+            .Where(entry => entry.State is EntityState.Added or EntityState.Modified)
+            .ToList();
+
+        // Every audited write needs a person to attribute it to. Only the explicit system identity (bootstrap command,
+        // deployment seeds) may write without one; its audit user columns stay NULL.
+        if (changed.Count > 0 && !currentUser.IsSystem && currentUser.UserId is null)
+        {
+            throw new UnauthenticatedWriteException();
+        }
+
+        foreach (var entry in changed)
         {
             switch (entry.State)
             {

@@ -7,7 +7,9 @@ namespace Apex.Hrms.IntegrationTests.Support;
 /// that test (<c>TST-</c> plus 8 hex characters), so each statement here is filtered by a tag and nothing else:
 /// there is no TRUNCATE and no unfiltered DELETE. Employees are the exception to "the code starts with the tag": an
 /// employee code holds at most 12 characters, so the tag is the start of the <em>work email</em> instead, and the
-/// employee rows (with the rows that hang on them) are removed first, child to parent.
+/// employee rows (with the rows that hang on them) are removed first, child to parent. Sign-in accounts follow the same
+/// rule through their <em>email</em> (auth.User and sec.AppUser; removed before the employees they may link to) and
+/// test roles through their name (sec.Role).
 /// </summary>
 internal static class TestRows
 {
@@ -26,7 +28,15 @@ internal static class TestRows
         "hr.EmployeeDocument", "hr.EmploymentHistory", "hr.EmployeeBankAccount",
     ];
 
+    /// <summary>The rows owned by an identity user, removed before the user (the database would cascade; this is explicit).</summary>
+    private static readonly string[] IdentityChildTables =
+    [
+        "auth.UserToken", "auth.UserLogin", "auth.UserClaim",
+    ];
+
     private const string TaggedEmployees = "SELECT Id FROM hr.Employee WHERE LOWER(WorkEmail) LIKE LOWER(@pattern)";
+
+    private const string TaggedIdentityUsers = "SELECT Id FROM auth.[User] WHERE LOWER(Email) LIKE LOWER(@pattern)";
 
     public static string NewTag() => TagFamily + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
 
@@ -36,6 +46,7 @@ internal static class TestRows
         var pattern = tag + "-%";
         await using var connection = new SqlConnection(SqlServerEnvironment.ConnectionString);
         await connection.OpenAsync();
+        await DeleteAccountsAsync(connection, pattern);
         await DeleteEmployeesAsync(connection, pattern);
         foreach (var table in TablesChildToParent)
         {
@@ -45,13 +56,16 @@ internal static class TestRows
         }
     }
 
-    /// <summary>How many rows per table have a code that starts with <paramref name="prefix"/> (employees: a work email that does).</summary>
+    /// <summary>How many rows per table have a code that starts with <paramref name="prefix"/> (employees and accounts: an email that does; roles: a name).</summary>
     public static async Task<IReadOnlyDictionary<string, int>> CountAsync(string prefix)
     {
         var pattern = prefix + "%";
         var counts = new Dictionary<string, int>();
         await using var connection = new SqlConnection(SqlServerEnvironment.ConnectionString);
         await connection.OpenAsync();
+        await CountInto(counts, connection, "auth.[User]", "LOWER(Email) LIKE LOWER(@pattern)", pattern);
+        await CountInto(counts, connection, "sec.AppUser", "LOWER(Email) LIKE LOWER(@pattern)", pattern);
+        await CountInto(counts, connection, "sec.Role", "Name LIKE @pattern", pattern);
         await CountInto(counts, connection, "hr.Employee", "LOWER(WorkEmail) LIKE LOWER(@pattern)", pattern);
         foreach (var table in TablesChildToParent)
         {
@@ -59,6 +73,19 @@ internal static class TestRows
         }
 
         return counts;
+    }
+
+    /// <summary>Child to parent: identity children, the business account (it points at the identity user), the identity user, then test roles.</summary>
+    private static async Task DeleteAccountsAsync(SqlConnection connection, string pattern)
+    {
+        foreach (var table in IdentityChildTables)
+        {
+            await ExecuteAsync(connection, pattern, $"DELETE FROM {table} WHERE UserId IN ({TaggedIdentityUsers})");
+        }
+
+        await ExecuteAsync(connection, pattern, "DELETE FROM sec.AppUser WHERE LOWER(Email) LIKE LOWER(@pattern)");
+        await ExecuteAsync(connection, pattern, "DELETE FROM auth.[User] WHERE LOWER(Email) LIKE LOWER(@pattern)");
+        await ExecuteAsync(connection, pattern, "DELETE FROM sec.Role WHERE Name LIKE @pattern");
     }
 
     private static async Task DeleteEmployeesAsync(SqlConnection connection, string pattern)

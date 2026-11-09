@@ -7,7 +7,7 @@ SSDT project `HR DBPJ`; it never creates or migrates it.
 | --- | --- |
 | `Apex.Hrms.Domain` | Entities, domain rules, `Result` / `AppError`. No dependencies. |
 | `Apex.Hrms.Application` | Use-case handlers, FluentValidation, DTOs, ports (`IRepository<>`, `IRecordCounter<>`, `IUnitOfWork`, `IClock`, `ICurrentUser`, `IAccessScope<>`). |
-| `Apex.Hrms.Infrastructure` | EF Core 10 SQL Server mapping, repositories, clock, SQL error translation, placeholder current user. |
+| `Apex.Hrms.Infrastructure` | EF Core 10 SQL Server mapping (including the Identity stores in the `auth` schema), repositories, clock, SQL error translation, account directory, mail senders, audit stamping, placeholder and system current users. |
 | `Apex.Hrms.Api` | Minimal API endpoints, authorization policies, ProblemDetails, CORS, OpenAPI. |
 
 Run: put the connection string in `ConnectionStrings:Hrms` (`appsettings.Development.json` holds the LocalDB one,
@@ -16,8 +16,10 @@ environment variables for anything with a password), then `dotnet run --project 
 Build and test from the `api` folder: `dotnet build Apex.Hrms.slnx` and `dotnet test Apex.Hrms.slnx`. The tests never
 open a database connection.
 
-Auth is not implemented yet: endpoints are anonymous and `ICurrentUser` is a placeholder. Do not store real data.
-See "Authorization seams" below for what is already in place.
+Sign-in (phase 1) is implemented: ASP.NET Core Identity with a same-site cookie, see "Authentication" below. Every
+endpoint requires a signed-in user except the four anonymous `/api/auth` endpoints. Per-permission checks (which role may
+do what) are still placeholders until phase 3. Do not store real data until the permission checks exist.
+Without a database you cannot sign in: create the first administrator with the `bootstrap-admin` command first.
 
 ## Configuration
 
@@ -27,6 +29,16 @@ See "Authorization seams" below for what is already in place.
 | `Business:TimeZone` | Time zone that defines "today" for rules such as "opened date cannot be in the future". Default `Asia/Yangon`. An unknown value stops the API at startup. |
 | `Cors:AllowedOrigins` | Origins the browser frontend may call from. |
 | `AllowedHosts` | `;`-separated exact host names. `*` is only accepted in Development; any other environment refuses to start with a missing or wildcard value. |
+| `Auth:DevelopmentCookieName` | Development only: session cookie name (default `hrms-dev`). Outside Development the name is always `__Host-hrms`. |
+| `Auth:RateLimit:PermitsPerMinute` | Sign-in, forgot-password and reset-password requests allowed per client IP per minute (default 10). |
+| `Auth:PasswordResetUrl` | Optional absolute URL of the frontend reset page; the reset mail links to `{url}?email=...&token=...`. Without it the mail shows the token. |
+| `Email:DevelopmentFolder` | Development only: folder for the mail files (default `App_Data/dev-mail` under the API project). |
+| `Email:Smtp:Host`, `Email:Smtp:FromAddress` | Required outside Development for password reset mail. |
+| `Email:Smtp:Port` (587), `Email:Smtp:EnableSsl` (true), `Email:Smtp:FromName` | Optional. |
+| `Email:Smtp:UserName`, `Email:Smtp:Password` | Optional pair (both or neither). **Environment variables or user secrets only**, never an appsettings file. |
+
+Secrets: `dotnet user-secrets set "Email:Smtp:Password" "..." --project src/Apex.Hrms.Api` or the environment variable
+`Email__Smtp__Password`. Configuration is read when the host starts: restart after changing it.
 
 Outside Development the API also uses HTTPS redirection and HSTS. Every response carries
 `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`.
@@ -83,7 +95,8 @@ Every error is `application/problem+json` (RFC 9457):
 | `Validation` | 400 | Bad input; `errors` maps a camelCase field to its messages. Also malformed JSON and other client errors that keep their own status (413, 415 ...). |
 | `NotFound` | 404 | No such record, or outside the caller's access scope. |
 | `Conflict` | 409 | Stale `rowVersion`, record still referenced, payroll finality, foreign key violation. |
-| `Unauthorized` / `Forbidden` | 401 / 403 | Reserved for the Identity work. |
+| `Unauthorized` | 401 | Not signed in (or the session ended), a failed sign-in, or an audited write with no signed-in user. Never a redirect. |
+| `Forbidden` | 403 | Reserved for the permission checks (phase 3). |
 | `Unknown` | 500 | Unexpected failure; the message is generic. Quote `traceId` to find it in the server log. |
 
 Database errors that slip past the rules are translated by constraint name, never by echoing the SQL message
@@ -160,7 +173,7 @@ email, phones, address or emergency contact.** Those live behind `/personal`; th
   manager with direct reports (or one who heads a branch, department or section) cannot be deleted.
 * **History** is recorded by the server: `Joined` on create, `Promotion` or `Transfer` on a position or organization
   change (promotion when the new job grade has a higher level), `Contract Change` on a new employment type, `Status
-  Change` and `Exit` from the commands. `recordedBy` is the display name of the caller (`System` until Identity exists).
+  Change` and `Exit` from the commands. `recordedBy` is the display name of the signed-in caller.
 * **Field names:** `managerId` (database `ManagerEmployeeId`), `status` in the command bodies, nested `address` and
   `emergencyContact` objects in the personal data; validation errors on them are keyed `address.city`,
   `emergencyContact.relationship`, and so on.
@@ -168,25 +181,108 @@ email, phones, address or emergency contact.** Those live behind `/personal`; th
 * Organization deletes and moves count employees through the view `hr.EmployeeOrgLink` (placement without personal data),
   not through `hr.Employee`; the view and the sequence must exist in the target database.
 
-## Authorization seams (Identity comes later)
+## Authentication (phase 1)
 
-No authentication exists yet, but the structure is in place so Identity (cookie, same-site) can be added in one place:
+ASP.NET Core Identity (standard stores, no roles) with a same-site cookie. Credentials live in `auth.User`
+(`HR` database, schema `auth`, owned by the SSDT project); the business account is `sec.AppUser`, linked through
+`ExternalSubject` = `auth.User.Id`, and carries the role. Sign-in resolves the business account by that link and refuses
+an Inactive or Locked account, an inactive role or an identity user without an account, with the same answer as a wrong
+password.
+
+### Endpoints (`/api/auth`)
+
+| Route | Auth | Body | Returns |
+| --- | --- | --- | --- |
+| `GET /api/auth/antiforgery` | anonymous | none | `204`; sets the `XSRF-TOKEN` cookie (readable) and the hidden antiforgery cookie |
+| `POST /api/auth/login` | anonymous, antiforgery, rate limited | `{ email, password, rememberMe }` | `200` `{ id, employeeId, displayName, email, roleName, permissions[] }` and the session cookie; failures: `400` blank fields, `401` generic, `429` rate limited |
+| `POST /api/auth/logout` | signed in, antiforgery | none | `204`; deletes the session cookie |
+| `GET /api/auth/me` | signed in | none | the same object as login, read live (`401` when not signed in) |
+| `POST /api/auth/forgot-password` | anonymous, antiforgery, rate limited | `{ email }` | always `200` `{ message }` for any address; `503` when email is not configured (outside Development) |
+| `POST /api/auth/reset-password` | anonymous, antiforgery, rate limited | `{ email, token, newPassword }` | `204`; `400` `errors.token` for a bad, used or expired token or unknown address (same answer), `400` `errors.newPassword` for a password under 12 characters |
+
+* `permissions` are `module:Action` keys such as `employees:View` and `organization:Delete` (the same names as the
+  endpoint policies). They are read from the database on every `me`/login, not stored in the cookie.
+* Every failed sign-in is `401` `code: "Unauthorized"` with the same `detail`. The real reason (unknown account, wrong
+  password, locked out, no linked account, inactive or locked account, inactive role) is logged with the identity user id
+  but never the email, the password or a token.
+* **Password rule:** at least 12 characters, nothing else. **Lockout:** 5 failed sign-ins lock the account for 15 minutes
+  (the sixth attempt with the right password is refused too); a successful sign-in resets the count; a successful password
+  reset lifts the lock. Email is unique.
+* **Sessions:** `rememberMe: false` gives a browser-session cookie with a 30 minute sliding window and an 8 hour absolute
+  maximum; `rememberMe: true` a persistent cookie with a 7 day sliding window. On every request the session is also
+  checked against the database: it ends when the account stops being Active (or its role inactive) and when the
+  password is reset (security stamp). Logout deletes the cookie in the browser; a copied cookie stays valid until it
+  expires or one of those checks fails (cookie sessions have no server-side list to revoke from).
+* **Cookie:** outside Development `__Host-hrms`: HttpOnly, Secure, SameSite=Strict, Path=/, no Domain. In Development
+  there is no `__Host-` prefix (it needs https) and the name comes from `Auth:DevelopmentCookieName`; Secure follows the
+  request scheme. One code path (`Auth/AuthCookies`, `Auth/AuthenticationSetup`).
+* **CORS** stays without `AllowCredentials`: the frontend reaches the API through the dev proxy on its own origin.
+* **Data protection keys are not persisted yet** (decision pending): cookies and reset tokens do not survive an API
+  restart (with the framework default key ring; on a container or a shared host they may not even survive a recycle).
+  Everyone has to sign in again after a restart.
+
+### Antiforgery
+
+Every unsafe method (POST, PUT, PATCH, DELETE) must send the header `X-XSRF-TOKEN` with the value of the `XSRF-TOKEN`
+cookie (Angular `HttpClient` does this by default); otherwise `400` Validation. Call `GET /api/auth/antiforgery` before
+the first sign-in or reset. The token is tied to the signed-in user, so login and logout both set a fresh `XSRF-TOKEN`
+cookie in their response; use the new value afterwards. Enforced in `Auth/AntiforgeryMiddleware` after authentication.
+
+### Deny by default
+
+`AuthorizationSetup` sets a fallback policy that requires a signed-in user, so an endpoint without its own policy is
+protected. A named policy replaces the fallback for its endpoint, so each placeholder policy (`organization:View` ...)
+requires a signed-in user too; checking the permission itself is phase 3 (`TODO(Permissions)`). Only the four anonymous
+`/api/auth` endpoints and the OpenAPI document opt out with `AllowAnonymous`; a test pins that list. A 401 or 403 is a status
+code, never a redirect.
+
+### Audit attribution
+
+`ICurrentUser` (`UserId` = `sec.AppUser.Id`, `EmployeeId`, `IsAuthenticated`, `IsSystem`, `DisplayName`) is backed by the
+claims of the cookie (`hrms:uid`, `hrms:eid`, name). `AuditStampInterceptor` rejects an audited row that is added or
+changed while `UserId` is null (`UnauthenticatedWriteException`, a `401` Unauthorized result from the handlers), unless
+the caller is the explicit system identity (`services.UseSystemIdentity()`, used by the bootstrap command and deployment
+seeds; never by the web host).
+
+### Create the first administrator
+
+```
+dotnet run --project src/Apex.Hrms.Api -- bootstrap-admin --email admin@your-company.example [--name "Display name"]
+```
+
+A command line tool, never an HTTP endpoint (`Program.cs` runs it before the web host is built). It needs an interactive
+terminal: it shows the target database, asks you to type `yes`, then asks for the password twice with no echo (piped
+passwords are refused; there is no password argument, setting or file). It refuses when an active linked HR Administrator
+already exists, and otherwise creates `auth.User` and `sec.AppUser` (no employee, role `HR Administrator`) in one
+transaction. The database project must have been deployed first (the role comes from its post-deployment script). It uses
+the connection string of the environment it runs in (`ASPNETCORE_ENVIRONMENT`, user secrets): check the printed target.
+Exit codes: 0 created, 1 refused or cancelled, 2 usage.
+
+### Password reset mail
+
+* **Development:** `DevelopmentMailSink` writes each mail to `src/Apex.Hrms.Api/App_Data/dev-mail/*.eml` (git-ignored; the
+  folder holds reset tokens, never share it). Nothing is sent and the log only says that a file was written.
+* **Other environments:** `SmtpEmailSender` (`System.Net.Mail.SmtpClient`, TLS by default) with `Email:Smtp:*`. When
+  `Host` or `FromAddress` is missing, forgot-password answers `503` before looking up any address, so mail is never silently
+  dropped and nothing is revealed. A send failure after the lookup is logged (exception type only) and the answer stays the
+  generic `200`.
+* Tokens come from Identity's `GeneratePasswordResetTokenAsync`, work once and expire after 1 hour. Only an Active
+  account receives a mail.
+
+### Authorization seams (permissions come in phase 3)
 
 * `MapCrud` and `MapCommand` take a `PermissionModule` (for example `organization`) and attach a named policy per
   verb: `organization:View` (GET), `organization:Create` (POST), `organization:Edit` (PUT and commands),
-  `organization:Delete` (DELETE). The policies are registered in `Authorization/AuthorizationSetup.cs` as permissive
-  placeholders with a `TODO(Identity)`; new modules must be added to `PermissionModule.All`.
-* `AuthorizationSetup.ConfigureFallbackPolicy` is the hook for "deny by default".
-* `ICurrentUser` is registered with `TryAdd`: register the real implementation in the Api layer to replace
-  `AnonymousCurrentUser`.
+  `organization:Delete` (DELETE). The policies are registered in `Authorization/AuthorizationSetup.cs`; they require a
+  signed-in user and check nothing else yet. New modules must be added to `PermissionModule.All`.
 * `IAccessScope<TEntity>` returns a predicate from the `ICurrentUser`; it is applied inside the database query by get all,
   query, get by id, update, delete and every command, so a record outside the scope is `404`. The default allows all.
   Register a closed `IAccessScope<Company>` etc. to narrow a resource.
-* `Api.Tests/AuthorizationCoverageTests` fails when an `/api` endpoint is mapped without a policy, and pins the policy of
-  every employee route (including the sensitive and bank ones).
+* `Api.Tests/AuthorizationCoverageTests` fails when an `/api` endpoint (outside `/api/auth`) is mapped without a policy,
+  and pins the policy of every employee route (including the sensitive and bank ones). `AuthEndpointSecurityTests` pins
+  the anonymous endpoints and the fallback policy.
 * A module that holds personal data declares extra permissions in `PermissionModule` (`employees` has `ViewSensitive`,
-  `EditSensitive`, `ViewBank` and `EditBank` next to the four standard ones). They are placeholders too:
-  `TODO(Identity)` replaces them with real permission checks.
+  `EditSensitive`, `ViewBank` and `EditBank` next to the four standard ones).
 
 ## Adding a resource (pattern to copy)
 
@@ -215,8 +311,14 @@ No authentication exists yet, but the structure is in place so Identity (cookie,
   email (an employee code holds only 12 characters). The cleanup deletes employees and the rows that hang on them
   (documents, history, bank account) first, then the organization tables child to parent. No `DROP`, `TRUNCATE` or
   unfiltered `DELETE`. The fixture fails the run, at the start and at the end, when a row with a test tag is left
-  behind in the `org` tables or in `hr.Employee`; delete those rows in `HR_IntegrationTests` (child tables first)
-  and run again.
+  behind in the `org` tables, in `hr.Employee`, in `auth.User` / `sec.AppUser` (email prefix `TST-`) or in `sec.Role`
+  (name prefix); delete those rows in `HR_IntegrationTests` (child tables first) and run again.
+* **Signed-in tests:** audited writes need a signed-in user, so the fixture creates one `TST-` administrator per run
+  (random password, plain SQL, removed at the end) and the HTTP clients sign in as that account through
+  `/api/auth/login` (`tests/Shared/BrowserHandler.cs` keeps cookies and copies `XSRF-TOKEN` into `X-XSRF-TOKEN` like the
+  frontend). Tests that call the handlers directly get a fake `ICurrentUser` with a `TST-` display name. The test host
+  writes its mail to a temporary folder and is set through host settings (the API reads its settings while it registers
+  services, before `ConfigureAppConfiguration` of a test host applies).
 * **Skipping:** without LocalDB (for example Linux CI) or without the dacpac every test is reported as skipped with the
   reason; `dotnet test` stays green.
 * **Run:** `dotnet test api/tests/Apex.Hrms.IntegrationTests`, or everything except them with

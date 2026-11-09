@@ -28,6 +28,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
         {
             Deploy();
             await AssertNoTestRowsAsync("A previous run left test data behind (start of run).");
+            await TestAdministrator.CreateAsync();
         });
     }
 
@@ -35,6 +36,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
     {
         if (SqlServerEnvironment.UnavailableReason is null)
         {
+            await TestRows.DeleteAsync(TestAdministrator.Tag);
             await AssertNoTestRowsAsync("A test did not clean up its rows (end of run).");
         }
     }
@@ -59,8 +61,8 @@ public sealed class DatabaseFixture : IAsyncLifetime
         {
             var detail = string.Join(", ", leftovers.Select(pair => $"{pair.Key}: {pair.Value}"));
             throw new InvalidOperationException(
-                $"{problem} {leftovers.Values.Sum()} row(s) with a code starting with '{TestRows.TagFamily}' remain in {SqlServerEnvironment.DatabaseName} ({detail}). " +
-                $"Delete them with DELETE ... WHERE Code LIKE '{TestRows.TagFamily}%' (child tables first) in that database only.");
+                $"{problem} {leftovers.Values.Sum()} row(s) tagged '{TestRows.TagFamily}' (code, work email, account email or role name) remain in {SqlServerEnvironment.DatabaseName} ({detail}). " +
+                $"Delete them (child tables first: accounts, employees, then org tables) in that database only.");
         }
     }
 }

@@ -9,8 +9,8 @@ namespace Apex.Hrms.Api.Tests;
 
 /// <summary>
 /// Architecture rule: no endpoint of the API is mapped without an authorization policy, and the policy matches what
-/// the endpoint does. Today the policies are permissive placeholders; this test keeps the seams complete so the real
-/// permission check can be added in one place without finding forgotten endpoints.
+/// the endpoint does. The policies check no permission yet (phase 3) but each requires a signed-in user; this test
+/// keeps the seams complete so the real permission check can be added in one place without finding forgotten endpoints.
 /// </summary>
 public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -24,8 +24,13 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         using var client = factory.CreateClient();
         return [.. factory.Services.GetRequiredService<EndpointDataSource>().Endpoints
             .OfType<RouteEndpoint>()
-            .Where(endpoint => endpoint.RoutePattern.RawText!.StartsWith("/api/", StringComparison.Ordinal))];
+            .Where(endpoint => endpoint.RoutePattern.RawText!.StartsWith("/api/", StringComparison.Ordinal)
+                && !IsAuthRoute(endpoint))];
     }
+
+    // The /api/auth endpoints are covered by AuthEndpointSecurityTests: some of them must be anonymous.
+    private static bool IsAuthRoute(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText!.StartsWith("/api/auth", StringComparison.Ordinal);
 
     [Fact]
     public void Every_api_endpoint_requires_a_named_policy()

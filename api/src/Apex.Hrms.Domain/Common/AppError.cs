@@ -13,6 +13,10 @@ public sealed record AppError(
 
     public static AppError Conflict(string message) => new(ErrorType.Conflict, message);
 
+    public static AppError Unauthorized(string message) => new(ErrorType.Unauthorized, message);
+
+    public static AppError Forbidden(string message) => new(ErrorType.Forbidden, message);
+
     public static AppError Unknown(string message) => new(ErrorType.Unknown, message);
 
     public static AppError Validation(string message, IReadOnlyDictionary<string, string[]>? fieldErrors = null) =>

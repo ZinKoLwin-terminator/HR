@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Apex.Hrms.Api.Auth;
 using Apex.Hrms.Api.Authorization;
 using Apex.Hrms.Api.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -9,9 +10,10 @@ internal static class ApiServiceCollectionExtensions
 {
     public const string CorsPolicyName = "Frontend";
 
-    public static IServiceCollection AddApi(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddApi(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         services.AddOpenApi();
+        services.AddHrmsAuthentication(configuration, environment.IsDevelopment());
         services.AddHrmsAuthorization();
 
         // Make malformed requests flow through the exception handler so they get the same problem shape.

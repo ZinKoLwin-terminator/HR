@@ -45,7 +45,7 @@ public abstract class DatabaseTest : IAsyncLifetime
 
     private ServiceProvider Provider => provider ??= BuildProvider();
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    public virtual Task InitializeAsync() => Task.CompletedTask;
 
     public async Task DisposeAsync()
     {
@@ -209,6 +209,9 @@ public abstract class DatabaseTest : IAsyncLifetime
         services.AddLogging();
         services.AddSingleton<TimeProvider>(Time);
         services.AddApplication().AddInfrastructure(configuration);
+
+        // No request here, so there is no cookie: a fake signed-in TST- user stands in (the audit rule rejects anonymous writes).
+        services.AddScoped<ICurrentUser>(_ => new TestCurrentUser(TestAdministrator.AccountId, $"{Tag} Test User"));
         DecorateUnitOfWork(services);
         foreach (var change in customizations)
         {

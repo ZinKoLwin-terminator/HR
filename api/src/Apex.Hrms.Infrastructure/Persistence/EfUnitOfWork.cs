@@ -14,6 +14,10 @@ internal sealed class EfUnitOfWork(HrmsDbContext context) : IUnitOfWork
             await context.SaveChangesAsync(cancellationToken);
             return Result.Success();
         }
+        catch (UnauthenticatedWriteException)
+        {
+            return Result.Failure(AppError.Unauthorized(UnauthenticatedWriteException.PublicMessage));
+        }
         catch (DbUpdateConcurrencyException)
         {
             return Result.Failure(RowVersionToken.Stale);

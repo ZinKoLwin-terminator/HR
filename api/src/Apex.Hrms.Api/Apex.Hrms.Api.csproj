@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Apex.Hrms.Api.Tests" />
+    <InternalsVisibleTo Include="Apex.Hrms.IntegrationTests" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <ProjectReference Include="..\Apex.Hrms.Application\Apex.Hrms.Application.csproj" />
     <ProjectReference Include="..\Apex.Hrms.Infrastructure\Apex.Hrms.Infrastructure.csproj" />

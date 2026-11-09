@@ -1,3 +1,4 @@
+using Apex.Hrms.Api.Auth;
 using Apex.Hrms.Api.Http;
 
 namespace Apex.Hrms.Api;
@@ -6,7 +7,8 @@ internal static class ApiApplicationExtensions
 {
     /// <summary>
     /// The request pipeline in order: response headers, error handling, transport security (outside Development),
-    /// CORS, authorization. TODO(Identity): add <c>UseAuthentication()</c> before <c>UseAuthorization()</c>.
+    /// CORS, rate limiting, authentication (the session cookie), antiforgery validation of unsafe methods (it needs the
+    /// signed-in user), authorization.
     /// </summary>
     public static WebApplication UseApiPipeline(this WebApplication app)
     {
@@ -21,6 +23,9 @@ internal static class ApiApplicationExtensions
         }
 
         app.UseCors(ApiServiceCollectionExtensions.CorsPolicyName);
+        app.UseRateLimiter();
+        app.UseAuthentication();
+        app.UseMiddleware<AntiforgeryMiddleware>();
         app.UseAuthorization();
         return app;
     }

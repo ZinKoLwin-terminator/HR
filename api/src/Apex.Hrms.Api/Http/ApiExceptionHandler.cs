@@ -30,9 +30,14 @@ internal sealed partial class ApiExceptionHandler(
             return true;
         }
 
-        var problem = exception is BadHttpRequestException badRequest
-            ? ClientProblem(badRequest.StatusCode)
-            : UnexpectedProblem(exception);
+        var problem = exception switch
+        {
+            BadHttpRequestException badRequest => ClientProblem(badRequest.StatusCode),
+
+            // Code that saves audited rows without a signed-in user (handlers get a 401 result instead).
+            UnauthenticatedWriteException => ApiProblems.From(AppError.Unauthorized(UnauthenticatedWriteException.PublicMessage)),
+            _ => UnexpectedProblem(exception),
+        };
 
         httpContext.Response.StatusCode = problem.Status!.Value;
         await problemDetails.WriteAsync(new ProblemDetailsContext

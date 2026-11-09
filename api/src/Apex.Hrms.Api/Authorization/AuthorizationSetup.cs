@@ -5,10 +5,10 @@ namespace Apex.Hrms.Api.Authorization;
 internal static class AuthorizationSetup
 {
     /// <summary>
-    /// Registers one named policy per module and verb, and the fallback policy hook.
-    /// TODO(Identity): the policies are permissive placeholders and enforce nothing. When ASP.NET Core Identity with a
-    /// same-site cookie is added, replace <see cref="Placeholder"/> with a requirement that checks the permission of
-    /// the caller for the module and verb, and register the ICurrentUser implementation of the Api layer.
+    /// Registers one named policy per module and verb, and the fallback policy.
+    /// TODO(Permissions, phase 3): the module policies still check no permission. They only require a signed-in user;
+    /// replace <see cref="Placeholder"/> with a requirement that checks the permission of the caller for the module and
+    /// verb (the permissions are already returned by <c>GET /api/auth/me</c>).
     /// </summary>
     public static IServiceCollection AddHrmsAuthorization(this IServiceCollection services) =>
         services.AddAuthorization(options =>
@@ -25,12 +25,17 @@ internal static class AuthorizationSetup
         });
 
     /// <summary>
-    /// The place to make "deny by default" real: endpoints without an explicit policy fall back to it.
-    /// TODO(Identity): set <c>options.FallbackPolicy</c> to a policy that requires an authenticated user (health and
-    /// OpenAPI endpoints opt out with AllowAnonymous). It stays unset today because no authentication exists yet.
+    /// Deny by default: an endpoint without its own authorization metadata requires a signed-in user. The auth endpoints
+    /// that must work anonymously (antiforgery, login, forgot-password, reset-password) and the OpenAPI document opt out
+    /// with AllowAnonymous.
     /// </summary>
     private static void ConfigureFallbackPolicy(AuthorizationOptions options) =>
-        options.FallbackPolicy = null;
+        options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
 
-    private static void Placeholder(AuthorizationPolicyBuilder policy) => policy.RequireAssertion(_ => true);
+    /// <summary>
+    /// A named policy replaces the fallback for its endpoint, so each placeholder must require sign-in itself or the
+    /// endpoint would be open. The permission check comes in phase 3.
+    /// </summary>
+    private static void Placeholder(AuthorizationPolicyBuilder policy) =>
+        policy.RequireAuthenticatedUser().RequireAssertion(_ => true);
 }

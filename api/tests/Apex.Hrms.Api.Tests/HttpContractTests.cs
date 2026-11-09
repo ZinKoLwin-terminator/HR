@@ -15,7 +15,7 @@ public sealed class HttpContractTests : IClassFixture<WebApplicationFactory<Prog
     private readonly HttpClient client;
 
     public HttpContractTests(WebApplicationFactory<Program> factory) =>
-        client = factory.WithWebHostBuilder(builder => builder.UseEnvironment("Development")).CreateClient();
+        client = SignedInHost.CreateClient(factory);
 
     private static async Task<JsonElement> ReadAsync(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<JsonElement>())!;

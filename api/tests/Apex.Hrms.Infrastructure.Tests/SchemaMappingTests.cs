@@ -2,6 +2,8 @@ using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Organization;
+using Apex.Hrms.Domain.Security;
+using Microsoft.AspNetCore.Identity;
 using Apex.Hrms.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -162,8 +164,14 @@ public sealed class SchemaMappingTests : IDisposable
     [Fact]
     public void Foreign_keys_never_cascade_deletes_except_the_employee_children_the_database_cascades()
     {
-        // ON DELETE CASCADE exists in the database only for the rows an employee owns.
-        var cascading = new[] { typeof(EmployeeBankAccount), typeof(EmployeeDocument), typeof(EmploymentHistoryEntry) };
+        // ON DELETE CASCADE exists in the database only for the rows an employee owns, for the rows an identity user
+        // owns (claims, logins, tokens) and for the grants of a role.
+        var cascading = new[]
+        {
+            typeof(EmployeeBankAccount), typeof(EmployeeDocument), typeof(EmploymentHistoryEntry),
+            typeof(IdentityUserClaim<string>), typeof(IdentityUserLogin<string>), typeof(IdentityUserToken<string>),
+            typeof(RoleGrant),
+        };
         foreach (var type in context.Model.GetEntityTypes().Where(type => !type.IsOwned()))
         {
             var expected = cascading.Contains(type.ClrType) ? DeleteBehavior.Cascade : DeleteBehavior.NoAction;

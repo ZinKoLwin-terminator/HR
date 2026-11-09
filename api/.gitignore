@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Development mail files (hold reset tokens): never commit
+App_Data/
