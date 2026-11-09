@@ -1,5 +1,14 @@
-import { provideHttpClient } from '@angular/common/http';
-import { EnvironmentProviders, Provider, Type, makeEnvironmentProviders } from '@angular/core';
+import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@angular/common/http';
+import {
+  EnvironmentProviders,
+  Provider,
+  Type,
+  inject,
+  makeEnvironmentProviders,
+  provideAppInitializer,
+} from '@angular/core';
+import { AuthService, SERVER_SESSION } from '../core/services/auth.service';
+import { AuthDataService } from '../core/services/data/auth-data.service';
 import {
   BranchDataService,
   CompanyDataService,
@@ -9,6 +18,8 @@ import {
   SectionDataService,
 } from '../core/services/data/organization-data.services';
 import { API_BASE_URL } from './api-base-url';
+import { apiAuthInterceptor } from './auth/api-auth.interceptor';
+import { AuthHttpService } from './auth/auth-http.service';
 import {
   BranchHttpService,
   CompanyHttpService,
@@ -42,7 +53,11 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     return makeEnvironmentProviders([]);
   }
   return makeEnvironmentProviders([
-    provideHttpClient(),
+    provideHttpClient(
+      withInterceptors([apiAuthInterceptor]),
+      // The API sets the XSRF-TOKEN cookie (GET auth/antiforgery); Angular echoes it as X-XSRF-TOKEN.
+      withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }),
+    ),
     { provide: API_BASE_URL, useValue: options.baseUrl ?? '/api' },
     bind(CompanyDataService, CompanyHttpService),
     bind(BranchDataService, BranchHttpService),
@@ -50,5 +65,9 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(SectionDataService, SectionHttpService),
     bind(JobGradeDataService, JobGradeHttpService),
     bind(PositionDataService, PositionHttpService),
+    // Real sign-in: cookie session owned by the server, kept in memory only.
+    bind(AuthDataService, AuthHttpService),
+    { provide: SERVER_SESSION, useValue: true },
+    provideAppInitializer(() => inject(AuthService).initialize()),
   ]);
 }

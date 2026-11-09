@@ -47,6 +47,10 @@ function setup(options: ApiDataOptions = { enabled: true }) {
       provideHttpClientTesting(),
     ],
   });
+  // API mode checks the session at startup; answer it as signed out so verify() stays meaningful.
+  TestBed.inject(HttpTestingController)
+    .match((r) => r.url.endsWith('/auth/me'))
+    .forEach((r) => r.flush(null, { status: 401, statusText: 'Unauthorized' }));
   return {
     http: TestBed.inject(HttpTestingController),
     companies: TestBed.inject(CompanyDataService),

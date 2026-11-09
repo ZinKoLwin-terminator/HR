@@ -5,7 +5,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import { isAppError } from '../../../core/models/common.models';
 import { AuthService } from '../../../core/services/auth.service';
@@ -22,6 +22,7 @@ import { DEMO_PASSWORD } from '../../../mock-services/auth/auth-mock.service';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    RouterLink,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
@@ -34,6 +35,9 @@ export class LoginComponent {
   private readonly toast = inject(UiNotificationService);
   protected readonly appName = inject(APP_CONFIG).appName;
   protected readonly demoPassword = DEMO_PASSWORD;
+  /** API build: real sign-in. Hides the demo helper and links to the reset flow. */
+  protected readonly serverMode = this.auth.serverSession;
+  protected readonly passwordReset = this.route.snapshot.queryParamMap.get('reset') === '1';
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly showPassword = signal(false);
