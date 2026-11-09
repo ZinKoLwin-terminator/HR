@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Apex.Hrms.Domain</RootNamespace>
+  </PropertyGroup>
+
+</Project>

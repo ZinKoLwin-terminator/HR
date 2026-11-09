@@ -69,8 +69,16 @@ so no screen changes.
 ## State and loading
 
 - No global store. Each screen loads what it needs with `rxResource` and reloads after changes.
-- Mock services keep their state in signals; they are root singletons, so data persists while the
-  app stays open and **resets on page reload** (use in-app navigation, not `page.goto`, in tests).
+- Mock services keep their state in signals; they are root singletons. By default data lives only
+  while the app stays open and **resets on page reload** (use in-app navigation, not `page.goto`,
+  in tests).
+- `provideMockDataServices({ emptyData, persist })` changes that. `emptyData: true` starts every
+  business list empty (roles, permissions, settings and one built-in administrator remain, see
+  `BUILT_IN_ADMIN_EMPLOYEE_ID`). `persist: true` keeps created and edited records in
+  `localStorage` (`hrms.data.v1.*`, see `mock-services/persistence.ts`); Settings > General has a
+  **Reset data** button (`DemoDataDataService`) that clears only that data. The `feature/empty-data`
+  branch enables both in `app.config.ts`. Bump the storage prefix when a model changes shape. All of
+  this is mock-only and goes away with the API implementation.
 
 ## Styling and accessibility
 

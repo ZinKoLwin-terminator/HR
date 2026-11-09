@@ -10,8 +10,8 @@ Check this before assuming anything. Inspected 2026-11-07; re-check if the backe
 | Area        | Reality                                                                                                  |
 | ----------- | -------------------------------------------------------------------------------------------------------- |
 | Frontend    | Angular 22, TypeScript 6, Angular Material/CDK, signals, ng2-charts, exceljs                             |
-| Backend     | **None.** No .NET code. `docs/API-INTEGRATION-PLAN.md` is a plan only and says not to start one without an explicit decision |
-| Database    | **None.** No database, ORM or migrations. Data is in-memory and resets on reload                         |
+| Backend     | **Started (2026-11, branch `feature/api`).** .NET 10 Clean Architecture API in `api/` (`dotnet build`/`dotnet test api/Apex.Hrms.slnx`). Organization module only; no auth yet (all endpoints anonymous). The UI still uses the mocks |
+| Database    | SQL Server 2025 schema as an SDK-style SSDT project in a separate repo, `D:\New folder\HR DBPJ\HR DBPJ`. A human publishes it, to a local database only. EF Core maps onto it and never runs migrations |
 | Data layer  | Abstract contracts in `src/app/core/services/data`, bound to mocks in `src/app/mock-services` by `provideMockDataServices()` |
 | Auth        | Simulation. `AuthService` keeps plain user info in browser storage. Roles and permissions enforce nothing |
 | Tests       | Vitest via `ng test` (`*.spec.ts` beside the code), Playwright (`e2e/`). Fixture spreadsheets in `docs/test-data` |

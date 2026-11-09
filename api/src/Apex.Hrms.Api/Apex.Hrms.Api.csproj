@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- The ASP.NET route-handler analyzer throws a NullReferenceException on the generic CrudEndpoints lambdas (analyzer bug). -->
+    <NoWarn>$(NoWarn);AD0001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <ProjectReference Include="..\Apex.Hrms.Application\Apex.Hrms.Application.csproj" />
+    <ProjectReference Include="..\Apex.Hrms.Infrastructure\Apex.Hrms.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

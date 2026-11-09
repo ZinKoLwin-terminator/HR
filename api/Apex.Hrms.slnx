@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Apex.Hrms.Api/Apex.Hrms.Api.csproj" />
+    <Project Path="src/Apex.Hrms.Application/Apex.Hrms.Application.csproj" />
+    <Project Path="src/Apex.Hrms.Domain/Apex.Hrms.Domain.csproj" />
+    <Project Path="src/Apex.Hrms.Infrastructure/Apex.Hrms.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Apex.Hrms.Api.Tests/Apex.Hrms.Api.Tests.csproj" />
+    <Project Path="tests/Apex.Hrms.Application.Tests/Apex.Hrms.Application.Tests.csproj" />
+    <Project Path="tests/Apex.Hrms.ArchitectureTests/Apex.Hrms.ArchitectureTests.csproj" />
+    <Project Path="tests/Apex.Hrms.Domain.Tests/Apex.Hrms.Domain.Tests.csproj" />
+    <Project Path="tests/Apex.Hrms.Infrastructure.Tests/Apex.Hrms.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>
