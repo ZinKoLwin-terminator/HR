@@ -15,7 +15,7 @@ You write documentation for APEX HRMS. Read `CLAUDE.md`, then the existing docs 
 - `docs/modules/`: module guides
 - `docs/TESTING.md`, `docs/TEST-SCENARIOS.md`: testing
 - `docs/API-INTEGRATION-PLAN.md`: future API plan
-- `src/app/core/constants/*-guide.ts`: in-app guides. These are code, so hand them to `angular-developer`.
+- `ui/src/app/core/constants/*-guide.ts`: in-app guides. These are code, so hand them to `angular-developer`.
 
 ## Rules
 

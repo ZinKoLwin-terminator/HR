@@ -12,9 +12,9 @@ Check this before assuming anything. Inspected 2026-11-07; re-check if the backe
 | Frontend    | Angular 22, TypeScript 6, Angular Material/CDK, signals, ng2-charts, exceljs                             |
 | Backend     | **Started (2026-11, branch `feature/api`).** .NET 10 Clean Architecture API in `api/` (`dotnet build`/`dotnet test api/Apex.Hrms.slnx`). Organization module only; no auth yet (all endpoints anonymous). The UI still uses the mocks |
 | Database    | SQL Server 2025 schema as an SDK-style SSDT project in a separate repo, `D:\New folder\HR DBPJ\HR DBPJ`. A human publishes it, to a local database only. EF Core maps onto it and never runs migrations |
-| Data layer  | Abstract contracts in `src/app/core/services/data`, bound to mocks in `src/app/mock-services` by `provideMockDataServices()` |
+| Data layer  | Abstract contracts in `ui/src/app/core/services/data`, bound to mocks in `ui/src/app/mock-services` by `provideMockDataServices()` |
 | Auth        | Simulation. `AuthService` keeps plain user info in browser storage. Roles and permissions enforce nothing |
-| Tests       | Vitest via `ng test` (`*.spec.ts` beside the code), Playwright (`e2e/`). Fixture spreadsheets in `docs/test-data` |
+| Tests       | Vitest via `ng test` (`*.spec.ts` beside the code), Playwright (`ui/e2e/`). Fixture spreadsheets in `docs/test-data` |
 | CI/CD       | `.github/workflows/ci.yml`: lint, format, unit, build, E2E, then **deploy to GitHub Pages on every push to `main`** |
 | Data        | All sample data is fictional. Payroll rules are demonstrations, not statutory calculations               |
 
@@ -23,13 +23,20 @@ behaviour as security, and never start backend or database work unless the user 
 
 ## Commands
 
+The Angular app is in `ui/` and the API in `api/`. Run npm commands from `ui/`.
+
 ```bash
+cd ui
 npm start               # dev server, http://localhost:4200
 npm run lint            # ESLint, including template accessibility rules
 npm run format:check    # Prettier (npm run format to fix)
 npm run test:ci         # unit tests, single run
 npm run build           # production build, bundle budgets apply
 npx playwright test     # E2E (first run: npx playwright install chromium)
+
+cd ../api
+dotnet build Apex.Hrms.slnx   # zero warnings required
+dotnet test Apex.Hrms.slnx    # no database needed
 ```
 
 On Windows PowerShell, use `npm.cmd` if the execution policy blocks `npm`.
@@ -37,7 +44,7 @@ On Windows PowerShell, use `npm.cmd` if the execution policy blocks `npm`.
 ## Orchestrator workflow
 
 1. Understand the request. Ask only if the answer changes what gets built.
-2. Identify the affected modules (`src/app/features/*`, `src/app/core/*`).
+2. Identify the affected modules (`ui/src/app/features/*`, `ui/src/app/core/*`).
 3. Choose the fewest agents that fit. Small, clear changes need no agent: do them directly.
 4. Delegate with a full brief: goal, files in scope, constraints, expected output.
 5. Sequence dependencies. Subagents cannot call each other: when one reports a `Handoff`, you decide

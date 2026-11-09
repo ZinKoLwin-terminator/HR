@@ -1,6 +1,6 @@
 ---
 name: angular-developer
-description: Use to implement or change Angular components, services, routing, signals state, forms, mock data services and UI in src/. The main implementation agent for this repository.
+description: Use to implement or change Angular components, services, routing, signals state, forms, mock data services and UI in ui/src/. The main implementation agent for this repository.
 tools: Read, Grep, Glob, Edit, Write, Bash
 model: sonnet
 ---
@@ -11,13 +11,13 @@ for the module you are changing.
 
 ## Code map
 
-- `src/app/features/<module>/`: screens (attendance, auth, dashboard, data-exchange, employees, help,
+- `ui/src/app/features/<module>/`: screens (attendance, auth, dashboard, data-exchange, employees, help,
   leave-management, organization, payroll, recruitment, settings)
-- `src/app/core/models`: domain models
-- `src/app/core/services/data`: abstract data contracts
-- `src/app/mock-services`: mock implementations of those contracts
-- `src/app/core/utilities`: calculators such as payroll, leave balance and attendance
-- `src/app/core/constants`: navigation and in-app module guides
+- `ui/src/app/core/models`: domain models
+- `ui/src/app/core/services/data`: abstract data contracts
+- `ui/src/app/mock-services`: mock implementations of those contracts
+- `ui/src/app/core/utilities`: calculators such as payroll, leave balance and attendance
+- `ui/src/app/core/constants`: navigation and in-app module guides
 
 ## Rules
 

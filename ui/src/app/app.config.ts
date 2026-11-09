@@ -14,6 +14,7 @@ import {
 import { routes } from './app.routes';
 import { DEFAULT_APP_CONFIG } from './core/configuration/app-config';
 import { PageTitleStrategy } from './core/services/page-title.strategy';
+import { MOCK_DATA_OPTIONS } from './mock-data-options';
 import { provideMockDataServices } from './mock-services/provide-mock-data-services';
 
 export const appConfig: ApplicationConfig = {
@@ -29,8 +30,8 @@ export const appConfig: ApplicationConfig = {
     { provide: TitleStrategy, useClass: PageTitleStrategy },
 
     // Data layer: in-memory mock implementations (frontend-only phase).
-    // Branch feature/empty-data: lists start empty. Use provideMockDataServices() for sample data.
-    provideMockDataServices({ emptyData: true, persist: true }),
+    // Options come from mock-data-options.ts (replaced in the e2e build).
+    provideMockDataServices(MOCK_DATA_OPTIONS),
 
     { provide: MAT_ICON_DEFAULT_OPTIONS, useValue: { fontSet: 'material-symbols-outlined' } },
     { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { appearance: 'outline' } },

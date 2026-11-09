@@ -14,7 +14,7 @@ You deliberately have no shell tool. You write and review; a human applies chang
 
 ## Responsibilities
 
-- Design schemas from `src/app/core/models`, using the rules in `src/app/mock-services` and
+- Design schemas from `ui/src/app/core/models`, using the rules in `ui/src/app/mock-services` and
   `docs/FEATURES.md` as the specification.
 - Write migrations and review them for data loss, locking, reversibility and rollout order.
 - Review queries for correctness, indexing and N+1 problems.

@@ -44,6 +44,7 @@ Details per screen: [docs/FEATURES.md](docs/FEATURES.md).
 ## Install and run
 
 ```bash
+cd ui
 npm install
 npm start            # dev server at http://localhost:4200
 ```
@@ -85,15 +86,17 @@ the audit note in [docs/EXCEL-IMPORT-EXPORT.md](docs/EXCEL-IMPORT-EXPORT.md)).
 ## Repository layout
 
 ```
-src/app/
-  core/           models, constants, guards, services, data-service contracts, calculation utilities
-  shared/         reusable components (CRUD page, data table, dialogs…), pipes, validators, utilities
-  layout/         application shell (header, sidebar, footer, breadcrumbs)
-  features/       one lazy-loaded folder per module
-  mock-data/      centralized sample data
-  mock-services/  in-memory implementations of the data contracts
-e2e/              Playwright tests
-docs/             project documentation
+ui/                 Angular frontend (run npm commands here)
+  src/app/
+    core/           models, constants, guards, services, data-service contracts, calculation utilities
+    shared/         reusable components (CRUD page, data table, dialogs…), pipes, validators, utilities
+    layout/         application shell (header, sidebar, footer, breadcrumbs)
+    features/       one lazy-loaded folder per module
+    mock-data/      centralized sample data
+    mock-services/  in-memory implementations of the data contracts
+  e2e/              Playwright tests
+api/                .NET 10 API (dotnet build / dotnet test Apex.Hrms.slnx)
+docs/               project documentation
 ```
 
 ## Authentication (demo)

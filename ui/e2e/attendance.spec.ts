@@ -72,10 +72,29 @@ test.describe('attendance dashboard', () => {
     await expect(page.getByRole('button', { name: 'Today' })).toBeEnabled();
     await expect(page.getByRole('note')).toContainText('Showing');
 
+    // Filter on the most recent weekday before today: "Previous day" lands on a weekend when
+    // the test runs on a Monday, and weekends have too few scheduled people to compare.
+    const day = new Date();
+    do {
+      day.setDate(day.getDate() - 1);
+    } while (day.getDay() === 0 || day.getDay() === 6);
+    const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    const longDate = day.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const dateInput = page.getByLabel('Date', { exact: true });
+    await dateInput.fill(iso);
+    await dateInput.dispatchEvent('change');
+    await expect(page.getByRole('note')).toContainText(longDate);
+
     // Branch filter narrows the headcount
     const before = Number(
       (await summary.locator('app-stat-card').first().innerText()).match(/\d+/)?.[0],
     );
+    expect(before).toBeGreaterThan(0);
     await choose(page, 'Branch', 'Mandalay Distribution Center');
     await expect
       .poll(async () =>

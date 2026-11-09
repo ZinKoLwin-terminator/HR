@@ -1,6 +1,6 @@
 # Mock data and mock services
 
-## Mock data (`src/app/mock-data`)
+## Mock data (`ui/src/app/mock-data`)
 
 All sample data is centralized here; no screen contains business data.
 
@@ -25,7 +25,7 @@ Rules for sample data:
   unique ids, payroll totals matching payslips to the cent, leave vs attendance consistency).
 - Seed arrays are cloned into each mock service on creation; editing the app never mutates the seed.
 
-## Mock services (`src/app/mock-services`)
+## Mock services (`ui/src/app/mock-services`)
 
 ### Base class: `InMemoryCrudService<T, TList, TFilter>`
 

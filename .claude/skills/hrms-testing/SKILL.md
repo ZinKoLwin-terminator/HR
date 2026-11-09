@@ -20,7 +20,7 @@ After changes, before a merge, when adding coverage, or when tests fail.
 ## Workflow
 
 1. Identify the behaviours at risk from `git diff` and `docs/TEST-SCENARIOS.md`.
-2. Run what exists: `npm run test:ci`, then `npx playwright test` or `e2e/<module>.spec.ts`.
+2. Run what exists: `npm run test:ci`, then `npx playwright test` or `ui/e2e/<module>.spec.ts`.
 3. Classify each failure as product bug, test bug or environment problem.
 4. Add tests for uncovered behaviours and boundaries, using the known gaps in `docs/TESTING.md` as a guide.
 5. Re-run and report exact counts.

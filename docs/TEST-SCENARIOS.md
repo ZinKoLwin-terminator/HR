@@ -19,7 +19,7 @@ Derived from the implemented rules (see [HR-BUSINESS-ANALYSIS.md](HR-BUSINESS-AN
 
 ## 0. Seed Data Reference
 
-Scenarios below use these seeded records (`src/app/mock-data`). **Fixed** data never changes; **relative** data moves with today's date, so re-check counts when you run on another day. Figures were checked against the seed as of **2026-11-04**.
+Scenarios below use these seeded records (`ui/src/app/mock-data`). **Fixed** data never changes; **relative** data moves with today's date, so re-check counts when you run on another day. Figures were checked against the seed as of **2026-11-04**.
 
 ### 0.1 Fixed data
 
@@ -455,7 +455,7 @@ Run these after every build, then the full module tables before release.
 
 ## 13. Automation Coverage
 
-| Module | Playwright (`e2e/`) | Unit (`src/app/**`) |
+| Module | Playwright (`ui/e2e/`) | Unit (`ui/src/app/**`) |
 |---|---|---|
 | Employees, dates | `employees.spec.ts` | `employee-data.spec.ts`, `employee-screens.spec.ts`, `hrms-validators.spec.ts`, `date.util.spec.ts` |
 | Organization | `organization.spec.ts` | `organization-pages.spec.ts` |
@@ -493,7 +493,7 @@ Not automated yet: the calendar popup itself (DT-01 to DT-13, DT-16, DT-20), tim
 
 ## ၀။ Seed Data ကိုးကားစာရင်း
 
-အောက်ပါ scenario များသည် seed record များကိုသုံးသည် (`src/app/mock-data`)။ **Fixed** data မပြောင်းပါ။ **Relative** data က ယနေ့ရက်စွဲနှင့်အတူရွေ့သဖြင့် တခြားနေ့တွင် run လျှင် အရေအတွက်များကို ပြန်စစ်ပါ။ ကိန်းဂဏန်းများကို **၂၀၂၆-၁၁-၀၄** အရ seed နှင့်တိုက်စစ်ထားသည်။
+အောက်ပါ scenario များသည် seed record များကိုသုံးသည် (`ui/src/app/mock-data`)။ **Fixed** data မပြောင်းပါ။ **Relative** data က ယနေ့ရက်စွဲနှင့်အတူရွေ့သဖြင့် တခြားနေ့တွင် run လျှင် အရေအတွက်များကို ပြန်စစ်ပါ။ ကိန်းဂဏန်းများကို **၂၀၂၆-၁၁-၀၄** အရ seed နှင့်တိုက်စစ်ထားသည်။
 
 ### ၀.၁ Fixed data
 

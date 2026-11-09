@@ -1,13 +1,13 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # Compiled output
-/dist
-/tmp
-/out-tsc
-/bazel-out
+/ui/dist
+/ui/tmp
+/ui/out-tsc
+/ui/bazel-out
 
 # Node
-/node_modules
+/ui/node_modules
 npm-debug.log
 yarn-error.log
 
@@ -30,17 +30,17 @@ yarn-error.log
 .history/*
 
 # Miscellaneous
-/.angular/cache
+/ui/.angular/cache
 .sass-cache/
-/connect.lock
-/coverage
-/libpeerconnection.log
+/ui/connect.lock
+/ui/coverage
+/ui/libpeerconnection.log
 testem.log
-/typings
+/ui/typings
 __screenshots__/
-/playwright-report
-/test-results
-/blob-report
+/ui/playwright-report
+/ui/test-results
+/ui/blob-report
 
 # Claude Code personal settings
 .claude/settings.local.json

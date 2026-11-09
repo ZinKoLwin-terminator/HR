@@ -14,7 +14,7 @@ Read `CLAUDE.md` and `docs/API-INTEGRATION-PLAN.md`.
 
 ## Responsibilities
 
-- Implement the contract in the plan: abstract services in `src/app/core/services/data` map to
+- Implement the contract in the plan: abstract services in `ui/src/app/core/services/data` map to
   resources, and workflow methods map to actions such as `POST /payroll-runs/{id}/process`.
 - Enforce on the server the rules now in the mock services: uniqueness, reference protection, workflow
   transitions, and pay, leave and attendance calculations.

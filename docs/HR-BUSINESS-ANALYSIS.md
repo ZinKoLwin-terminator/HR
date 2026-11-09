@@ -15,7 +15,7 @@ Written for: a software developer learning enterprise HR processes. Code names, 
 
 `Screen (features/*)` → `abstract data contract (core/services/data/*)` → `mock service (mock-services/*)` → `pure calc (core/utilities/*)` → `seed data (mock-data/*)`
 
-State resets on page reload. Sign-in is a **demo simulation** (see README → Authentication): the signed-in user comes from [auth.service.ts](../src/app/core/services/auth.service.ts); roles are not enforced.
+State resets on page reload. Sign-in is a **demo simulation** (see README → Authentication): the signed-in user comes from [auth.service.ts](../ui/src/app/core/services/auth.service.ts); roles are not enforced.
 
 **Status labels:** **[I]** Implemented, **[P]** Partially implemented, **[N]** Not implemented, **[?]** Cannot be determined. A *"no code found"* claim means I searched or fully read the relevant services and found nothing.
 
@@ -55,12 +55,12 @@ flowchart LR
 ```
 
 - **Recruitment → Employee is [N].** In the recruitment service, employees appear only to validate the hiring manager and interviewer. Nothing turns a "Selected" candidate into an employee.
-- **Registration [I]:** the form requires name, gender, date of birth, marital status, nationality, national ID, work email, phone, address, emergency contact, employee code, type, status, joining date, company, branch, department, position, grade and bank details. Defaults ([employee-form.mapper.ts](../src/app/features/employees/employee-form/employee-form.mapper.ts)): Full-time, status **Probation**, probation end = today + 3 months.
+- **Registration [I]:** the form requires name, gender, date of birth, marital status, nationality, national ID, work email, phone, address, emergency contact, employee code, type, status, joining date, company, branch, department, position, grade and bank details. Defaults ([employee-form.mapper.ts](../ui/src/app/features/employees/employee-form/employee-form.mapper.ts)): Full-time, status **Probation**, probation end = today + 3 months.
 - **Employee code [I]:** `EMP` + highest number + 1, padded to 3 digits (e.g. `EMP061`).
 - **Status values:** Active, Probation, On Leave, Suspended, Resigned, Terminated. The first four count as current headcount.
 - **History [P]:** only certain changes are logged (below). **Documents [P]:** only file name and metadata are stored.
 
-**Business rules** ([employee-mock.service.ts](../src/app/mock-services/employees/employee-mock.service.ts)):
+**Business rules** ([employee-mock.service.ts](../ui/src/app/mock-services/employees/employee-mock.service.ts)):
 
 | Rule | Why | On failure |
 |---|---|---|
@@ -97,7 +97,7 @@ flowchart LR
 | Reporting relationships | **[P]**: person-level `employee.managerId` and position-level `reportsToPositionId` exist; the Reporting Structure screen was not traced |
 | Organization-change workflow or history | **[N]** |
 
-**Rules** ([organization-mock.services.ts](../src/app/mock-services/organization/organization-mock.services.ts)): unique codes (company name too); a department's branch belongs to its company; a position's section belongs to its department and a position can't report to itself; grade max ≥ min; referenced records can't be deleted ("Deactivate it instead").
+**Rules** ([organization-mock.services.ts](../ui/src/app/mock-services/organization/organization-mock.services.ts)): unique codes (company name too); a department's branch belongs to its company; a position's section belongs to its department and a position can't report to itself; grade max ≥ min; referenced records can't be deleted ("Deactivate it instead").
 
 **How the organization affects other modules:**
 
@@ -122,7 +122,7 @@ flowchart LR
   OT[Overtime request: Pending] -->|Approve| PAY[Payroll reads Approved OT]
 ```
 
-**Daily calculation** ([attendance-calc.ts](../src/app/core/utilities/attendance-calc.ts)):
+**Daily calculation** ([attendance-calc.ts](../ui/src/app/core/utilities/attendance-calc.ts)):
 
 | Item | Formula |
 |---|---|
@@ -159,7 +159,7 @@ stateDiagram-v2
   Approved --> Cancelled: only if start date is after today
 ```
 
-**Entitlement** ([leave-balance.ts](../src/app/core/utilities/leave-balance.ts)):
+**Entitlement** ([leave-balance.ts](../ui/src/app/core/utilities/leave-balance.ts)):
 
 1. Candidates are active policies for the leave type matching the employee's grade and employment type (null matches everyone).
 2. Candidates whose `minServiceMonths` isn't reached are dropped. The most specific wins (grade match = 2, employment-type match = 1; ties go to more days).
@@ -344,7 +344,7 @@ Approval depending on department, branch or reporting manager: **[N]**. Multi-le
 - Casual leave (monthly accrual): in November, 6 × 11 / 12 = **5.5** days.
 - A manager (grade 6) gets **18** annual days, because the grade policy outranks the default.
 
-**Payroll** ([payroll-calc.ts](../src/app/core/utilities/payroll-calc.ts)):
+**Payroll** ([payroll-calc.ts](../ui/src/app/core/utilities/payroll-calc.ts)):
 
 ```
 proration   = daysEmployed / calendarDaysInPeriod        (joiners/leavers; exit day inclusive)
@@ -452,7 +452,7 @@ net         = gross − (deductions + unpaid)
 
 `Screen (features/*)` → `data contract (core/services/data/*)` → `mock service (mock-services/*)` → `calculator (core/utilities/*)` → `seed data (mock-data/*)`
 
-Page ကို reload လုပ်ရင် data အားလုံး ပြန်ကျသွားပါမည်။ Login လည်း မရှိပါ။ [current-user.service.ts](../src/app/core/services/current-user.service.ts) မှာ "Su Myat Noe" (HR Administrator) ကို ပုံသေထားပြီး ဘာလုပ်လုပ် သူ့အနေနဲ့ပဲ လုပ်ပါသည်။
+Page ကို reload လုပ်ရင် data အားလုံး ပြန်ကျသွားပါမည်။ Login လည်း မရှိပါ။ [current-user.service.ts](../ui/src/app/core/services/current-user.service.ts) မှာ "Su Myat Noe" (HR Administrator) ကို ပုံသေထားပြီး ဘာလုပ်လုပ် သူ့အနေနဲ့ပဲ လုပ်ပါသည်။
 
 **Status အမှတ်အသား:** **[I]** အကောင်အထည်ပေါ်ပြီး၊ **[P]** တစ်စိတ်တစ်ပိုင်း၊ **[N]** မရှိသေး၊ **[?]** သေချာမသိနိုင်။
 
@@ -496,7 +496,7 @@ flowchart LR
 - **Employee code [I]:** `EMP` + အကြီးဆုံးနံပါတ် + ၁ (ဥပမာ `EMP061`)။
 - **Status:** Active, Probation, On Leave, Suspended, Resigned, Terminated။ ပထမ ၄ ခုက လက်ရှိ headcount ထဲပါသည်။
 
-**Business rules ([employee-mock.service.ts](../src/app/mock-services/employees/employee-mock.service.ts)):**
+**Business rules ([employee-mock.service.ts](../ui/src/app/mock-services/employees/employee-mock.service.ts)):**
 
 | Rule | အကြောင်းရင်း | မကိုက်ရင် |
 |---|---|---|
@@ -558,7 +558,7 @@ flowchart LR
   OT[Overtime request: Pending] -->|Approve| PAY[Payroll က Approved OT ကိုယူ]
 ```
 
-**နေ့စဉ်တွက်ချက်ပုံ ([attendance-calc.ts](../src/app/core/utilities/attendance-calc.ts)):**
+**နေ့စဉ်တွက်ချက်ပုံ ([attendance-calc.ts](../ui/src/app/core/utilities/attendance-calc.ts)):**
 
 | ကိစ္စ | ပုံသေနည်း |
 |---|---|
@@ -595,7 +595,7 @@ stateDiagram-v2
   Approved --> Cancelled: စတင်ရက် ယနေ့နောက်ဆိုမှသာ
 ```
 
-**Entitlement ရှာပုံ ([leave-balance.ts](../src/app/core/utilities/leave-balance.ts)):**
+**Entitlement ရှာပုံ ([leave-balance.ts](../ui/src/app/core/utilities/leave-balance.ts)):**
 
 1. Leave type တူပြီး employee ရဲ့ grade နှင့် employment type နှင့် ကိုက်တဲ့ Active policy များကို ရွေးသည် (null ဆိုရင် အားလုံးနဲ့ကိုက်)။
 2. `minServiceMonths` မပြည့်သေးသူတွေကို ဖယ်သည်။ ပိုတိကျသူက အနိုင်ရသည် (grade ကိုက် = ၂ မှတ်၊ type ကိုက် = ၁ မှတ်)။
@@ -782,7 +782,7 @@ Department၊ branch၊ reporting manager အပေါ် မူတည်တဲ�
 - Casual leave (monthly accrual): နိုဝင်ဘာမှာ 6 × 11 / 12 = **5.5 ရက်**။
 - Manager (grade 6): annual leave **၁၈ ရက်** (grade policy က default ကို အနိုင်ယူ)။
 
-**Payroll ပုံသေနည်း ([payroll-calc.ts](../src/app/core/utilities/payroll-calc.ts)):**
+**Payroll ပုံသေနည်း ([payroll-calc.ts](../ui/src/app/core/utilities/payroll-calc.ts)):**
 
 ```
 proration   = အလုပ်လုပ်ခဲ့ရက် / period ရက်ပေါင်း        (ဝင်/ထွက်ရက်ပါလျှင်၊ exit ရက်ကိုပါ ထည့်သွင်းတွက်)

@@ -60,6 +60,17 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "e2e": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/app/mock-data-options.ts",
+                  "with": "src/app/mock-data-options.e2e.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -75,13 +86,18 @@
             },
             "development": {
               "buildTarget": "hrms:build:development"
+            },
+            "e2e": {
+              "buildTarget": "hrms:build:e2e"
             }
           },
           "defaultConfiguration": "development"
         },
         "test": {
           "builder": "@angular/build:unit-test",
-          "options": { "setupFiles": ["src/test-setup.ts"] }
+          "options": {
+            "setupFiles": ["src/test-setup.ts"]
+          }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",

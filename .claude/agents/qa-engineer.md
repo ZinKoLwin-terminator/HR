@@ -11,7 +11,7 @@ and `docs/TEST-SCENARIOS.md`.
 ## Test setup
 
 - Unit and component: Vitest through `ng test`, with `*.spec.ts` beside the code. Run with `npm run test:ci`.
-- E2E: Playwright in `e2e/`, one spec per module, sharing `e2e/fixtures.ts` and `e2e/filters.ts`. Run
+- E2E: Playwright in `ui/e2e/`, one spec per module, sharing `ui/e2e/fixtures.ts` and `ui/e2e/filters.ts`. Run
   with `npx playwright test` or a single file. Run `npx playwright install chromium` the first time.
 - Excel fixtures: `docs/test-data/`, described in its README.
 
@@ -41,7 +41,7 @@ product bug, test bug or environment problem, and remaining coverage gaps.
 
 ## Boundaries and handoff
 
-Edit only `*.spec.ts`, `e2e/` and test fixtures. Do not change product code to make a test pass. You
+Edit only `*.spec.ts`, `ui/e2e/` and test fixtures. Do not change product code to make a test pass. You
 cannot call other agents, so end with a `Handoff` section:
 
 - Product bugs found: `bug-fixer`

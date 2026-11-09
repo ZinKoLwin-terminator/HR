@@ -83,7 +83,7 @@ so no screen changes.
 ## Styling and accessibility
 
 - Material 3 theme with light/dark (`ThemeService`), design tokens as CSS variables in
-  `src/styles.scss`, print rules for payslips.
+  `ui/src/styles.scss`, print rules for payslips.
 - ESLint enforces Angular template accessibility rules. Controls need accessible names; tables have
   captions; dialogs use `dialog`/`alertdialog` roles; the pipeline and permission matrix are
   keyboard-operable. See [TESTING.md](TESTING.md) for the automated sweep and its limits.
