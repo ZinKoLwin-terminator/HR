@@ -17,7 +17,11 @@ import {
   PositionDataService,
   SectionDataService,
 } from '../core/services/data/organization-data.services';
+import { EmployeeDataService } from '../core/services/data/employee-data.service';
+import { EmploymentHistoryDataService } from '../core/services/data/employee-extras-data.services';
 import { API_BASE_URL } from './api-base-url';
+import { EmployeeHttpService } from './employees/employee-http.service';
+import { EmploymentHistoryHttpService } from './employees/employment-history-http.service';
 import { apiAuthInterceptor } from './auth/api-auth.interceptor';
 import { AuthHttpService } from './auth/auth-http.service';
 import {
@@ -44,7 +48,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
 }
 
 /**
- * Binds ONLY the Organization contracts to HTTP. Every other contract stays on its mock
+ * Binds ONLY the Organization and Employee contracts (employees, employment history) to HTTP. Every other contract stays on its mock
  * (the adapter is per dependency cluster). Register it AFTER `provideMockDataServices()` so
  * these bindings win; `app.config.ts` does that and the switch defaults to off.
  */
@@ -65,6 +69,9 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(SectionDataService, SectionHttpService),
     bind(JobGradeDataService, JobGradeHttpService),
     bind(PositionDataService, PositionHttpService),
+    // Employees: list, record, personal, bank, status and read-only history.
+    bind(EmployeeDataService, EmployeeHttpService),
+    bind(EmploymentHistoryDataService, EmploymentHistoryHttpService),
     // Real sign-in: cookie session owned by the server, kept in memory only.
     bind(AuthDataService, AuthHttpService),
     { provide: SERVER_SESSION, useValue: true },
