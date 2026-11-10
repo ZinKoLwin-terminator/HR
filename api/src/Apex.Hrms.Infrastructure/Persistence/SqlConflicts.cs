@@ -36,6 +36,20 @@ internal static partial class SqlConflicts
         ["CK_Employee_ManagerNotSelf"] = "managerId",
         ["CK_Employee_ExitDateRequired"] = "exitDate",
         ["CK_Employee_EmergencyContactRelationship"] = "emergencyContact.relationship",
+        ["CK_LeaveApplication_DateOrder"] = "endDate",
+        ["CK_LeaveApplication_HalfDay"] = "endDate",
+        ["CK_LeaveApplication_RejectionReason"] = "remarks",
+    };
+
+    // Unique indexes and checks whose name does not end in a field, or that are conflicts rather than bad input.
+    private static readonly Dictionary<string, AppError> NamedConstraints = new Dictionary<string, AppError>(StringComparer.Ordinal)
+    {
+        ["UQ_LeavePolicy_ActiveGroup"] = AppError.Validation(
+            "An active policy already exists for this leave type, grade and employment type.",
+            "leaveTypeId",
+            "Another active policy covers the same group."),
+        ["UQ_LeaveApplication_ApplicationNo"] = AppError.Conflict("That application number is already in use. Try again."),
+        ["CK_LeaveApplication_NotOwnApprover"] = AppError.Conflict("You cannot decide your own leave request."),
     };
 
     private static readonly AppError ReferenceViolation = AppError.Conflict(
@@ -60,6 +74,13 @@ internal static partial class SqlConflicts
         }
 
         var constraint = ConstraintName(sqlMessage);
+        if (constraint is not null
+            && sqlErrorNumber is UniqueIndexViolation or UniqueConstraintViolation or ConstraintConflict
+            && NamedConstraints.TryGetValue(constraint, out var named))
+        {
+            return named;
+        }
+
         return sqlErrorNumber switch
         {
             UniqueIndexViolation or UniqueConstraintViolation => Unique(constraint),

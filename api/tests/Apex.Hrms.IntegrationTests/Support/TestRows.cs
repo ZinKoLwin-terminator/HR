@@ -47,6 +47,7 @@ internal static class TestRows
         await using var connection = new SqlConnection(SqlServerEnvironment.ConnectionString);
         await connection.OpenAsync();
         await DeleteAccountsAsync(connection, pattern);
+        await DeleteLeaveAsync(connection, pattern);
         await DeleteEmployeesAsync(connection, pattern);
         foreach (var table in TablesChildToParent)
         {
@@ -67,6 +68,10 @@ internal static class TestRows
         await CountInto(counts, connection, "sec.AppUser", "LOWER(Email) LIKE LOWER(@pattern)", pattern);
         await CountInto(counts, connection, "sec.Role", "Name LIKE @pattern", pattern);
         await CountInto(counts, connection, "hr.Employee", "LOWER(WorkEmail) LIKE LOWER(@pattern)", pattern);
+        await CountInto(counts, connection, "lve.LeaveApplication", $"EmployeeId IN ({TaggedEmployees})", pattern);
+        await CountInto(counts, connection, "lve.LeavePolicy", "Name LIKE @pattern", pattern);
+        await CountInto(counts, connection, "lve.LeaveType", "Code LIKE @pattern", pattern);
+        await CountInto(counts, connection, "att.Holiday", "Name LIKE @pattern", pattern);
         foreach (var table in TablesChildToParent)
         {
             await CountInto(counts, connection, table, "Code LIKE @pattern", pattern);
@@ -86,6 +91,25 @@ internal static class TestRows
         await ExecuteAsync(connection, pattern, "DELETE FROM sec.AppUser WHERE LOWER(Email) LIKE LOWER(@pattern)");
         await ExecuteAsync(connection, pattern, "DELETE FROM auth.[User] WHERE LOWER(Email) LIKE LOWER(@pattern)");
         await ExecuteAsync(connection, pattern, "DELETE FROM sec.Role WHERE Name LIKE @pattern");
+    }
+
+    /// <summary>
+    /// Child to parent: the applications of tagged employees or tagged leave types, the policies of tagged leave types or
+    /// job grades, the tagged leave types, and the tagged holidays. Before the employees and the organization rows they point at.
+    /// </summary>
+    private static async Task DeleteLeaveAsync(SqlConnection connection, string pattern)
+    {
+        const string TaggedTypes = "SELECT Id FROM lve.LeaveType WHERE Code LIKE @pattern";
+        await ExecuteAsync(
+            connection,
+            pattern,
+            $"DELETE FROM lve.LeaveApplication WHERE EmployeeId IN ({TaggedEmployees}) OR ApproverEmployeeId IN ({TaggedEmployees}) OR LeaveTypeId IN ({TaggedTypes})");
+        await ExecuteAsync(
+            connection,
+            pattern,
+            $"DELETE FROM lve.LeavePolicy WHERE LeaveTypeId IN ({TaggedTypes}) OR JobGradeId IN (SELECT Id FROM org.JobGrade WHERE Code LIKE @pattern)");
+        await ExecuteAsync(connection, pattern, "DELETE FROM lve.LeaveType WHERE Code LIKE @pattern");
+        await ExecuteAsync(connection, pattern, "DELETE FROM att.Holiday WHERE Name LIKE @pattern");
     }
 
     private static async Task DeleteEmployeesAsync(SqlConnection connection, string pattern)

@@ -49,10 +49,13 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     private static bool IsEmployeeRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/employees", StringComparison.Ordinal);
 
+    private static bool IsLeaveRoute(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText!.StartsWith("/api/leave", StringComparison.Ordinal);
+
     [Fact]
     public void Six_organization_resources_map_eight_endpoints_each()
     {
-        var endpoints = ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint)).ToList();
+        var endpoints = ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint)).ToList();
 
         Assert.Equal(48, endpoints.Count);
     }
@@ -112,6 +115,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
             [
                 "employees:Create", "employees:Delete", "employees:Edit", "employees:EditBank", "employees:EditSensitive",
                 "employees:View", "employees:ViewBank", "employees:ViewSensitive",
+                "leave:Approve", "leave:Create", "leave:Delete", "leave:Edit", "leave:View",
                 "organization:Create", "organization:Delete", "organization:Edit", "organization:View",
             ],
             policies.Order(StringComparer.Ordinal));
@@ -120,7 +124,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     [Fact]
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
-        foreach (var endpoint in ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint)))
+        foreach (var endpoint in ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);
@@ -137,5 +141,42 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
             var policy = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy;
             Assert.True(expected == policy, $"{endpoint.DisplayName}: expected {expected} but found {policy}");
         }
+    }
+
+    private Dictionary<string, string?> LeavePolicies() => ApiEndpoints().Where(IsLeaveRoute)
+        .ToDictionary(
+            endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+            endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
+
+    [Fact]
+    public void Leave_maps_twenty_seven_endpoints_and_no_unpaged_application_list()
+    {
+        var policies = LeavePolicies();
+
+        Assert.Equal(27, policies.Count);
+        Assert.DoesNotContain("GET /api/leave-applications/", policies.Keys);
+        Assert.Contains("GET /api/leave-types/", policies.Keys);
+        Assert.Contains("GET /api/leave-policies/", policies.Keys);
+    }
+
+    [Fact]
+    public void Leave_workflow_endpoints_have_the_policy_of_who_may_use_them()
+    {
+        var policies = LeavePolicies();
+
+        Assert.Equal("leave:View", policies["GET /api/leave-applications/query"]);
+        Assert.Equal("leave:View", policies["GET /api/leave-applications/{id:int}"]);
+        Assert.Equal("leave:Create", policies["POST /api/leave-applications/"]);
+        Assert.Equal("leave:Edit", policies["PUT /api/leave-applications/{id:int}"]);
+        Assert.Equal("leave:Delete", policies["DELETE /api/leave-applications/{id:int}"]);
+        Assert.Equal("leave:Create", policies["POST /api/leave-applications/{id:int}/submit"]);
+        Assert.Equal("leave:Create", policies["POST /api/leave-applications/{id:int}/cancel"]);
+        Assert.Equal("leave:Approve", policies["POST /api/leave-applications/{id:int}/approve"]);
+        Assert.Equal("leave:Approve", policies["POST /api/leave-applications/{id:int}/reject"]);
+        Assert.Equal("leave:View", policies["GET /api/leave/balances"]);
+        Assert.Equal("leave:View", policies["GET /api/leave/calendar"]);
+        Assert.Equal("leave:Edit", policies["POST /api/leave-types/{id:int}/activate"]);
+        Assert.Equal("leave:Edit", policies["POST /api/leave-policies/{id:int}/deactivate"]);
+        Assert.Equal("leave:Delete", policies["DELETE /api/leave-types/{id:int}"]);
     }
 }

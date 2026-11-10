@@ -33,6 +33,7 @@ if (app.Environment.IsDevelopment())
 app.MapAuthEndpoints();
 app.MapOrganizationEndpoints();
 app.MapEmployeeEndpoints();
+app.MapLeaveEndpoints();
 
 await app.RunAsync();
 return 0;

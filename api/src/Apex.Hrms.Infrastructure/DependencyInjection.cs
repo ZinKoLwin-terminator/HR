@@ -42,6 +42,9 @@ public static class DependencyInjection
         services.AddScoped(typeof(IRecordCounter<>), typeof(EfRecordCounter<>));
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IEmployeeCodeSequence, EfEmployeeCodeSequence>();
+        services.AddScoped<ILeaveApplicationNumberSequence, EfLeaveApplicationNumberSequence>();
+        services.AddSingleton<IBusinessWeek>(ConfiguredBusinessWeek.From(
+            configuration.GetSection(ConfiguredBusinessWeek.ConfigurationKey).Get<string[]>()));
 
         services.AddScoped<IAccountDirectory, EfAccountDirectory>();
         services.AddScoped<IAdministratorStore, EfAdministratorStore>();

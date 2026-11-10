@@ -8,6 +8,9 @@ internal enum Permission
     Edit,
     Delete,
 
+    /// <summary>Decide a workflow request (leave: approve or reject). Sort order 5 in the database seed.</summary>
+    Approve,
+
     /// <summary>Read personal data (national id, date of birth, personal contact, address, emergency contact, documents).</summary>
     ViewSensitive,
 
@@ -37,7 +40,9 @@ internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Pe
         "employees",
         [.. Standard, Permission.ViewSensitive, Permission.EditSensitive, Permission.ViewBank, Permission.EditBank]);
 
-    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees];
+    public static readonly PermissionModule Leave = new("leave", [.. Standard, Permission.Approve]);
+
+    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave];
 
     public string PolicyName(Permission permission) => $"{Key}:{permission}";
 }

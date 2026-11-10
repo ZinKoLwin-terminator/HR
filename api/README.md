@@ -27,6 +27,7 @@ Without a database you cannot sign in: create the first administrator with the `
 | --- | --- |
 | `ConnectionStrings:Hrms` | SQL Server connection string (required). |
 | `Business:TimeZone` | Time zone that defines "today" for rules such as "opened date cannot be in the future". Default `Asia/Yangon`. An unknown value stops the API at startup. |
+| `Business:WeekendDays` | Days of the week that are not working days, for leave day counts and the leave calendar: a list of day names, default `["Saturday", "Sunday"]`. An unknown name stops the API at startup. |
 | `Cors:AllowedOrigins` | Origins the browser frontend may call from. |
 | `AllowedHosts` | `;`-separated exact host names. `*` is only accepted in Development; any other environment refuses to start with a missing or wildcard value. |
 | `Auth:DevelopmentCookieName` | Development only: session cookie name (default `hrms-dev`). Outside Development the name is always `__Host-hrms`. |
@@ -107,6 +108,8 @@ Database errors that slip past the rules are translated by constraint name, neve
 | 2601 / 2627 unique violation `UQ_<Table>_Code`, `UQ_Company_Name` | `400` Validation on `code` / `name` |
 | 547 CHECK `CK_<Table>_<Field>` | `400` Validation on that field |
 | 547 FOREIGN KEY / REFERENCE | `409` Conflict |
+| `UQ_LeavePolicy_ActiveGroup` | `400` Validation on `leaveTypeId` |
+| `UQ_LeaveApplication_ApplicationNo`, `CK_LeaveApplication_NotOwnApprover` | `409` Conflict |
 | THROW 51001-51004 (paid payroll run is final) | `409` Conflict |
 
 `traceId` is `Activity.Current.Id` or the request trace identifier. The server log for an unexpected error has the
@@ -180,6 +183,66 @@ email, phones, address or emergency contact.** Those live behind `/personal`; th
 * Documents (`hr.EmployeeDocument`) are mapped and modelled in the domain but have no endpoints yet.
 * Organization deletes and moves count employees through the view `hr.EmployeeOrgLink` (placement without personal data),
   not through `hr.Employee`; the view and the sequence must exist in the target database.
+
+## HTTP contract (leave module)
+
+Three resources, two reads and four workflow commands. Policies: `leave:View`, `leave:Create`, `leave:Edit`,
+`leave:Delete`, `leave:Approve` (placeholders until phase 3, like every module policy). Balances are never stored (the
+schema has no balance table): they are worked out from the leave applications on every request.
+
+| Route | Policy | Body | Returns |
+| --- | --- | --- | --- |
+| `GET/POST /api/leave-types`, `GET /query`, `GET/PUT/DELETE /{id}`, `POST /{id}/activate` and `/deactivate` | View / Create / View / View / Edit / Delete / Edit | as the organization resources | `LeaveTypeDto` |
+| `GET/POST /api/leave-policies`, `GET /query`, `GET/PUT/DELETE /{id}`, `POST /{id}/activate` and `/deactivate` | View / Create / View / View / Edit / Delete / Edit | as the organization resources | `LeavePolicyDto` |
+| `GET /api/leave-applications/query?pageIndex&pageSize&sort&search&employeeId&leaveTypeId&status&dateFrom&dateTo` | `leave:View` | none | `PagedResult<LeaveApplicationDto>`; `dateFrom`/`dateTo` match as an overlap with the leave dates; search is application number or reason |
+| `GET /api/leave-applications/{id}` | `leave:View` | none | `LeaveApplicationDto` |
+| `POST /api/leave-applications` | `leave:Create` | `{ employeeId, leaveTypeId, startDate, endDate, halfDay, reason, documentName? }` | `201` + `Location`, a **Draft** |
+| `PUT /api/leave-applications/{id}` | `leave:Edit` | the same fields + `rowVersion` | `LeaveApplicationDto`; drafts only (`409` otherwise) |
+| `DELETE /api/leave-applications/{id}` | `leave:Delete` | `{ rowVersion }` | `204`; drafts only (`409` otherwise) |
+| `POST /api/leave-applications/{id}/submit` | `leave:Create` | `{ rowVersion }` | Draft to Submitted |
+| `POST /api/leave-applications/{id}/approve` | `leave:Approve` | `{ rowVersion, remarks? }` | Submitted to Approved; remarks optional (default `Approved.`) |
+| `POST /api/leave-applications/{id}/reject` | `leave:Approve` | `{ rowVersion, remarks }` | Submitted to Rejected; remarks required (`400` on `remarks`) |
+| `POST /api/leave-applications/{id}/cancel` | `leave:Create` | `{ rowVersion, remarks? }` | Submitted, or Approved leave that has not started, to Cancelled (default remarks `Cancelled.`) |
+| `GET /api/leave/balances?employeeId&year?` | `leave:View` | none | `LeaveBalanceDto[]` (`leaveTypeId, code, name, color, entitled, taken, pending, available`); `year` defaults to the current year; `404` unknown employee, `400` year outside 2000-2100 |
+| `GET /api/leave/calendar?from&to&departmentId?&leaveTypeId?&includePending?` | `leave:View` | none | `{ from, to, days: [{ date, isWeekend, holiday, entries: [{ applicationId, employeeId, employeeName, leaveTypeId, leaveTypeName, color, status, halfDay }] }] }`; at most 366 days; `includePending` defaults to true |
+
+`LeaveApplicationDto`: `id, applicationNo, employeeId, leaveTypeId, startDate, endDate, days, halfDay, reason,
+documentName, status, appliedOn, approverId, actionedByName, actionedOn, approverRemarks, rowVersion`. Dates are
+`yyyy-MM-dd`. `approverId` is the employee who approved or rejected and is null for the built-in administrator;
+`actionedByName` is the display name kept at the time of the approval, rejection or cancellation.
+
+* **No unpaged application list:** `GET /api/leave-applications` answers `405` (applications carry reasons, sometimes
+  medical). Leave types and policies keep the plain list like the organization resources.
+* **Application number** `LV-yyyy-nnnn`: the year of the application date and the next number of
+  `lve.LeaveApplicationNoSeq` (a running number that does not restart each year), skipping numbers already in use.
+* **Days:** half day = 0.5 (single date); otherwise the working days between the dates, leaving out the weekend days
+  (`Business:WeekendDays`, default Saturday and Sunday) and the dates in `att.Holiday`. At most 366 days per request;
+  no working day is a `400` on `endDate`. The server ignores a `days` sent by the client.
+* **Transition table:** Draft to Submitted; Submitted to Approved or Rejected; Submitted or (Approved and start date after
+  today) to Cancelled. Anything else is a `409` with the status named. Drafts cannot be cancelled (as in the mock): they
+  are deleted.
+* **Create/update rules:** employee exists; leave type active and open to the employee's gender; start not before the
+  joining date; days at most the type's maximum consecutive days; no overlap with Submitted or Approved leave of the same
+  employee (checked again on submit); reason required.
+* **Submit rules:** the document name when the type requires one (only the name is stored; no file upload exists yet);
+  enough balance for the year the leave starts in (days must not exceed available). A cancelled or rejected application
+  frees its days.
+* **Own leave:** the caller whose `employeeId` equals the application's employee cannot approve or reject it (`409`
+  `You cannot decide your own leave request.`). The built-in administrator (no employee) can; the database CHECK
+  `CK_LeaveApplication_NotOwnApprover` backs the rule for approvers that are employees.
+* **Entitlement:** active policies of the type matching the employee's grade and employment type (null matches all)
+  are candidates; the most specific wins (grade 2 points, employment type 1 point, then more days); candidates whose
+  `minServiceMonths` is not reached are skipped; no candidate means the type's default days; candidates but none
+  satisfied means 0; monthly accrual grants `days x month / 12` of the as-of month rounded to half days. "As of" is today
+  for the current year and 31 December for any other year. `taken` is Approved days and `pending` is Submitted days of leave
+  that starts in the year; `available = max(0, entitled - taken - pending)`.
+* **Policies:** at most one active policy per leave type, grade and employment type (`400` on `leaveTypeId`; also on
+  activation and when an active policy's group is edited into another's). The database has the filtered unique index
+  `UQ_LeavePolicy_ActiveGroup` as backstop.
+* **Delete protection:** a leave type used by applications or policies, a job grade used by policies and an employee with
+  leave applications (as employee or approver) cannot be deleted (`409`, "Deactivate it instead" wording for types).
+* Not ported: the mock marked past attendance records as "On Leave" when leave was approved; the attendance module is
+  not in the API yet.
 
 ## Authentication (phase 1)
 

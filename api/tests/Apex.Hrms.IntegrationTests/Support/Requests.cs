@@ -1,4 +1,7 @@
 using Apex.Hrms.Application.Employees;
+using Apex.Hrms.Application.Leave.Applications;
+using Apex.Hrms.Application.Leave.LeavePolicies;
+using Apex.Hrms.Application.Leave.LeaveTypes;
 using Apex.Hrms.Application.Organization.Branches;
 using Apex.Hrms.Application.Organization.Companies;
 using Apex.Hrms.Application.Organization.Departments;
@@ -255,6 +258,84 @@ public sealed class Requests(string tag)
         current.JoiningDate,
         current.ProbationEndDate,
         Version(current.RowVersion));
+
+    /// <summary>A valid leave type; the code carries the tag so the cleanup finds it.</summary>
+    public LeaveTypeCreateRequest LeaveType(
+        string code = "AL",
+        string name = "Annual Leave",
+        decimal days = 15m,
+        short maxConsecutive = 10,
+        bool requiresDocument = false,
+        string? gender = null,
+        string status = "Active") => new(
+        Code(code),
+        Name(name),
+        Description: null,
+        days,
+        IsPaid: true,
+        requiresDocument,
+        maxConsecutive,
+        CarryForward: false,
+        MaxCarryForwardDays: 0m,
+        "#3f6fd8",
+        gender,
+        status);
+
+    public static LeaveTypeUpdateRequest LeaveTypeUpdate(LeaveTypeDto current, string? name = null, decimal? days = null) => new(
+        current.Code,
+        name ?? current.Name,
+        current.Description,
+        days ?? current.DefaultDaysPerYear,
+        current.IsPaid,
+        current.RequiresDocument,
+        current.MaxConsecutiveDays,
+        current.CarryForward,
+        current.MaxCarryForwardDays,
+        current.Color,
+        current.EligibleGender,
+        Version(current.RowVersion));
+
+    /// <summary>A valid leave policy; the name starts with the tag.</summary>
+    public LeavePolicyCreateRequest LeavePolicy(
+        int leaveTypeId,
+        string name = "Standard",
+        int? jobGradeId = null,
+        string? employmentType = null,
+        decimal days = 15m,
+        string accrual = "Upfront",
+        short minServiceMonths = 0,
+        string status = "Active") => new(Name(name), leaveTypeId, jobGradeId, employmentType, days, accrual, minServiceMonths, status);
+
+    public static LeavePolicyUpdateRequest LeavePolicyUpdate(LeavePolicyDto current, decimal? days = null) => new(
+        current.Name,
+        current.LeaveTypeId,
+        current.JobGradeId,
+        current.EmploymentType,
+        days ?? current.DaysPerYear,
+        current.Accrual,
+        current.MinServiceMonths,
+        Version(current.RowVersion));
+
+    public static LeaveApplicationCreateRequest LeaveApplication(
+        int employeeId,
+        int leaveTypeId,
+        DateOnly start,
+        DateOnly? end = null,
+        bool halfDay = false,
+        string? documentName = null) => new(employeeId, leaveTypeId, start, end ?? start, halfDay, "Family matter", documentName);
+
+    public static LeaveApplicationUpdateRequest LeaveApplicationUpdate(LeaveApplicationDto current, DateOnly end) => new(
+        current.EmployeeId,
+        current.LeaveTypeId,
+        current.StartDate,
+        end,
+        current.HalfDay,
+        current.Reason,
+        current.DocumentName,
+        Version(current.RowVersion));
+
+    /// <summary>The name of a test holiday: it starts with the tag followed by a dash, as the cleanup expects.</summary>
+    public string HolidayName(string text = "holiday") => $"{tag}-{text}";
 
     private string Code(string suffix) => $"{tag}-{suffix}";
 

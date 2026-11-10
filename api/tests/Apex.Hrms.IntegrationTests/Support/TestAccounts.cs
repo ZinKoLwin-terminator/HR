@@ -27,7 +27,8 @@ internal static class TestAccounts
         string status = "Active",
         string roleName = AdministratorRole,
         bool lockoutEnabled = true,
-        bool linkAccount = true)
+        bool linkAccount = true,
+        int? employeeId = null)
     {
         password ??= NewPassword();
         var authUserId = Guid.NewGuid().ToString();
@@ -55,12 +56,13 @@ internal static class TestAccounts
             """
             INSERT INTO sec.AppUser (EmployeeId, DisplayName, Email, RoleId, Status, ExternalSubject)
             OUTPUT INSERTED.Id
-            SELECT NULL, N'TST- Test Person', @email, r.Id, @status, @subject FROM sec.Role r WHERE r.Name = @role;
+            SELECT @employeeId, N'TST- Test Person', @email, r.Id, @status, @subject FROM sec.Role r WHERE r.Name = @role;
             """,
             ("@email", email),
             ("@status", status),
             ("@subject", authUserId),
-            ("@role", roleName));
+            ("@role", roleName),
+            ("@employeeId", employeeId));
         return new TestAccount(email, password, authUserId, accountId);
     }
 
@@ -88,11 +90,11 @@ internal static class TestAdministrator
 }
 
 /// <summary>A fake signed-in caller (a TST- user) for tests that call the handlers directly, without a request.</summary>
-internal sealed class TestCurrentUser(int? userId, string displayName, bool isSystem = false) : ICurrentUser
+internal sealed class TestCurrentUser(int? userId, string displayName, bool isSystem = false, int? employeeId = null) : ICurrentUser
 {
     public int? UserId { get; } = userId;
 
-    public int? EmployeeId => null;
+    public int? EmployeeId { get; } = employeeId;
 
     public bool IsAuthenticated => UserId is not null;
 

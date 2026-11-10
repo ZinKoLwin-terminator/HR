@@ -11,6 +11,7 @@ using Apex.Hrms.Application.Organization.Sections;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
+using Apex.Hrms.Domain.Leave;
 using Apex.Hrms.Domain.Organization;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -41,7 +42,12 @@ internal sealed class TestHost : IDisposable
         AddCounter<JobGrade>(services);
         AddCounter<Position>(services);
         AddCounter<Employee>(services);
+        AddCounter<LeaveType>(services);
+        AddCounter<LeavePolicy>(services);
+        AddCounter<LeaveApplication>(services);
         services.AddSingleton<IEmployeeCodeSequence>(CodeSequence);
+        services.AddSingleton<ILeaveApplicationNumberSequence>(LeaveNumbers);
+        services.AddSingleton<IBusinessWeek>(Week);
         services.AddApplication();
         configure?.Invoke(services);
         provider = services.BuildServiceProvider();
@@ -59,6 +65,11 @@ internal sealed class TestHost : IDisposable
 
     public FakeEmployeeCodeSequence CodeSequence { get; } = new();
 
+    public FakeLeaveNumberSequence LeaveNumbers { get; } = new();
+
+    /// <summary>Saturday and Sunday are the weekend unless a test changes it.</summary>
+    public FakeBusinessWeek Week { get; } = new();
+
     public InMemoryRepository<TEntity> Repository<TEntity>()
         where TEntity : AuditedEntity =>
         (InMemoryRepository<TEntity>)provider.GetRequiredService<IRepository<TEntity>>();
@@ -66,6 +77,10 @@ internal sealed class TestHost : IDisposable
     public T Get<T>()
         where T : notnull =>
         provider.GetRequiredService<T>();
+
+    public T? GetOrDefault<T>()
+        where T : class =>
+        provider.GetService<T>();
 
     public void Dispose() => provider.Dispose();
 

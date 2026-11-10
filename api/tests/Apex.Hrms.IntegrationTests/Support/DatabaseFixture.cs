@@ -62,7 +62,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
             var detail = string.Join(", ", leftovers.Select(pair => $"{pair.Key}: {pair.Value}"));
             throw new InvalidOperationException(
                 $"{problem} {leftovers.Values.Sum()} row(s) tagged '{TestRows.TagFamily}' (code, work email, account email or role name) remain in {SqlServerEnvironment.DatabaseName} ({detail}). " +
-                $"Delete them (child tables first: accounts, employees, then org tables) in that database only.");
+                $"Delete them (child tables first: accounts, leave applications, policies and types, employees, then org tables) in that database only.");
         }
     }
 }

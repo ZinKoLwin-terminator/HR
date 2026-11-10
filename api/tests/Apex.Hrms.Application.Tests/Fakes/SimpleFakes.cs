@@ -35,8 +35,10 @@ internal sealed class FakeUnitOfWork(FakeDatabase database) : IUnitOfWork
 
 internal sealed class FakeCurrentUser : ICurrentUser
 {
-    public int? UserId { get; set; }
+    /// <summary>The signed-in account; set to null for an anonymous caller.</summary>
+    public int? UserId { get; set; } = 1;
 
+    /// <summary>The employee linked to the account; null is the built-in administrator.</summary>
     public int? EmployeeId { get; set; }
 
     public bool IsAuthenticated { get; set; } = true;
@@ -56,6 +58,27 @@ internal sealed class FakeEmployees : IRecordCounter<EmployeeOrgLink>
 
     public Task<int> CountAsync(Expression<Func<EmployeeOrgLink, bool>> predicate, CancellationToken cancellationToken) =>
         Task.FromResult(employees.Count(predicate.Compile()));
+}
+
+/// <summary>A sequence that counts up from 1, like lve.LeaveApplicationNoSeq.</summary>
+internal sealed class FakeLeaveNumberSequence : ILeaveApplicationNumberSequence
+{
+    private int last;
+
+    public Task<int> NextAsync(CancellationToken cancellationToken) => Task.FromResult(++last);
+
+    /// <summary>Burns numbers, as a rolled-back transaction or another session would.</summary>
+    public void Skip(int count) => last += count;
+
+    /// <summary>Starts counting from 1 again, so the next numbers are ones already in use.</summary>
+    public void Reset() => last = 0;
+}
+
+internal sealed class FakeBusinessWeek : IBusinessWeek
+{
+    public HashSet<DayOfWeek> Days { get; } = [DayOfWeek.Saturday, DayOfWeek.Sunday];
+
+    public IReadOnlySet<DayOfWeek> WeekendDays => Days;
 }
 
 /// <summary>A sequence that counts up from 1, like hr.EmployeeCodeSeq.</summary>

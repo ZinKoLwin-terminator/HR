@@ -1,6 +1,9 @@
 using Apex.Hrms.Application;
 using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Employees;
+using Apex.Hrms.Application.Leave.Applications;
+using Apex.Hrms.Application.Leave.LeavePolicies;
+using Apex.Hrms.Application.Leave.LeaveTypes;
 using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Application.Organization.Branches;
 using Apex.Hrms.Application.Organization.Companies;
@@ -36,6 +39,9 @@ public abstract class DatabaseTest : IAsyncLifetime
 
     /// <summary>Valid requests whose codes and names carry this test's tag.</summary>
     protected Requests Requests { get; }
+
+    /// <summary>The employee linked to the fake signed-in user of the handlers; null (the default) is the built-in administrator.</summary>
+    protected int? CurrentEmployeeId { get; set; }
 
     /// <summary>The clock the audit stamps use; advance it to see <c>ModifiedAtUtc</c> move.</summary>
     protected TestTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 9, 8, 0, 0, 123, TimeSpan.Zero));
@@ -128,6 +134,22 @@ public abstract class DatabaseTest : IAsyncLifetime
         InScopeAsync(sp => sp.GetRequiredService<ICommandHandler<DeactivateCommand, TDto>>()
             .HandleAsync(new DeactivateCommand(id, rowVersion), default));
 
+    protected Task<Result<TDto>> RunCommand<TCommand, TDto>(TCommand command)
+        where TCommand : IEntityCommand =>
+        InScopeAsync(sp => sp.GetRequiredService<ICommandHandler<TCommand, TDto>>().HandleAsync(command, default));
+
+    protected Task<Result<LeaveTypeDto>> Create(LeaveTypeCreateRequest request) => CreateAsync<LeaveTypeCreateRequest, LeaveTypeDto>(request);
+
+    protected Task<Result<LeavePolicyDto>> Create(LeavePolicyCreateRequest request) => CreateAsync<LeavePolicyCreateRequest, LeavePolicyDto>(request);
+
+    protected Task<Result<LeaveApplicationDto>> Create(LeaveApplicationCreateRequest request) => CreateAsync<LeaveApplicationCreateRequest, LeaveApplicationDto>(request);
+
+    protected Task<Result<LeaveTypeDto>> Update(int id, LeaveTypeUpdateRequest request) => UpdateAsync<LeaveTypeUpdateRequest, LeaveTypeDto>(id, request);
+
+    protected Task<Result<LeavePolicyDto>> Update(int id, LeavePolicyUpdateRequest request) => UpdateAsync<LeavePolicyUpdateRequest, LeavePolicyDto>(id, request);
+
+    protected Task<Result<LeaveApplicationDto>> Update(int id, LeaveApplicationUpdateRequest request) => UpdateAsync<LeaveApplicationUpdateRequest, LeaveApplicationDto>(id, request);
+
     protected Task<Result<PagedResult<TDto>>> Query<TDto, TFilter>(PageRequest<TFilter> request) =>
         InScopeAsync(sp => sp.GetRequiredService<IQueryHandler<TDto, TFilter>>().HandleAsync(request, default));
 
@@ -167,6 +189,22 @@ public abstract class DatabaseTest : IAsyncLifetime
         string? codeSuffix = "1",
         string local = "mia") =>
         Succeeded(await Create(Requests.Employee(org.Company.Id, org.Branch.Id, org.Department.Id, org.Position.Id, org.Grade.Id, codeSuffix, local)));
+
+    protected async Task<LeaveTypeDto> SeedLeaveTypeAsync(string code = "AL", string name = "Annual Leave", decimal days = 15m, short maxConsecutive = 10, bool requiresDocument = false, string? gender = null) =>
+        Succeeded(await Create(Requests.LeaveType(code, name, days, maxConsecutive, requiresDocument, gender)));
+
+    protected async Task<LeavePolicyDto> SeedLeavePolicyAsync(int leaveTypeId, string name = "Standard", int? jobGradeId = null, string? employmentType = null, decimal days = 15m, string accrual = "Upfront", short minServiceMonths = 0) =>
+        Succeeded(await Create(Requests.LeavePolicy(leaveTypeId, name, jobGradeId, employmentType, days, accrual, minServiceMonths)));
+
+    protected async Task<LeaveApplicationDto> SeedLeaveApplicationAsync(int employeeId, int leaveTypeId, DateOnly start, DateOnly? end = null, bool halfDay = false) =>
+        Succeeded(await Create(Requests.LeaveApplication(employeeId, leaveTypeId, start, end, halfDay)));
+
+    /// <summary>Creates a draft and submits it.</summary>
+    protected async Task<LeaveApplicationDto> SeedSubmittedLeaveAsync(int employeeId, int leaveTypeId, DateOnly start, DateOnly? end = null)
+    {
+        var draft = await SeedLeaveApplicationAsync(employeeId, leaveTypeId, start, end);
+        return Succeeded(await RunCommand<SubmitLeaveCommand, LeaveApplicationDto>(new SubmitLeaveCommand(draft.Id, Requests.Version(draft.RowVersion))));
+    }
 
     protected static T Succeeded<T>(Result<T> result)
     {
@@ -211,7 +249,7 @@ public abstract class DatabaseTest : IAsyncLifetime
         services.AddApplication().AddInfrastructure(configuration);
 
         // No request here, so there is no cookie: a fake signed-in TST- user stands in (the audit rule rejects anonymous writes).
-        services.AddScoped<ICurrentUser>(_ => new TestCurrentUser(TestAdministrator.AccountId, $"{Tag} Test User"));
+        services.AddScoped<ICurrentUser>(_ => new TestCurrentUser(TestAdministrator.AccountId, $"{Tag} Test User", employeeId: CurrentEmployeeId));
         DecorateUnitOfWork(services);
         foreach (var change in customizations)
         {
