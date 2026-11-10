@@ -40,6 +40,8 @@ export abstract class HttpCrudService<T extends ApiEntity> implements CrudDataSe
   protected abstract readonly resource: string;
   /** Filter keys the API accepts for this resource. Others are not sent. */
   protected abstract readonly filterKeys: readonly string[];
+  /** When set, only these sort keys are sent (the API rejects unknown keys); others are dropped. */
+  protected readonly sortKeys?: readonly string[];
 
   private get url(): string {
     return `${this.baseUrl}/${this.resource}`;
@@ -157,7 +159,11 @@ export abstract class HttpCrudService<T extends ApiEntity> implements CrudDataSe
     let params = new HttpParams()
       .set('pageIndex', request.pageIndex)
       .set('pageSize', request.pageSize);
-    if (request.sort?.active && request.sort.direction) {
+    if (
+      request.sort?.active &&
+      request.sort.direction &&
+      (!this.sortKeys || this.sortKeys.includes(request.sort.active))
+    ) {
       params = params.set('sort', `${request.sort.active}:${request.sort.direction}`);
     }
     const search = request.search?.trim().slice(0, MAX_SEARCH_LENGTH);
