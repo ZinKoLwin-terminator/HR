@@ -48,7 +48,9 @@ internal static class TestRows
         await connection.OpenAsync();
         await DeleteAccountsAsync(connection, pattern);
         await DeleteLeaveAsync(connection, pattern);
+        await DeleteAttendanceOfEmployeesAsync(connection, pattern);
         await DeleteEmployeesAsync(connection, pattern);
+        await DeleteShiftsAsync(connection, pattern);
         foreach (var table in TablesChildToParent)
         {
             await using var command = new SqlCommand($"DELETE FROM {table} WHERE Code LIKE @pattern", connection);
@@ -72,6 +74,10 @@ internal static class TestRows
         await CountInto(counts, connection, "lve.LeavePolicy", "Name LIKE @pattern", pattern);
         await CountInto(counts, connection, "lve.LeaveType", "Code LIKE @pattern", pattern);
         await CountInto(counts, connection, "att.Holiday", "Name LIKE @pattern", pattern);
+        await CountInto(counts, connection, "att.Shift", "Code LIKE @pattern", pattern);
+        await CountInto(counts, connection, "att.AttendanceRecord", $"EmployeeId IN ({TaggedEmployees}) OR ShiftId IN ({TaggedShifts})", pattern);
+        await CountInto(counts, connection, "att.AttendanceAdjustment", $"EmployeeId IN ({TaggedEmployees})", pattern);
+        await CountInto(counts, connection, "att.OvertimeRecord", $"EmployeeId IN ({TaggedEmployees})", pattern);
         foreach (var table in TablesChildToParent)
         {
             await CountInto(counts, connection, table, "Code LIKE @pattern", pattern);
@@ -110,6 +116,26 @@ internal static class TestRows
             $"DELETE FROM lve.LeavePolicy WHERE LeaveTypeId IN ({TaggedTypes}) OR JobGradeId IN (SELECT Id FROM org.JobGrade WHERE Code LIKE @pattern)");
         await ExecuteAsync(connection, pattern, "DELETE FROM lve.LeaveType WHERE Code LIKE @pattern");
         await ExecuteAsync(connection, pattern, "DELETE FROM att.Holiday WHERE Name LIKE @pattern");
+    }
+
+    private const string TaggedShifts = "SELECT Id FROM att.Shift WHERE Code LIKE @pattern";
+
+    /// <summary>
+    /// Child to parent, before the employees (and the shifts) they point at: adjustment requests (they reference the record of
+    /// their employee and day), then the day records of tagged employees or tagged shifts, then overtime entries.
+    /// </summary>
+    private static async Task DeleteAttendanceOfEmployeesAsync(SqlConnection connection, string pattern)
+    {
+        await ExecuteAsync(connection, pattern, $"DELETE FROM att.AttendanceAdjustment WHERE EmployeeId IN ({TaggedEmployees})");
+        await ExecuteAsync(connection, pattern, $"DELETE FROM att.AttendanceRecord WHERE EmployeeId IN ({TaggedEmployees}) OR ShiftId IN ({TaggedShifts})");
+        await ExecuteAsync(connection, pattern, $"DELETE FROM att.OvertimeRecord WHERE EmployeeId IN ({TaggedEmployees})");
+    }
+
+    /// <summary>The tagged shifts, after the employees and day records that point at them (the work days go with the shift).</summary>
+    private static async Task DeleteShiftsAsync(SqlConnection connection, string pattern)
+    {
+        await ExecuteAsync(connection, pattern, $"DELETE FROM att.ShiftWorkDay WHERE ShiftId IN ({TaggedShifts})");
+        await ExecuteAsync(connection, pattern, "DELETE FROM att.Shift WHERE Code LIKE @pattern");
     }
 
     private static async Task DeleteEmployeesAsync(SqlConnection connection, string pattern)

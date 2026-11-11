@@ -7,5 +7,10 @@ internal sealed class SystemClock(TimeProvider timeProvider, TimeZoneInfo busine
 {
     public DateTimeOffset UtcNow => timeProvider.GetUtcNow();
 
-    public DateOnly Today => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(UtcNow, businessTimeZone).DateTime);
+    public DateOnly Today => DateOnly.FromDateTime(Local.DateTime);
+
+    public TimeOnly TimeNow => TimeOnly.FromDateTime(Local.DateTime);
+
+    /// <summary>One conversion for both, so a call near midnight cannot pair a date with the wrong time.</summary>
+    private DateTimeOffset Local => TimeZoneInfo.ConvertTime(UtcNow, businessTimeZone);
 }

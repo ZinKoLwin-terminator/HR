@@ -9,7 +9,10 @@ internal sealed class FakeClock(DateOnly today) : IClock
 {
     public DateOnly Today { get; set; } = today;
 
-    public DateTimeOffset UtcNow => new(Today.ToDateTime(new TimeOnly(9, 0)), TimeSpan.Zero);
+    /// <summary>The time of day now; tests set it to punch at a chosen time.</summary>
+    public TimeOnly TimeNow { get; set; } = new(9, 0);
+
+    public DateTimeOffset UtcNow => new(Today.ToDateTime(TimeNow), TimeSpan.Zero);
 }
 
 internal sealed class FakeUnitOfWork(FakeDatabase database) : IUnitOfWork

@@ -168,7 +168,7 @@ public sealed class SchemaMappingTests : IDisposable
         // owns (claims, logins, tokens) and for the grants of a role.
         var cascading = new[]
         {
-            typeof(EmployeeBankAccount), typeof(EmployeeDocument), typeof(EmploymentHistoryEntry),
+            typeof(EmployeeBankAccount), typeof(EmployeeDocument), typeof(EmploymentHistoryEntry), typeof(Apex.Hrms.Domain.Attendance.ShiftWorkDay),
             typeof(IdentityUserClaim<string>), typeof(IdentityUserLogin<string>), typeof(IdentityUserToken<string>),
             typeof(RoleGrant),
         };
