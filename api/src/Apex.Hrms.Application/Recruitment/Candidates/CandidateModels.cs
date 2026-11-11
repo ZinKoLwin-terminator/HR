@@ -105,6 +105,8 @@ internal sealed class CandidateMapping :
 {
     public string Label => "Candidate";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Recruitment;
+
     public string Describe(Candidate entity) => entity.FullName;
 
     public CandidateDto ToDto(Candidate entity) => new(

@@ -49,6 +49,8 @@ internal sealed class JobApplicationMapping :
 {
     public string Label => "Application";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Recruitment;
+
     public string Describe(JobApplication entity) => $"application #{entity.Id}";
 
     public JobApplicationDto ToDto(JobApplication entity) => new(

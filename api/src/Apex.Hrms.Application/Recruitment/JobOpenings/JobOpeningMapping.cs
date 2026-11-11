@@ -12,6 +12,8 @@ internal sealed class JobOpeningMapping :
 {
     public string Label => "Job opening";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Recruitment;
+
     public string Describe(JobOpening entity) => entity.Label;
 
     public JobOpeningDto ToDto(JobOpening entity) => new(

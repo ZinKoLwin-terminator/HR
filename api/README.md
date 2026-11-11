@@ -300,8 +300,8 @@ Rules (the attendance rules are demonstrations, not statutory calculations):
 * Activity messages use the wording of the frontend mock services with ids and codes; an employee is named by code, never by
   name, and no national id, bank detail or salary is ever written.
 * `app.Notification` has one `IsRead` flag per row: reading a broadcast (no recipient) marks it read for everyone.
-* The dashboard recruitment and payroll figures are read with plain SQL from `rec.*` and `pay.PayrollRun` (those modules are not in
-  the API yet); the payroll totals are demonstration figures.
+* The dashboard recruitment and payroll figures are read with plain SQL from `rec.*` and `pay.PayrollRun` (recruitment has its own
+  API, see below; there is no payroll module yet); the payroll totals are demonstration figures.
 ## HTTP contract (recruitment module)
 
 Policies (placeholders until phase 3): `recruitment:View|Create|Edit|Delete` (the mock has no approval step, so there is
@@ -350,6 +350,17 @@ Rules (ported from the mock services):
   status and outcome move through commands and the application never changes. Editing a completed interview through PUT
   keeps its outcome. The audit trail and "actor name" snapshots need columns the `rec` tables do not have (see the schema
   note in the module report); the audit user columns are stamped as everywhere else.
+* **Activity feed:** every recruitment change writes its entry in the same save, under the `recruitment` category, with the
+  wording of the mock services. The subject is the opening (`JOB-2026-007 Backend Engineer`), the candidate and job
+  (`Ada Test for Backend Engineer`: the candidate name is the only personal data, as in the mock) or the interview
+  (`Technical · Ada Test for Backend Engineer`); no email, phone, salary or interview feedback. A refused change writes nothing.
+  * Candidates, openings, applications, interviews: `Candidate "Ada Test" created`, `... updated`, `... deleted` (the label is
+    `Candidate`, `Job opening`, `Application` or `Interview`).
+  * Opening commands (open, reopen, hold, close): `Job opening "JOB-2026-007 Backend Engineer" set to Open` (or `On Hold`, `Closed`).
+  * Stage move: `Ada Test for Backend Engineer moved to Screening`. When the move fills the opening, `Job opening "..." filled`
+    is written first; when a selection drops out, `Job opening "..." reopened`.
+  * Interview outcome and cancel are an update in the mock, so they log `Interview "..." updated`. The interviews cancelled by a
+    rejection and the application moving to Interview when one is scheduled log nothing, as in the mock.
 
 ## Authentication (phase 1)
 

@@ -122,6 +122,8 @@ internal sealed class InterviewMapping :
 {
     public string Label => "Interview";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Recruitment;
+
     public string Describe(Interview entity) => $"{InterviewRoundText.ToText(entity.Round)} interview #{entity.Id}";
 
     public InterviewDto ToDto(Interview entity) => new(

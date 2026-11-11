@@ -7,9 +7,9 @@ namespace Apex.Hrms.Infrastructure.Persistence;
 
 /// <summary>
 /// Read-only queries for the dashboard. Employees come through the EF model, narrowed to the columns the figures use.
-/// Recruitment and payroll have no module in the API yet, so their tables (rec.*, pay.PayrollRun) are read with plain
+/// Recruitment has its own API module, but the dashboard still reads its tables (rec.*) and the payroll table (pay.PayrollRun; no payroll module yet) with plain
 /// parameterless-or-parameterized SQL that maps onto small row types; nothing here is added to the EF model, so the
-/// future recruitment and payroll modules can map those tables themselves.
+/// payroll module can map its table itself.
 /// </summary>
 internal sealed class EfDashboardSource(HrmsDbContext context) : IDashboardSource
 {

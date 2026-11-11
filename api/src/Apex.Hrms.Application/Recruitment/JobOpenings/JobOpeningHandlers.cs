@@ -1,5 +1,6 @@
 using System.Globalization;
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
@@ -59,6 +60,7 @@ internal sealed class JobOpeningCreateHandler(
     JobOpeningCodeGenerator codes,
     IClock clock,
     IRepository<JobOpening> repository,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     JobOpeningMapping mapper) : ICreateHandler<JobOpeningCreateRequest, JobOpeningDto>
 {
@@ -97,6 +99,7 @@ internal sealed class JobOpeningCreateHandler(
         }
 
         repository.Add(created.Value);
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Created(mapper.Label, mapper.Describe(created.Value)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<JobOpeningDto>(saved.Error)
@@ -110,6 +113,7 @@ internal sealed class JobOpeningUpdateHandler(
     JobOpeningRules rules,
     RecruitmentLookup lookup,
     IClock clock,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     JobOpeningMapping mapper) : IUpdateHandler<JobOpeningUpdateRequest, JobOpeningDto>
 {
@@ -154,6 +158,7 @@ internal sealed class JobOpeningUpdateHandler(
             return Result.Failure<JobOpeningDto>(updated.Error);
         }
 
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Updated(mapper.Label, mapper.Describe(opening)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<JobOpeningDto>(saved.Error)
@@ -169,6 +174,7 @@ internal sealed class JobOpeningStatusHandler<TCommand>(
     EntityLoader<JobOpening> loader,
     RecruitmentLookup lookup,
     IClock clock,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     JobOpeningMapping mapper) : ICommandHandler<TCommand, JobOpeningDto>
     where TCommand : IEntityCommand, IJobOpeningStatusCommand
@@ -187,6 +193,10 @@ internal sealed class JobOpeningStatusHandler<TCommand>(
         {
             return Result.Failure<JobOpeningDto>(changed.Error);
         }
+
+        activity.Record(
+            mapper.ActivityCategory,
+            ActivityMessages.JobOpeningStatusSet(mapper.Describe(loaded.Value), JobOpeningStatusText.ToText(TCommand.Target)));
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure

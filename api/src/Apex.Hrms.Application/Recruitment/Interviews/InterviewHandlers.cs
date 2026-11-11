@@ -1,5 +1,6 @@
 using System.Globalization;
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Recruitment;
@@ -74,6 +75,8 @@ internal sealed class InterviewCreateHandler(
     IValidator<InterviewCreateRequest> validator,
     InterviewRules rules,
     IClock clock,
+    IActivityRecorder activity,
+    RecruitmentLookup lookup,
     IRepository<Interview> repository,
     IUnitOfWork unitOfWork,
     InterviewMapping mapper) : ICreateHandler<InterviewCreateRequest, InterviewDto>
@@ -118,6 +121,7 @@ internal sealed class InterviewCreateHandler(
 
         references.Value.AdvanceToInterview();
         repository.Add(interview.Value);
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Created(mapper.Label, await lookup.InterviewLabelAsync(interview.Value, cancellationToken)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<InterviewDto>(saved.Error)
@@ -151,6 +155,8 @@ internal sealed class InterviewUpdateHandler(
     EntityLoader<Interview> loader,
     InterviewRules rules,
     IClock clock,
+    IActivityRecorder activity,
+    RecruitmentLookup lookup,
     IUnitOfWork unitOfWork,
     InterviewMapping mapper) : IUpdateHandler<InterviewUpdateRequest, InterviewDto>
 {
@@ -197,6 +203,8 @@ internal sealed class InterviewUpdateHandler(
             return Result.Failure<InterviewDto>(updated.Error);
         }
 
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Updated(mapper.Label, await lookup.InterviewLabelAsync(interview, cancellationToken)));
+
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<InterviewDto>(saved.Error)
@@ -208,7 +216,10 @@ internal sealed class InterviewUpdateHandler(
 internal sealed class InterviewDeleteHandler(
     EntityLoader<Interview> loader,
     IRepository<Interview> repository,
-    IUnitOfWork unitOfWork) : IDeleteHandler<InterviewDto>
+    IActivityRecorder activity,
+    RecruitmentLookup lookup,
+    IUnitOfWork unitOfWork,
+    InterviewMapping mapper) : IDeleteHandler<InterviewDto>
 {
     public async Task<Result> HandleAsync(int id, string? rowVersion, CancellationToken cancellationToken)
     {
@@ -224,6 +235,7 @@ internal sealed class InterviewDeleteHandler(
             return allowed;
         }
 
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Deleted(mapper.Label, await lookup.InterviewLabelAsync(loaded.Value, cancellationToken)));
         repository.Remove(loaded.Value);
         return await unitOfWork.SaveChangesAsync(cancellationToken);
     }
@@ -238,6 +250,8 @@ internal sealed class RecordInterviewOutcomeHandler(
     IRepository<JobApplication> applications,
     IRepository<Interview> interviews,
     IClock clock,
+    IActivityRecorder activity,
+    RecruitmentLookup lookup,
     IUnitOfWork unitOfWork,
     InterviewMapping mapper) : ICommandHandler<RecordInterviewOutcomeCommand, InterviewDto>
 {
@@ -274,6 +288,8 @@ internal sealed class RecordInterviewOutcomeHandler(
         {
             return Result.Failure<InterviewDto>(completed.Error);
         }
+
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Updated(mapper.Label, await lookup.InterviewLabelAsync(interview, cancellationToken)));
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
@@ -334,6 +350,8 @@ internal sealed class RecordInterviewOutcomeHandler(
 /// <summary>Cancels a scheduled interview; afterwards it is locked.</summary>
 internal sealed class CancelInterviewHandler(
     EntityLoader<Interview> loader,
+    IActivityRecorder activity,
+    RecruitmentLookup lookup,
     IUnitOfWork unitOfWork,
     InterviewMapping mapper) : ICommandHandler<CancelInterviewCommand, InterviewDto>
 {
@@ -350,6 +368,8 @@ internal sealed class CancelInterviewHandler(
         {
             return Result.Failure<InterviewDto>(cancelled.Error);
         }
+
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Updated(mapper.Label, await lookup.InterviewLabelAsync(loaded.Value, cancellationToken)));
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure

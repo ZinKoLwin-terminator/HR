@@ -35,4 +35,15 @@ public static class ActivityMessages
 
     /// <summary>An overtime request decided: <c>OT-0004 approved</c>.</summary>
     public static string OvertimeDecided(string label, string decision) => $"{label} {decision.ToLowerInvariant()}";
+
+    /// <summary>A job opening was moved by a command: <c>Job opening "JOB-2026-007 Backend Engineer" set to On Hold</c>.</summary>
+    public static string JobOpeningStatusSet(string subject, string status) => $"Job opening \"{subject}\" set to {status}";
+
+    /// <summary>An opening became Filled (<c>filled</c>) or Open again (<c>reopened</c>) because of a selection.</summary>
+    public static string JobOpeningFilled(string subject) => $"Job opening \"{subject}\" filled";
+
+    public static string JobOpeningReopened(string subject) => $"Job opening \"{subject}\" reopened";
+
+    /// <summary>An application moved to a stage: <c>Ada Test for Backend Engineer moved to Screening</c>.</summary>
+    public static string StageMoved(string applicationLabel, string stage) => $"{applicationLabel} moved to {stage}";
 }

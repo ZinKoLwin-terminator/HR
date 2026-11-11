@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.References;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
@@ -18,6 +19,8 @@ internal sealed class JobApplicationCreateHandler(
     IRepository<Candidate> candidates,
     IRepository<JobApplication> applications,
     IClock clock,
+    IActivityRecorder activity,
+    RecruitmentLookup lookup,
     IUnitOfWork unitOfWork,
     JobApplicationMapping mapper) : ICreateHandler<JobApplicationCreateRequest, JobApplicationDto>
 {
@@ -63,6 +66,7 @@ internal sealed class JobApplicationCreateHandler(
 
         var created = JobApplication.Create(jobId, candidateId, request.Notes, clock.Today);
         applications.Add(created);
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Created(mapper.Label, await lookup.ApplicationLabelAsync(created, cancellationToken)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<JobApplicationDto>(saved.Error)
@@ -73,6 +77,8 @@ internal sealed class JobApplicationCreateHandler(
 internal sealed class JobApplicationUpdateHandler(
     IValidator<JobApplicationUpdateRequest> validator,
     EntityLoader<JobApplication> loader,
+    IActivityRecorder activity,
+    RecruitmentLookup lookup,
     IUnitOfWork unitOfWork,
     JobApplicationMapping mapper) : IUpdateHandler<JobApplicationUpdateRequest, JobApplicationDto>
 {
@@ -97,6 +103,7 @@ internal sealed class JobApplicationUpdateHandler(
         }
 
         application.UpdateNotes(request.Notes);
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Updated(mapper.Label, await lookup.ApplicationLabelAsync(application, cancellationToken)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<JobApplicationDto>(saved.Error)
@@ -111,7 +118,9 @@ internal sealed class JobApplicationDeleteHandler(
     IRepository<JobOpening> openings,
     IEnumerable<IReferenceCheck<JobApplication>> references,
     IRepository<JobApplication> repository,
-    IUnitOfWork unitOfWork) : IDeleteHandler<JobApplicationDto>
+    IActivityRecorder activity,
+    IUnitOfWork unitOfWork,
+    JobApplicationMapping mapper) : IDeleteHandler<JobApplicationDto>
 {
     public async Task<Result> HandleAsync(int id, string? rowVersion, CancellationToken cancellationToken)
     {
@@ -135,6 +144,9 @@ internal sealed class JobApplicationDeleteHandler(
                 $"\"{label}\" cannot be deleted because it is used by {usage}. Deactivate it instead."));
         }
 
+        activity.Record(
+            mapper.ActivityCategory,
+            ActivityMessages.Deleted(mapper.Label, await ApplicationLabel.OfAsync(loaded.Value, candidates, openings, cancellationToken)));
         repository.Remove(loaded.Value);
         return await unitOfWork.SaveChangesAsync(cancellationToken);
     }
@@ -166,6 +178,7 @@ internal sealed class MoveApplicationStageHandler(
     IRepository<JobOpening> openings,
     IRepository<Interview> interviews,
     RecruitmentLookup lookup,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     JobApplicationMapping mapper) : ICommandHandler<MoveApplicationStageCommand, JobApplicationDto>
 {
@@ -218,7 +231,20 @@ internal sealed class MoveApplicationStageHandler(
             await CancelScheduledInterviewsAsync(application.Id, cancellationToken);
         }
 
-        opening.SyncFilled(otherSelected + (stage == ApplicationStage.Selected ? 1 : 0));
+        // The mock logs the opening first (filled or reopened), then the move itself.
+        var filling = opening.SyncFilled(otherSelected + (stage == ApplicationStage.Selected ? 1 : 0));
+        if (filling == JobOpeningStatus.Filled)
+        {
+            activity.Record(mapper.ActivityCategory, ActivityMessages.JobOpeningFilled(opening.Label));
+        }
+        else if (filling == JobOpeningStatus.Open)
+        {
+            activity.Record(mapper.ActivityCategory, ActivityMessages.JobOpeningReopened(opening.Label));
+        }
+
+        activity.Record(
+            mapper.ActivityCategory,
+            ActivityMessages.StageMoved(await lookup.ApplicationLabelAsync(application, cancellationToken), ApplicationStageText.ToText(stage)));
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
