@@ -8,6 +8,10 @@ using Apex.Hrms.Application.Organization.Departments;
 using Apex.Hrms.Application.Organization.JobGrades;
 using Apex.Hrms.Application.Organization.Positions;
 using Apex.Hrms.Application.Organization.Sections;
+using Apex.Hrms.Application.Recruitment.Applications;
+using Apex.Hrms.Application.Recruitment.Candidates;
+using Apex.Hrms.Application.Recruitment.Interviews;
+using Apex.Hrms.Application.Recruitment.JobOpenings;
 
 namespace Apex.Hrms.IntegrationTests.Support;
 
@@ -333,6 +337,86 @@ public sealed class Requests(string tag)
         current.Reason,
         current.DocumentName,
         Version(current.RowVersion));
+
+    /// <summary>
+    /// A valid job opening. The code is made by the server, so the title carries the tag (followed by a dash) for the cleanup.
+    /// A null closing date is 60 days after <paramref name="today"/>.
+    /// </summary>
+    public JobOpeningCreateRequest JobOpening(
+        int departmentId,
+        int hiringManagerId,
+        DateOnly today,
+        string title = "Engineer",
+        int vacancies = 1,
+        DateOnly? closing = null) => new(
+        Code(title),
+        departmentId,
+        hiringManagerId,
+        "Full-time",
+        vacancies,
+        PostedOn: null,
+        closing ?? today.AddDays(60),
+        "Builds test services.");
+
+    public static JobOpeningUpdateRequest JobOpeningUpdate(JobOpeningDto current, string? title = null, int? vacancies = null) => new(
+        title ?? current.Title,
+        current.DepartmentId,
+        current.HiringManagerId,
+        current.EmploymentType,
+        vacancies ?? current.Vacancies,
+        current.PostedOn,
+        current.ClosingDate,
+        current.Description,
+        Version(current.RowVersion));
+
+    /// <summary>A valid candidate; the email is lower case and starts with the tag (candidates are found for cleanup by it).</summary>
+    public CandidateCreateRequest Candidate(string local = "ada", decimal years = 4m) => new(
+        "Ada",
+        "Testcandidate",
+        CandidateEmail(local),
+        "+95 9 555 0103",
+        "Referral",
+        "Sample Employer",
+        years,
+        "cv.pdf",
+        Notes: null);
+
+    public string CandidateEmail(string local) => $"{tag.ToLowerInvariant()}-{local}@example.test";
+
+    public static CandidateUpdateRequest CandidateUpdate(CandidateDto current, string? email = null, decimal? years = null) => new(
+        current.FirstName,
+        current.LastName,
+        email ?? current.Email,
+        current.Phone,
+        current.Source,
+        current.CurrentEmployer,
+        years ?? current.ExperienceYears,
+        current.ResumeName,
+        current.Notes,
+        Version(current.RowVersion));
+
+    public static JobApplicationCreateRequest JobApplication(int jobOpeningId, int candidateId) => new(jobOpeningId, candidateId, Notes: null);
+
+    public static MoveApplicationStageCommand MoveStage(JobApplicationDto application, string stage, string? reason = null) =>
+        new(application.Id, Version(application.RowVersion), stage, reason);
+
+    public static InterviewCreateRequest Interview(
+        int applicationId,
+        int interviewerId,
+        DateOnly date,
+        int startHour = 10,
+        int minutes = 60) => new(
+        applicationId,
+        "Technical",
+        date,
+        new TimeOnly(startHour, 0),
+        minutes,
+        "Video",
+        interviewerId,
+        "Meeting link");
+
+    public static RecordInterviewOutcomeCommand Outcome(InterviewDto interview, int score = 4, string recommendation = "Hire") =>
+        new(interview.Id, Version(interview.RowVersion), score, recommendation, "Solid.");
 
     /// <summary>The name of a test holiday: it starts with the tag followed by a dash, as the cleanup expects.</summary>
     public string HolidayName(string text = "holiday") => $"{tag}-{text}";

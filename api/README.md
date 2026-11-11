@@ -281,6 +281,55 @@ Rules (the attendance rules are demonstrations, not statutory calculations):
 * **Overview:** built from the employees expected that day (employed, working weekday of their shift, not a holiday); without a
   record they are On Leave (approved whole-day leave) or Absent (for today: "not checked in yet"; a future day counts nothing).
 
+## HTTP contract (recruitment module)
+
+Policies (placeholders until phase 3): `recruitment:View|Create|Edit|Delete` (the mock has no approval step, so there is
+no `Approve`). Dates are `yyyy-MM-dd`, times `"HH:mm"`. Every update, delete and command needs `rowVersion` as described for
+the organization module. Candidates, applications and interviews hold personal data and interviewers' opinions (score,
+recommendation, feedback); the unpaged "get all" routes the frontend contract needs are kept for the four resources.
+
+| Route | Policy | Notes |
+| --- | --- | --- |
+| `/api/job-openings` (get all, `/query`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | Fields: `code` (server, `JOB-yyyy-nnn` from `rec.JobOpeningCodeSeq`, year of `postedOn`, used codes skipped), `title, departmentId, hiringManagerId, employmentType (Full-time\|Part-time\|Contract\|Internship), vacancies (1-50), postedOn (optional on POST, today), closingDate, description, status`. Starts as `Draft`; the status never changes through PUT. A closed or filled opening cannot be edited (`409`); vacancies cannot drop below the selected count. Filters: `status, departmentId, hiringManagerId, employmentType`. |
+| `POST /api/job-openings/{id}/open`, `/reopen` | Edit | Draft, On Hold or Closed to Open (the two verbs are the same transition). Needs `closingDate` today or later and a free vacancy (`409`). |
+| `POST /api/job-openings/{id}/hold`, `/close` | Edit | Open to On Hold; Draft, Open or On Hold to Closed. `Filled` has no command: it follows the selected count. |
+| `GET /api/job-openings/{id}/pipeline`, `GET /api/recruitment/pipeline?jobOpeningId` | View | `{ jobOpeningId, columns: [{ stage, count, cards: [{ applicationId, jobOpeningId, jobTitle, candidateId, candidateName, experienceYears, stage, appliedOn, rejectionReason, nextInterview: { id, round, date, startTime }\|null, completedInterviews, rowVersion }] }] }`; always the five stages in order, cards by candidate name. |
+| `GET /api/recruitment/counts` | View | `{ jobOpenings: [{ jobOpeningId, applications, selected }], candidates: [{ candidateId, applications }] }`; ids without applications are not listed (count 0). |
+| `/api/candidates` (get all, `/query`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | `firstName, lastName, email (stored lower-case, unique), phone, source (Career site\|Referral\|Job board\|LinkedIn\|Agency), currentEmployer, experienceYears (0-50, one decimal), resumeName, notes`. Filter: `source`. |
+| `/api/applications` (get all, `/query`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | POST `{ jobOpeningId, candidateId, notes? }`: starts at `Applied`, dated today by the server, only for an `Open` opening, once per opening and candidate. PUT `{ jobOpeningId, candidateId, notes, rowVersion }` changes the notes only (another opening or candidate is `400`). Filters: `jobOpeningId, candidateId, stage`. |
+| `POST /api/applications/{id}/stage` | Edit | Body `{ rowVersion, stage, reason? }`. See the stage rules below. |
+| `/api/interviews` (get all, `/query`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | `applicationId, round (Phone screen\|Technical\|HR\|Final), date, startTime, durationMinutes (15-240), mode (Onsite\|Video\|Phone), interviewerId, location, status, score, recommendation, feedback`. POST also takes optional `status` (`Scheduled`, default, or `Completed` to record a past interview with `score`, `recommendation`, `feedback`). PUT reschedules (no status or outcome fields). Filters: `status, interviewerId, applicationId, dateFrom, dateTo`. |
+| `POST /api/interviews/{id}/outcome` | Edit | Body `{ rowVersion, score (1-5), recommendation (Strong hire\|Hire\|No hire), feedback? }`; completes a scheduled interview, or corrects a completed one. |
+| `POST /api/interviews/{id}/cancel` | Edit | Body `{ rowVersion, reason? }`; the reason is kept as the feedback. |
+
+Rules (ported from the mock services):
+
+* **Openings:** department must exist and the hiring manager must be a current employee (`400` on `departmentId` /
+  `hiringManagerId`); closing date not before the posting date. Status table: Draft to Open or Closed, Open to On Hold or
+  Closed, On Hold to Open or Closed, Closed to Open, Filled to nothing (`409`, "A draft job opening cannot be set to On Hold.").
+  Becoming Open: closing date today or later ("The closing date has passed. Edit the opening before reopening it.") and
+  selected count below the vacancies. When the selected count reaches the vacancies an Open or On Hold opening becomes
+  Filled in the same save; when a selection drops out a Filled opening is Open again.
+* **Stages:** Applied to Screening or Rejected; Screening to Interview or Rejected; Interview to Selected or Rejected; Selected
+  to Rejected; Rejected to nothing (`409`). Rejecting needs a non-blank `reason` (`400` on `reason`, at most 200
+  characters) and a rejection cancels the application's scheduled interviews ("Cancelled: the application was rejected.").
+  Any other move needs an Open or On Hold opening (`409`); other stages store no reason. Selecting needs a completed
+  interview recommending Hire or Strong hire and a free vacancy (`409`).
+* **Interviews:** the application must be in Screening or Interview to schedule (`400` on `applicationId`); scheduling moves
+  a Screening application to Interview; the date may not be in the past by the server's business clock (`400` on `date`;
+  rescheduling only checks it when the date or time changes); a completed interview needs a score of 1 to 5 and a
+  recommendation and may not be in the future (`400`); the interviewer must be a current employee (`400` on
+  `interviewerId`) and cannot have another scheduled interview that overlaps on the same day (`400` on `startTime`,
+  "The interviewer already has an interview at 10:00 on that day."); a cancelled interview is locked (`409`); a completed
+  interview cannot be cancelled or deleted (`409`). The application of an interview cannot change.
+* **Delete protection** (`409`, `"name" cannot be deleted because it is used by N application(s). Deactivate it instead.`):
+  an opening or candidate with applications, an application with interviews (and a selected application: "Reject it
+  first."), a department with openings, an employee who manages openings or conducts interviews.
+* **Not ported or changed:** the mock let a form change an interview's application and status through one update; here the
+  status and outcome move through commands and the application never changes. Editing a completed interview through PUT
+  keeps its outcome. The audit trail and "actor name" snapshots need columns the `rec` tables do not have (see the schema
+  note in the module report); the audit user columns are stamped as everywhere else.
+
 ## Authentication (phase 1)
 
 ASP.NET Core Identity (standard stores, no roles) with a same-site cookie. Credentials live in `auth.User`

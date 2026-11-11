@@ -91,3 +91,14 @@ internal sealed class FakeEmployeeCodeSequence : IEmployeeCodeSequence
 
     public Task<int> NextAsync(CancellationToken cancellationToken) => Task.FromResult(++last);
 }
+
+/// <summary>A sequence that counts up from 1, like rec.JobOpeningCodeSeq.</summary>
+internal sealed class FakeJobCodeSequence : IJobOpeningCodeSequence
+{
+    private int last;
+
+    public Task<int> NextAsync(CancellationToken cancellationToken) => Task.FromResult(++last);
+
+    /// <summary>Starts counting from 1 again, so the next codes are ones already in use.</summary>
+    public void Reset() => last = 0;
+}
