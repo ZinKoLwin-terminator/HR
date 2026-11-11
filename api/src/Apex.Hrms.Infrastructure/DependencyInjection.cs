@@ -1,6 +1,8 @@
 using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.Dashboard;
+using Apex.Hrms.Application.Excel;
+using Apex.Hrms.Infrastructure.Excel;
 using Apex.Hrms.Application.Notifications;
 using Apex.Hrms.Application.Security;
 using Apex.Hrms.Infrastructure.Identity;
@@ -49,6 +51,15 @@ public static class DependencyInjection
         services.AddScoped<INotificationStore, EfNotificationStore>();
         services.AddScoped<IDashboardSource, EfDashboardSource>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IActivityMute>(provider => provider.GetRequiredService<EfActivityRecorder>());
+        services.AddScoped<IImportBatchStore, EfImportBatchStore>();
+        services.AddScoped<IBatchTransactionFactory, EfBatchTransactionFactory>();
+        services.AddSingleton<IWorkbookReader, ClosedXmlWorkbookReader>();
+        services.AddSingleton<IWorkbookWriter, ClosedXmlWorkbookWriter>();
+        services.AddSingleton(configuration.GetSection("Excel").Get<ExcelLimits>() ?? new ExcelLimits());
+        services.TryAddSingleton<IFileStorage>(provider => new LocalFileStorage(
+            configuration["Excel:StorageFolder"] is { Length: > 0 } folder ? folder : Path.Combine(AppContext.BaseDirectory, "App_Data", "excel-uploads"),
+            provider.GetRequiredService<TimeProvider>()));
         services.AddScoped<IEmployeeCodeSequence, EfEmployeeCodeSequence>();
         services.AddScoped<ILeaveApplicationNumberSequence, EfLeaveApplicationNumberSequence>();
         services.AddScoped<IJobOpeningCodeSequence, EfJobOpeningCodeSequence>();

@@ -9,15 +9,35 @@ namespace Apex.Hrms.Infrastructure.Persistence;
 /// delegate and written by the unit of work once the change has been inserted (still inside the transaction).
 /// The actor is the signed-in user; the system identity writes with no user id and the name "System".
 /// </summary>
-internal sealed class EfActivityRecorder(HrmsDbContext context, IClock clock, ICurrentUser user) : IActivityRecorder
+internal sealed class EfActivityRecorder(HrmsDbContext context, IClock clock, ICurrentUser user) : IActivityRecorder, IActivityMute
 {
     private readonly List<(string Category, Func<string> Message)> deferred = [];
 
     public bool HasDeferred => deferred.Count > 0;
 
-    public void Record(string category, string message) => context.Add(Build(category, message));
+    private int muted;
 
-    public void Record(string category, Func<string> message) => deferred.Add((category, message));
+    public IDisposable Mute()
+    {
+        muted++;
+        return new Unmute(this);
+    }
+
+    public void Record(string category, string message)
+    {
+        if (muted == 0)
+        {
+            context.Add(Build(category, message));
+        }
+    }
+
+    public void Record(string category, Func<string> message)
+    {
+        if (muted == 0)
+        {
+            deferred.Add((category, message));
+        }
+    }
 
     /// <summary>Adds the deferred entries to the context (the caller saves). Call after the change was inserted.</summary>
     public void WriteDeferred()
@@ -41,5 +61,19 @@ internal sealed class EfActivityRecorder(HrmsDbContext context, IClock clock, IC
         return entry.IsSuccess
             ? entry.Value
             : throw new InvalidOperationException($"Invalid activity entry: {entry.Error.Message}");
+    }
+
+    private sealed class Unmute(EfActivityRecorder owner) : IDisposable
+    {
+        private bool disposed;
+
+        public void Dispose()
+        {
+            if (!disposed)
+            {
+                disposed = true;
+                owner.muted--;
+            }
+        }
     }
 }

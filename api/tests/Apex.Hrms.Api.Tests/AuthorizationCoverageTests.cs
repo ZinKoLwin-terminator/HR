@@ -64,6 +64,9 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         AttendancePrefixes
             .Any(prefix => endpoint.RoutePattern.RawText!.StartsWith(prefix, StringComparison.Ordinal));
 
+    private static bool IsExcelRoute(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText!.StartsWith("/api/excel", StringComparison.Ordinal);
+
     private static readonly string[] ActivityPrefixes = ["/api/dashboard", "/api/activity", "/api/notifications"];
 
     private static bool IsActivityRoute(RouteEndpoint endpoint) =>
@@ -73,7 +76,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void Six_organization_resources_map_eight_endpoints_each()
     {
         var endpoints = ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsExcelRoute(endpoint))
             .ToList();
 
         Assert.Equal(48, endpoints.Count);
@@ -137,6 +140,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
                 "dashboard:View",
                 "employees:Create", "employees:Delete", "employees:Edit", "employees:EditBank", "employees:EditSensitive",
                 "employees:View", "employees:ViewBank", "employees:ViewSensitive",
+                "excel:Export", "excel:Import", "excel:View",
                 "leave:Approve", "leave:Create", "leave:Delete", "leave:Edit", "leave:View",
                 "organization:Create", "organization:Delete", "organization:Edit", "organization:View",
                 "recruitment:Create", "recruitment:Delete", "recruitment:Edit", "recruitment:View",
@@ -149,7 +153,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
         foreach (var endpoint in ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint)))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsExcelRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);
@@ -330,5 +334,25 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("recruitment:Delete", policies["DELETE /api/interviews/{id:int}"]);
         Assert.Equal("recruitment:View", policies["GET /api/recruitment/pipeline"]);
         Assert.Equal("recruitment:View", policies["GET /api/recruitment/counts"]);
+    }
+
+    [Fact]
+    public void Excel_maps_nine_endpoints_with_the_policy_of_what_they_do()
+    {
+        var policies = ApiEndpoints().Where(IsExcelRoute)
+            .ToDictionary(
+                endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+                endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
+
+        Assert.Equal(9, policies.Count);
+        Assert.Equal("excel:View", policies["GET /api/excel/modules"]);
+        Assert.Equal("excel:Import", policies["GET /api/excel/templates/{module}"]);
+        Assert.Equal("excel:Import", policies["POST /api/excel/imports/{module}/inspect"]);
+        Assert.Equal("excel:Import", policies["POST /api/excel/imports/{module}/validate"]);
+        Assert.Equal("excel:Import", policies["POST /api/excel/imports/{batchId}/execute"]);
+        Assert.Equal("excel:View", policies["GET /api/excel/imports/history"]);
+        Assert.Equal("excel:View", policies["GET /api/excel/imports/{batchId}"]);
+        Assert.Equal("excel:View", policies["GET /api/excel/imports/{batchId}/error-report"]);
+        Assert.Equal("excel:Export", policies["POST /api/excel/exports/{module}"]);
     }
 }
