@@ -50,7 +50,9 @@ internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Pe
     /// <summary>The activity log is read only and append-only: there is no way to change or remove an entry.</summary>
     public static readonly PermissionModule Activity = new("activity", [Permission.View]);
 
-    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Dashboard, Activity];
+    public static readonly PermissionModule Recruitment = new("recruitment", Standard);
+
+    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Recruitment, Dashboard, Activity];
 
     public string PolicyName(Permission permission) => $"{Key}:{permission}";
 }

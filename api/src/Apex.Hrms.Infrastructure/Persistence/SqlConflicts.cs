@@ -55,6 +55,19 @@ internal static partial class SqlConflicts
             "A pending request already exists for this employee and date.",
             "date",
             "A pending request already exists for this date."),
+        ["UQ_JobOpening_Code"] = AppError.Conflict("That job opening code is already in use. Try again."),
+        ["UQ_Application_JobOpeningId_CandidateId"] = AppError.Validation(
+            "This candidate has already applied for this job.",
+            "candidateId",
+            "Already applied for this opening."),
+        ["CK_Application_RejectionReason"] = AppError.Validation(
+            "Enter a reason for rejecting this application.",
+            "reason",
+            "A reason is required."),
+        ["CK_Interview_CompletedOutcome"] = AppError.Validation(
+            "A completed interview needs a score and a recommendation; other interviews have neither.",
+            "score",
+            "Check the score and recommendation."),
         ["UQ_OvertimeRecord_EmployeeId_Date"] = AppError.Validation(
             "Overtime is already recorded for this employee on that date.",
             "date",

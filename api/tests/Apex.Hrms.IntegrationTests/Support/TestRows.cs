@@ -52,6 +52,7 @@ internal static class TestRows
         await DeleteAccountsAsync(connection, pattern);
         await DeleteLeaveAsync(connection, pattern);
         await DeleteAttendanceOfEmployeesAsync(connection, pattern);
+        await DeleteRecruitmentAsync(connection, pattern);
         await DeleteEmployeesAsync(connection, pattern);
         await DeleteShiftsAsync(connection, pattern);
         foreach (var table in TablesChildToParent)
@@ -83,6 +84,10 @@ internal static class TestRows
         await CountInto(counts, connection, "att.AttendanceRecord", $"EmployeeId IN ({TaggedEmployees}) OR ShiftId IN ({TaggedShifts})", pattern);
         await CountInto(counts, connection, "att.AttendanceAdjustment", $"EmployeeId IN ({TaggedEmployees})", pattern);
         await CountInto(counts, connection, "att.OvertimeRecord", $"EmployeeId IN ({TaggedEmployees})", pattern);
+        await CountInto(counts, connection, "rec.Interview", $"ApplicationId IN ({TaggedApplications}) OR InterviewerEmployeeId IN ({TaggedEmployees})", pattern);
+        await CountInto(counts, connection, "rec.Application", $"Id IN ({TaggedApplications})", pattern);
+        await CountInto(counts, connection, "rec.JobOpening", $"Id IN ({TaggedJobs})", pattern);
+        await CountInto(counts, connection, "rec.Candidate", "LOWER(Email) LIKE LOWER(@pattern)", pattern);
         foreach (var table in TablesChildToParent)
         {
             await CountInto(counts, connection, table, "Code LIKE @pattern", pattern);
@@ -147,6 +152,31 @@ internal static class TestRows
             $"DELETE FROM lve.LeavePolicy WHERE LeaveTypeId IN ({TaggedTypes}) OR JobGradeId IN (SELECT Id FROM org.JobGrade WHERE Code LIKE @pattern)");
         await ExecuteAsync(connection, pattern, "DELETE FROM lve.LeaveType WHERE Code LIKE @pattern");
         await ExecuteAsync(connection, pattern, "DELETE FROM att.Holiday WHERE Name LIKE @pattern");
+    }
+
+    // Job openings carry a server-made code, so a test tags them through the title (or the manager or department it made);
+    // candidates through the email, like employees.
+    private const string TaggedJobs =
+        "SELECT Id FROM rec.JobOpening WHERE Title LIKE @pattern OR HiringManagerEmployeeId IN (SELECT Id FROM hr.Employee WHERE LOWER(WorkEmail) LIKE LOWER(@pattern)) OR DepartmentId IN (SELECT Id FROM org.Department WHERE Code LIKE @pattern)";
+
+    private const string TaggedCandidates = "SELECT Id FROM rec.Candidate WHERE LOWER(Email) LIKE LOWER(@pattern)";
+
+    private const string TaggedApplications =
+        $"SELECT Id FROM rec.Application WHERE JobOpeningId IN ({TaggedJobs}) OR CandidateId IN ({TaggedCandidates})";
+
+    /// <summary>
+    /// Child to parent, before the employees and departments they point at: interviews (of tagged applications or tagged
+    /// interviewers), applications (of tagged openings or candidates), then the openings and the candidates.
+    /// </summary>
+    private static async Task DeleteRecruitmentAsync(SqlConnection connection, string pattern)
+    {
+        await ExecuteAsync(
+            connection,
+            pattern,
+            $"DELETE FROM rec.Interview WHERE ApplicationId IN ({TaggedApplications}) OR InterviewerEmployeeId IN ({TaggedEmployees})");
+        await ExecuteAsync(connection, pattern, $"DELETE FROM rec.Application WHERE Id IN ({TaggedApplications})");
+        await ExecuteAsync(connection, pattern, $"DELETE FROM rec.JobOpening WHERE Id IN ({TaggedJobs})");
+        await ExecuteAsync(connection, pattern, "DELETE FROM rec.Candidate WHERE LOWER(Email) LIKE LOWER(@pattern)");
     }
 
     private const string TaggedShifts = "SELECT Id FROM att.Shift WHERE Code LIKE @pattern";

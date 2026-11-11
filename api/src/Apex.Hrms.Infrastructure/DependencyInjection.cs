@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IEmployeeCodeSequence, EfEmployeeCodeSequence>();
         services.AddScoped<ILeaveApplicationNumberSequence, EfLeaveApplicationNumberSequence>();
+        services.AddScoped<IJobOpeningCodeSequence, EfJobOpeningCodeSequence>();
         services.AddSingleton<IBusinessWeek>(ConfiguredBusinessWeek.From(
             configuration.GetSection(ConfiguredBusinessWeek.ConfigurationKey).Get<string[]>()));
 

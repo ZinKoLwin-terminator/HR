@@ -36,6 +36,7 @@ app.MapEmployeeEndpoints();
 app.MapLeaveEndpoints();
 app.MapAttendanceEndpoints();
 app.MapActivityEndpoints();
+app.MapRecruitmentEndpoints();
 
 await app.RunAsync();
 return 0;

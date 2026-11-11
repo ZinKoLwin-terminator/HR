@@ -54,6 +54,12 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
 
     private static readonly string[] AttendancePrefixes = ["/api/shifts", "/api/holidays", "/api/attendance", "/api/overtime-records"];
 
+    private static readonly string[] RecruitmentPrefixes = ["/api/job-openings", "/api/candidates", "/api/applications", "/api/interviews", "/api/recruitment"];
+
+    private static bool IsRecruitmentRoute(RouteEndpoint endpoint) =>
+        RecruitmentPrefixes
+            .Any(prefix => endpoint.RoutePattern.RawText!.StartsWith(prefix, StringComparison.Ordinal));
+
     private static bool IsAttendanceRoute(RouteEndpoint endpoint) =>
         AttendancePrefixes
             .Any(prefix => endpoint.RoutePattern.RawText!.StartsWith(prefix, StringComparison.Ordinal));
@@ -67,7 +73,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void Six_organization_resources_map_eight_endpoints_each()
     {
         var endpoints = ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsActivityRoute(endpoint))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint))
             .ToList();
 
         Assert.Equal(48, endpoints.Count);
@@ -133,6 +139,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
                 "employees:View", "employees:ViewBank", "employees:ViewSensitive",
                 "leave:Approve", "leave:Create", "leave:Delete", "leave:Edit", "leave:View",
                 "organization:Create", "organization:Delete", "organization:Edit", "organization:View",
+                "recruitment:Create", "recruitment:Delete", "recruitment:Edit", "recruitment:View",
                 "signed-in",
             ],
             policies.Order(StringComparer.Ordinal));
@@ -141,7 +148,8 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     [Fact]
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
-        foreach (var endpoint in ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsActivityRoute(endpoint)))
+        foreach (var endpoint in ApiEndpoints()
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);
@@ -241,6 +249,12 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
             endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
             endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
 
+
+    private Dictionary<string, string?> RecruitmentPolicies() => ApiEndpoints().Where(IsRecruitmentRoute)
+        .ToDictionary(
+            endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+            endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
+
     [Fact]
     public void Dashboard_activity_and_notifications_map_six_endpoints_with_their_policies()
     {
@@ -278,5 +292,43 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
 
         Assert.All(writes, route => Assert.Equal(HttpMethods.Post, route.Method));
         Assert.Equal(["/api/notifications/read-all", "/api/notifications/{id:long}/read"], writes.Select(route => route.Route).Order(StringComparer.Ordinal));
+    }
+    [Fact]
+
+    public void Recruitment_maps_thirty_four_endpoints_and_has_no_approval_permission()
+    {
+        var policies = RecruitmentPolicies();
+
+        Assert.Equal(34, policies.Count);
+        Assert.DoesNotContain(policies.Values, policy => policy!.EndsWith(":Approve", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Recruitment_endpoints_have_the_policy_of_who_may_use_them()
+    {
+        var policies = RecruitmentPolicies();
+
+        Assert.Equal("recruitment:View", policies["GET /api/job-openings/query"]);
+        Assert.Equal("recruitment:View", policies["GET /api/job-openings/{id:int}/pipeline"]);
+        Assert.Equal("recruitment:Create", policies["POST /api/job-openings/"]);
+        Assert.Equal("recruitment:Edit", policies["PUT /api/job-openings/{id:int}"]);
+        Assert.Equal("recruitment:Delete", policies["DELETE /api/job-openings/{id:int}"]);
+        Assert.Equal("recruitment:Edit", policies["POST /api/job-openings/{id:int}/open"]);
+        Assert.Equal("recruitment:Edit", policies["POST /api/job-openings/{id:int}/reopen"]);
+        Assert.Equal("recruitment:Edit", policies["POST /api/job-openings/{id:int}/hold"]);
+        Assert.Equal("recruitment:Edit", policies["POST /api/job-openings/{id:int}/close"]);
+        Assert.Equal("recruitment:View", policies["GET /api/candidates/query"]);
+        Assert.Equal("recruitment:Create", policies["POST /api/candidates/"]);
+        Assert.Equal("recruitment:Delete", policies["DELETE /api/candidates/{id:int}"]);
+        Assert.Equal("recruitment:Create", policies["POST /api/applications/"]);
+        Assert.Equal("recruitment:Edit", policies["POST /api/applications/{id:int}/stage"]);
+        Assert.Equal("recruitment:Delete", policies["DELETE /api/applications/{id:int}"]);
+        Assert.Equal("recruitment:Create", policies["POST /api/interviews/"]);
+        Assert.Equal("recruitment:Edit", policies["PUT /api/interviews/{id:int}"]);
+        Assert.Equal("recruitment:Edit", policies["POST /api/interviews/{id:int}/outcome"]);
+        Assert.Equal("recruitment:Edit", policies["POST /api/interviews/{id:int}/cancel"]);
+        Assert.Equal("recruitment:Delete", policies["DELETE /api/interviews/{id:int}"]);
+        Assert.Equal("recruitment:View", policies["GET /api/recruitment/pipeline"]);
+        Assert.Equal("recruitment:View", policies["GET /api/recruitment/counts"]);
     }
 }
