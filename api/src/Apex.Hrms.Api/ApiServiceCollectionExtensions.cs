@@ -13,7 +13,13 @@ internal static class ApiServiceCollectionExtensions
     public static IServiceCollection AddApi(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         services.AddOpenApi();
-        services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new TimeOnlyJsonConverter()));
+        services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.Converters.Add(new TimeOnlyJsonConverter());
+
+            // The Excel import contract names strategies, modes and statuses as text (ImportStrategy "InsertOnly" ...).
+            options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        });
         services.AddHrmsAuthentication(configuration, environment.IsDevelopment());
         services.AddHrmsAuthorization();
 

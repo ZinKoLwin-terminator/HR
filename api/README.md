@@ -362,6 +362,49 @@ Rules (ported from the mock services):
   * Interview outcome and cancel are an update in the mock, so they log `Interview "..." updated`. The interviews cancelled by a
     rejection and the application moving to Interview when one is scheduled log nothing, as in the mock.
 
+## HTTP contract (Excel import and export)
+
+Ported from the frontend mock (`ui/src/app/mock-services/excel`). Only the **employees** module exists there, so it is the
+only one in the catalog; the other modules are listed as unavailable with the reason. ClosedXML (MIT) reads and writes the
+workbooks. Every route needs `excel:View`, `excel:Import` or `excel:Export` (placeholder policies, like the module policies),
+and the module's own policies on top, checked by name (employees import: `employees:Create`, `Edit`, `EditSensitive`,
+`EditBank`; export: `employees:View`, plus `ViewSensitive` and `ViewBank` when `includeSensitive` is true).
+
+| Route | Policy | Body | Returns |
+| --- | --- | --- | --- |
+| `GET /api/excel/modules` | `excel:View` | none | `{ modules: ExcelModuleInfo[], unavailable: [{ code, label, canImport, canExport, reason }] }` |
+| `GET /api/excel/templates/{module}` | `excel:Import` | none | `.xlsx` (Instructions, data sheet with headers only, Field guide, code lists, hidden Lists) |
+| `POST /api/excel/imports/{module}/inspect` | `excel:Import` | multipart, one file part | `FileInspection` (`uploadId`, sheet, headers, suggested `mapping`, `missingRequired`, `unknownHeaders`, `ambiguousHeaders`, `needsMapping`) |
+| `POST /api/excel/imports/{module}/validate` | `excel:Import` | `{ uploadId, strategy: InsertOnly\|UpdateOnly\|InsertOrUpdate, mapping? }` | `ImportPreview` with a `batchId`, per row `rowNumber`, `status`, `action`, `issues` |
+| `POST /api/excel/imports/{batchId}/execute` | `excel:Import` | `{ mode: AllOrNothing\|Partial }` | `ImportResult` (`inserted`, `updated`, `skipped`, `failed`, `rolledBack`, `message`) |
+| `GET /api/excel/imports/history?pageIndex&pageSize` | `excel:View` | none | `PagedResult<ImportBatchSummary>`, newest first |
+| `GET /api/excel/imports/{batchId}` | `excel:View` | none | `ImportBatchDetail` (summary fields plus `issues` with `rowNumber`) |
+| `GET /api/excel/imports/{batchId}/error-report` | `excel:View` | none | `.xlsx` "Validation report" |
+| `POST /api/excel/exports/{module}` | `excel:Export` | `{ scope: Filtered\|All\|Selected, search?, filters?, selectedIds?, dateFrom?, dateTo?, columnKeys?, includeSensitive?, layout? }` | `.xlsx` |
+
+* **Validation runs the real handlers.** `validate` applies every row through the create and update handlers of the API
+  inside one transaction and then rolls the transaction back, so a row is valid only if the API would accept it, and the
+  messages are the API's. `execute` does the same and commits: `AllOrNothing` rolls the whole batch back when one row fails,
+  `Partial` keeps the rows that pass (a savepoint per row). The batch row, its issues and one activity entry are written
+  afterwards, so a rolled back import still leaves its record.
+* **Employees: what a row does.** Insert = create (status Active, Probation, On Leave or Suspended: the API refuses to create a
+  Resigned or Terminated employee) plus the bank account. Update = employment update, personal update and bank update, each only
+  when something differs (a re-import of an export is a no-op); a different `employmentStatus` runs the exit, reinstate or status
+  command; blank optional cells keep the current value. Because it goes through the API rules, `Employment Status` Resigned or
+  Terminated cannot be inserted by import (the mock allowed it).
+* **Limits** (`Excel` configuration section): `MaxFileBytes` 5 MB, `MaxRows` 5000, `MaxSheets` 5 (the template's own guide and
+  code sheets are not counted), `MaxExportRows` 50000, `UploadMinutes` 30. Only `.xlsx`: other extensions, a non-ZIP body, macros
+  (`vbaProject.bin`), external links and oversized packages are refused with the mock's messages. Formulas are flagged, never
+  evaluated.
+* **Temporary storage.** `inspect` keeps the file under `Excel:StorageFolder` (default `App_Data/excel-uploads` under the content
+  root) with an expiry; `validate` stores a copy under the batch id; `execute` deletes it; expired files are purged on the next
+  inspect and read. Cell values are never logged. Sensitive columns are masked (`••••`) in previews and stored issues.
+* **Export.** Sensitive columns are left out unless `includeSensitive`. `layout: "template"` writes the import columns (business
+  codes) so the file can be imported again. Text that could run as a formula is neutralised. Always synchronous: an export over
+  the row limit is a `400`; there is no `202` status URL.
+* Errors use the usual problem shape: 400 Validation (`errors.file`, `errors.mapping` ...), 404 NotFound, 409 Conflict (a batch
+  runs once; all-or-nothing with problems), 403 Forbidden when a module policy fails.
+
 ## Authentication (phase 1)
 
 ASP.NET Core Identity (standard stores, no roles) with a same-site cookie. Credentials live in `auth.User`

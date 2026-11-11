@@ -22,6 +22,12 @@ internal enum Permission
 
     /// <summary>Change salary bank details.</summary>
     EditBank,
+
+    /// <summary>Upload Excel files and import them (the module's own create and edit permissions apply to the rows).</summary>
+    Import,
+
+    /// <summary>Download Excel exports (the module's own View permission applies to the rows).</summary>
+    Export,
 }
 
 /// <summary>
@@ -52,7 +58,10 @@ internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Pe
 
     public static readonly PermissionModule Recruitment = new("recruitment", Standard);
 
-    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Recruitment, Dashboard, Activity];
+    /// <summary>Excel import and export: the file transfer itself. Rows are protected by the permissions of the module they belong to.</summary>
+    public static readonly PermissionModule Excel = new("excel", [Permission.View, Permission.Import, Permission.Export]);
+
+    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Recruitment, Dashboard, Activity, Excel];
 
     public string PolicyName(Permission permission) => $"{Key}:{permission}";
 }

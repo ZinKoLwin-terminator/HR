@@ -165,12 +165,12 @@ public sealed class SchemaMappingTests : IDisposable
     public void Foreign_keys_never_cascade_deletes_except_the_employee_children_the_database_cascades()
     {
         // ON DELETE CASCADE exists in the database only for the rows an employee owns, for the rows an identity user
-        // owns (claims, logins, tokens) and for the grants of a role.
+        // owns (claims, logins, tokens), for the grants of a role and for the issues of an import batch.
         var cascading = new[]
         {
             typeof(EmployeeBankAccount), typeof(EmployeeDocument), typeof(EmploymentHistoryEntry), typeof(Apex.Hrms.Domain.Attendance.ShiftWorkDay),
             typeof(IdentityUserClaim<string>), typeof(IdentityUserLogin<string>), typeof(IdentityUserToken<string>),
-            typeof(RoleGrant),
+            typeof(RoleGrant), typeof(Apex.Hrms.Domain.Excel.ImportIssue),
         };
         foreach (var type in context.Model.GetEntityTypes().Where(type => !type.IsOwned()))
         {
