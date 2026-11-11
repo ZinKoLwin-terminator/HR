@@ -44,7 +44,9 @@ internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Pe
 
     public static readonly PermissionModule Attendance = new("attendance", [.. Standard, Permission.Approve]);
 
-    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance];
+    public static readonly PermissionModule Recruitment = new("recruitment", Standard);
+
+    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Recruitment];
 
     public string PolicyName(Permission permission) => $"{Key}:{permission}";
 }

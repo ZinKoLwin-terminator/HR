@@ -14,6 +14,7 @@ using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Leave;
 using Apex.Hrms.Domain.Organization;
+using Apex.Hrms.Domain.Recruitment;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Apex.Hrms.Application.Tests.Fakes;
@@ -50,8 +51,13 @@ internal sealed class TestHost : IDisposable
         AddCounter<AttendanceRecord>(services);
         AddCounter<AttendanceAdjustment>(services);
         AddCounter<OvertimeRecord>(services);
+        AddCounter<JobOpening>(services);
+        AddCounter<Candidate>(services);
+        AddCounter<JobApplication>(services);
+        AddCounter<Interview>(services);
         services.AddSingleton<IEmployeeCodeSequence>(CodeSequence);
         services.AddSingleton<ILeaveApplicationNumberSequence>(LeaveNumbers);
+        services.AddSingleton<IJobOpeningCodeSequence>(JobCodes);
         services.AddSingleton<IBusinessWeek>(Week);
         services.AddApplication();
         configure?.Invoke(services);
@@ -71,6 +77,8 @@ internal sealed class TestHost : IDisposable
     public FakeEmployeeCodeSequence CodeSequence { get; } = new();
 
     public FakeLeaveNumberSequence LeaveNumbers { get; } = new();
+
+    public FakeJobCodeSequence JobCodes { get; } = new();
 
     /// <summary>Saturday and Sunday are the weekend unless a test changes it.</summary>
     public FakeBusinessWeek Week { get; } = new();

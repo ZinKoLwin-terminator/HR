@@ -3,6 +3,7 @@ using Apex.Hrms.Application.Attendance;
 using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Leave;
 using Apex.Hrms.Application.Organization;
+using Apex.Hrms.Application.Recruitment;
 using Apex.Hrms.Application.Security;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,6 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.TryAddScoped(typeof(IAccessScope<>), typeof(AllowAllAccessScope<>));
         services.TryAddScoped<AdministratorBootstrap>();
-        return services.AddOrganization().AddEmployees().AddLeave().AddAttendance();
+        return services.AddOrganization().AddEmployees().AddLeave().AddAttendance().AddRecruitment();
     }
 }

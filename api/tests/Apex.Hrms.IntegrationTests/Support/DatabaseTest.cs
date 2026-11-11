@@ -11,6 +11,10 @@ using Apex.Hrms.Application.Organization.Departments;
 using Apex.Hrms.Application.Organization.JobGrades;
 using Apex.Hrms.Application.Organization.Positions;
 using Apex.Hrms.Application.Organization.Sections;
+using Apex.Hrms.Application.Recruitment.Applications;
+using Apex.Hrms.Application.Recruitment.Candidates;
+using Apex.Hrms.Application.Recruitment.Interviews;
+using Apex.Hrms.Application.Recruitment.JobOpenings;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Infrastructure;
@@ -143,6 +147,18 @@ public abstract class DatabaseTest : IAsyncLifetime
     protected Task<Result<LeavePolicyDto>> Create(LeavePolicyCreateRequest request) => CreateAsync<LeavePolicyCreateRequest, LeavePolicyDto>(request);
 
     protected Task<Result<LeaveApplicationDto>> Create(LeaveApplicationCreateRequest request) => CreateAsync<LeaveApplicationCreateRequest, LeaveApplicationDto>(request);
+
+    protected Task<Result<JobOpeningDto>> Create(JobOpeningCreateRequest request) => CreateAsync<JobOpeningCreateRequest, JobOpeningDto>(request);
+
+    protected Task<Result<CandidateDto>> Create(CandidateCreateRequest request) => CreateAsync<CandidateCreateRequest, CandidateDto>(request);
+
+    protected Task<Result<JobApplicationDto>> Create(JobApplicationCreateRequest request) => CreateAsync<JobApplicationCreateRequest, JobApplicationDto>(request);
+
+    protected Task<Result<InterviewDto>> Create(InterviewCreateRequest request) => CreateAsync<InterviewCreateRequest, InterviewDto>(request);
+
+    protected Task<Result<JobOpeningDto>> Update(int id, JobOpeningUpdateRequest request) => UpdateAsync<JobOpeningUpdateRequest, JobOpeningDto>(id, request);
+
+    protected Task<Result<CandidateDto>> Update(int id, CandidateUpdateRequest request) => UpdateAsync<CandidateUpdateRequest, CandidateDto>(id, request);
 
     protected Task<Result<LeaveTypeDto>> Update(int id, LeaveTypeUpdateRequest request) => UpdateAsync<LeaveTypeUpdateRequest, LeaveTypeDto>(id, request);
 
