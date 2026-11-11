@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { AppError } from '../../core/models/common.models';
 import { Company } from '../../core/models/organization.models';
-import { ShiftDataService } from '../../core/services/data/attendance-data.services';
+import { SalaryComponentDataService } from '../../core/services/data/payroll-data.services';
 import {
   BranchDataService,
   CompanyDataService,
@@ -13,7 +13,7 @@ import {
   PositionDataService,
   SectionDataService,
 } from '../../core/services/data/organization-data.services';
-import { ShiftMockService } from '../../mock-services/attendance/attendance-mock.services';
+import { SalaryComponentMockService } from '../../mock-services/payroll/payroll-setup-mock.services';
 import { MOCK_COMPANIES } from '../../mock-data/organization/companies.mock';
 import { CompanyMockService } from '../../mock-services/organization/organization-mock.services';
 import { provideMockDataServices } from '../../mock-services/provide-mock-data-services';
@@ -82,7 +82,7 @@ describe('organization HTTP adapter', () => {
 
     it('leaves every other contract on its mock', () => {
       setup();
-      expect(TestBed.inject(ShiftDataService)).toBeInstanceOf(ShiftMockService);
+      expect(TestBed.inject(SalaryComponentDataService)).toBeInstanceOf(SalaryComponentMockService);
     });
 
     it('keeps the mocks when the switch is off', () => {

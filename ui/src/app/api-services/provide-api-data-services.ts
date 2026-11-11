@@ -10,6 +10,15 @@ import {
 import { AuthService, SERVER_SESSION } from '../core/services/auth.service';
 import { AuthDataService } from '../core/services/data/auth-data.service';
 import {
+  AttendanceAdjustmentDataService,
+  AttendanceOverviewDataService,
+  AttendanceRecordDataService,
+  HolidayDataService,
+  OvertimeDataService,
+  ShiftDataService,
+  WorkScheduleDataService,
+} from '../core/services/data/attendance-data.services';
+import {
   BranchDataService,
   CompanyDataService,
   DepartmentDataService,
@@ -27,6 +36,16 @@ import {
   LeaveTypeDataService,
 } from '../core/services/data/leave-data.services';
 import { API_BASE_URL } from './api-base-url';
+import {
+  AttendanceAdjustmentHttpService,
+  OvertimeHttpService,
+} from './attendance/attendance-approval-http.services';
+import { HolidayHttpService, ShiftHttpService } from './attendance/attendance-http.services';
+import { AttendanceRecordHttpService } from './attendance/attendance-record-http.service';
+import {
+  AttendanceOverviewHttpService,
+  WorkScheduleHttpService,
+} from './attendance/attendance-views-http.services';
 import { EmployeeHttpService } from './employees/employee-http.service';
 import { EmploymentHistoryHttpService } from './employees/employment-history-http.service';
 import { LeaveApplicationHttpService } from './leave/leave-application-http.service';
@@ -59,7 +78,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
 }
 
 /**
- * Binds ONLY the Organization, Employee (employees, employment history) and Leave contracts to HTTP. Every other contract stays on its mock
+ * Binds ONLY the Organization, Employee (employees, employment history), Leave and Attendance contracts to HTTP. Every other contract stays on its mock
  * (the adapter is per dependency cluster). Register it AFTER `provideMockDataServices()` so
  * these bindings win; `app.config.ts` does that and the switch defaults to off.
  */
@@ -89,6 +108,14 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(LeaveApplicationDataService, LeaveApplicationHttpService),
     bind(LeaveBalanceDataService, LeaveBalanceHttpService),
     bind(LeaveCalendarDataService, LeaveCalendarHttpService),
+    // Attendance: shifts, holidays, read-only records with punches, adjustments, overtime, overview, schedule.
+    bind(ShiftDataService, ShiftHttpService),
+    bind(HolidayDataService, HolidayHttpService),
+    bind(AttendanceRecordDataService, AttendanceRecordHttpService),
+    bind(AttendanceAdjustmentDataService, AttendanceAdjustmentHttpService),
+    bind(OvertimeDataService, OvertimeHttpService),
+    bind(AttendanceOverviewDataService, AttendanceOverviewHttpService),
+    bind(WorkScheduleDataService, WorkScheduleHttpService),
     // Real sign-in: cookie session owned by the server, kept in memory only.
     bind(AuthDataService, AuthHttpService),
     { provide: SERVER_SESSION, useValue: true },

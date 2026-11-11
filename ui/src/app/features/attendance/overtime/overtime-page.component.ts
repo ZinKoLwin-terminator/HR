@@ -73,13 +73,15 @@ export class OvertimePageComponent {
           icon: 'cancel',
           destructive: true,
           visible: pending,
-          confirm: {
+          prompt: {
             title: 'Reject overtime?',
             message: (o) =>
               `Reject ${(o.minutes / 60).toFixed(1)} h of overtime for ${names.get(o.employeeId)} on ${o.date}?`,
+            label: 'Reason for rejection',
+            required: true,
             confirmText: 'Reject',
           },
-          run: (o) => this.overtime.decide(o.id, 'Rejected', ''),
+          run: (o, remarks) => this.overtime.decide(o.id, 'Rejected', remarks),
           successMessage: (o) => `Overtime for ${names.get(o.employeeId)} rejected.`,
         },
       ],

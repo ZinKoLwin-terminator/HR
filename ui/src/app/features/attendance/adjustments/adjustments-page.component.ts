@@ -80,13 +80,15 @@ export class AdjustmentsPageComponent {
           icon: 'cancel',
           destructive: true,
           visible: pending,
-          confirm: {
+          prompt: {
             title: 'Reject adjustment?',
             message: (a) =>
               `Reject the request for ${names.get(a.employeeId)} on ${a.date}? The record stays unchanged.`,
+            label: 'Reason for rejection',
+            required: true,
             confirmText: 'Reject',
           },
-          run: (a) => this.adjustments.decide(a.id, 'Rejected', ''),
+          run: (a, remarks) => this.adjustments.decide(a.id, 'Rejected', remarks),
           successMessage: (a) => `${code(a)} rejected.`,
         },
       ],
