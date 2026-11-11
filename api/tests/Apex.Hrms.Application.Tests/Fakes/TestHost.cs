@@ -18,6 +18,7 @@ using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Leave;
 using Apex.Hrms.Domain.Organization;
 using Apex.Hrms.Domain.Recruitment;
+using Apex.Hrms.Domain.Security;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Apex.Hrms.Application.Tests.Fakes;
@@ -63,6 +64,7 @@ internal sealed class TestHost : IDisposable
         AddCounter<Candidate>(services);
         AddCounter<JobApplication>(services);
         AddCounter<Interview>(services);
+        AddCounter<AppAccount>(services);
         services.AddSingleton<IEmployeeCodeSequence>(CodeSequence);
         services.AddSingleton<ILeaveApplicationNumberSequence>(LeaveNumbers);
         services.AddSingleton<IJobOpeningCodeSequence>(JobCodes);

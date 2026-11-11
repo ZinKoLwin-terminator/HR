@@ -37,6 +37,7 @@ app.MapLeaveEndpoints();
 app.MapAttendanceEndpoints();
 app.MapActivityEndpoints();
 app.MapRecruitmentEndpoints();
+app.MapSettingsEndpoints();
 
 await app.RunAsync();
 return 0;

@@ -19,6 +19,8 @@ public sealed record AppError(
 
     public static AppError Unknown(string message) => new(ErrorType.Unknown, message);
 
+    public static AppError Unavailable(string message) => new(ErrorType.Unavailable, message);
+
     public static AppError Validation(string message, IReadOnlyDictionary<string, string[]>? fieldErrors = null) =>
         new(ErrorType.Validation, message, fieldErrors);
 

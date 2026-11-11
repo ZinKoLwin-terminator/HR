@@ -3,6 +3,8 @@ using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.Dashboard;
 using Apex.Hrms.Application.Notifications;
 using Apex.Hrms.Application.Security;
+using Apex.Hrms.Application.Settings;
+using Apex.Hrms.Infrastructure.Email;
 using Apex.Hrms.Infrastructure.Identity;
 using Apex.Hrms.Infrastructure.Persistence;
 using Apex.Hrms.Infrastructure.Security;
@@ -57,6 +59,11 @@ public static class DependencyInjection
 
         services.AddScoped<IAccountDirectory, EfAccountDirectory>();
         services.AddScoped<IAdministratorStore, EfAdministratorStore>();
+        services.AddScoped<IAccountLogins, EfAccountLogins>();
+        services.AddScoped<IPermissionStore, EfPermissionStore>();
+
+        // Fails closed (refuses to send) until the host registers a real sender with AddEmailSender.
+        services.TryAddSingleton<IEmailSender>(new SmtpEmailSender(SmtpSettings.From(configuration)));
         AddIdentity(services);
         return services;
     }

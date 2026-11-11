@@ -9,4 +9,7 @@ public enum ErrorType
     Unauthorized,
     Forbidden,
     Unknown,
+
+    /// <summary>A needed service is not configured or reachable (HTTP 503, shown to the frontend as <c>Unknown</c>).</summary>
+    Unavailable,
 }

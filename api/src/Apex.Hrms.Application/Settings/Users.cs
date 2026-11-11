@@ -1,0 +1,587 @@
+using System.Linq.Expressions;
+using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
+using Apex.Hrms.Application.Organization;
+using Apex.Hrms.Application.Security;
+using Apex.Hrms.Application.UseCases;
+using Apex.Hrms.Domain.Activity;
+using Apex.Hrms.Domain.Common;
+using Apex.Hrms.Domain.Employees;
+using Apex.Hrms.Domain.Security;
+using FluentValidation;
+
+namespace Apex.Hrms.Application.Settings;
+
+internal sealed class UserMapping : IEntityDescriptor<AppAccount>
+{
+    public string Label => "User";
+
+    public string Describe(AppAccount entity) => entity.DisplayName;
+
+    public static UserDto ToDto(AppAccount account, bool lockedOut) => new(
+        account.Id,
+        account.EmployeeId,
+        account.DisplayName,
+        account.Email,
+        account.RoleId,
+        StatusText(account.Status, lockedOut),
+        account.LastLoginAtUtc is { } at ? DateTime.SpecifyKind(at, DateTimeKind.Utc) : null,
+        account.RowVersion);
+
+    /// <summary>Locked while the sign-in lockout lasts, unless the account was switched off (Inactive wins).</summary>
+    private static string StatusText(AccountStatus status, bool lockedOut) =>
+        status == AccountStatus.Active && lockedOut ? nameof(AccountStatus.Locked) : status.ToString();
+}
+
+internal sealed class UserQuerySpecification : IQuerySpecification<AppAccount, UserFilter>
+{
+    public IReadOnlyDictionary<string, Expression<Func<AppAccount, object>>> SortKeys { get; } =
+        new Dictionary<string, Expression<Func<AppAccount, object>>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["id"] = a => a.Id,
+            ["displayName"] = a => a.DisplayName,
+            ["email"] = a => a.Email,
+            ["roleId"] = a => a.RoleId,
+            ["status"] = a => a.Status,
+            ["lastLoginOn"] = a => a.LastLoginAtUtc!,
+        };
+
+    public Expression<Func<AppAccount, bool>> Search(string term) =>
+        Predicates.ContainsAny<AppAccount>(term, a => a.DisplayName, a => a.Email);
+
+    public Expression<Func<AppAccount, bool>> Filter(UserFilter filter)
+    {
+        var predicate = Predicates.Always<AppAccount>();
+        if (filter.RoleId is { } roleId)
+        {
+            predicate = predicate.And(a => a.RoleId == roleId);
+        }
+
+        if (FilterPredicates.IsSet(filter.Status))
+        {
+            // "Locked" matches the stored status only; a sign-in lockout that has not been turned into a status is not filterable.
+            predicate = Enum.GetNames<AccountStatus>().Contains(filter.Status, StringComparer.Ordinal) && Enum.TryParse<AccountStatus>(filter.Status, out var status)
+                ? predicate.And(a => a.Status == status)
+                : Predicates.Never<AppAccount>();
+        }
+
+        return predicate;
+    }
+}
+
+internal sealed class AccountIdentityMapper : IDtoMapper<AppAccount, AppAccount>
+{
+    public AppAccount ToDto(AppAccount entity) => entity;
+}
+
+internal sealed class UserReadHandlers(
+    IRepository<AppAccount> repository,
+    IAccessScope<AppAccount> scope,
+    ICurrentUser user,
+    IQuerySpecification<AppAccount, UserFilter> specification,
+    EntityLoader<AppAccount> loader,
+    IAccountLogins logins) : IQueryHandler<UserDto, UserFilter>, IGetByIdHandler<UserDto>
+{
+    public async Task<Result<PagedResult<UserDto>>> HandleAsync(PageRequest<UserFilter> request, CancellationToken cancellationToken)
+    {
+        var inner = new QueryHandler<AppAccount, AppAccount, UserFilter>(repository, scope, user, specification, new AccountIdentityMapper());
+        var page = await inner.HandleAsync(request, cancellationToken);
+        if (page.IsFailure)
+        {
+            return Result.Failure<PagedResult<UserDto>>(page.Error);
+        }
+
+        var locked = await logins.LockedOutAsync(Subjects(page.Value.Items), cancellationToken);
+        return Result.Success(page.Value.Map(account => UserMapping.ToDto(account, IsLocked(account, locked))));
+    }
+
+    public async Task<Result<UserDto>> HandleAsync(int id, CancellationToken cancellationToken)
+    {
+        var loaded = await loader.LoadAsync(id, cancellationToken);
+        if (loaded.IsFailure)
+        {
+            return Result.Failure<UserDto>(loaded.Error);
+        }
+
+        return Result.Success(UserMapping.ToDto(loaded.Value, await UserRules.IsLockedAsync(logins, loaded.Value, cancellationToken)));
+    }
+
+    private static List<string> Subjects(IEnumerable<AppAccount> accounts) =>
+        [.. accounts.Select(account => account.ExternalSubject).OfType<string>()];
+
+    private static bool IsLocked(AppAccount account, IReadOnlySet<string> locked) =>
+        account.ExternalSubject is { } subject && locked.Contains(subject);
+}
+
+/// <summary>Rules the user commands share.</summary>
+internal static class UserRules
+{
+    public const string OwnAccountMessage = "You cannot change your own role or deactivate your own account.";
+    public const string OwnDeleteMessage = "You cannot delete your own account.";
+    public const string LastAdministratorMessage = "There must always be one active HR Administrator.";
+
+    public static async Task<bool> IsLockedAsync(IAccountLogins logins, AppAccount account, CancellationToken cancellationToken) =>
+        account.ExternalSubject is { } subject && (await logins.LockedOutAsync([subject], cancellationToken)).Contains(subject);
+
+    public static Result EnsureNotSelf(AppAccount account, ICurrentUser user, string message) =>
+        user.UserId is { } own && own == account.Id
+            ? Result.Failure(AppError.Conflict(message))
+            : Result.Success();
+
+    /// <summary>An active role: fails as a field error on roleId, like the mock service.</summary>
+    public static async Task<Result<AppRole>> FindActiveRoleAsync(IRepository<AppRole> roles, int roleId, CancellationToken cancellationToken)
+    {
+        var role = await roles.FindAsync(roleId, cancellationToken);
+        return role is { IsActive: true }
+            ? Result.Success(role)
+            : Result.Failure<AppRole>(AppError.Validation("Choose an active role.", "roleId", "Choose an active role."));
+    }
+
+    /// <summary>
+    /// Fails when <paramref name="account"/> is the only active HR Administrator who can sign in. Call before a change that
+    /// would take the account out of that group (a demotion, a deactivation or a delete).
+    /// </summary>
+    public static async Task<Result> EnsureNotLastAdministratorAsync(
+        IRepository<AppAccount> accounts,
+        IRepository<AppRole> roles,
+        AppAccount account,
+        CancellationToken cancellationToken)
+    {
+        if (account.Status != AccountStatus.Active || account.ExternalSubject is null)
+        {
+            return Result.Success();
+        }
+
+        var administrators = await roles.ListAsync(role => role.Name == SecurityPolicy.AdministratorRoleName, cancellationToken);
+        if (administrators.Count == 0 || administrators[0].Id != account.RoleId)
+        {
+            return Result.Success();
+        }
+
+        var administratorRoleId = administrators[0].Id;
+        var accountId = account.Id;
+        var another = await accounts.AnyAsync(
+            other => other.Id != accountId
+                && other.Status == AccountStatus.Active
+                && other.ExternalSubject != null
+                && other.RoleId == administratorRoleId,
+            cancellationToken);
+        return another ? Result.Success() : Result.Failure(AppError.Conflict(LastAdministratorMessage));
+    }
+}
+
+internal sealed class UserCreateRequestValidator : RequestValidator<UserCreateRequest>
+{
+    public UserCreateRequestValidator()
+    {
+        RuleFor(x => x.EmployeeId).GreaterThan(0).WithMessage("Choose a current employee.");
+        RuleFor(x => x.RoleId).GreaterThan(0).WithMessage("Choose an active role.");
+        RuleFor(x => x.Status)
+            .Must(status => status is null || status is nameof(AccountStatus.Active) or nameof(AccountStatus.Inactive))
+            .WithMessage("Status must be Active or Inactive.");
+        RuleFor(x => x.InitialPassword)
+            .Custom((password, context) =>
+            {
+                if (SecurityPolicy.PasswordViolation(password) is { } problem)
+                {
+                    context.AddFailure(problem);
+                }
+            });
+    }
+}
+
+internal sealed class UserUpdateRequestValidator : RequestValidator<UserUpdateRequest>
+{
+    public UserUpdateRequestValidator()
+    {
+        RuleFor(x => x.RoleId).GreaterThan(0).WithMessage("Choose an active role.");
+        RuleForText(x => x.RowVersion).RequiredRowVersion();
+    }
+}
+
+/// <summary>
+/// Creates an account for a current employee that has none. The email is the work email of the employee (lower case); the
+/// password is hashed by Identity inside <see cref="IAccountLogins"/> and never leaves it: it is not stored, returned, logged
+/// or written to the activity feed (which names the user by display name only).
+/// </summary>
+internal sealed class CreateUserHandler(
+    IValidator<UserCreateRequest> validator,
+    IRepository<Employee> employees,
+    IRepository<AppAccount> accounts,
+    IRepository<AppRole> roles,
+    IAccountLogins logins,
+    IActivityRecorder activity,
+    IUnitOfWork unitOfWork,
+    UserMapping mapper) : ICreateHandler<UserCreateRequest, UserDto>
+{
+    public async Task<Result<UserDto>> HandleAsync(UserCreateRequest request, CancellationToken cancellationToken)
+    {
+        var valid = await validator.CheckAsync(request, cancellationToken);
+        if (valid.IsFailure)
+        {
+            return Result.Failure<UserDto>(valid.Error);
+        }
+
+        var employee = await employees.FindAsync(request.EmployeeId, cancellationToken);
+        if (employee is null || employee.ExitDate is not null)
+        {
+            return Fail("Choose a current employee.", "employeeId", "Choose a current employee.");
+        }
+
+        var employeeId = employee.Id;
+        if (await accounts.AnyAsync(account => account.EmployeeId == employeeId, cancellationToken))
+        {
+            return Fail("This employee already has a user account.", "employeeId", "A user already exists for this employee.");
+        }
+
+        var role = await UserRules.FindActiveRoleAsync(roles, request.RoleId, cancellationToken);
+        if (role.IsFailure)
+        {
+            return Result.Failure<UserDto>(role.Error);
+        }
+
+        var email = employee.WorkEmail.Trim().ToLowerInvariant();
+        var displayName = $"{employee.FirstName} {employee.LastName}".Trim();
+        if (email.Length == 0 || email.Length > AppAccount.EmailMaxLength || displayName.Length > AppAccount.DisplayNameMaxLength)
+        {
+            return Fail("The employee's name or work email cannot be used for an account.", "employeeId", "Fix the work email of the employee first.");
+        }
+
+        if (await accounts.AnyAsync(account => account.Email == email, cancellationToken))
+        {
+            return Fail("An account with this email address already exists.", "employeeId", "This work email is already used by another account.");
+        }
+
+        var login = await logins.CreateAsync(email, request.InitialPassword!, cancellationToken);
+        if (login.IsFailure)
+        {
+            return Result.Failure<UserDto>(login.Error);
+        }
+
+        var status = request.Status == nameof(AccountStatus.Inactive) ? AccountStatus.Inactive : AccountStatus.Active;
+        var account = AppAccount.Create(employee.Id, displayName, email, role.Value.Id, login.Value, status);
+        accounts.Add(account);
+        activity.Record(ActivityCategories.System, ActivityMessages.Created(mapper.Label, mapper.Describe(account)));
+
+        var saved = false;
+        try
+        {
+            var result = await unitOfWork.SaveChangesAsync(cancellationToken);
+            if (result.IsFailure)
+            {
+                return Result.Failure<UserDto>(result.Error);
+            }
+
+            saved = true;
+        }
+        finally
+        {
+            if (!saved)
+            {
+                // The identity user was created first; do not leave a login that has no account.
+                await logins.DeleteAsync(login.Value, CancellationToken.None);
+            }
+        }
+
+        return Result.Success(UserMapping.ToDto(account, lockedOut: false));
+    }
+
+    private static Result<UserDto> Fail(string message, string field, string fieldMessage) =>
+        Result.Failure<UserDto>(AppError.Validation(message, field, fieldMessage));
+}
+
+/// <summary>Changes the role of a user (nothing else: the employee is fixed and the status moves are commands).</summary>
+internal sealed class UpdateUserHandler(
+    IValidator<UserUpdateRequest> validator,
+    EntityLoader<AppAccount> loader,
+    IRepository<AppAccount> accounts,
+    IRepository<AppRole> roles,
+    ICurrentUser currentUser,
+    IAccountLogins logins,
+    IActivityRecorder activity,
+    IUnitOfWork unitOfWork,
+    UserMapping mapper) : IUpdateHandler<UserUpdateRequest, UserDto>
+{
+    public async Task<Result<UserDto>> HandleAsync(int id, UserUpdateRequest request, CancellationToken cancellationToken)
+    {
+        var valid = await validator.CheckAsync(request, cancellationToken);
+        if (valid.IsFailure)
+        {
+            return Result.Failure<UserDto>(valid.Error);
+        }
+
+        var loaded = await loader.LoadForChangeAsync(id, request.RowVersion, cancellationToken);
+        if (loaded.IsFailure)
+        {
+            return Result.Failure<UserDto>(loaded.Error);
+        }
+
+        var account = loaded.Value;
+        var role = await UserRules.FindActiveRoleAsync(roles, request.RoleId, cancellationToken);
+        if (role.IsFailure)
+        {
+            return Result.Failure<UserDto>(role.Error);
+        }
+
+        if (request.RoleId != account.RoleId)
+        {
+            var notSelf = UserRules.EnsureNotSelf(account, currentUser, UserRules.OwnAccountMessage);
+            if (notSelf.IsFailure)
+            {
+                return Result.Failure<UserDto>(notSelf.Error);
+            }
+
+            var notLast = await UserRules.EnsureNotLastAdministratorAsync(accounts, roles, account, cancellationToken);
+            if (notLast.IsFailure)
+            {
+                return Result.Failure<UserDto>(notLast.Error);
+            }
+
+            account.ChangeRole(request.RoleId);
+            activity.Record(ActivityCategories.System, ActivityMessages.Updated(mapper.Label, mapper.Describe(account)));
+        }
+
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        return saved.IsFailure
+            ? Result.Failure<UserDto>(saved.Error)
+            : Result.Success(UserMapping.ToDto(account, await UserRules.IsLockedAsync(logins, account, cancellationToken)));
+    }
+}
+
+/// <summary>Activate: a locked account must be unlocked first, and the role of the user must be active.</summary>
+internal sealed class ActivateUserHandler(
+    EntityLoader<AppAccount> loader,
+    IRepository<AppRole> roles,
+    IAccountLogins logins,
+    IActivityRecorder activity,
+    IUnitOfWork unitOfWork,
+    UserMapping mapper) : ICommandHandler<ActivateCommand, UserDto>
+{
+    public async Task<Result<UserDto>> HandleAsync(ActivateCommand command, CancellationToken cancellationToken)
+    {
+        var loaded = await loader.LoadForChangeAsync(command.Id, command.RowVersion, cancellationToken);
+        if (loaded.IsFailure)
+        {
+            return Result.Failure<UserDto>(loaded.Error);
+        }
+
+        var account = loaded.Value;
+        if (account.Status != AccountStatus.Active)
+        {
+            var role = await UserRules.FindActiveRoleAsync(roles, account.RoleId, cancellationToken);
+            if (role.IsFailure)
+            {
+                return Result.Failure<UserDto>(role.Error);
+            }
+
+            var activated = account.Activate();
+            if (activated.IsFailure)
+            {
+                return Result.Failure<UserDto>(activated.Error);
+            }
+
+            activity.Record(ActivityCategories.System, ActivityMessages.Updated(mapper.Label, mapper.Describe(account)));
+        }
+
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        return saved.IsFailure
+            ? Result.Failure<UserDto>(saved.Error)
+            : Result.Success(UserMapping.ToDto(account, await UserRules.IsLockedAsync(logins, account, cancellationToken)));
+    }
+}
+
+/// <summary>Deactivate: not your own account, and never the last active HR Administrator.</summary>
+internal sealed class DeactivateUserHandler(
+    EntityLoader<AppAccount> loader,
+    IRepository<AppAccount> accounts,
+    IRepository<AppRole> roles,
+    ICurrentUser currentUser,
+    IAccountLogins logins,
+    IActivityRecorder activity,
+    IUnitOfWork unitOfWork,
+    UserMapping mapper) : ICommandHandler<DeactivateCommand, UserDto>
+{
+    public async Task<Result<UserDto>> HandleAsync(DeactivateCommand command, CancellationToken cancellationToken)
+    {
+        var loaded = await loader.LoadForChangeAsync(command.Id, command.RowVersion, cancellationToken);
+        if (loaded.IsFailure)
+        {
+            return Result.Failure<UserDto>(loaded.Error);
+        }
+
+        var account = loaded.Value;
+        if (account.Status != AccountStatus.Inactive)
+        {
+            var notSelf = UserRules.EnsureNotSelf(account, currentUser, UserRules.OwnAccountMessage);
+            if (notSelf.IsFailure)
+            {
+                return Result.Failure<UserDto>(notSelf.Error);
+            }
+
+            var notLast = await UserRules.EnsureNotLastAdministratorAsync(accounts, roles, account, cancellationToken);
+            if (notLast.IsFailure)
+            {
+                return Result.Failure<UserDto>(notLast.Error);
+            }
+
+            account.Deactivate();
+            activity.Record(ActivityCategories.System, ActivityMessages.Updated(mapper.Label, mapper.Describe(account)));
+        }
+
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        return saved.IsFailure
+            ? Result.Failure<UserDto>(saved.Error)
+            : Result.Success(UserMapping.ToDto(account, await UserRules.IsLockedAsync(logins, account, cancellationToken)));
+    }
+}
+
+/// <summary>Unlock: clears the lockout after failed sign-ins and turns a Locked status back to Active.</summary>
+internal sealed class UnlockUserHandler(
+    EntityLoader<AppAccount> loader,
+    IAccountLogins logins,
+    IActivityRecorder activity,
+    IUnitOfWork unitOfWork,
+    UserMapping mapper) : ICommandHandler<UnlockUserCommand, UserDto>
+{
+    public async Task<Result<UserDto>> HandleAsync(UnlockUserCommand command, CancellationToken cancellationToken)
+    {
+        var loaded = await loader.LoadForChangeAsync(command.Id, command.RowVersion, cancellationToken);
+        if (loaded.IsFailure)
+        {
+            return Result.Failure<UserDto>(loaded.Error);
+        }
+
+        var account = loaded.Value;
+        var wasLocked = account.Status == AccountStatus.Locked || await UserRules.IsLockedAsync(logins, account, cancellationToken);
+        account.Unlock();
+        if (wasLocked)
+        {
+            activity.Record(ActivityCategories.System, ActivityMessages.Updated(mapper.Label, mapper.Describe(account)));
+        }
+
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (saved.IsFailure)
+        {
+            return Result.Failure<UserDto>(saved.Error);
+        }
+
+        if (account.ExternalSubject is { } subject)
+        {
+            await logins.UnlockAsync(subject, cancellationToken);
+        }
+
+        return Result.Success(UserMapping.ToDto(account, lockedOut: false));
+    }
+}
+
+internal sealed class DeleteUserHandler(
+    EntityLoader<AppAccount> loader,
+    IRepository<AppAccount> accounts,
+    IRepository<AppRole> roles,
+    ICurrentUser currentUser,
+    IAccountLogins logins,
+    IActivityRecorder activity,
+    IUnitOfWork unitOfWork,
+    UserMapping mapper) : IDeleteHandler<UserDto>
+{
+    public async Task<Result> HandleAsync(int id, string? rowVersion, CancellationToken cancellationToken)
+    {
+        var loaded = await loader.LoadForChangeAsync(id, rowVersion, cancellationToken);
+        if (loaded.IsFailure)
+        {
+            return Result.Failure(loaded.Error);
+        }
+
+        var account = loaded.Value;
+        var notSelf = UserRules.EnsureNotSelf(account, currentUser, UserRules.OwnDeleteMessage);
+        if (notSelf.IsFailure)
+        {
+            return notSelf;
+        }
+
+        var notLast = await UserRules.EnsureNotLastAdministratorAsync(accounts, roles, account, cancellationToken);
+        if (notLast.IsFailure)
+        {
+            return notLast;
+        }
+
+        activity.Record(ActivityCategories.System, ActivityMessages.Deleted(mapper.Label, mapper.Describe(account)));
+        accounts.Remove(account);
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (saved.IsFailure)
+        {
+            return saved;
+        }
+
+        // The account is gone, so the login can no longer be used; removing it is housekeeping.
+        if (account.ExternalSubject is { } subject)
+        {
+            await logins.DeleteAsync(subject, cancellationToken);
+        }
+
+        return Result.Success();
+    }
+}
+
+/// <summary>
+/// An administrator asks for the password reset email of a user (the same mail forgot-password sends). It fails closed with
+/// <see cref="ErrorType.Unavailable"/> (HTTP 503) when email is not configured, before anything else happens.
+/// </summary>
+internal sealed class UserPasswordResetHandler(
+    EntityLoader<AppAccount> loader,
+    IRepository<AppRole> roles,
+    IEmailSender email,
+    IAccountLogins logins,
+    IActivityRecorder activity,
+    IUnitOfWork unitOfWork,
+    UserMapping mapper) : IUserPasswordResetHandler
+{
+    public const string SentMessage = "A password reset email has been sent to the user.";
+    public const string NotConfiguredMessage = "Password reset by email is not configured on this server. Ask an administrator to configure email.";
+    public const string SendFailedMessage = "The password reset email could not be sent. Try again later.";
+
+    public async Task<Result<MessageDto>> HandleAsync(int id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            email.EnsureAvailable();
+        }
+        catch (EmailNotConfiguredException)
+        {
+            return Result.Failure<MessageDto>(AppError.Unavailable(NotConfiguredMessage));
+        }
+
+        var loaded = await loader.LoadAsync(id, cancellationToken);
+        if (loaded.IsFailure)
+        {
+            return Result.Failure<MessageDto>(loaded.Error);
+        }
+
+        var account = loaded.Value;
+        var role = await roles.FindAsync(account.RoleId, cancellationToken);
+        if (account.ExternalSubject is null || account.Status != AccountStatus.Active || role is not { IsActive: true })
+        {
+            return Result.Failure<MessageDto>(AppError.Conflict(
+                "Only an active user with an active role can get a password reset. Activate the user first."));
+        }
+
+        try
+        {
+            await logins.SendPasswordResetAsync(account.ExternalSubject, cancellationToken);
+        }
+        catch (EmailNotConfiguredException)
+        {
+            return Result.Failure<MessageDto>(AppError.Unavailable(NotConfiguredMessage));
+        }
+#pragma warning disable CA1031 // A mail server failure is reported as "unavailable"; the exception text could hold the address.
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Result.Failure<MessageDto>(AppError.Unavailable(SendFailedMessage));
+        }
+#pragma warning restore CA1031
+
+        activity.Record(ActivityCategories.System, $"Password reset email sent for user \"{mapper.Describe(account)}\"");
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        return saved.IsFailure ? Result.Failure<MessageDto>(saved.Error) : Result.Success(new MessageDto(SentMessage));
+    }
+}

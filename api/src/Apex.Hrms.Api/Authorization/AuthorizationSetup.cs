@@ -7,6 +7,9 @@ internal static class AuthorizationSetup
     /// <summary>Needs a signed-in user and nothing else (notifications). Unlike the module policies it is final, not a placeholder.</summary>
     public const string SignedInPolicy = "signed-in";
 
+    /// <summary>The caller must hold the HR Administrator role (a real check, see <see cref="AdministratorRequirement"/>). Added to the settings endpoints on top of their module policy.</summary>
+    public const string AdministratorPolicy = "hr-administrator";
+
     /// <summary>
     /// Registers one named policy per module and verb, and the fallback policy.
     /// TODO(Permissions, phase 3): the module policies still check no permission. They only require a signed-in user;
@@ -14,10 +17,11 @@ internal static class AuthorizationSetup
     /// verb (the permissions are already returned by <c>GET /api/auth/me</c>).
     /// </summary>
     public static IServiceCollection AddHrmsAuthorization(this IServiceCollection services) =>
-        services.AddAuthorization(options =>
+        services.AddScoped<IAuthorizationHandler, AdministratorHandler>().AddAuthorization(options =>
         {
             // Notifications are the signed-in user's own: no permission, only a signed-in user (a named policy, never a placeholder).
             options.AddPolicy(SignedInPolicy, policy => policy.RequireAuthenticatedUser());
+            options.AddPolicy(AdministratorPolicy, policy => policy.RequireAuthenticatedUser().AddRequirements(new AdministratorRequirement()));
 
             foreach (var module in PermissionModule.All)
             {

@@ -69,11 +69,61 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     private static bool IsActivityRoute(RouteEndpoint endpoint) =>
         ActivityPrefixes.Any(prefix => endpoint.RoutePattern.RawText!.StartsWith(prefix, StringComparison.Ordinal));
 
+    private static readonly string[] SettingsPrefixes = ["/api/users", "/api/roles", "/api/role-permissions", "/api/general-settings"];
+
+    private static bool IsSettingsRoute(RouteEndpoint endpoint) =>
+        SettingsPrefixes.Any(prefix => endpoint.RoutePattern.RawText!.StartsWith(prefix, StringComparison.Ordinal));
+
+    /// <summary>Every policy of the endpoints (a settings endpoint has its module policy and the administrator policy).</summary>
+    private Dictionary<string, string[]> SettingsPolicies() => ApiEndpoints().Where(IsSettingsRoute)
+        .ToDictionary(
+            endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+            endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(data => data.Policy!).Order(StringComparer.Ordinal).ToArray());
+
+    [Fact]
+    public void Settings_maps_twenty_two_endpoints_and_no_unpaged_user_list_and_no_sign_up()
+    {
+        var policies = SettingsPolicies();
+
+        Assert.Equal(22, policies.Count);
+        Assert.DoesNotContain("GET /api/users/", policies.Keys);
+        Assert.Contains("GET /api/users/query", policies.Keys);
+
+        // Users exist only because an administrator creates them: the one route that creates an account is admin only, and no
+        // settings endpoint is anonymous.
+        Assert.Equal(["hr-administrator", "settings:Create"], policies["POST /api/users/"]);
+        Assert.DoesNotContain(ApiEndpoints().Where(IsSettingsRoute), endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null);
+    }
+
+    [Fact]
+    public void Settings_endpoints_have_the_module_policy_of_their_verb_and_need_an_administrator()
+    {
+        var policies = SettingsPolicies();
+
+        Assert.Equal(["hr-administrator", "settings:View"], policies["GET /api/users/query"]);
+        Assert.Equal(["hr-administrator", "settings:View"], policies["GET /api/users/{id:int}"]);
+        Assert.Equal(["hr-administrator", "settings:Edit"], policies["PUT /api/users/{id:int}"]);
+        Assert.Equal(["hr-administrator", "settings:Delete"], policies["DELETE /api/users/{id:int}"]);
+        Assert.Equal(["hr-administrator", "settings:Edit"], policies["POST /api/users/{id:int}/activate"]);
+        Assert.Equal(["hr-administrator", "settings:Edit"], policies["POST /api/users/{id:int}/deactivate"]);
+        Assert.Equal(["hr-administrator", "settings:Edit"], policies["POST /api/users/{id:int}/unlock"]);
+        Assert.Equal(["hr-administrator", "settings:Edit"], policies["POST /api/users/{id:int}/password-reset"]);
+        Assert.Equal(["hr-administrator", "settings:Create"], policies["POST /api/roles/"]);
+        Assert.Equal(["hr-administrator", "settings:Edit"], policies["PUT /api/roles/{id:int}"]);
+        Assert.Equal(["hr-administrator", "settings:Delete"], policies["DELETE /api/roles/{id:int}"]);
+        Assert.Equal(["hr-administrator", "settings:Edit"], policies["POST /api/roles/{id:int}/deactivate"]);
+        Assert.Equal(["hr-administrator", "settings:View"], policies["GET /api/role-permissions/"]);
+        Assert.Equal(["hr-administrator", "settings:View"], policies["GET /api/role-permissions/{roleId:int}"]);
+        Assert.Equal(["hr-administrator", "settings:Edit"], policies["PUT /api/role-permissions/{roleId:int}"]);
+        Assert.Equal(["settings:View"], policies["GET /api/general-settings/"]);
+        Assert.Equal(["hr-administrator", "settings:Edit"], policies["PUT /api/general-settings/"]);
+    }
+
     [Fact]
     public void Six_organization_resources_map_eight_endpoints_each()
     {
         var endpoints = ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint))
             .ToList();
 
         Assert.Equal(48, endpoints.Count);
@@ -137,9 +187,11 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
                 "dashboard:View",
                 "employees:Create", "employees:Delete", "employees:Edit", "employees:EditBank", "employees:EditSensitive",
                 "employees:View", "employees:ViewBank", "employees:ViewSensitive",
+                "hr-administrator",
                 "leave:Approve", "leave:Create", "leave:Delete", "leave:Edit", "leave:View",
                 "organization:Create", "organization:Delete", "organization:Edit", "organization:View",
                 "recruitment:Create", "recruitment:Delete", "recruitment:Edit", "recruitment:View",
+                "settings:Create", "settings:Delete", "settings:Edit", "settings:View",
                 "signed-in",
             ],
             policies.Order(StringComparer.Ordinal));
@@ -149,7 +201,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
         foreach (var endpoint in ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint)))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);

@@ -22,7 +22,8 @@ internal static class ApiProblems
             Title = TitleFor(error.Type),
             Detail = error.Message,
         };
-        problem.Extensions[CodeKey] = error.Type.ToString();
+        // The frontend knows no "Unavailable" code: a 503 reaches it as Unknown, like the forgot-password 503.
+        problem.Extensions[CodeKey] = (error.Type == ErrorType.Unavailable ? ErrorType.Unknown : error.Type).ToString();
         if (error.FieldErrors is { Count: > 0 })
         {
             problem.Extensions[ErrorsKey] = error.FieldErrors;
@@ -48,6 +49,7 @@ internal static class ApiProblems
         ErrorType.Conflict => StatusCodes.Status409Conflict,
         ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
         ErrorType.Forbidden => StatusCodes.Status403Forbidden,
+        ErrorType.Unavailable => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status500InternalServerError,
     };
 
@@ -58,6 +60,7 @@ internal static class ApiProblems
         ErrorType.Conflict => "Conflict",
         ErrorType.Unauthorized => "Unauthorized",
         ErrorType.Forbidden => "Forbidden",
+        ErrorType.Unavailable => "Service unavailable",
         _ => "Unexpected error",
     };
 }

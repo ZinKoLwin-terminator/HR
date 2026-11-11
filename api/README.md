@@ -97,8 +97,9 @@ Every error is `application/problem+json` (RFC 9457):
 | `NotFound` | 404 | No such record, or outside the caller's access scope. |
 | `Conflict` | 409 | Stale `rowVersion`, record still referenced, payroll finality, foreign key violation. |
 | `Unauthorized` | 401 | Not signed in (or the session ended), a failed sign-in, or an audited write with no signed-in user. Never a redirect. |
-| `Forbidden` | 403 | Reserved for the permission checks (phase 3). |
+| `Forbidden` | 403 | The caller is not an HR Administrator on a settings endpoint (a real check). The other permission checks come in phase 3. |
 | `Unknown` | 500 | Unexpected failure; the message is generic. Quote `traceId` to find it in the server log. |
+| `Unknown` | 503 | A needed service is not configured: password reset by email without email settings (`POST /api/users/{id}/password-reset`, `POST /api/auth/forgot-password`). The body has `code: "Unknown"`. |
 
 Database errors that slip past the rules are translated by constraint name, never by echoing the SQL message
 (which can contain the duplicate value):
@@ -362,6 +363,68 @@ Rules (ported from the mock services):
   * Interview outcome and cancel are an update in the mock, so they log `Interview "..." updated`. The interviews cancelled by a
     rejection and the application moving to Interview when one is scheduled log nothing, as in the mock.
 
+## HTTP contract (settings module: users, roles, permissions, general settings)
+
+**Administrator only.** Every route below needs the policy of its verb for the `settings` module (`settings:View|Create|Edit|Delete`,
+still a placeholder) **and a real check on top**: the caller must be an HR Administrator. The check
+(`Authorization/AdministratorRequirement.cs`, policy `hr-administrator`) reads the signed-in account and its role from
+`sec.AppUser` on every request, not from the cookie, so a demoted, deactivated or locked administrator is refused at once. The
+built-in administrator (no employee) has the same role and passes the same check. Anyone else gets `403` (`401` when signed
+out). The single exception is `GET /api/general-settings`, which any signed-in caller with `settings:View` may read.
+
+**There is no sign-up.** Accounts exist only because an administrator created them (`POST /api/users`). The new user signs in
+with the initial password or uses forgot-password (the reset-by-email flow).
+
+| Route | Policy | Notes |
+| --- | --- | --- |
+| `GET /api/users/query`, `GET /api/users/{id}` | View | Paged only, no "get all" (the list holds emails). `UserDto`: `{ id, employeeId (null for the built-in administrator), displayName, email, roleId, status (Active\|Inactive\|Locked), lastLoginOn (UTC)\|null, rowVersion }`. `Locked` is also shown while the sign-in lockout after failed attempts lasts. Filters: `roleId, status`; search: name or email; sort: `id, displayName, email, roleId, status, lastLoginOn`. |
+| `POST /api/users` | Create | Body `{ employeeId, roleId, status?, initialPassword }`; `201` with the `UserDto`. See the rules below. No credential is ever in a response. |
+| `PUT /api/users/{id}` | Edit | Body `{ roleId, rowVersion }`: only the role changes (the employee never does; status moves are commands). |
+| `POST /api/users/{id}/activate`, `/deactivate`, `/unlock` | Edit | Body `{ rowVersion }`; returns the `UserDto`. |
+| `POST /api/users/{id}/password-reset` | Edit | No body. Sends the same reset mail as forgot-password; `200 { message }`. `503` (`code: "Unknown"`) when email is not configured, before anything else happens. Only for an active user with an active role (`409` otherwise). |
+| `DELETE /api/users/{id}` | Delete | Body `{ rowVersion }`; `204`. Removes the account and its login. |
+| `/api/roles` (get all, `/query`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | `RoleDto`: `{ id, name, description, isSystem, status, rowVersion }`. POST `{ name, description?, status? }` (default Active); PUT `{ name, description?, rowVersion }`. Filter: `status`. |
+| `POST /api/roles/{id}/activate`, `/deactivate` | Edit | Body `{ rowVersion }`. |
+| `GET /api/role-permissions` | View | The matrix: `{ modules: [{ key, label, actions }], roles: [{ id, roleId, grants: { moduleKey: [action] }, rowVersion }] }`. Modules and actions come from `sec.PermissionModule` and `sec.PermissionModuleAction` (the post-deployment script), so they include `ViewSensitive`, `ViewBank` and so on where defined. |
+| `GET /api/role-permissions/{roleId}` | View | `{ id, roleId, grants, rowVersion }`; empty `grants` for a role that has none. |
+| `PUT /api/role-permissions/{roleId}` | Edit | Body `{ grants: { moduleKey: [action] }, rowVersion }`; replaces all grants of the role in one transaction. `rowVersion` is the one of the role; the save moves it, so two administrators cannot overwrite each other (`409`). |
+| `GET /api/general-settings` | View | `{ id (1), organizationName, contactEmail, timezone, dateFormat, currencyCode, fiscalYearStartMonth, emailNotifications, weeklyDigest, rowVersion }`. |
+| `PUT /api/general-settings` | Edit + administrator | The same fields plus `rowVersion`. |
+
+Rules (ported from the mock services, with the wording of the mock):
+
+* **Create user:** the employee must exist and be current (no exit date) (`400` on `employeeId`, "Choose a current employee."); one
+  user per employee ("This employee already has a user account."); the role must exist and be active (`400` on `roleId`,
+  "Choose an active role."); `status` is `Active` (default) or `Inactive`, never `Locked`. The email is the employee's work email,
+  lower-cased and unique (`400` on `employeeId` when another account has it). The display name is the employee's name.
+* **Passwords:** `initialPassword` needs at least 12 characters (the one rule of `SecurityPolicy`; `400` on `initialPassword`). It
+  is handed straight to the ASP.NET Core Identity password hasher and stored only as the salted hash in `auth.User`. It is not
+  returned, logged, written to the activity feed or kept anywhere else; the activity entry reads `User "Mia Testwell" created`
+  (category `system`, display name only: no email, no password). If saving the account fails after the login was created, the
+  login is removed again. Reset tokens exist only inside the mail.
+* **Edit user:** an administrator cannot change their own role, deactivate or delete their own account (`409`, "You cannot change
+  your own role or deactivate your own account." / "You cannot delete your own account."); there must always be one active HR
+  Administrator who can sign in (`409`, "There must always be one active HR Administrator.") when a demotion, deactivation or
+  delete would remove the last one. A deactivated user (or one whose role is inactive) is refused at sign-in and an open session
+  ends at its next request (`SessionValidator`). A locked account is `409` "This account is locked. Unlock it first." on
+  activate; unlock clears the lockout and the failed-attempt count and turns a `Locked` status back to `Active`. Activating
+  needs an active role.
+* **Roles:** names are required, at most 60 characters, unique (`400`). A built-in role (`isSystem`) cannot be renamed (`400` on
+  `name`, "A built-in role cannot be renamed."), deactivated ("A built-in role cannot be deactivated.") or deleted ("A built-in
+  role cannot be deleted."), both `409`; its description can change. A role with active users cannot be deactivated ("2 active
+  user(s) still have this role. Move them to another role first.") and a role any user holds cannot be deleted ("\"X\" cannot
+  be deleted because it is used by 1 user(s). Deactivate it instead."), both `409`.
+* **Permissions:** unknown module or an action the module does not have is `400`; a grant other than `View` needs `View` of the
+  same module (`400` on the module key, "Leave: View is required to grant other permissions."; the database enforces it too).
+  The HR Administrator always keeps every grant: a save that leaves out any of its grants is `409` ("HR Administrator always
+  has full access and cannot be changed."). Saving is recorded as `Permissions of role "X" updated`.
+* **General settings:** the field errors and messages of the mock (`organizationName` required, `contactEmail` valid, `timezone`
+  and `dateFormat` from the supported lists (`Asia/Yangon, Asia/Bangkok, Asia/Singapore, Asia/Kolkata, Europe/London,
+  America/New_York, UTC`; `yyyy-MM-dd, dd/MM/yyyy, MM/dd/yyyy, dd MMM yyyy`), `currencyCode` three capital letters,
+  `fiscalYearStartMonth` 1-12); the summary is "Please fix the highlighted settings.". The row is a singleton created by the
+  post-deployment script: if it is missing the answer is `404`.
+* An employee who has a user account cannot be deleted (`409`, "... used by 1 user account(s)").
+
 ## Authentication (phase 1)
 
 ASP.NET Core Identity (standard stores, no roles) with a same-site cookie. Credentials live in `auth.User`
@@ -462,6 +525,9 @@ Exit codes: 0 created, 1 refused or cancelled, 2 usage.
 * `Api.Tests/AuthorizationCoverageTests` fails when an `/api` endpoint (outside `/api/auth`) is mapped without a policy,
   and pins the policy of every employee route (including the sensitive and bank ones). `AuthEndpointSecurityTests` pins
   the anonymous endpoints and the fallback policy.
+* The settings endpoints are the first with a real check: policy `hr-administrator` (`AdministratorRequirement`) is added on
+  top of the module policy, so those endpoints carry two policies. `SettingsAccessTests` runs the 403/200 behaviour without a
+  database and `AuthorizationCoverageTests` pins both policies of every settings route.
 * A module that holds personal data declares extra permissions in `PermissionModule` (`employees` has `ViewSensitive`,
   `EditSensitive`, `ViewBank` and `EditBank` next to the four standard ones).
 
