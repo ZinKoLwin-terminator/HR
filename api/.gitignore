@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Development mail files (hold reset tokens): never commit
 App_Data/
+
+# Local runtime data: Excel uploads and dev mail must never be committed.
+App_Data/
