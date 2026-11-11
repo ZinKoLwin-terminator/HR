@@ -41,7 +41,15 @@ import {
   InterviewDataService,
   JobOpeningDataService,
 } from '../core/services/data/recruitment-data.services';
+import {
+  ActivityDataService,
+  NotificationDataService,
+} from '../core/services/data/activity-data.service';
+import { DashboardDataService } from '../core/services/data/dashboard-data.service';
 import { API_BASE_URL } from './api-base-url';
+import { ActivityHttpService } from './activity/activity-http.service';
+import { NotificationHttpService } from './activity/notification-http.service';
+import { DashboardHttpService } from './dashboard/dashboard-http.service';
 import {
   AttendanceAdjustmentHttpService,
   OvertimeHttpService,
@@ -88,7 +96,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
 }
 
 /**
- * Binds ONLY the Organization, Employee (employees, employment history), Leave, Attendance and Recruitment contracts to HTTP. Every other contract stays on its mock
+ * Binds ONLY the Organization, Employee (employees, employment history), Leave, Attendance, Recruitment, Dashboard, Activity and Notification contracts to HTTP. Every other contract stays on its mock
  * (the adapter is per dependency cluster). Register it AFTER `provideMockDataServices()` so
  * these bindings win; `app.config.ts` does that and the switch defaults to off.
  */
@@ -131,6 +139,10 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(CandidateDataService, CandidateHttpService),
     bind(ApplicationDataService, ApplicationHttpService),
     bind(InterviewDataService, InterviewHttpService),
+    // Dashboard summary (one call), append-only activity feed (read only) and notifications.
+    bind(DashboardDataService, DashboardHttpService),
+    bind(ActivityDataService, ActivityHttpService),
+    bind(NotificationDataService, NotificationHttpService),
     // Real sign-in: cookie session owned by the server, kept in memory only.
     bind(AuthDataService, AuthHttpService),
     { provide: SERVER_SESSION, useValue: true },
