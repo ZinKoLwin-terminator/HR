@@ -35,6 +35,12 @@ import {
   LeavePolicyDataService,
   LeaveTypeDataService,
 } from '../core/services/data/leave-data.services';
+import {
+  ApplicationDataService,
+  CandidateDataService,
+  InterviewDataService,
+  JobOpeningDataService,
+} from '../core/services/data/recruitment-data.services';
 import { API_BASE_URL } from './api-base-url';
 import {
   AttendanceAdjustmentHttpService,
@@ -52,6 +58,10 @@ import { LeaveApplicationHttpService } from './leave/leave-application-http.serv
 import { LeaveBalanceHttpService } from './leave/leave-balance-http.service';
 import { LeaveCalendarHttpService } from './leave/leave-calendar-http.service';
 import { LeavePolicyHttpService, LeaveTypeHttpService } from './leave/leave-http.services';
+import { ApplicationHttpService } from './recruitment/application-http.service';
+import { CandidateHttpService } from './recruitment/candidate-http.service';
+import { InterviewHttpService } from './recruitment/interview-http.service';
+import { JobOpeningHttpService } from './recruitment/job-opening-http.service';
 import { apiAuthInterceptor } from './auth/api-auth.interceptor';
 import { AuthHttpService } from './auth/auth-http.service';
 import {
@@ -78,7 +88,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
 }
 
 /**
- * Binds ONLY the Organization, Employee (employees, employment history), Leave and Attendance contracts to HTTP. Every other contract stays on its mock
+ * Binds ONLY the Organization, Employee (employees, employment history), Leave, Attendance and Recruitment contracts to HTTP. Every other contract stays on its mock
  * (the adapter is per dependency cluster). Register it AFTER `provideMockDataServices()` so
  * these bindings win; `app.config.ts` does that and the switch defaults to off.
  */
@@ -116,6 +126,11 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(OvertimeDataService, OvertimeHttpService),
     bind(AttendanceOverviewDataService, AttendanceOverviewHttpService),
     bind(WorkScheduleDataService, WorkScheduleHttpService),
+    // Recruitment: job openings (status commands), candidates, applications (stage command), interviews (outcome and cancel commands).
+    bind(JobOpeningDataService, JobOpeningHttpService),
+    bind(CandidateDataService, CandidateHttpService),
+    bind(ApplicationDataService, ApplicationHttpService),
+    bind(InterviewDataService, InterviewHttpService),
     // Real sign-in: cookie session owned by the server, kept in memory only.
     bind(AuthDataService, AuthHttpService),
     { provide: SERVER_SESSION, useValue: true },
