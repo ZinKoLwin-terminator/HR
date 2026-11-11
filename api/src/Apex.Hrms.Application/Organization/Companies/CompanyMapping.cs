@@ -12,6 +12,8 @@ internal sealed class CompanyMapping(IClock clock) :
 {
     public string Label => "Company";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Organization;
+
     public string Describe(Company entity) => entity.Name;
 
     public CompanyDto ToDto(Company entity) => new(

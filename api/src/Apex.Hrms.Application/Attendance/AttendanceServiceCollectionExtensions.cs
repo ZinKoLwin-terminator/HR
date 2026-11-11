@@ -68,7 +68,7 @@ internal static class AttendanceServiceCollectionExtensions
         services.AddScoped<ICreateHandler<AdjustmentCreateRequest, AdjustmentDto>, AdjustmentCreateHandler>();
         services.AddScoped<IDeleteHandler<AdjustmentDto>, ApprovalDeleteHandler<AttendanceAdjustment, AdjustmentDto>>();
         services.AddScoped<ICommandHandler<ApproveAdjustmentCommand, AdjustmentDto>, ApproveAdjustmentHandler>();
-        return services.AddEntityCommand<AttendanceAdjustment, RejectAdjustmentCommand, AdjustmentDto, DecisionAction<AttendanceAdjustment, RejectAdjustmentCommand>>();
+        return services.AddDecisionCommand<AttendanceAdjustment, RejectAdjustmentCommand, AdjustmentDto>();
     }
 
     private static IServiceCollection AddOvertime(this IServiceCollection services)
@@ -84,8 +84,17 @@ internal static class AttendanceServiceCollectionExtensions
         services.AddScoped<ICreateHandler<OvertimeCreateRequest, OvertimeDto>, OvertimeCreateHandler>();
         services.AddScoped<IDeleteHandler<OvertimeDto>, ApprovalDeleteHandler<OvertimeRecord, OvertimeDto>>();
         return services
-            .AddEntityCommand<OvertimeRecord, ApproveOvertimeCommand, OvertimeDto, DecisionAction<OvertimeRecord, ApproveOvertimeCommand>>()
-            .AddEntityCommand<OvertimeRecord, RejectOvertimeCommand, OvertimeDto, DecisionAction<OvertimeRecord, RejectOvertimeCommand>>();
+            .AddDecisionCommand<OvertimeRecord, ApproveOvertimeCommand, OvertimeDto>()
+            .AddDecisionCommand<OvertimeRecord, RejectOvertimeCommand, OvertimeDto>();
+    }
+
+    /// <summary>An approve or reject command: the shared decision action and its activity wording.</summary>
+    private static IServiceCollection AddDecisionCommand<TEntity, TCommand, TDto>(this IServiceCollection services)
+        where TEntity : ApprovalRequest
+        where TCommand : IDecisionCommand
+    {
+        services.AddScoped<ICommandActivity<TEntity, TCommand>, DecisionActivity<TEntity, TCommand>>();
+        return services.AddEntityCommand<TEntity, TCommand, TDto, DecisionAction<TEntity, TCommand>>();
     }
 
     /// <summary>

@@ -281,6 +281,28 @@ Rules (the attendance rules are demonstrations, not statutory calculations):
 * **Overview:** built from the employees expected that day (employed, working weekday of their shift, not a holiday); without a
   record they are On Leave (approved whole-day leave) or Absent (for today: "not checked in yet"; a future day counts nothing).
 
+## HTTP contract (dashboard, activity and notifications)
+
+| Route | Policy | Purpose |
+| --- | --- | --- |
+| `GET /api/dashboard/summary` | `dashboard:View` | The dashboard figures and chart series (shape of `DashboardSummary` in `dashboard.models.ts`). |
+| `GET /api/activity/query?pageIndex&pageSize&sort&search&category&actor&dateFrom&dateTo` | `activity:View` | One page of the activity feed, newest first. |
+| `GET /api/activity/{id}` | `activity:View` | One entry (`id` is a bigint). |
+| `GET /api/notifications/query?pageIndex&pageSize&unreadOnly` | signed in | The caller's own notifications and the broadcasts, newest first. |
+| `POST /api/notifications/{id}/read` | signed in | Marks one notification read; `200` with it. Another user's id is `404`. |
+| `POST /api/notifications/read-all` | signed in | Marks every visible unread notification read; `204`. |
+
+* The activity log is append-only: entries are written by the handlers of the change they describe (organization,
+  employees, leave, attendance), in the same unit of work, and there is no route that creates, changes or deletes one.
+  Activity sort keys: `timestamp` (default, descending), `category`, `actor`. `category` is one of `employee`,
+  `organization`, `attendance`, `leave`, `payroll`, `recruitment`, `system`; `dateFrom` and `dateTo` are inclusive days in the
+  business time zone. A bad filter is `400` with the field in `errors`.
+* Activity messages use the wording of the frontend mock services with ids and codes; an employee is named by code, never by
+  name, and no national id, bank detail or salary is ever written.
+* `app.Notification` has one `IsRead` flag per row: reading a broadcast (no recipient) marks it read for everyone.
+* The dashboard recruitment and payroll figures are read with plain SQL from `rec.*` and `pay.PayrollRun` (those modules are not in
+  the API yet); the payroll totals are demonstration figures.
+
 ## Authentication (phase 1)
 
 ASP.NET Core Identity (standard stores, no roles) with a same-site cookie. Credentials live in `auth.User`

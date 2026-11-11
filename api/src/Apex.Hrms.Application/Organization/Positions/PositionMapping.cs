@@ -11,6 +11,8 @@ internal sealed class PositionMapping :
 {
     public string Label => "Position";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Organization;
+
     public string Describe(Position entity) => entity.Title;
 
     public PositionDto ToDto(Position entity) => new(

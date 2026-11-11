@@ -11,6 +11,8 @@ internal sealed class SectionMapping :
 {
     public string Label => "Section";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Organization;
+
     public string Describe(Section entity) => entity.Name;
 
     public SectionDto ToDto(Section entity) => new(

@@ -11,6 +11,8 @@ internal sealed class DepartmentMapping :
 {
     public string Label => "Department";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Organization;
+
     public string Describe(Department entity) => entity.Name;
 
     public DepartmentDto ToDto(Department entity) => new(

@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.References;
 using Apex.Hrms.Domain.Common;
 
@@ -12,6 +13,7 @@ internal sealed class DeleteHandler<TEntity, TDto>(
     IEntityDescriptor<TEntity> descriptor,
     IEnumerable<IReferenceCheck<TEntity>> references,
     IRepository<TEntity> repository,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork) : IDeleteHandler<TDto>
     where TEntity : AuditedEntity
 {
@@ -30,6 +32,9 @@ internal sealed class DeleteHandler<TEntity, TDto>(
                 $"\"{descriptor.Describe(loaded.Value)}\" cannot be deleted because it is used by {usage}. Deactivate it instead."));
         }
 
+        activity.Record(
+            descriptor.ActivityCategory,
+            ActivityMessages.Deleted(descriptor.Label, descriptor.ActivitySubject(loaded.Value)));
         repository.Remove(loaded.Value);
         return await unitOfWork.SaveChangesAsync(cancellationToken);
     }

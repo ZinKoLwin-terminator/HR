@@ -36,6 +36,8 @@ internal static class TestRows
 
     private const string TaggedEmployees = "SELECT Id FROM hr.Employee WHERE LOWER(WorkEmail) LIKE LOWER(@pattern)";
 
+    private const string TaggedAppUsers = "SELECT Id FROM sec.AppUser WHERE LOWER(Email) LIKE LOWER(@pattern)";
+
     private const string TaggedIdentityUsers = "SELECT Id FROM auth.[User] WHERE LOWER(Email) LIKE LOWER(@pattern)";
 
     public static string NewTag() => TagFamily + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
@@ -46,6 +48,7 @@ internal static class TestRows
         var pattern = tag + "-%";
         await using var connection = new SqlConnection(SqlServerEnvironment.ConnectionString);
         await connection.OpenAsync();
+        await DeleteActivityAndNotificationsAsync(connection, tag, pattern);
         await DeleteAccountsAsync(connection, pattern);
         await DeleteLeaveAsync(connection, pattern);
         await DeleteAttendanceOfEmployeesAsync(connection, pattern);
@@ -69,6 +72,8 @@ internal static class TestRows
         await CountInto(counts, connection, "auth.[User]", "LOWER(Email) LIKE LOWER(@pattern)", pattern);
         await CountInto(counts, connection, "sec.AppUser", "LOWER(Email) LIKE LOWER(@pattern)", pattern);
         await CountInto(counts, connection, "sec.Role", "Name LIKE @pattern", pattern);
+        await CountInto(counts, connection, "app.ActivityLog", $"ActorName LIKE @pattern OR Message LIKE '%' + @pattern OR ActorUserId IN ({TaggedAppUsers})", pattern);
+        await CountInto(counts, connection, "app.Notification", $"Title LIKE @pattern OR RecipientUserId IN ({TaggedAppUsers})", pattern);
         await CountInto(counts, connection, "hr.Employee", "LOWER(WorkEmail) LIKE LOWER(@pattern)", pattern);
         await CountInto(counts, connection, "lve.LeaveApplication", $"EmployeeId IN ({TaggedEmployees})", pattern);
         await CountInto(counts, connection, "lve.LeavePolicy", "Name LIKE @pattern", pattern);
@@ -84,6 +89,32 @@ internal static class TestRows
         }
 
         return counts;
+    }
+
+    /// <summary>
+    /// The activity entries and notifications a test caused, before the accounts they point at. An entry is a test's when its
+    /// actor name starts with the tag (calls through the handlers), its message holds the tag or the tag's code form (names and
+    /// codes of the rows it created) or it was written by a tagged account (calls through HTTP). A notification is a test's when its
+    /// title starts with the tag or it is for a tagged account.
+    /// </summary>
+    private static async Task DeleteActivityAndNotificationsAsync(SqlConnection connection, string tag, string pattern)
+    {
+        var code = tag[TagFamily.Length..];
+        await using var notifications = new SqlCommand(
+            $"DELETE FROM app.Notification WHERE Title LIKE @titlePattern OR RecipientUserId IN ({TaggedAppUsers})",
+            connection);
+        notifications.Parameters.AddWithValue("@titlePattern", tag + "%");
+        notifications.Parameters.AddWithValue("@pattern", pattern);
+        await notifications.ExecuteNonQueryAsync();
+
+        await using var activity = new SqlCommand(
+            $"DELETE FROM app.ActivityLog WHERE ActorName LIKE @actor OR Message LIKE @message OR Message LIKE @codeMessage OR ActorUserId IN ({TaggedAppUsers})",
+            connection);
+        activity.Parameters.AddWithValue("@actor", tag + "%");
+        activity.Parameters.AddWithValue("@message", "%" + tag + "%");
+        activity.Parameters.AddWithValue("@codeMessage", "%\"" + code + "-%");
+        activity.Parameters.AddWithValue("@pattern", pattern);
+        await activity.ExecuteNonQueryAsync();
     }
 
     /// <summary>Child to parent: identity children, the business account (it points at the identity user), the identity user, then test roles.</summary>

@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Attendance;
@@ -38,6 +39,8 @@ internal sealed class OvertimeMapping :
     IDtoMapper<OvertimeRecord, OvertimeDto>
 {
     public string Label => "Overtime entry";
+
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Attendance;
 
     public string Describe(OvertimeRecord entity) => entity.Label;
 
@@ -107,6 +110,7 @@ internal sealed class OvertimeCreateHandler(
     IRepository<Employee> employees,
     IRepository<OvertimeRecord> overtime,
     IClock clock,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     OvertimeMapping mapper) : ICreateHandler<OvertimeCreateRequest, OvertimeDto>
 {
@@ -142,6 +146,9 @@ internal sealed class OvertimeCreateHandler(
         }
 
         overtime.Add(created.Value);
+        // The label holds the id the database assigns, so the text is worked out once the row is inserted.
+        var entry = created.Value;
+        activity.Record(mapper.ActivityCategory, () => ActivityMessages.Created(mapper.Label, mapper.Describe(entry)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<OvertimeDto>(saved.Error)

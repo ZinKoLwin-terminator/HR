@@ -9,6 +9,8 @@ internal sealed class LeaveApplicationMapping :
 {
     public string Label => "Leave application";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Leave;
+
     public string Describe(LeaveApplication entity) => entity.ApplicationNo;
 
     public LeaveApplicationDto ToDto(LeaveApplication entity) => new(

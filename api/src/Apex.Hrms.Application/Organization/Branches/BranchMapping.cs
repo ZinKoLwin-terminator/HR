@@ -12,6 +12,8 @@ internal sealed class BranchMapping(IClock clock) :
 {
     public string Label => "Branch";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Organization;
+
     public string Describe(Branch entity) => entity.Name;
 
     public BranchDto ToDto(Branch entity) => new(

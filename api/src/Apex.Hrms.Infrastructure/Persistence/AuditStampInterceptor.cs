@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Domain.Activity;
 using Apex.Hrms.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -38,7 +39,8 @@ internal sealed class AuditStampInterceptor(IClock clock, ICurrentUser currentUs
 
         // Every audited write needs a person to attribute it to. Only the explicit system identity (bootstrap command,
         // deployment seeds) may write without one; its audit user columns stay NULL.
-        if (changed.Count > 0 && !currentUser.IsSystem && currentUser.UserId is null)
+        var logsActivity = context.ChangeTracker.Entries<ActivityLogEntry>().Any(entry => entry.State == EntityState.Added);
+        if ((changed.Count > 0 || logsActivity) && !currentUser.IsSystem && currentUser.UserId is null)
         {
             throw new UnauthenticatedWriteException();
         }

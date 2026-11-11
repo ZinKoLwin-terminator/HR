@@ -1,5 +1,6 @@
 using FluentValidation;
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Domain.Common;
 
 namespace Apex.Hrms.Application.UseCases;
@@ -13,6 +14,8 @@ internal sealed class UpdateHandler<TEntity, TRequest, TDetails, TDto>(
     IEntityFactory<TEntity, TDetails> factory,
     ISaveRules<TEntity, TDetails> rules,
     EntityLoader<TEntity> loader,
+    IEntityDescriptor<TEntity> descriptor,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     IDtoMapper<TEntity, TDto> mapper) : IUpdateHandler<TRequest, TDto>
     where TEntity : AuditedEntity
@@ -51,6 +54,10 @@ internal sealed class UpdateHandler<TEntity, TRequest, TDetails, TDto>(
         {
             return Result.Failure<TDto>(updated.Error);
         }
+
+        activity.Record(
+            descriptor.ActivityCategory,
+            ActivityMessages.Updated(descriptor.Label, descriptor.ActivitySubject(entity)));
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure

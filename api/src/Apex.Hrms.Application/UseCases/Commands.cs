@@ -21,6 +21,15 @@ public interface ICommandAction<in TEntity, in TCommand>
     Result Execute(TEntity entity, TCommand command);
 }
 
+/// <summary>
+/// Optional wording of a command in the activity feed. A command without one is logged as the generic
+/// <c>Label "subject" updated</c> (a status change is an update in the mock services).
+/// </summary>
+public interface ICommandActivity<in TEntity, in TCommand>
+{
+    string Describe(TEntity entity, TCommand command);
+}
+
 public sealed record ActivateCommand(int Id, string? RowVersion) : IEntityCommand<ActivateCommand>
 {
     public static ActivateCommand From(int id, string? rowVersion) => new(id, rowVersion);

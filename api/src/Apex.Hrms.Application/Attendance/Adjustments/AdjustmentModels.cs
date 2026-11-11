@@ -57,6 +57,8 @@ internal sealed class AdjustmentMapping :
 {
     public string Label => "Adjustment request";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Attendance;
+
     public string Describe(AttendanceAdjustment entity) => entity.Label;
 
     public AdjustmentDto ToDto(AttendanceAdjustment entity) => new(

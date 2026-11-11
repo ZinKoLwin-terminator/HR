@@ -39,6 +39,15 @@ public interface IEntityDescriptor<in TEntity>
 
     /// <summary>How the record is called in messages, e.g. its name.</summary>
     string Describe(TEntity entity);
+
+    /// <summary>The activity feed category the changes of this resource are logged under (see <c>ActivityCategories</c>).</summary>
+    string ActivityCategory => Domain.Activity.ActivityCategories.System;
+
+    /// <summary>
+    /// How the record is named in the activity feed. Defaults to <see cref="Describe"/>; a resource whose description holds
+    /// personal data (an employee's name) overrides it with an id or code.
+    /// </summary>
+    string ActivitySubject(TEntity entity) => Describe(entity);
 }
 
 public interface IDtoMapper<in TEntity, out TDto>

@@ -46,6 +46,8 @@ internal sealed class HolidayMapping :
 {
     public string Label => "Holiday";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Attendance;
+
     public string Describe(Holiday entity) => $"{entity.Name} ({entity.Date:yyyy-MM-dd})";
 
     public HolidayDto ToDto(Holiday entity) => new(entity.Id, entity.Date, entity.Name, entity.Type, entity.RowVersion);

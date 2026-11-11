@@ -58,11 +58,16 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         AttendancePrefixes
             .Any(prefix => endpoint.RoutePattern.RawText!.StartsWith(prefix, StringComparison.Ordinal));
 
+    private static readonly string[] ActivityPrefixes = ["/api/dashboard", "/api/activity", "/api/notifications"];
+
+    private static bool IsActivityRoute(RouteEndpoint endpoint) =>
+        ActivityPrefixes.Any(prefix => endpoint.RoutePattern.RawText!.StartsWith(prefix, StringComparison.Ordinal));
+
     [Fact]
     public void Six_organization_resources_map_eight_endpoints_each()
     {
         var endpoints = ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsActivityRoute(endpoint))
             .ToList();
 
         Assert.Equal(48, endpoints.Count);
@@ -121,11 +126,14 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
 
         Assert.Equal(
             [
+                "activity:View",
                 "attendance:Approve", "attendance:Create", "attendance:Delete", "attendance:Edit", "attendance:View",
+                "dashboard:View",
                 "employees:Create", "employees:Delete", "employees:Edit", "employees:EditBank", "employees:EditSensitive",
                 "employees:View", "employees:ViewBank", "employees:ViewSensitive",
                 "leave:Approve", "leave:Create", "leave:Delete", "leave:Edit", "leave:View",
                 "organization:Create", "organization:Delete", "organization:Edit", "organization:View",
+                "signed-in",
             ],
             policies.Order(StringComparer.Ordinal));
     }
@@ -133,7 +141,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     [Fact]
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
-        foreach (var endpoint in ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint)))
+        foreach (var endpoint in ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsActivityRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);
@@ -227,5 +235,48 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("attendance:Delete", policies["DELETE /api/shifts/{id:int}"]);
         Assert.Equal("attendance:Create", policies["POST /api/holidays/"]);
         Assert.Equal("attendance:Edit", policies["PUT /api/holidays/{id:int}"]);
+    }
+    private Dictionary<string, string?> ActivityPolicies() => ApiEndpoints().Where(IsActivityRoute)
+        .ToDictionary(
+            endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+            endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
+
+    [Fact]
+    public void Dashboard_activity_and_notifications_map_six_endpoints_with_their_policies()
+    {
+        var policies = ActivityPolicies();
+
+        Assert.Equal(6, policies.Count);
+        Assert.Equal("dashboard:View", policies["GET /api/dashboard/summary"]);
+        Assert.Equal("activity:View", policies["GET /api/activity/query"]);
+        Assert.Equal("activity:View", policies["GET /api/activity/{id:long}"]);
+        Assert.Equal("signed-in", policies["GET /api/notifications/query"]);
+        Assert.Equal("signed-in", policies["POST /api/notifications/{id:long}/read"]);
+        Assert.Equal("signed-in", policies["POST /api/notifications/read-all"]);
+    }
+
+    [Fact]
+    public void The_activity_log_is_append_only_so_no_route_creates_changes_or_deletes_an_entry()
+    {
+        var activityRoutes = ApiEndpoints()
+            .Where(endpoint => endpoint.RoutePattern.RawText!.StartsWith("/api/activity", StringComparison.Ordinal))
+            .Select(endpoint => endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single())
+            .ToList();
+
+        Assert.NotEmpty(activityRoutes);
+        Assert.All(activityRoutes, method => Assert.Equal(HttpMethods.Get, method));
+    }
+
+    [Fact]
+    public void Notifications_have_no_route_to_create_change_or_delete_one_and_only_read_marking_writes()
+    {
+        var writes = ApiEndpoints()
+            .Where(endpoint => endpoint.RoutePattern.RawText!.StartsWith("/api/notifications", StringComparison.Ordinal))
+            .Select(endpoint => (Method: endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single(), Route: endpoint.RoutePattern.RawText!))
+            .Where(route => route.Method != HttpMethods.Get)
+            .ToList();
+
+        Assert.All(writes, route => Assert.Equal(HttpMethods.Post, route.Method));
+        Assert.Equal(["/api/notifications/read-all", "/api/notifications/{id:long}/read"], writes.Select(route => route.Route).Order(StringComparer.Ordinal));
     }
 }

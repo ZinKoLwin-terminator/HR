@@ -11,6 +11,8 @@ internal sealed class JobGradeMapping :
 {
     public string Label => "Job grade";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Organization;
+
     public string Describe(JobGrade entity) => $"{entity.Code} {entity.Name}";
 
     public JobGradeDto ToDto(JobGrade entity) => new(

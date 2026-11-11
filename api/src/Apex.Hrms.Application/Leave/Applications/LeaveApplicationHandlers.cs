@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Leave;
@@ -17,6 +18,7 @@ internal sealed class LeaveApplicationCreateHandler(
     LeaveApplicationNumberGenerator numbers,
     IClock clock,
     IRepository<LeaveApplication> repository,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     LeaveApplicationMapping mapper) : ICreateHandler<LeaveApplicationCreateRequest, LeaveApplicationDto>
 {
@@ -57,6 +59,7 @@ internal sealed class LeaveApplicationCreateHandler(
         }
 
         repository.Add(created.Value);
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Created(mapper.Label, mapper.Describe(created.Value)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<LeaveApplicationDto>(saved.Error)
@@ -69,6 +72,7 @@ internal sealed class LeaveApplicationUpdateHandler(
     EntityLoader<LeaveApplication> loader,
     WorkingDayCalculator workingDays,
     LeaveApplicationRules rules,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     LeaveApplicationMapping mapper) : IUpdateHandler<LeaveApplicationUpdateRequest, LeaveApplicationDto>
 {
@@ -116,6 +120,8 @@ internal sealed class LeaveApplicationUpdateHandler(
             return Result.Failure<LeaveApplicationDto>(updated.Error);
         }
 
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Updated(mapper.Label, mapper.Describe(application)));
+
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<LeaveApplicationDto>(saved.Error)
@@ -127,6 +133,8 @@ internal sealed class LeaveApplicationUpdateHandler(
 internal sealed class LeaveApplicationDeleteHandler(
     EntityLoader<LeaveApplication> loader,
     IRepository<LeaveApplication> repository,
+    LeaveApplicationMapping mapper,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork) : IDeleteHandler<LeaveApplicationDto>
 {
     public async Task<Result> HandleAsync(int id, string? rowVersion, CancellationToken cancellationToken)
@@ -143,6 +151,7 @@ internal sealed class LeaveApplicationDeleteHandler(
             return allowed;
         }
 
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Deleted(mapper.Label, mapper.Describe(loaded.Value)));
         repository.Remove(loaded.Value);
         return await unitOfWork.SaveChangesAsync(cancellationToken);
     }

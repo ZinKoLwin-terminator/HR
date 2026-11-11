@@ -1,5 +1,6 @@
 using FluentValidation;
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Domain.Common;
 
 namespace Apex.Hrms.Application.UseCases;
@@ -12,6 +13,8 @@ internal sealed class CreateHandler<TEntity, TRequest, TDetails, TDto>(
     IEntityFactory<TEntity, TDetails> factory,
     ISaveRules<TEntity, TDetails> rules,
     IRepository<TEntity> repository,
+    IEntityDescriptor<TEntity> descriptor,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     IDtoMapper<TEntity, TDto> mapper) : ICreateHandler<TRequest, TDto>
     where TEntity : Entity
@@ -45,6 +48,9 @@ internal sealed class CreateHandler<TEntity, TRequest, TDetails, TDto>(
         }
 
         repository.Add(created.Value);
+        activity.Record(
+            descriptor.ActivityCategory,
+            ActivityMessages.Created(descriptor.Label, descriptor.ActivitySubject(created.Value)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<TDto>(saved.Error)

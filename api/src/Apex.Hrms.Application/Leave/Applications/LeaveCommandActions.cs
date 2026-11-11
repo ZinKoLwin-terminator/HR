@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Leave;
@@ -18,6 +19,7 @@ internal interface ILeaveCommandAction<in TCommand>
 internal sealed class LeaveCommandHandler<TCommand>(
     EntityLoader<LeaveApplication> loader,
     ILeaveCommandAction<TCommand> action,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     LeaveApplicationMapping mapper) : ICommandHandler<TCommand, LeaveApplicationDto>
     where TCommand : IEntityCommand
@@ -36,11 +38,26 @@ internal sealed class LeaveCommandHandler<TCommand>(
             return Result.Failure<LeaveApplicationDto>(executed.Error);
         }
 
+        activity.Record(mapper.ActivityCategory, LeaveActivity.Describe(loaded.Value.ApplicationNo, command));
+
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<LeaveApplicationDto>(saved.Error)
             : Result.Success(mapper.ToDto(loaded.Value));
     }
+}
+
+/// <summary>The activity wording of each leave command, as the mock leave service writes it.</summary>
+internal static class LeaveActivity
+{
+    public static string Describe(string applicationNo, IEntityCommand command) => command switch
+    {
+        SubmitLeaveCommand => ActivityMessages.LeaveSubmitted(applicationNo),
+        ApproveLeaveCommand => ActivityMessages.LeaveDecided(applicationNo, "Approved"),
+        RejectLeaveCommand => ActivityMessages.LeaveDecided(applicationNo, "Rejected"),
+        CancelLeaveCommand => ActivityMessages.LeaveCancelled(applicationNo),
+        _ => ActivityMessages.Updated("Leave application", applicationNo),
+    };
 }
 
 /// <summary>Draft to Submitted: status, overlap, supporting document and balance are checked, then the application date becomes today.</summary>

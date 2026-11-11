@@ -11,6 +11,8 @@ internal sealed class ShiftMapping :
 {
     public string Label => "Shift";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Attendance;
+
     public string Describe(Shift entity) => entity.Name;
 
     public ShiftDto ToDto(Shift entity) => new(

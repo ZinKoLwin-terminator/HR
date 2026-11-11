@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Domain.Attendance;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
@@ -30,6 +31,7 @@ internal sealed class PunchHandler(
     AttendanceLookup lookup,
     IClock clock,
     ICurrentUser user,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     AttendanceRecordMapping mapper) : IPunchHandler
 {
@@ -109,6 +111,10 @@ internal sealed class PunchHandler(
         {
             records.Add(record);
         }
+
+        activity.Record(
+            mapper.ActivityCategory,
+            ActivityMessages.Punch(employee.EmployeeCode, kind == PunchKind.CheckIn, now));
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure

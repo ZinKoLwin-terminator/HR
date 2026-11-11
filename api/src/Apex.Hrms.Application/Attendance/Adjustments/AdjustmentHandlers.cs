@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.Attendance.Approvals;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Attendance;
@@ -19,6 +20,7 @@ internal sealed class AdjustmentCreateHandler(
     IRepository<AttendanceAdjustment> adjustments,
     AttendanceLookup lookup,
     IClock clock,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     AdjustmentMapping mapper) : ICreateHandler<AdjustmentCreateRequest, AdjustmentDto>
 {
@@ -73,6 +75,9 @@ internal sealed class AdjustmentCreateHandler(
         }
 
         adjustments.Add(created.Value);
+        // The label holds the id the database assigns, so the text is worked out once the row is inserted.
+        var adjustment = created.Value;
+        activity.Record(mapper.ActivityCategory, () => ActivityMessages.Created(mapper.Label, mapper.Describe(adjustment)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<AdjustmentDto>(saved.Error)
@@ -89,6 +94,7 @@ internal sealed class ApproveAdjustmentHandler(
     AttendanceLookup lookup,
     ICurrentUser user,
     IClock clock,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     AdjustmentMapping mapper) : ICommandHandler<ApproveAdjustmentCommand, AdjustmentDto>
 {
@@ -144,6 +150,10 @@ internal sealed class ApproveAdjustmentHandler(
         {
             return Result.Failure<AdjustmentDto>(applied.Error);
         }
+
+        activity.Record(
+            mapper.ActivityCategory,
+            ActivityMessages.AdjustmentDecided(adjustment.Label, "Approved", adjustment.Date));
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure

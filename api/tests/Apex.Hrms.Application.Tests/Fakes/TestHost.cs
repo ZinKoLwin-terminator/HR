@@ -1,5 +1,8 @@
 using Apex.Hrms.Application;
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
+using Apex.Hrms.Application.Dashboard;
+using Apex.Hrms.Application.Notifications;
 using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Application.Organization.Branches;
@@ -28,12 +31,17 @@ internal sealed class TestHost : IDisposable
 
     public TestHost(Action<IServiceCollection>? configure = null)
     {
-        UnitOfWork = new FakeUnitOfWork(Database);
+        ActivityLog = new FakeActivityLog(Clock, User);
+        UnitOfWork = new FakeUnitOfWork(Database, ActivityLog);
         var services = new ServiceCollection();
         services.AddSingleton(Database);
         services.AddSingleton<IClock>(Clock);
         services.AddSingleton<ICurrentUser>(User);
         services.AddSingleton<IUnitOfWork>(UnitOfWork);
+        services.AddSingleton<IActivityRecorder>(ActivityLog);
+        services.AddSingleton<IActivityLogStore>(ActivityLog);
+        services.AddSingleton<INotificationStore>(Notifications);
+        services.AddSingleton<IDashboardSource>(DashboardSource);
         services.AddSingleton(typeof(IRepository<>), typeof(InMemoryRepository<>));
         services.AddSingleton<IRecordCounter<EmployeeOrgLink>>(Employees);
         AddCounter<Company>(services);
@@ -63,6 +71,13 @@ internal sealed class TestHost : IDisposable
     public FakeDatabase Database { get; } = new();
 
     public FakeUnitOfWork UnitOfWork { get; }
+
+    /// <summary>The activity log: what the handlers recorded (after a successful save) and what the read handlers return.</summary>
+    public FakeActivityLog ActivityLog { get; }
+
+    public FakeNotificationStore Notifications { get; } = new();
+
+    public FakeDashboardSource DashboardSource { get; } = new();
 
     public FakeCurrentUser User { get; } = new();
 

@@ -1,4 +1,7 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
+using Apex.Hrms.Application.Dashboard;
+using Apex.Hrms.Application.Notifications;
 using Apex.Hrms.Application.Security;
 using Apex.Hrms.Infrastructure.Identity;
 using Apex.Hrms.Infrastructure.Persistence;
@@ -40,6 +43,11 @@ public static class DependencyInjection
 
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
         services.AddScoped(typeof(IRecordCounter<>), typeof(EfRecordCounter<>));
+        services.AddScoped<EfActivityRecorder>();
+        services.AddScoped<IActivityRecorder>(provider => provider.GetRequiredService<EfActivityRecorder>());
+        services.AddScoped<IActivityLogStore, EfActivityLogStore>();
+        services.AddScoped<INotificationStore, EfNotificationStore>();
+        services.AddScoped<IDashboardSource, EfDashboardSource>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IEmployeeCodeSequence, EfEmployeeCodeSequence>();
         services.AddScoped<ILeaveApplicationNumberSequence, EfLeaveApplicationNumberSequence>();

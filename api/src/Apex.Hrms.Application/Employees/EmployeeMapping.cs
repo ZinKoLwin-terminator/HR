@@ -15,7 +15,12 @@ internal sealed class EmployeeMapping :
 {
     public string Label => "Employee";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Employee;
+
     public string Describe(Employee entity) => $"{FullName(entity)} ({entity.EmployeeCode})";
+
+    /// <summary>The activity feed names an employee by code: a name is personal data and the feed is wider than the employee screens.</summary>
+    public string ActivitySubject(Employee entity) => entity.EmployeeCode;
 
     public static string FullName(Employee entity) => $"{entity.FirstName} {entity.LastName}".Trim();
 

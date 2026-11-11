@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
@@ -29,6 +30,7 @@ internal sealed class EmployeeCreateHandler(
     IClock clock,
     ICurrentUser user,
     IRepository<Employee> repository,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     EmployeeMapping mapper) : ICreateHandler<EmployeeCreateRequest, EmployeeDto>
 {
@@ -79,6 +81,7 @@ internal sealed class EmployeeCreateHandler(
         }
 
         repository.Add(created.Value);
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Created(mapper.Label, mapper.ActivitySubject(created.Value)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<EmployeeDto>(saved.Error)
@@ -92,6 +95,7 @@ internal sealed class EmployeeUpdateHandler(
     EntityLoader<Employee> loader,
     IClock clock,
     ICurrentUser user,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     EmployeeMapping mapper) : IUpdateHandler<EmployeeUpdateRequest, EmployeeDto>
 {
@@ -129,6 +133,8 @@ internal sealed class EmployeeUpdateHandler(
             return Result.Failure<EmployeeDto>(updated.Error);
         }
 
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Updated(mapper.Label, mapper.ActivitySubject(employee)));
+
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<EmployeeDto>(saved.Error)
@@ -141,6 +147,7 @@ internal sealed class EmployeePersonalUpdateHandler(
     IValidator<EmployeePersonalUpdateRequest> validator,
     EntityLoader<Employee> loader,
     IClock clock,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     EmployeeMapping mapper) : IUpdateHandler<EmployeePersonalUpdateRequest, EmployeePersonalDto>
 {
@@ -166,6 +173,8 @@ internal sealed class EmployeePersonalUpdateHandler(
         {
             return Result.Failure<EmployeePersonalDto>(updated.Error);
         }
+
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Updated(mapper.Label, mapper.ActivitySubject(loaded.Value)));
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
@@ -199,6 +208,8 @@ internal sealed class BankAccountUpdateHandler(
     IValidator<BankAccountUpdateRequest> validator,
     EntityLoader<Employee> loader,
     IRepository<EmployeeBankAccount> accounts,
+    EmployeeMapping mapper,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork) : IUpdateHandler<BankAccountUpdateRequest, BankAccountDto>
 {
     public async Task<Result<BankAccountDto>> HandleAsync(int id, BankAccountUpdateRequest request, CancellationToken cancellationToken)
@@ -243,6 +254,9 @@ internal sealed class BankAccountUpdateHandler(
         {
             accounts.Add(set.Value);
         }
+
+        // The entry names the employee by code and says nothing about the account.
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Updated(mapper.Label, mapper.ActivitySubject(employee)));
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure

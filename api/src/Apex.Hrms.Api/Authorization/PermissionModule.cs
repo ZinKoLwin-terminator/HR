@@ -44,7 +44,13 @@ internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Pe
 
     public static readonly PermissionModule Attendance = new("attendance", [.. Standard, Permission.Approve]);
 
-    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance];
+    /// <summary>The dashboard is read only.</summary>
+    public static readonly PermissionModule Dashboard = new("dashboard", [Permission.View]);
+
+    /// <summary>The activity log is read only and append-only: there is no way to change or remove an entry.</summary>
+    public static readonly PermissionModule Activity = new("activity", [Permission.View]);
+
+    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Dashboard, Activity];
 
     public string PolicyName(Permission permission) => $"{Key}:{permission}";
 }

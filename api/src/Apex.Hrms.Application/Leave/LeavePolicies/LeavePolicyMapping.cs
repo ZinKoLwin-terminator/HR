@@ -12,6 +12,8 @@ internal sealed class LeavePolicyMapping :
 {
     public string Label => "Leave policy";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Leave;
+
     public string Describe(LeavePolicy entity) => entity.Name;
 
     public LeavePolicyDto ToDto(LeavePolicy entity) => new(

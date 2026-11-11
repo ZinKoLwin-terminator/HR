@@ -71,6 +71,8 @@ internal sealed class AttendanceRecordMapping :
 {
     public string Label => "Attendance record";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Attendance;
+
     public string Describe(AttendanceRecord entity) => $"{entity.EmployeeId} {entity.Date:yyyy-MM-dd}";
 
     public AttendanceRecordDto ToDto(AttendanceRecord entity) => new(

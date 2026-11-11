@@ -4,6 +4,9 @@ namespace Apex.Hrms.Api.Authorization;
 
 internal static class AuthorizationSetup
 {
+    /// <summary>Needs a signed-in user and nothing else (notifications). Unlike the module policies it is final, not a placeholder.</summary>
+    public const string SignedInPolicy = "signed-in";
+
     /// <summary>
     /// Registers one named policy per module and verb, and the fallback policy.
     /// TODO(Permissions, phase 3): the module policies still check no permission. They only require a signed-in user;
@@ -13,6 +16,9 @@ internal static class AuthorizationSetup
     public static IServiceCollection AddHrmsAuthorization(this IServiceCollection services) =>
         services.AddAuthorization(options =>
         {
+            // Notifications are the signed-in user's own: no permission, only a signed-in user (a named policy, never a placeholder).
+            options.AddPolicy(SignedInPolicy, policy => policy.RequireAuthenticatedUser());
+
             foreach (var module in PermissionModule.All)
             {
                 foreach (var permission in module.Permissions)

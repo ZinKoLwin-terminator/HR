@@ -15,7 +15,7 @@ internal sealed class FakeClock(DateOnly today) : IClock
     public DateTimeOffset UtcNow => new(Today.ToDateTime(TimeNow), TimeSpan.Zero);
 }
 
-internal sealed class FakeUnitOfWork(FakeDatabase database) : IUnitOfWork
+internal sealed class FakeUnitOfWork(FakeDatabase database, FakeActivityLog? activityLog = null) : IUnitOfWork
 {
     public int SaveCount { get; private set; }
 
@@ -30,6 +30,11 @@ internal sealed class FakeUnitOfWork(FakeDatabase database) : IUnitOfWork
         if (failure is null)
         {
             database.Commit();
+            activityLog?.Commit();
+        }
+        else
+        {
+            activityLog?.Discard();
         }
 
         return Task.FromResult(failure is null ? Result.Success() : Result.Failure(failure));

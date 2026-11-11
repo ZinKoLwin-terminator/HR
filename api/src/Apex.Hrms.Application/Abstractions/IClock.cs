@@ -15,4 +15,11 @@ public interface IClock
     /// client sends); <see cref="Today"/> is the matching date.
     /// </summary>
     TimeOnly TimeNow { get; }
+
+    /// <summary>
+    /// The instant (UTC) at which <paramref name="day"/> starts in the business time zone. Date filters of the activity
+    /// log use it so "from 9 Nov" means the calendar day the users live in. The default treats the business zone as UTC;
+    /// the system clock overrides it with the configured zone.
+    /// </summary>
+    DateTime StartOfDayUtc(DateOnly day) => DateTime.SpecifyKind(day.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
 }

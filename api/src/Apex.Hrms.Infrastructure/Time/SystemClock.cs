@@ -11,6 +11,18 @@ internal sealed class SystemClock(TimeProvider timeProvider, TimeZoneInfo busine
 
     public TimeOnly TimeNow => TimeOnly.FromDateTime(Local.DateTime);
 
+    public DateTime StartOfDayUtc(DateOnly day)
+    {
+        var midnight = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+        if (businessTimeZone.IsInvalidTime(midnight))
+        {
+            // A daylight saving gap swallows midnight: the day starts at the first valid hour.
+            midnight = midnight.AddHours(1);
+        }
+
+        return TimeZoneInfo.ConvertTimeToUtc(midnight, businessTimeZone);
+    }
+
     /// <summary>One conversion for both, so a call near midnight cannot pair a date with the wrong time.</summary>
     private DateTimeOffset Local => TimeZoneInfo.ConvertTime(UtcNow, businessTimeZone);
 }

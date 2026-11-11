@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Leave;
@@ -14,6 +15,7 @@ internal sealed class LeavePolicyCreateHandler(
     IValidator<LeavePolicyCreateRequest> validator,
     LeavePolicyRules rules,
     IRepository<LeavePolicy> repository,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     LeavePolicyMapping mapper) : ICreateHandler<LeavePolicyCreateRequest, LeavePolicyDto>
 {
@@ -46,6 +48,7 @@ internal sealed class LeavePolicyCreateHandler(
         }
 
         repository.Add(created.Value);
+        activity.Record(mapper.ActivityCategory, ActivityMessages.Created(mapper.Label, mapper.Describe(created.Value)));
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<LeavePolicyDto>(saved.Error)
@@ -57,6 +60,7 @@ internal sealed class LeavePolicyCreateHandler(
 internal sealed class LeavePolicyActivateHandler(
     EntityLoader<LeavePolicy> loader,
     LeavePolicyRules rules,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     LeavePolicyMapping mapper) : ICommandHandler<ActivateCommand, LeavePolicyDto>
 {
@@ -69,7 +73,8 @@ internal sealed class LeavePolicyActivateHandler(
         }
 
         var policy = loaded.Value;
-        if (!policy.IsActive)
+        var wasActive = policy.IsActive;
+        if (!wasActive)
         {
             var allowed = await rules.CheckActivationAsync(policy, cancellationToken);
             if (allowed.IsFailure)
@@ -79,6 +84,10 @@ internal sealed class LeavePolicyActivateHandler(
         }
 
         policy.Activate();
+        if (!wasActive)
+        {
+            activity.Record(mapper.ActivityCategory, ActivityMessages.Updated(mapper.Label, mapper.Describe(policy)));
+        }
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure ? Result.Failure<LeavePolicyDto>(saved.Error) : Result.Success(mapper.ToDto(policy));
     }

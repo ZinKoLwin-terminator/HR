@@ -12,6 +12,8 @@ internal sealed class LeaveTypeMapping :
 {
     public string Label => "Leave type";
 
+    public string ActivityCategory => Domain.Activity.ActivityCategories.Leave;
+
     public string Describe(LeaveType entity) => entity.Name;
 
     public LeaveTypeDto ToDto(LeaveType entity) => new(

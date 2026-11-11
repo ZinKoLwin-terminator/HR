@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Attendance;
 using Apex.Hrms.Domain.Common;
@@ -47,10 +48,29 @@ internal sealed class DecisionAction<TEntity, TCommand>(ICurrentUser user, ICloc
     }
 }
 
+/// <summary>
+/// The activity wording of a decision, as the mock services write it: <c>ADJ-0004 approved for 2026-11-09</c> for an
+/// adjustment and <c>OT-0004 rejected</c> for an overtime request.
+/// </summary>
+internal sealed class DecisionActivity<TEntity, TCommand> : ICommandActivity<TEntity, TCommand>
+    where TEntity : ApprovalRequest
+    where TCommand : IDecisionCommand
+{
+    public string Describe(TEntity entity, TCommand command)
+    {
+        var decision = command.Decision == ApprovalDecision.Approve ? "Approved" : "Rejected";
+        return entity is AttendanceAdjustment
+            ? ActivityMessages.AdjustmentDecided(entity.Label, decision, entity.Date)
+            : ActivityMessages.OvertimeDecided(entity.Label, decision);
+    }
+}
+
 /// <summary>Deletes a pending request. A decided one stays as the record of the decision.</summary>
 internal sealed class ApprovalDeleteHandler<TEntity, TDto>(
     EntityLoader<TEntity> loader,
     IRepository<TEntity> repository,
+    IEntityDescriptor<TEntity> descriptor,
+    IActivityRecorder activity,
     IUnitOfWork unitOfWork) : IDeleteHandler<TDto>
     where TEntity : ApprovalRequest
 {
@@ -68,6 +88,9 @@ internal sealed class ApprovalDeleteHandler<TEntity, TDto>(
             return allowed;
         }
 
+        activity.Record(
+            descriptor.ActivityCategory,
+            ActivityMessages.Deleted(descriptor.Label, descriptor.ActivitySubject(loaded.Value)));
         repository.Remove(loaded.Value);
         return await unitOfWork.SaveChangesAsync(cancellationToken);
     }
