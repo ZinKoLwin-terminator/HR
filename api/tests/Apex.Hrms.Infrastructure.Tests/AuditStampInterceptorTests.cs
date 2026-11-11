@@ -28,6 +28,8 @@ public sealed class AuditStampInterceptorTests : IDisposable
         public DateTimeOffset UtcNow => Now;
 
         public DateOnly Today => DateOnly.FromDateTime(Now.UtcDateTime);
+
+        public TimeOnly TimeNow => TimeOnly.FromDateTime(Now.UtcDateTime);
     }
 
     private sealed class TestUser(int? userId, bool isSystem = false) : ICurrentUser

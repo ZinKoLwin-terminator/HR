@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Attendance;
 using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Leave;
 using Apex.Hrms.Application.Organization;
@@ -21,6 +22,6 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.TryAddScoped(typeof(IAccessScope<>), typeof(AllowAllAccessScope<>));
         services.TryAddScoped<AdministratorBootstrap>();
-        return services.AddOrganization().AddEmployees().AddLeave();
+        return services.AddOrganization().AddEmployees().AddLeave().AddAttendance();
     }
 }

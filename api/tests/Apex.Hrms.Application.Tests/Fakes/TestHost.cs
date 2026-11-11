@@ -9,6 +9,7 @@ using Apex.Hrms.Application.Organization.JobGrades;
 using Apex.Hrms.Application.Organization.Positions;
 using Apex.Hrms.Application.Organization.Sections;
 using Apex.Hrms.Application.UseCases;
+using Apex.Hrms.Domain.Attendance;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Leave;
@@ -45,6 +46,10 @@ internal sealed class TestHost : IDisposable
         AddCounter<LeaveType>(services);
         AddCounter<LeavePolicy>(services);
         AddCounter<LeaveApplication>(services);
+        AddCounter<Shift>(services);
+        AddCounter<AttendanceRecord>(services);
+        AddCounter<AttendanceAdjustment>(services);
+        AddCounter<OvertimeRecord>(services);
         services.AddSingleton<IEmployeeCodeSequence>(CodeSequence);
         services.AddSingleton<ILeaveApplicationNumberSequence>(LeaveNumbers);
         services.AddSingleton<IBusinessWeek>(Week);

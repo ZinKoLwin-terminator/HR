@@ -52,10 +52,18 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     private static bool IsLeaveRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/leave", StringComparison.Ordinal);
 
+    private static readonly string[] AttendancePrefixes = ["/api/shifts", "/api/holidays", "/api/attendance", "/api/overtime-records"];
+
+    private static bool IsAttendanceRoute(RouteEndpoint endpoint) =>
+        AttendancePrefixes
+            .Any(prefix => endpoint.RoutePattern.RawText!.StartsWith(prefix, StringComparison.Ordinal));
+
     [Fact]
     public void Six_organization_resources_map_eight_endpoints_each()
     {
-        var endpoints = ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint)).ToList();
+        var endpoints = ApiEndpoints()
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint))
+            .ToList();
 
         Assert.Equal(48, endpoints.Count);
     }
@@ -113,6 +121,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
 
         Assert.Equal(
             [
+                "attendance:Approve", "attendance:Create", "attendance:Delete", "attendance:Edit", "attendance:View",
                 "employees:Create", "employees:Delete", "employees:Edit", "employees:EditBank", "employees:EditSensitive",
                 "employees:View", "employees:ViewBank", "employees:ViewSensitive",
                 "leave:Approve", "leave:Create", "leave:Delete", "leave:Edit", "leave:View",
@@ -124,7 +133,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     [Fact]
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
-        foreach (var endpoint in ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint)))
+        foreach (var endpoint in ApiEndpoints().Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);
@@ -178,5 +187,45 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("leave:Edit", policies["POST /api/leave-types/{id:int}/activate"]);
         Assert.Equal("leave:Edit", policies["POST /api/leave-policies/{id:int}/deactivate"]);
         Assert.Equal("leave:Delete", policies["DELETE /api/leave-types/{id:int}"]);
+    }
+
+    private Dictionary<string, string?> AttendancePolicies() => ApiEndpoints().Where(IsAttendanceRoute)
+        .ToDictionary(
+            endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+            endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
+
+    [Fact]
+    public void Attendance_maps_thirty_one_endpoints_and_no_way_to_write_a_record_directly()
+    {
+        var policies = AttendancePolicies();
+
+        Assert.Equal(31, policies.Count);
+        Assert.DoesNotContain(policies.Keys, key => key.Contains("/api/attendance-records", StringComparison.Ordinal)
+            && !key.StartsWith("GET ", StringComparison.Ordinal));
+        Assert.DoesNotContain("GET /api/attendance-adjustments/", policies.Keys);
+        Assert.DoesNotContain("PUT /api/attendance-adjustments/{id:int}", policies.Keys);
+        Assert.DoesNotContain("GET /api/overtime-records/", policies.Keys);
+    }
+
+    [Fact]
+    public void Attendance_endpoints_have_the_policy_of_who_may_use_them()
+    {
+        var policies = AttendancePolicies();
+
+        Assert.Equal("attendance:Create", policies["POST /api/attendance/punches"]);
+        Assert.Equal("attendance:View", policies["GET /api/attendance-records/query"]);
+        Assert.Equal("attendance:View", policies["GET /api/attendance-records/{id:int}"]);
+        Assert.Equal("attendance:View", policies["GET /api/attendance/overview"]);
+        Assert.Equal("attendance:View", policies["GET /api/attendance/schedule"]);
+        Assert.Equal("attendance:Create", policies["POST /api/attendance-adjustments/"]);
+        Assert.Equal("attendance:Approve", policies["POST /api/attendance-adjustments/{id:int}/approve"]);
+        Assert.Equal("attendance:Approve", policies["POST /api/attendance-adjustments/{id:int}/reject"]);
+        Assert.Equal("attendance:Create", policies["POST /api/overtime-records/"]);
+        Assert.Equal("attendance:Approve", policies["POST /api/overtime-records/{id:int}/approve"]);
+        Assert.Equal("attendance:Approve", policies["POST /api/overtime-records/{id:int}/reject"]);
+        Assert.Equal("attendance:Edit", policies["POST /api/shifts/{id:int}/activate"]);
+        Assert.Equal("attendance:Delete", policies["DELETE /api/shifts/{id:int}"]);
+        Assert.Equal("attendance:Create", policies["POST /api/holidays/"]);
+        Assert.Equal("attendance:Edit", policies["PUT /api/holidays/{id:int}"]);
     }
 }

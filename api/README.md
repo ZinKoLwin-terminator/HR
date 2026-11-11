@@ -241,8 +241,45 @@ documentName, status, appliedOn, approverId, actionedByName, actionedOn, approve
   `UQ_LeavePolicy_ActiveGroup` as backstop.
 * **Delete protection:** a leave type used by applications or policies, a job grade used by policies and an employee with
   leave applications (as employee or approver) cannot be deleted (`409`, "Deactivate it instead" wording for types).
-* Not ported: the mock marked past attendance records as "On Leave" when leave was approved; the attendance module is
-  not in the API yet.
+* Not ported: the mock marked past attendance records as "On Leave" when leave was approved. The attendance module now
+  works from approved leave directly (punch refusal, overview, schedule); no record is rewritten.
+
+## HTTP contract (attendance module)
+
+Policies (placeholders until phase 3, like leave): `attendance:View|Create|Edit|Delete|Approve`. Times travel as `"HH:mm"`
+(24 hours, to the minute; `"HH:mm:ss"` is also accepted on input); dates as `yyyy-MM-dd`. Every update, delete and command
+needs `rowVersion` as described for the organization module.
+
+| Route | Policy | Notes |
+| --- | --- | --- |
+| `/api/shifts` (get all, `/query`, `/{id}`, POST, PUT, DELETE, `/{id}/activate`, `/{id}/deactivate`) | View, Create, Edit, Delete, Edit | Like an organization resource. Fields: `code, name, startTime, endTime, breakMinutes, graceMinutes, workDays (0 = Sunday ... 6), isNightShift, color, status`. Delete is refused (`409`) while employees are assigned or attendance records used the shift. |
+| `/api/holidays` (get all, `/query?dateFrom&dateTo&type`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | `{ date, name, type: Public\|Company }`. One holiday per date (`400` on `date`; the table has no unique index, so this is checked by the API only). |
+| `GET /api/attendance-records/query`, `GET /api/attendance-records/{id}` | View | Read only, list shape with names. Filters: `employeeId, departmentId, branchId, status, dateFrom, dateTo, lateOnly, earlyOnly, overtimeOnly`; `search` matches employee name or code; sort by `date, employeeId, checkIn, checkOut, workedMinutes, lateMinutes, earlyLeaveMinutes, overtimeMinutes, status`. |
+| `POST /api/attendance/punches` | Create | Body `{ employeeId, kind: "CheckIn"\|"CheckOut" }` and nothing else: the server sets the date and the time (business time zone). Returns the day record. A signed-in employee may punch only for themself (`403`); the built-in administrator may punch for anyone. |
+| `GET /api/attendance-adjustments/query`, `/{id}`; `POST`; `DELETE /{id}` (pending only) | View, Create, Delete | Body `{ employeeId, date, requestedCheckIn?, requestedCheckOut?, requestedStatus?, reason }`. |
+| `POST /api/attendance-adjustments/{id}/approve`, `/reject` | Approve | Body `{ rowVersion, remarks? }`; reject needs remarks. Approve applies the request to the record in the same save. |
+| `GET /api/overtime-records/query`, `/{id}`; `POST`; `DELETE /{id}` (pending only) | View, Create, Delete | Body `{ employeeId, date, startTime, endTime, reason }`; `minutes` is derived. |
+| `POST /api/overtime-records/{id}/approve`, `/reject` | Approve | Body `{ rowVersion, remarks? }`. |
+| `GET /api/attendance/overview?date&branchId` | View | `{ summary, byDepartment, late, absent, trend }`. |
+| `GET /api/attendance/schedule?weekStart&departmentId&branchId` | View | `{ weekStart, days, rows: [{ ..., cells: [{ date, kind: Shift\|Off\|Holiday\|Leave, label }] }] }`. |
+
+Rules (the attendance rules are demonstrations, not statutory calculations):
+
+* **Derivation** (shared by punches and approved adjustments): late when the check-in is after shift start + grace, counted
+  from the shift start; worked = check-out - check-in - break, and a day is a Half Day when that is under 240 minutes (then
+  the break is not deducted and there is no early leave); early leave = minutes before the shift end; overtime = minutes after
+  the end, only when more than 30 (then all of them). Night shifts roll the end and an earlier check-out into the next day.
+* **Punches:** one record per employee and day (database unique key). Check-in once; check-out needs a check-in, once, and
+  must be after it unless the shift is a night shift. A night shift's check-out after midnight closes the previous day's
+  open record. A day of approved whole-day leave refuses punches (`409`); working on a holiday or a day off makes the day
+  Present with no late or early minutes and a "Worked on a ..." remark. The shift is the employee's own or the first one.
+* **Adjustments:** the employee needs a record on that date (the table links to it), the date may not be in the future,
+  something must be requested, the check-out must follow the check-in unless night shift, and one pending request per
+  employee and date. Nobody decides their own request (`409`); `decidedBy` is the approver's name at that time.
+* **Overtime:** 15 minutes to 12 hours (start to end, across midnight), one entry per employee and date, date not in the future.
+* **Not provided:** PUT of a pending adjustment or overtime request (delete it and file it again); `recordId` on adjustments.
+* **Overview:** built from the employees expected that day (employed, working weekday of their shift, not a holiday); without a
+  record they are On Leave (approved whole-day leave) or Absent (for today: "not checked in yet"; a future day counts nothing).
 
 ## Authentication (phase 1)
 

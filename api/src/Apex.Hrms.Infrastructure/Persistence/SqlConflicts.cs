@@ -50,6 +50,15 @@ internal static partial class SqlConflicts
             "Another active policy covers the same group."),
         ["UQ_LeaveApplication_ApplicationNo"] = AppError.Conflict("That application number is already in use. Try again."),
         ["CK_LeaveApplication_NotOwnApprover"] = AppError.Conflict("You cannot decide your own leave request."),
+        ["UQ_AttendanceRecord_EmployeeId_Date"] = AppError.Conflict("Attendance for this employee and day was just recorded. Reload and try again."),
+        ["UQ_AttendanceAdjustment_EmployeeId_Date_Pending"] = AppError.Validation(
+            "A pending request already exists for this employee and date.",
+            "date",
+            "A pending request already exists for this date."),
+        ["UQ_OvertimeRecord_EmployeeId_Date"] = AppError.Validation(
+            "Overtime is already recorded for this employee on that date.",
+            "date",
+            "Already recorded for this date."),
     };
 
     private static readonly AppError ReferenceViolation = AppError.Conflict(

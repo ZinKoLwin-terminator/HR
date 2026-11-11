@@ -118,7 +118,7 @@ internal sealed class LeaveApplicationConfiguration : IEntityTypeConfiguration<L
     }
 }
 
-/// <summary>Maps att.Holiday for reading only: the leave module counts working days and shows holidays on its calendar.</summary>
+/// <summary>Maps att.Holiday. Attendance writes it; the leave module reads it to count working days and show its calendar.</summary>
 internal sealed class HolidayConfiguration : IEntityTypeConfiguration<Holiday>
 {
     public void Configure(EntityTypeBuilder<Holiday> builder)
