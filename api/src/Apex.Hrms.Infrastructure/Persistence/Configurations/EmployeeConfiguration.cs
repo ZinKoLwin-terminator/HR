@@ -180,3 +180,29 @@ internal sealed class EmployeeDocumentConfiguration : IEntityTypeConfiguration<E
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
+
+/// <summary>Maps hr.EmployeeBlacklist (system-versioned: the history table and the period columns stay in the database project).</summary>
+internal sealed class EmployeeBlacklistEntryConfiguration : IEntityTypeConfiguration<EmployeeBlacklistEntry>
+{
+    public void Configure(EntityTypeBuilder<EmployeeBlacklistEntry> builder)
+    {
+        builder.ToTable("EmployeeBlacklist", "hr");
+        builder.HasKey(entry => entry.Id).HasName("PK_EmployeeBlacklist");
+        builder.Property(entry => entry.Id).UseIdentityColumn();
+        builder.ConfigureAudit();
+
+        builder.Property(entry => entry.Reason).HasMaxLength(EmployeeBlacklistEntry.ReasonMaxLength);
+        builder.Property(entry => entry.BlacklistedOn).HasColumnType("date");
+        builder.Property(entry => entry.BlacklistedByName).HasMaxLength(EmployeeBlacklistEntry.NameMaxLength);
+        builder.Property(entry => entry.LiftedOn).HasColumnType("date");
+        builder.Property(entry => entry.LiftedByName).HasMaxLength(EmployeeBlacklistEntry.NameMaxLength);
+        builder.Property(entry => entry.LiftReason).HasMaxLength(EmployeeBlacklistEntry.ReasonMaxLength);
+
+        // One active entry per employee is a filtered unique index in the database (UQ_EmployeeBlacklist_ActiveEmployee).
+        builder.HasIndex(entry => entry.EmployeeId).HasDatabaseName("IX_EmployeeBlacklist_EmployeeId");
+        builder.HasOne<Employee>().WithMany()
+            .HasForeignKey(entry => entry.EmployeeId)
+            .HasConstraintName("FK_EmployeeBlacklist_Employee")
+            .OnDelete(DeleteBehavior.NoAction);
+    }
+}

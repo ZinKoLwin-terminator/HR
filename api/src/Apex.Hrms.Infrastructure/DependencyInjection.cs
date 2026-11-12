@@ -74,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<IAccountLogins, EfAccountLogins>();
         services.AddScoped<IPermissionStore, EfPermissionStore>();
         services.AddScoped<ITeamDirectory, EfTeamDirectory>();
+        services.AddScoped<IRecruitmentDirectory, EfRecruitmentDirectory>();
 
         // Fails closed (refuses to send) until the host registers a real sender with AddEmailSender.
         services.TryAddSingleton<IEmailSender>(new SmtpEmailSender(SmtpSettings.From(configuration)));

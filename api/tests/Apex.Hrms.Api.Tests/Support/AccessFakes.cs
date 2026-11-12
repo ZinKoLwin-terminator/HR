@@ -74,3 +74,15 @@ internal sealed class FakeTeamDirectory(IReadOnlyDictionary<int, int[]>? reports
         return Task.FromResult<IReadOnlyList<int>>(reports is not null && reports.TryGetValue(managerEmployeeId, out var ids) ? ids : []);
     }
 }
+
+/// <summary>What a hiring manager manages, by employee id; counts the lookups.</summary>
+internal sealed class FakeRecruitmentDirectory(IReadOnlyDictionary<int, ManagedRecruitment>? managed = null) : IRecruitmentDirectory
+{
+    public int Lookups { get; private set; }
+
+    public Task<ManagedRecruitment> ManagedByAsync(int hiringManagerEmployeeId, CancellationToken cancellationToken)
+    {
+        Lookups++;
+        return Task.FromResult(managed is not null && managed.TryGetValue(hiringManagerEmployeeId, out var found) ? found : new ManagedRecruitment([], [], []));
+    }
+}

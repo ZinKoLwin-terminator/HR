@@ -49,6 +49,12 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     private static bool IsEmployeeRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/employees", StringComparison.Ordinal);
 
+    private static bool IsBlacklistRoute(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText!.StartsWith("/api/employee-blacklist", StringComparison.Ordinal);
+
+    private static bool IsSelfServiceRoute(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText!.StartsWith("/api/me/", StringComparison.Ordinal);
+
     private static bool IsEmployeeDocumentRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/employee-documents", StringComparison.Ordinal);
 
@@ -151,18 +157,18 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void Six_organization_resources_map_eight_endpoints_each()
     {
         var endpoints = ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint))
             .ToList();
 
         Assert.Equal(48, endpoints.Count);
     }
 
     [Fact]
-    public void Employees_map_fifteen_endpoints_and_no_unpaged_list()
+    public void Employees_map_seventeen_endpoints_and_no_unpaged_list()
     {
         var endpoints = ApiEndpoints().Where(IsEmployeeRoute).ToList();
 
-        Assert.Equal(15, endpoints.Count);
+        Assert.Equal(17, endpoints.Count);
         Assert.DoesNotContain(
             endpoints,
             endpoint => endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Contains(HttpMethods.Get)
@@ -194,6 +200,37 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("payroll:View", policies["GET /api/employees/{id:int}/salary-summary"]);
     }
 
+    private Dictionary<string, string> PoliciesOf(Func<RouteEndpoint, bool> filter) => ApiEndpoints().Where(filter)
+        .ToDictionary(
+            endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+            endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy!);
+
+    [Fact]
+    public void The_do_not_rehire_list_has_its_own_permissions_and_no_unpaged_list()
+    {
+        var policies = PoliciesOf(IsBlacklistRoute);
+
+        Assert.Equal(4, policies.Count);
+        Assert.DoesNotContain("GET /api/employee-blacklist/", policies.Keys);
+        Assert.Equal("employees:ViewBlacklist", policies["GET /api/employee-blacklist/query"]);
+        Assert.Equal("employees:ViewBlacklist", policies["GET /api/employee-blacklist/{id:int}"]);
+        Assert.Equal("employees:EditBlacklist", policies["POST /api/employee-blacklist/"]);
+        Assert.Equal("employees:EditBlacklist", policies["POST /api/employee-blacklist/{id:int}/lift"]);
+        Assert.Equal("employees:ViewBlacklist", PoliciesOf(IsEmployeeRoute)["GET /api/employees/{id:int}/blacklist"]);
+    }
+
+    [Fact]
+    public void The_employee_picker_has_its_own_policy_and_my_payslips_need_only_a_signed_in_user()
+    {
+        Assert.Equal("employee-lookup", PoliciesOf(IsEmployeeRoute)["GET /api/employees/lookup"]);
+
+        var mine = PoliciesOf(IsSelfServiceRoute);
+        Assert.Equal(2, mine.Count);
+        Assert.All(mine.Values, policy => Assert.Equal("signed-in", policy));
+        Assert.Contains("GET /api/me/payslips/", mine.Keys);
+        Assert.Contains("GET /api/me/payslips/{id:int}", mine.Keys);
+    }
+
     [Fact]
     public async Task Every_policy_in_use_is_registered()
     {
@@ -214,8 +251,9 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
                 "activity:View",
                 "attendance:Approve", "attendance:Create", "attendance:Delete", "attendance:Edit", "attendance:View",
                 "dashboard:View",
-                "employees:Create", "employees:Delete", "employees:Edit", "employees:EditBank", "employees:EditSensitive",
-                "employees:View", "employees:ViewBank", "employees:ViewSensitive",
+                "employee-lookup",
+                "employees:Create", "employees:Delete", "employees:Edit", "employees:EditBank", "employees:EditBlacklist", "employees:EditSensitive",
+                "employees:View", "employees:ViewBank", "employees:ViewBlacklist", "employees:ViewSensitive",
                 "excel:Export", "excel:Import", "excel:View",
                 "hr-administrator",
                 "leave:Approve", "leave:Create", "leave:Delete", "leave:Edit", "leave:View",
@@ -232,7 +270,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
         foreach (var endpoint in ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint)))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);

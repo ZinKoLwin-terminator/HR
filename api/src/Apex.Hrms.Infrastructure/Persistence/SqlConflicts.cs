@@ -57,6 +57,7 @@ internal static partial class SqlConflicts
             "date",
             "A pending request already exists for this date."),
         ["UQ_JobOpening_Code"] = AppError.Conflict("That job opening code is already in use. Try again."),
+        ["UQ_EmployeeBlacklist_ActiveEmployee"] = AppError.Conflict("This employee is already on the do-not-rehire list."),
         ["UQ_Application_JobOpeningId_CandidateId"] = AppError.Validation(
             "This candidate has already applied for this job.",
             "candidateId",

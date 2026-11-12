@@ -10,6 +10,9 @@ internal static class AuthorizationSetup
     /// <summary>The caller must hold the HR Administrator role (a real check, see <see cref="AdministratorRequirement"/>). Added to the settings endpoints on top of their module policy.</summary>
     public const string AdministratorPolicy = "hr-administrator";
 
+    /// <summary>The minimal employee picker: <c>recruitment:Edit</c> or <c>employees:View</c> (see <see cref="AnyPermissionRequirement"/>).</summary>
+    public const string EmployeeLookupPolicy = "employee-lookup";
+
     /// <summary>
     /// Registers one named policy per module and action (<c>employees:ViewBank</c>), each a <see cref="PermissionRequirement"/>
     /// checked against sec.RolePermission by <see cref="PermissionHandler"/>, the administrator policy, the signed-in policy
@@ -24,6 +27,9 @@ internal static class AuthorizationSetup
             {
                 options.AddPolicy(SignedInPolicy, policy => policy.RequireAuthenticatedUser());
                 options.AddPolicy(AdministratorPolicy, policy => policy.RequireAuthenticatedUser().AddRequirements(new AdministratorRequirement()));
+                options.AddPolicy(
+                    EmployeeLookupPolicy,
+                    policy => policy.RequireAuthenticatedUser().AddRequirements(new AnyPermissionRequirement("recruitment", "Edit", "employees:View")));
 
                 foreach (var module in PermissionModule.All)
                 {

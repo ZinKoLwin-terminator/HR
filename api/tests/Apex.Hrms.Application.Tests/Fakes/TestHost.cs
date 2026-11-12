@@ -57,6 +57,7 @@ internal sealed class TestHost : IDisposable
         AddCounter<JobGrade>(services);
         AddCounter<Position>(services);
         AddCounter<Employee>(services);
+        AddCounter<EmployeeBlacklistEntry>(services);
         AddCounter<LeaveType>(services);
         AddCounter<LeavePolicy>(services);
         AddCounter<LeaveApplication>(services);
@@ -106,6 +107,9 @@ internal sealed class TestHost : IDisposable
 
     /// <summary>Who reports directly to the caller. Nobody until a test calls <c>Team.Set</c>.</summary>
     public Apex.Hrms.Application.Security.CallerTeam Team { get; } = new();
+
+    /// <summary>The openings a hiring manager manages (what the host fills for a caller with recruitment:View only). Empty until a test calls <c>Set</c>.</summary>
+    public Apex.Hrms.Application.Security.CallerRecruitment Recruitment => Get<Apex.Hrms.Application.Security.CallerRecruitment>();
 
     public FakeEmployees Employees { get; } = new();
 

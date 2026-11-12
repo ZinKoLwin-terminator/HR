@@ -14,13 +14,15 @@ namespace Apex.Hrms.Application.Recruitment.Interviews;
 /// </summary>
 internal sealed class InterviewRules(
     IRepository<JobApplication> applications,
+    IAccessScope<JobApplication> applicationScope,
+    ICurrentUser user,
     IRepository<Interview> interviews,
     RecruitmentLookup lookup)
 {
     public async Task<Result<JobApplication>> CheckReferencesAsync(InterviewDetails details, CancellationToken cancellationToken)
     {
         // Tracked, so that scheduling can move the application on to the Interview stage.
-        var application = await applications.FindAsync(details.ApplicationId, cancellationToken);
+        var application = await applications.FindAsync(details.ApplicationId, applicationScope.PredicateFor(user), cancellationToken);
         if (application is null)
         {
             return Result.Failure<JobApplication>(AppError.Validation(

@@ -28,6 +28,12 @@ internal enum Permission
 
     /// <summary>Download Excel exports (the module's own View permission applies to the rows).</summary>
     Export,
+
+    /// <summary>Read the do-not-rehire list (including the reasons). Sort order 12 in the database seed; only HR Administrator holds it.</summary>
+    ViewBlacklist,
+
+    /// <summary>Add and lift do-not-rehire entries. Sort order 13 in the database seed.</summary>
+    EditBlacklist,
 }
 
 /// <summary>
@@ -44,7 +50,7 @@ internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Pe
 
     public static readonly PermissionModule Employees = new(
         "employees",
-        [.. Standard, Permission.ViewSensitive, Permission.EditSensitive, Permission.ViewBank, Permission.EditBank]);
+        [.. Standard, Permission.ViewSensitive, Permission.EditSensitive, Permission.ViewBank, Permission.EditBank, Permission.ViewBlacklist, Permission.EditBlacklist]);
 
     public static readonly PermissionModule Leave = new("leave", [.. Standard, Permission.Approve]);
 

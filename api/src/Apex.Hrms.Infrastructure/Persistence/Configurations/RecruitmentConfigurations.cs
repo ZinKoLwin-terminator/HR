@@ -62,6 +62,7 @@ internal sealed class CandidateConfiguration : IEntityTypeConfiguration<Candidat
         builder.Property(candidate => candidate.ExperienceYears).HasColumnType("decimal(4,1)");
         builder.Property(candidate => candidate.ResumeName).HasMaxLength(260);
         builder.Property(candidate => candidate.Notes).HasMaxLength(300);
+        builder.Property(candidate => candidate.NationalId).HasMaxLength(40);
     }
 }
 
@@ -79,6 +80,7 @@ internal sealed class JobApplicationConfiguration : IEntityTypeConfiguration<Job
         builder.Property(application => application.AppliedOn).HasColumnType("date");
         builder.Property(application => application.RejectionReason).HasMaxLength(200);
         builder.Property(application => application.Notes).HasMaxLength(300);
+        builder.Property(application => application.BlacklistOverrideReason).HasMaxLength(300);
 
         builder.HasOne<JobOpening>().WithMany()
             .HasForeignKey(application => application.JobOpeningId)

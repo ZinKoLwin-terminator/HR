@@ -60,17 +60,20 @@ internal sealed class RecruitmentPipelineHandler(
     IRepository<Candidate> candidates,
     IRepository<JobOpening> openings,
     IRepository<Interview> interviews,
+    IAccessScope<JobOpening> openingScope,
+    IAccessScope<JobApplication> applicationScope,
+    ICurrentUser user,
     IClock clock) : IRecruitmentPipelineHandler
 {
     public async Task<Result<PipelineDto>> HandleAsync(int? jobOpeningId, CancellationToken cancellationToken)
     {
-        if (jobOpeningId is { } id && await openings.FindAsync(id, cancellationToken) is null)
+        if (jobOpeningId is { } id && await openings.FindAsync(id, openingScope.PredicateFor(user), cancellationToken) is null)
         {
             return Result.Failure<PipelineDto>(NotFoundError.For("Job opening", id));
         }
 
         var rows = await applications.ListAsync(
-            application => jobOpeningId == null || application.JobOpeningId == jobOpeningId,
+            applicationScope.PredicateFor(user).And(application => jobOpeningId == null || application.JobOpeningId == jobOpeningId),
             cancellationToken);
         var applicationIds = rows.Select(application => application.Id).ToList();
         var candidateIds = rows.Select(application => application.CandidateId).Distinct().ToList();
@@ -124,11 +127,14 @@ internal sealed class RecruitmentPipelineHandler(
     }
 }
 
-internal sealed class RecruitmentCountsHandler(IRepository<JobApplication> applications) : IRecruitmentCountsHandler
+internal sealed class RecruitmentCountsHandler(
+    IRepository<JobApplication> applications,
+    IAccessScope<JobApplication> applicationScope,
+    ICurrentUser user) : IRecruitmentCountsHandler
 {
     public async Task<Result<RecruitmentCountsDto>> HandleAsync(CancellationToken cancellationToken)
     {
-        var all = await applications.ListAsync(Predicates.Always<JobApplication>(), cancellationToken);
+        var all = await applications.ListAsync(applicationScope.PredicateFor(user), cancellationToken);
         var openings = all
             .GroupBy(application => application.JobOpeningId)
             .OrderBy(group => group.Key)

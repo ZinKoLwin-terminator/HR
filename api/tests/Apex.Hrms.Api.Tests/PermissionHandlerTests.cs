@@ -26,6 +26,8 @@ public sealed class PermissionHandlerTests
     private CallerPermissions Caller { get; } = new();
     private CallerTeam Team { get; } = new();
     private readonly FakeTeamDirectory teams = new(new Dictionary<int, int[]> { [7] = [11, 12] });
+    private CallerRecruitment RecruitmentScope { get; } = new();
+    private readonly FakeRecruitmentDirectory recruitment = new(new Dictionary<int, ManagedRecruitment> { [7] = new([3], [30, 31], [300]) });
 
     private readonly FakeGrantStore store = new(["employees:View", "leave:View", "leave:Approve"]);
 
@@ -36,7 +38,7 @@ public sealed class PermissionHandlerTests
         AccountSnapshot? account,
         bool withAccountClaim = true)
     {
-        var handler = new PermissionHandler(new FakeAccountDirectory(account), store, cache, Caller, teams, Team);
+        var handler = new PermissionHandler(new FakeAccountDirectory(account), store, cache, Caller, teams, Team, recruitment, RecruitmentScope);
         var claims = withAccountClaim ? new[] { new Claim(HrmsClaims.AccountId, AccessFakes.AccountId.ToString(System.Globalization.CultureInfo.InvariantCulture)) } : [];
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
         var context = new AuthorizationHandlerContext([requirement], user, resource: null);
@@ -194,6 +196,47 @@ public sealed class PermissionHandlerTests
 
         Assert.Empty(Team.DirectReportIds);
         Assert.Equal(0, teams.Lookups);
+    }
+
+    [Fact]
+    public async Task A_hiring_manager_without_recruitment_edit_gets_the_openings_they_manage_once_per_request()
+    {
+        store.Grants.Add("recruitment:View");
+        await RunAsync(Needs("recruitment", "View"), AccessFakes.Account(employeeId: 7));
+        await RunAsync(Needs("recruitment", "View"), AccessFakes.Account(employeeId: 7));
+
+        Assert.Equal([3], RecruitmentScope.OpeningIds);
+        Assert.Equal([30, 31], RecruitmentScope.ApplicationIds);
+        Assert.Equal([300], RecruitmentScope.CandidateIds);
+        Assert.Equal(1, recruitment.Lookups);
+    }
+
+    [Fact]
+    public async Task Recruiters_and_other_modules_do_not_read_what_a_hiring_manager_manages()
+    {
+        store.Grants.AddRange(["recruitment:View", "recruitment:Edit"]);
+        await RunAsync(Needs("recruitment", "View"), AccessFakes.Account(employeeId: 7));
+        store.Grants.Remove("recruitment:Edit");
+        await RunAsync(Needs("employees", "View"), AccessFakes.Account(employeeId: 7, roleVersion: [9]));
+
+        Assert.Equal(0, recruitment.Lookups);
+    }
+
+    [Fact]
+    public async Task The_employee_lookup_requirement_is_met_by_recruitment_edit_or_employees_view_and_by_nothing_else()
+    {
+        var lookup = new AnyPermissionRequirement("recruitment", "Edit", "employees:View");
+
+        store.Grants.Clear();
+        Assert.False((await RunAsync(lookup, AccessFakes.Account(roleVersion: [1]))).HasSucceeded);
+        store.Grants.Add("employees:View");
+        Assert.True((await RunAsync(lookup, AccessFakes.Account(roleVersion: [2]))).HasSucceeded);
+        store.Grants.Clear();
+        store.Grants.Add("recruitment:Edit");
+        Assert.True((await RunAsync(lookup, AccessFakes.Account(roleVersion: [3]))).HasSucceeded);
+        store.Grants.Clear();
+        store.Grants.Add("recruitment:View");
+        Assert.False((await RunAsync(lookup, AccessFakes.Account(roleVersion: [4]))).HasSucceeded);
     }
 
     [Fact]

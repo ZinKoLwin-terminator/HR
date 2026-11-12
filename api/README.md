@@ -19,8 +19,7 @@ open a database connection.
 Sign-in (phase 1) is implemented: ASP.NET Core Identity with a same-site cookie, see "Authentication" below. Every
 endpoint requires a signed-in user except the four anonymous `/api/auth` endpoints. Per-permission checks (which role may
 do what) are real (phase 3): see "Permission check" below. Row-level scoping (own record, direct reports for managers, everyone for HR and payroll staff) of leave, attendance, employees and salary data is real
-too, see "Row-level scoping"; scoping of recruitment
-does not exist yet, so do not store real data.
+too, see "Row-level scoping" (recruitment included: "HR all, managers own"). Do not store real data until the whole system has been reviewed.
 Without a database you cannot sign in: create the first administrator with the `bootstrap-admin` command first.
 
 ## Configuration
@@ -205,6 +204,20 @@ email, phones, address or emergency contact.** Those live behind `/personal`; th
   the future; `expiryDate` is free. The search matches title, file name and type text. Activity entries read
   `Document "<title>" created|updated|deleted` (category `employee`); the file name is never written there. Documents are not
   scoped to the own record: only HR roles hold the sensitive permissions. They are deleted with their employee (database cascade).
+* **Do-not-rehire list** (`hr.EmployeeBlacklist`, system-versioned) under `/api/employee-blacklist`. Own permissions `employees:ViewBlacklist` (reads) and `employees:EditBlacklist` (changes), held only by HR Administrator in the seed; the reason is sensitive, so there is no unpaged list. `BlacklistEntryDto`: `id, employeeId, employeeCode, employeeName, reason, blacklistedOn, blacklistedBy, liftedOn, liftedBy, liftReason, rowVersion` (`liftedOn` null = active; `blacklistedBy` / `liftedBy` are display names kept at the time).
+
+  | Route | Policy | Body / notes |
+  | --- | --- | --- |
+  | `GET /api/employee-blacklist/query?pageIndex&pageSize&sort&search&active` | `employees:ViewBlacklist` | `active=true` only entries in force, `false` only lifted, none for both; sort keys `id, employeeId, blacklistedOn (default, desc), liftedOn`; search matches the employee's code or name |
+  | `GET /api/employee-blacklist/{id}` | `employees:ViewBlacklist` | `404` unknown id |
+  | `GET /api/employees/{id}/blacklist` | `employees:ViewBlacklist` | the active entry; `404` when the employee does not exist or is not listed |
+  | `POST /api/employee-blacklist` | `employees:EditBlacklist` | `{ employeeId, reason }`, `201` + `Location` |
+  | `POST /api/employee-blacklist/{id}/lift` | `employees:EditBlacklist` | `{ rowVersion, reason }`, `200` with the entry |
+
+  Rules: `reason` is required and at most 500 characters (`400` on `reason`; the same for the lift reason); `employeeId` must exist (`400`); only a former employee (one with an exit date) can be listed (`409` "Only a former employee can be put on the do-not-rehire list."); one active entry per employee (`409` "This employee is already on the do-not-rehire list."; the filtered unique index `UQ_EmployeeBlacklist_ActiveEmployee` is the backstop); lifting a lifted entry is `409`, a stale `rowVersion` `409`; a lifted entry stays as history and the employee can be listed again. An employee with any blacklist history cannot be deleted (`409`, "... used by N do-not-rehire entry(ies)"; the foreign key has no cascade). Activity (category `employee`): `Employee EMP042 added to the do-not-rehire list` / `... removed from the do-not-rehire list`, never the reason.
+
+  **Recruitment check.** `candidates` accept an optional `nationalId` (at most 40 characters; trimmed; never returned; omitted on update keeps the stored value, blank clears it). Candidate and application responses carry `blacklistMatch` (bool) for every caller who may read them (`recruitment:View`): true when the candidate matches an employee with an **active** entry by email (the employee's work or personal email, trimmed, case-insensitive), phone (the employee's phone or alternate phone, digits only) or national id (trimmed, case-insensitive, only when the candidate has one). Nothing else is exposed: not which employee, not the reason. A lifted entry no longer matches.
+  **Hire gate.** There is no "hired" stage in this API; selecting a candidate (`POST /api/applications/{id}/stage` with `stage: "Selected"`) is the hiring decision. A matching candidate is refused with `409` "This candidate matches the do-not-rehire list. An HR Administrator must approve the hire with a reason." unless the body also has `blacklistOverrideReason` (at most 300 characters, `400` otherwise) **and** the caller is an HR Administrator (role read live, like the settings routes). A caller who is not an administrator and sends an override reason gets `403` "Only an HR Administrator can approve the hire of a candidate who matches the do-not-rehire list."; an override sent for a candidate without a match is ignored and not stored. An approved override is stored on the application (`BlacklistOverrideReason`, `BlacklistOverrideByUserId`; never returned) and logged as `Hire of application #12 approved despite a do-not-rehire match` (category `recruitment`; no reason, no employee).
 * Organization deletes and moves count employees through the view `hr.EmployeeOrgLink` (placement without personal data),
   not through `hr.Employee`; the view and the sequence must exist in the target database.
 
@@ -329,6 +342,13 @@ database triggers lock an approved run (and its payslips, lines and warnings) an
 | `POST /api/payroll-runs/{id}/return-to-draft` | Approve | `{rowVersion, reason?}` (reason at most 200 characters); payslips and warnings are deleted after the run is saved as Draft, in one transaction |
 | `GET /api/payslips/query?runId&employeeId&departmentId`, `GET /api/payslips/{id}` | View | Read only |
 
+**My payslips** (employee self-service, no payroll permission, only the "signed in" policy):
+
+| Route | Notes |
+| --- | --- |
+| `GET /api/me/payslips?pageIndex&pageSize` | `PagedResult<PayslipDto>` (same shape, masked account only) of the caller's **own** employee, newest run first (`pageSize` default 12, at most 200). Only payslips of **Approved or Paid** runs: never Draft or Pending Approval. A caller with no linked employee gets an empty page. |
+| `GET /api/me/payslips/{id}` | The same, one payslip; another employee's, an unreleased run's and any id for a caller without an employee are `404`. |
+
 Calculation per employee and period: part-month employment prorates basic and fixed components by calendar days; earnings are
 fixed amounts or a percentage of the prorated basic; approved overtime adds `basic / (working days x 8) x 1.5 x hours`; gross is
 basic plus earnings; deductions are fixed, a percentage of basic or of gross, plus unpaid leave `basic / working days` per day;
@@ -373,7 +393,7 @@ recommendation, feedback); the unpaged "get all" routes the frontend contract ne
 | `GET /api/recruitment/counts` | View | `{ jobOpenings: [{ jobOpeningId, applications, selected }], candidates: [{ candidateId, applications }] }`; ids without applications are not listed (count 0). |
 | `/api/candidates` (get all, `/query`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | `firstName, lastName, email (stored lower-case, unique), phone, source (Career site\|Referral\|Job board\|LinkedIn\|Agency), currentEmployer, experienceYears (0-50, one decimal), resumeName, notes`. Filter: `source`. |
 | `/api/applications` (get all, `/query`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | POST `{ jobOpeningId, candidateId, notes? }`: starts at `Applied`, dated today by the server, only for an `Open` opening, once per opening and candidate. PUT `{ jobOpeningId, candidateId, notes, rowVersion }` changes the notes only (another opening or candidate is `400`). Filters: `jobOpeningId, candidateId, stage`. |
-| `POST /api/applications/{id}/stage` | Edit | Body `{ rowVersion, stage, reason? }`. See the stage rules below. |
+| `POST /api/applications/{id}/stage` | Edit | Body `{ rowVersion, stage, reason?, blacklistOverrideReason? }`. See the stage rules below; `blacklistOverrideReason` only matters when selecting a candidate who matches the do-not-rehire list (see the employee module). |
 | `/api/interviews` (get all, `/query`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | `applicationId, round (Phone screen\|Technical\|HR\|Final), date, startTime, durationMinutes (15-240), mode (Onsite\|Video\|Phone), interviewerId, location, status, score, recommendation, feedback`. POST also takes optional `status` (`Scheduled`, default, or `Completed` to record a past interview with `score`, `recommendation`, `feedback`). PUT reschedules (no status or outcome fields). Filters: `status, interviewerId, applicationId, dateFrom, dateTo`. |
 | `POST /api/interviews/{id}/outcome` | Edit | Body `{ rowVersion, score (1-5), recommendation (Strong hire\|Hire\|No hire), feedback? }`; completes a scheduled interview, or corrects a completed one. |
 | `POST /api/interviews/{id}/cancel` | Edit | Body `{ rowVersion, reason? }`; the reason is kept as the feedback. |
@@ -670,6 +690,8 @@ A caller's **team** is their own employee record plus their **direct reports**: 
 | Leave applications, balances, calendar; attendance records, adjustments, overtime, attendance overview, work schedule (per module) | holds the module's `Approve` **and** `employees:Edit` (HR Officer, HR Administrator in the seed) | holds the module's `Approve` but not `employees:Edit` (Department Manager) | everyone else (Employee) |
 | Employees (list, query, get, profile, personal, history, bank, salary summary reads, documents, the employees Excel export, the dashboard's employee figures) | holds `employees:Edit` **or** `payroll:View` | everyone else | not applicable: a caller with no linked employee sees nobody |
 | Payslips, salary assignments, the employee salary summary | holds `payroll:Approve` (Payroll Officer, HR Administrator) | not applicable | everyone else with the route's `payroll:View` (HR Officer, Auditor) |
+| Job openings, candidates, applications, interviews, the pipeline and counts | holds `recruitment:Edit` (Recruiter, HR Officer, HR Administrator) | not applicable (see below) | not applicable: a caller with only `recruitment:View` (Department Manager) sees the openings they are hiring manager of and what hangs on them; no linked employee means nothing |
+| `GET /api/me/payslips` | not applicable | not applicable | every signed-in caller, always only their own employee's payslips of Approved or Paid runs |
 
 Payroll runs (totals only) are not scoped. A caller with no linked employee (the built-in administrator) sees what their tier gives to everyone and nothing otherwise; the HR Administrator holds every grant, so it is in the "All" tier everywhere.
 
@@ -680,8 +702,21 @@ Payroll runs (totals only) are not scoped. A caller with no linked employee (the
 * System code is not scoped: payroll processing, deletion checks, reference counts, hiring (which creates an employee) and the Excel import all read through `IRepository<T>` without a scope. Only handlers that inject `IAccessScope<T>` are scoped, and they run inside a request whose permission check filled the grants.
 * Creating shifts and holidays needs `attendance:Edit` (not Create), because every employee holds `attendance:Create` to punch.
 * Excel import batches (history, detail, error report, execute) belong to their uploader and to HR Administrators (`404` otherwise); detail and error report also run the module's view policies (`employees:View` for employees). The module check runs after the batch lookup, so an unknown batch answers `404` before it. The employees import needs `employees:Create`, `Edit`, `EditSensitive` and `EditBank`, so it always runs in the "All" tier.
-* Not scoped yet: recruitment (job openings, candidates, applications and interviews).
+* Recruitment is scoped, see "Recruitment scoping" below.
 * Seed note: the starter grants in the database project give Department Manager `employees:View` (team-scoped: themselves and direct reports), HR Officer `payroll:View,Approve` (every payslip; never approving a run they processed) and Employee `attendance:View,Create` (own punches and requests). Starter grants are written only into an empty roles table, so an existing database needs them added in Settings > Permissions.
+
+### Recruitment scoping
+
+"HR all, managers own", inside the database query (`IAccessScope<T>` for `JobOpening`, `Candidate`, `JobApplication`, `Interview`; rules in `Application/Security/RecruitmentScope.cs`). A record outside the caller's scope is `404` on read, update, delete and every command, and absent from lists, `/api/recruitment/pipeline` and `/api/recruitment/counts`.
+
+| Caller | Sees |
+| --- | --- |
+| holds `recruitment:Edit` (Recruiter, HR Officer, HR Administrator in the seed) | every opening, candidate, application and interview |
+| holds `recruitment:View` only (Department Manager) with a linked employee | the openings whose `HiringManagerEmployeeId` is their employee, the applications and interviews of those openings, the candidates who applied to those openings |
+| no linked employee and no `recruitment:Edit` | nothing |
+
+* The managed ids are read once per request by the permission check (`IRecruitmentDirectory`, only on `recruitment:*` policies and only for callers without Edit); until then the scopes see nothing, which is the safe side. A caller with `recruitment:Create` but not `Edit` can only apply to, or schedule interviews for, records inside their scope (`400` on `jobOpeningId` / `applicationId`).
+* **Employee picker** `GET /api/employees/lookup?search&pageIndex&pageSize` (policy `employee-lookup`: `recruitment:Edit` **or** `employees:View`, checked by one requirement, `AnyPermissionRequirement`). Returns `PagedResult<{ id, employeeCode, displayName, jobTitle, departmentName }>` for current employees only (no exit date, not Resigned or Terminated), ordered by first name, `pageSize` at most 200 (default 20), `search` (at most 100 characters) matches code or name. It is deliberately not scoped and holds no personal data (no email, phone, dates, status, salary, national id).
 
 ### Authorization seams
 
@@ -700,7 +735,10 @@ Payroll runs (totals only) are not scoped. A caller with no linked employee (the
   top of the module policy, so those endpoints carry two policies. `SettingsAccessTests` runs the 403/200 behaviour without a
   database and `AuthorizationCoverageTests` pins both policies of every settings route.
 * A module that holds personal data declares extra permissions in `PermissionModule` (`employees` has `ViewSensitive`,
-  `EditSensitive`, `ViewBank` and `EditBank` next to the four standard ones).
+  `EditSensitive`, `ViewBank`, `EditBank`, `ViewBlacklist` and `EditBlacklist` next to the four standard ones; the last two have
+  sort order 12 and 13 in the database seed).
+* A route used by two kinds of caller names a requirement met by any one of several permissions (`AnyPermissionRequirement`,
+  policy `employee-lookup`); it goes through the same live check as every permission.
 
 ## Adding a resource (pattern to copy)
 

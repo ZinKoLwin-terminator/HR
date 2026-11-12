@@ -23,7 +23,8 @@ public sealed record CandidateDto(
     decimal ExperienceYears,
     string? ResumeName,
     string? Notes,
-    byte[] RowVersion) : IIdentified;
+    byte[] RowVersion,
+    bool BlacklistMatch = false) : IIdentified;
 
 internal interface ICandidateFields
 {
@@ -44,6 +45,8 @@ internal interface ICandidateFields
     string? ResumeName { get; }
 
     string? Notes { get; }
+
+    string? NationalId { get; }
 }
 
 internal static class CandidateDetailsFactory
@@ -58,7 +61,7 @@ internal static class CandidateDetailsFactory
         fields.CurrentEmployer,
         fields.ExperienceYears,
         fields.ResumeName,
-        fields.Notes).Normalized();
+        fields.Notes).Normalized() with { NationalId = fields.NationalId?.Trim() };
 }
 
 /// <summary>POST body. A candidate has no status.</summary>
@@ -71,7 +74,8 @@ public sealed record CandidateCreateRequest(
     string? CurrentEmployer,
     decimal ExperienceYears,
     string? ResumeName,
-    string? Notes) : ICandidateFields, ICreateRequest<CandidateDetails>
+    string? Notes,
+    string? NationalId = null) : ICandidateFields, ICreateRequest<CandidateDetails>
 {
     public CandidateDetails ToDetails() => CandidateDetailsFactory.From(this);
 
@@ -90,7 +94,8 @@ public sealed record CandidateUpdateRequest(
     decimal ExperienceYears,
     string? ResumeName,
     string? Notes,
-    string? RowVersion) : ICandidateFields, IDetailsRequest<CandidateDetails>, IVersionedRequest
+    string? RowVersion,
+    string? NationalId = null) : ICandidateFields, IDetailsRequest<CandidateDetails>, IVersionedRequest
 {
     public CandidateDetails ToDetails() => CandidateDetailsFactory.From(this);
 }
@@ -185,6 +190,7 @@ public static class CandidateLimits
     public const int EmployerMaxLength = 80;
     public const int ResumeNameMaxLength = 260;
     public const int NotesMaxLength = 300;
+    public const int NationalIdMaxLength = 40;
 }
 
 /// <summary>Shape rules shared by the create and update requests. The domain owns the experience range.</summary>
@@ -200,6 +206,7 @@ internal abstract class CandidateFieldsValidator<TRequest> : RequestValidator<TR
         RuleForText(x => x.CurrentEmployer, "Current employer").OptionalText(CandidateLimits.EmployerMaxLength);
         RuleForText(x => x.ResumeName, "Resume name").OptionalText(CandidateLimits.ResumeNameMaxLength);
         RuleForText(x => x.Notes, "Notes").OptionalText(CandidateLimits.NotesMaxLength);
+        RuleForText(x => x.NationalId, "National ID").OptionalText(CandidateLimits.NationalIdMaxLength);
         RuleFor(x => x.ExperienceYears)
             .PrecisionScale(4, 1, ignoreTrailingZeros: true).WithMessage("Use at most 1 decimal place.");
         RuleForText(x => x.Source, "Source")

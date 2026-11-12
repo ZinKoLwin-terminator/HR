@@ -12,6 +12,7 @@ namespace Apex.Hrms.Domain.Recruitment;
 public sealed class JobApplication : AuditedEntity
 {
     public const int ReasonMaxLength = 200;
+    public const int OverrideReasonMaxLength = 300;
 
     private static readonly Dictionary<ApplicationStage, ApplicationStage[]> Transitions =
         new()
@@ -39,6 +40,11 @@ public sealed class JobApplication : AuditedEntity
     public string? RejectionReason { get; private set; }
 
     public string? Notes { get; private set; }
+
+    /// <summary>Set when an HR Administrator approved the hire despite a do-not-rehire match (never shown to recruiters).</summary>
+    public string? BlacklistOverrideReason { get; private set; }
+
+    public int? BlacklistOverrideByUserId { get; private set; }
 
     /// <summary>The stages an application at <paramref name="from"/> may move to.</summary>
     public static IReadOnlyList<ApplicationStage> NextStages(ApplicationStage from) => Transitions[from];
@@ -86,6 +92,13 @@ public sealed class JobApplication : AuditedEntity
         Stage = stage;
         RejectionReason = stage == ApplicationStage.Rejected ? cleaned : null;
         return Result.Success();
+    }
+
+    /// <summary>Keeps who approved the hire despite a do-not-rehire match, and why.</summary>
+    public void RecordBlacklistOverride(string reason, int userId)
+    {
+        BlacklistOverrideReason = reason.Trim();
+        BlacklistOverrideByUserId = userId;
     }
 
     /// <summary>A selected application cannot be deleted: reject it first.</summary>

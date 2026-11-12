@@ -1,9 +1,11 @@
+using Apex.Hrms.Application.Employees.Blacklist;
 using Apex.Hrms.Application.Recruitment.Applications;
 using Apex.Hrms.Application.Recruitment.Candidates;
 using Apex.Hrms.Application.Recruitment.Interviews;
 using Apex.Hrms.Application.Recruitment.JobOpenings;
 using Apex.Hrms.Application.Recruitment.Views;
 using Apex.Hrms.Application.References;
+using Apex.Hrms.Application.Security;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Organization;
@@ -26,7 +28,9 @@ internal static class RecruitmentServiceCollectionExtensions
             .AddCandidates()
             .AddJobApplications()
             .AddInterviews()
-            .AddRecruitmentReferences();
+            .AddRecruitmentReferences()
+            .AddRecruitmentScopes()
+            .AddBlacklist();
     }
 
     /// <summary>

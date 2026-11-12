@@ -25,7 +25,7 @@ internal static partial class TestRows
     /// <summary>The rows owned by an employee, removed before the employee (the database would cascade; this is explicit).</summary>
     private static readonly string[] EmployeeChildTables =
     [
-        "hr.EmployeeDocument", "hr.EmploymentHistory", "hr.EmployeeBankAccount",
+        "hr.EmployeeDocument", "hr.EmploymentHistory", "hr.EmployeeBankAccount", "hr.EmployeeBlacklist",
     ];
 
     /// <summary>The rows owned by an identity user, removed before the user (the database would cascade; this is explicit).</summary>
@@ -79,6 +79,7 @@ internal static partial class TestRows
         await CountInto(counts, connection, "app.Notification", $"Title LIKE @pattern OR RecipientUserId IN ({TaggedAppUsers})", pattern);
         await CountInto(counts, connection, "app.ImportBatch", "FileName LIKE @pattern", pattern);
         await CountInto(counts, connection, "hr.Employee", "LOWER(WorkEmail) LIKE LOWER(@pattern)", pattern);
+        await CountInto(counts, connection, "hr.EmployeeBlacklist", $"EmployeeId IN ({TaggedEmployees})", pattern);
         await CountPayrollInto(counts, connection, pattern);
         await CountInto(counts, connection, "lve.LeaveApplication", $"EmployeeId IN ({TaggedEmployees})", pattern);
         await CountInto(counts, connection, "lve.LeavePolicy", "Name LIKE @pattern", pattern);
