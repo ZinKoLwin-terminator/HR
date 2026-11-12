@@ -480,11 +480,34 @@ Rules (ported from the mock services, with the wording of the mock):
 * An employee who has a user account cannot be deleted (`409`, "... used by 1 user account(s)").
 ## HTTP contract (Excel import and export)
 
-Ported from the frontend mock (`ui/src/app/mock-services/excel`). Only the **employees** module exists there, so it is the
-only one in the catalog; the other modules are listed as unavailable with the reason. ClosedXML (MIT) reads and writes the
-workbooks. Every route needs `excel:View`, `excel:Import` or `excel:Export` (placeholder policies, like the module policies),
-and the module's own policies on top, checked by name (employees import: `employees:Create`, `Edit`, `EditSensitive`,
-`EditBank`; export: `employees:View`, plus `ViewSensitive` and `ViewBank` when `includeSensitive` is true).
+Ported from the frontend mock (`ui/src/app/mock-services/excel`). Only the **employees** module exists there; the other
+modules below were added on the API side by the same conventions (business codes for references, a `Status` column, the
+shape rules and messages of `excel-coercion`) because the mock has no definitions to port. Modules still without columns
+(`leave-types`, `leave-policies`, `shifts`, `holidays`) are listed as unavailable with the reason. ClosedXML (MIT) reads and
+writes the workbooks. Every route needs `excel:View`, `excel:Import` or `excel:Export` (placeholder policies, like the module
+policies), and the module's own policies on top, checked by name (employees import: `employees:Create`, `Edit`,
+`EditSensitive`, `EditBank`; export: `employees:View`, plus `ViewSensitive` and `ViewBank` when `includeSensitive` is true).
+
+| Module code | Import | Export | Policies (import / export) | Match key |
+| --- | --- | --- | --- | --- |
+| `companies`, `branches`, `departments`, `sections`, `positions`, `job-grades` | yes | yes | `organization:Create` + `Edit` / `organization:View` | `code` (Company Code, Branch Code ...); parents by code (`companyCode`, `branchCode`, `departmentCode`, `jobGradeCode`, `reportsToCode`); optional `Status` Active or Inactive |
+| `leave-applications`, `leave-balances` | no | yes | none / `leave:View` | export only: balances are worked out (nothing stored to import) and an import would bypass the submit/approve workflow |
+| `attendance-records` | no | yes | none / `attendance:View` | export only: records come from punches and approved adjustments |
+| `shift-assignments` | yes | yes | `attendance:Edit` + `Approve` + `employees:Edit` / `attendance:View` | `employeeCode`; a row sets `shiftCode` through the employee update handler; an employee who has a shift counts as an existing assignment |
+| `salary-assignments` | yes | yes | `payroll:View` + `Create` + `Edit` + `Approve` / `payroll:View` + `Approve` | `employeeCode` + `effectiveFrom`; `structureCode`, `basicSalary` (masked in previews and stored issues), `remarks` |
+
+* **Catalog.** `GET /api/excel/modules` lists every module; `canImport` and `canExport` are true only when the caller holds
+  all of that module's policies above. Employees follow the same rule.
+* **Rows are applied by the module's own handlers** (create, update, activate/deactivate, employee update, salary
+  assignment create/update), so uniqueness, parent/child rules, reference protection, the job grade band, the joining date and
+  one assignment per employee and start date are the API's, with the API's messages. A blank optional cell keeps the current value.
+* **Exports read through the list handlers** (or the employee list for balances and shift assignments), so the caller's tier
+  applies: leave and attendance export own rows, the team's, or everyone's (leave/attendance `Approve` and `employees:Edit` is
+  everyone; `Approve` alone is the team); salary assignments follow the salary scope. Filters, search, `selectedIds`, `dateFrom` and
+  `dateTo` (leave dates, attendance date, salary effective date) work like the list. `leave-balances` takes the filter `year`.
+* **Salary data.** The `Basic Salary` import column is sensitive (masked in previews and in stored issues) and the template
+  layout export therefore needs `includeSensitive`; the report export column is not sensitive (the export already needs
+  `payroll:Approve`). The activity feed and history record counts only, never amounts. Figures are demonstration figures.
 
 | Route | Policy | Body | Returns |
 | --- | --- | --- | --- |

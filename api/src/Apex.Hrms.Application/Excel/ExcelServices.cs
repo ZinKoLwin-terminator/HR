@@ -40,16 +40,14 @@ public interface IExcelExportService
     Task<Result<ExcelFileResult>> ExportAsync(string moduleCode, ExportRequest request, CancellationToken cancellationToken);
 }
 
-internal sealed class ExcelCatalogService(IEnumerable<IExcelModule> modules) : IExcelCatalogService
+internal sealed class ExcelCatalogService(IEnumerable<IExcelModule> modules, Apex.Hrms.Application.Security.ICallerPermissions permissions) : IExcelCatalogService
 {
+    // Modules that are still not offered (the frontend has no column definitions for them).
     private static readonly ExcelModuleAvailability[] Unavailable =
     [
         .. new[]
         {
-            ("companies", "Companies"), ("branches", "Branches"), ("departments", "Departments"), ("sections", "Sections"),
-            ("job-grades", "Job grades"), ("positions", "Positions"), ("leave-types", "Leave types"),
-            ("leave-policies", "Leave policies"), ("shifts", "Shifts"), ("holidays", "Holidays"),
-            ("attendance-records", "Attendance records"), ("applications", "Applications"),
+            ("leave-types", "Leave types"), ("leave-policies", "Leave policies"), ("shifts", "Shifts"), ("holidays", "Holidays"),
         }.Select(m => new ExcelModuleAvailability(
             m.Item1,
             m.Item2,
@@ -58,8 +56,18 @@ internal sealed class ExcelCatalogService(IEnumerable<IExcelModule> modules) : I
             "The frontend Excel module catalog defines no columns for this module (only Employees), so there is no specification to port.")),
     ];
 
+    /// <summary>Every module is listed; canImport and canExport say what the caller's grants allow (the same policies the routes check by name).</summary>
     public Result<ExcelCatalogDto> GetModules() =>
-        Result.Success(new ExcelCatalogDto([.. modules.Select(m => m.Info)], Unavailable));
+        Result.Success(new ExcelCatalogDto(
+            [.. modules.Select(m => m.Info with
+            {
+                CanImport = m.Info.CanImport && Holds(m.ImportPolicies),
+                CanExport = m.Info.CanExport && Holds(m.ExportPolicies),
+            })],
+            Unavailable));
+
+    private bool Holds(IReadOnlyList<string> policies) =>
+        policies.All(policy => policy.Split(':') is [var module, var action] && permissions.Has(module, action));
 
     public IExcelModule? Find(string code) =>
         modules.FirstOrDefault(m => string.Equals(m.Info.Code, code, StringComparison.OrdinalIgnoreCase));

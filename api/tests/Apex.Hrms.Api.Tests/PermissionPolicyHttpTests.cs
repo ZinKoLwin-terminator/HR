@@ -202,6 +202,53 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    // ---- Excel: the other modules (organization, leave, attendance, payroll) check their own policies by name ----
+
+    // One representative per policy family (each case builds a host, which is slow): the grant named is the one left out.
+    [Theory]
+    [InlineData("companies", "organization:Edit", "organization:Create organization:Edit")]
+    [InlineData("shift-assignments", "employees:Edit", "attendance:Edit attendance:Approve employees:Edit")]
+    [InlineData("shift-assignments", "attendance:Approve", "attendance:Edit attendance:Approve employees:Edit")]
+    [InlineData("salary-assignments", "payroll:Approve", "payroll:View payroll:Create payroll:Edit payroll:Approve")]
+    public async Task An_import_needs_every_policy_of_its_module_on_top_of_excel_import(string module, string missing, string policies)
+    {
+        string[] needed = ["excel:Import", .. policies.Split(' ')];
+        using var client = ClientWith(needed.Where(grant => grant != missing), markAuthorized: false);
+
+        var validate = await client.PostAsJsonAsync($"/api/excel/imports/{module}/validate", new { uploadId = "none", strategy = "InsertOnly" });
+        var template = await client.GetAsync($"/api/excel/templates/{module}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, validate.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, template.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("companies", "organization:View", "organization:View")]
+    [InlineData("leave-balances", "leave:View", "leave:View")]
+    [InlineData("attendance-records", "attendance:View", "attendance:View")]
+    [InlineData("salary-assignments", "payroll:Approve", "payroll:View payroll:Approve")]
+    public async Task An_export_needs_every_policy_of_its_module_on_top_of_excel_export(string module, string missing, string policies)
+    {
+        string[] needed = ["excel:Export", .. policies.Split(' ')];
+        using var client = ClientWith(needed.Where(grant => grant != missing), markAuthorized: false);
+
+        var response = await client.PostAsJsonAsync($"/api/excel/exports/{module}", new { includeSensitive = false });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("leave-applications", "leave:View")]
+    [InlineData("salary-assignments", "payroll:View payroll:Approve")]
+    public async Task An_export_reaches_the_service_when_every_grant_of_the_module_is_held(string module, string policies)
+    {
+        using var client = ClientWith(["excel:Export", .. policies.Split(' ')], services => services.AddScoped<IExcelExportService, NotFoundExport>(), markAuthorized: false);
+
+        var response = await client.PostAsJsonAsync($"/api/excel/exports/{module}", new { includeSensitive = true });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private sealed class NotFoundExport : IExcelExportService
     {
         public Task<Result<ExcelFileResult>> ExportAsync(string moduleCode, ExportRequest request, CancellationToken cancellationToken) =>

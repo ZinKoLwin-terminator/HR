@@ -128,7 +128,7 @@ public sealed class ExcelHttpTests : DatabaseTest, IDisposable
         var catalog = (await client.GetFromJsonAsync<ExcelCatalogDto>("/api/excel/modules", Json))!;
         var template = await client.GetAsync("/api/excel/templates/employees");
 
-        var employees = Assert.Single(catalog.Modules);
+        var employees = Assert.Single(catalog.Modules, m => m.Code == "employees");
         Assert.Equal("employees", employees.Code);
         Assert.Equal("Employee Code", employees.Columns[0].Header);
         Assert.True(employees.Columns[0].Required);
