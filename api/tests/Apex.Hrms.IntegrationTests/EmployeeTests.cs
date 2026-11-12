@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Apex.Hrms.Application;
 using Apex.Hrms.Application.Employees;
+using Apex.Hrms.Application.Employees.Documents;
 using Apex.Hrms.Application.Organization.Branches;
 using Apex.Hrms.Application.Organization.Companies;
 using Apex.Hrms.Application.Organization.Departments;
@@ -261,6 +262,30 @@ public sealed partial class EmployeeTests : DatabaseTest
         Assert.Equal(0, await CountRowsAsync("hr.EmployeeBankAccount", created.Id));
         Assert.Equal(0, await CountRowsAsync("hr.EmploymentHistory", created.Id));
         Failed(await Get<EmployeeDto>(created.Id), ErrorType.NotFound);
+    }
+
+    [IntegrationFact]
+    public async Task Delete_removes_the_documents_of_the_employee_with_it()
+    {
+        var org = await SeedOrganizationAsync();
+        var created = await SeedEmployeeAsync(org);
+        var other = await SeedEmployeeAsync(org, "2", "noah");
+        foreach (var (employeeId, title) in new[] { (created.Id, "Permit"), (created.Id, "Passport"), (other.Id, "Other person") })
+        {
+            Succeeded(await InScopeAsync(sp => sp.GetRequiredService<ICreateHandler<EmployeeDocumentCreateRequest, EmployeeDocumentDto>>().HandleAsync(
+                new EmployeeDocumentCreateRequest(employeeId, "Other", title, "file.pdf", new DateOnly(2026, 1, 15), null),
+                default)));
+        }
+
+        Assert.Equal(2, await CountRowsAsync("hr.EmployeeDocument", created.Id));
+        var current = Succeeded(await Get<EmployeeDto>(created.Id));
+
+        var deleted = await Delete<EmployeeDto>(created.Id, Requests.Version(current.RowVersion));
+
+        // hr.EmployeeDocument.EmployeeId is ON DELETE CASCADE: no reference rule stops the delete, the documents go with it.
+        Assert.True(deleted.IsSuccess, deleted.IsFailure ? deleted.Error.Message : null);
+        Assert.Equal(0, await CountRowsAsync("hr.EmployeeDocument", created.Id));
+        Assert.Equal(1, await CountRowsAsync("hr.EmployeeDocument", other.Id));
     }
 
     // ---- Personal data ----

@@ -243,4 +243,45 @@ public sealed class TeamAndSalaryScopingHttpTests : PayrollTestBase, IDisposable
         Assert.Contains(world.Employee.Id, ids);
         Assert.Contains(ben.Id, ids);
     }
+
+    private static readonly string[] EmployeeDashboardGrants = ["dashboard:View", "attendance:View", "attendance:Create", "leave:View", "leave:Create"];
+
+    [IntegrationFact]
+    public async Task The_dashboard_of_an_employee_role_has_no_payroll_recruitment_activity_or_birthdays_and_a_fully_granted_role_has_them()
+    {
+        var (maya, _, _, _) = await SeedTeamAsync();
+        var employee = await SignedInAsRoleAsync("EmpDash", maya.Id, EmployeeDashboardGrants);
+        var hr = await SignedInAsRoleAsync("HrDash", null, "dashboard:View", "employees:View", "employees:Edit", "employees:ViewSensitive", "payroll:View", "recruitment:View", "activity:View");
+
+        var asEmployee = await ReadAsync(await employee.GetAsync("/api/dashboard/summary"));
+        var asHr = await ReadAsync(await hr.GetAsync("/api/dashboard/summary"));
+
+        Assert.Equal(JsonValueKind.Null, asEmployee.GetProperty("payroll").ValueKind);
+        Assert.Equal(JsonValueKind.Null, asEmployee.GetProperty("recruitment").ValueKind);
+        Assert.Empty(asEmployee.GetProperty("recentActivities").EnumerateArray());
+        Assert.DoesNotContain(asEmployee.GetProperty("upcomingEvents").EnumerateArray(), item => item.GetProperty("type").GetString() == "Birthday");
+        Assert.Equal(JsonValueKind.Object, asHr.GetProperty("recruitment").ValueKind);
+        Assert.Equal(JsonValueKind.Array, asHr.GetProperty("recentActivities").ValueKind);
+    }
+
+    [IntegrationFact]
+    public async Task Nobody_changes_their_own_salary_and_a_creator_without_approve_gets_404_before_validation()
+    {
+        var world = await SeedPayrollAsync("ada", "1");
+        var ben = await SeedSecondEmployeeAsync(world);
+        var own = await SignedInAsRoleAsync("PayrollSelf", world.Employee.Id, PayrollApproveGrants);
+        var creator = await SignedInAsRoleAsync("PayrollCreator", ben.Id, "dashboard:View", "payroll:View", "payroll:Create", "payroll:Edit");
+        var version = Requests.Version(world.Assignment.RowVersion);
+
+        var create = await own.PostAsJsonAsync("/api/salary-assignments", new { employeeId = world.Employee.Id, structureId = world.Structure.Id, basicSalary = 1200m, effectiveFrom = "2021-01-01" });
+        var update = await own.PutAsJsonAsync($"/api/salary-assignments/{world.Assignment.Id}", new { employeeId = world.Employee.Id, structureId = world.Structure.Id, basicSalary = 1300m, effectiveFrom = world.Assignment.EffectiveFrom.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), rowVersion = version });
+        var delete = await own.SendAsync(new HttpRequestMessage(HttpMethod.Delete, $"/api/salary-assignments/{world.Assignment.Id}") { Content = JsonContent.Create(new { rowVersion = version }) });
+        var outOfBand = await creator.PostAsJsonAsync("/api/salary-assignments", new { employeeId = world.Employee.Id, structureId = world.Structure.Id, basicSalary = 9_000_000m, effectiveFrom = "2021-01-01" });
+
+        Assert.Equal(HttpStatusCode.Conflict, create.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, update.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, delete.StatusCode);
+        Assert.Equal("You cannot change your own salary.", (await ReadAsync(create)).GetProperty("detail").GetString());
+        Assert.Equal(HttpStatusCode.NotFound, outOfBand.StatusCode);
+    }
 }

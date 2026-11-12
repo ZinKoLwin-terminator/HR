@@ -1,5 +1,6 @@
 using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Activity;
+using Apex.Hrms.Application.Security;
 using Apex.Hrms.Domain.Attendance;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
@@ -17,7 +18,7 @@ public interface IPunchHandler
 /// never a value from the client. The first punch of a day creates the record of that day; the day's record is then
 /// updated by the next punch. Rules, in order:
 /// <list type="bullet">
-/// <item>The caller may punch only for the employee linked to the account (the built-in administrator may punch for anyone).</item>
+/// <item>The caller may punch only for the employee linked to the account (an account with no linked employee, such as the built-in administrator, may punch only for another employee when its role is in the "All" attendance tier).</item>
 /// <item>The employee exists and has not left.</item>
 /// <item>A day of approved (whole-day) leave cannot be punched; a holiday or a day off in the shift is punched as work on a day off.</item>
 /// <item>Check-in once a day; check-out only after a check-in, once, and after the check-in time unless the shift is a night shift.</item>
@@ -31,6 +32,7 @@ internal sealed class PunchHandler(
     AttendanceLookup lookup,
     IClock clock,
     ICurrentUser user,
+    SelfService self,
     IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     AttendanceRecordMapping mapper) : IPunchHandler
@@ -51,6 +53,15 @@ internal sealed class PunchHandler(
         if (user.EmployeeId is { } own && own != request.EmployeeId)
         {
             return Result.Failure<AttendanceRecordDto>(AppError.Forbidden("You can only record your own attendance."));
+        }
+
+        if (user.EmployeeId is null)
+        {
+            var allowed = self.EnsureCanActFor("attendance", request.EmployeeId);
+            if (allowed.IsFailure)
+            {
+                return Result.Failure<AttendanceRecordDto>(allowed.Error);
+            }
         }
 
         var employee = await employees.FindAsync(request.EmployeeId, cancellationToken);

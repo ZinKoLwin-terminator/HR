@@ -99,6 +99,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'အမည်/ကုဒ်ဖြင့် ရှာ၊ Filter၊ စီ၊ စာမျက်နှာခွဲကြည့်နိုင်သည်။ လက်ရှိစာရင်းကို Excel ထုတ်နိုင်သည်။',
     ),
     b(
+      'Print the current view or all matching rows (up to 1,000) from the browser. On a profile: Print profile, and Letters for an employment certificate, experience letter or leave approval letter.',
+      'လက်ရှိမြင်ကွင်း သို့မဟုတ် ကိုက်ညီသည့်အတန်းအားလုံး (အများဆုံး ၁,၀၀၀) ကို Browser မှ ပရင့်ထုတ်နိုင်သည်။ Profile တွင် Print profile နှင့် Letters (အလုပ်အကိုင်လက်မှတ်၊ အတွေ့အကြုံစာ၊ ခွင့်ခွင့်ပြုစာ) ရှိသည်။',
+    ),
+    b(
       'Open a profile for tabs: overview, employment, history, documents, salary, attendance and leave.',
       'Profile ကိုဖွင့်လျှင် Overview, Employment, History, Documents, Salary, Attendance, Leave Tab များကြည့်နိုင်သည်။',
     ),
@@ -351,6 +355,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     b(
       'List payslips by period; open one to see basic, each earning, overtime, each deduction, unpaid leave, gross and net, then print it.',
       'Period အလိုက် Payslip စာရင်း — ဖွင့်လျှင် Basic၊ ဝင်ငွေတစ်ခုချင်း၊ OT၊ နုတ်ငွေတစ်ခုချင်း၊ လစာမဲ့ခွင့်၊ Gross၊ Net ကိုမြင်ရပြီး ပရင့်ထုတ်နိုင်သည်။',
+    ),
+    b(
+      'Print payslip prints one payslip on an A4 page; on Payroll Review, Print all payslips prints the whole period, one payslip per page. Only the masked account is printed.',
+      'Print payslip သည် စလစ်တစ်စောင်ကို A4 တစ်မျက်နှာထုတ်သည်၊ Payroll Review ရှိ Print all payslips သည် Period တစ်ခုလုံးကို တစ်မျက်နှာလျှင်တစ်စောင်ထုတ်သည်။ ဖုံးထားသော အကောင့်နံပါတ်သာ ပါသည်။',
     ),
     b(
       'A payslip is a snapshot: later changes to salary setup do not alter it.',

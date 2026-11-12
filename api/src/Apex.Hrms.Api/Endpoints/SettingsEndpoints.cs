@@ -2,6 +2,7 @@ using System.Globalization;
 using Apex.Hrms.Api.Auth;
 using Apex.Hrms.Api.Authorization;
 using Apex.Hrms.Api.Http;
+using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Settings;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
@@ -72,22 +73,36 @@ internal static class SettingsEndpoints
         // 202 with no body: the mail is sent and the administrator never sees the token or the link. One per user per minute.
         group.MapPost(
             "/{id:int}/password-reset",
-            async (int id, IUserPasswordResetHandler handler, PasswordResetThrottle throttle, HttpContext http, CancellationToken cancellationToken) =>
+            async (int id, IUserPasswordResetHandler handler, PasswordResetThrottle throttle, ICurrentUser caller, HttpContext http, CancellationToken cancellationToken) =>
             {
-                if (!throttle.TryAcquire(id, out var retryAfter))
+                IResult TooMany(TimeSpan retryAfter, string detail)
                 {
                     http.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
                     return Results.Problem(
                         statusCode: StatusCodes.Status429TooManyRequests,
                         title: "Too many requests",
-                        detail: "A password reset email was just sent to this user. Wait a minute before sending another.",
+                        detail: detail,
                         extensions: new Dictionary<string, object?> { [ApiProblems.CodeKey] = ErrorType.Unknown.ToString() });
                 }
 
-                var result = await handler.HandleAsync(id, cancellationToken);
-                if (result.IsFailure)
+                var callerId = caller.UserId ?? 0;
+                if (!throttle.TryAcquire(id, out var retryAfter))
+                {
+                    return TooMany(retryAfter, "A password reset email was just sent to this user. Wait a minute before sending another.");
+                }
+
+                if (!throttle.TryAcquireForCaller(callerId, out var callerWait))
                 {
                     throttle.Release(id);
+                    return TooMany(callerWait, "Too many password reset emails were sent from this account. Try again later.");
+                }
+
+                var result = await handler.HandleAsync(id, cancellationToken);
+                if (result.IsFailure && !handler.MailSent)
+                {
+                    // Nothing was mailed: give both allowances back. After a mail went out they stay used, even if a later step failed.
+                    throttle.Release(id);
+                    throttle.ReleaseForCaller(callerId);
                 }
 
                 return result.ToAccepted();

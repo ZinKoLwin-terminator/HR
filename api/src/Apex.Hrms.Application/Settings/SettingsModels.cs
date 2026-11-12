@@ -134,6 +134,9 @@ public interface IUserPasswordResetHandler
 {
     /// <summary>Sends the password reset email to the user. Nothing about the password, the token or the link is returned.</summary>
     Task<Result> HandleAsync(int id, CancellationToken cancellationToken);
+
+    /// <summary>True once the last call handed the mail to the mail server, even when a later step (the audit save) then failed.</summary>
+    bool MailSent { get; }
 }
 
 public interface IPermissionMatrixHandler

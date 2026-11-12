@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -17,6 +20,7 @@ defaults:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,6 +37,7 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     needs: verify
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,9 +55,16 @@ jobs:
           path: ui/playwright-report
           retention-days: 7
 
-  # Builds and unit-tests the API. The tests need no database; nothing is deployed.
+  # Builds and tests the API. Nothing is deployed. Runs on every push and pull request (not only
+  # when api/** changes) so the deploy job's `needs` is always satisfied.
+  # The SQL Server integration tests (Category=Integration) are excluded: they need LocalDB and the
+  # dacpac from the separate database repository. To run them in CI later: add a
+  # mcr.microsoft.com/mssql/server service container, publish the dacpac as an artifact from the DB
+  # repo, and point tests/Apex.Hrms.IntegrationTests/Support/SqlServerEnvironment.cs at them
+  # (it currently targets LocalDB only, on Windows). Never point it at a real database.
   api:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: api
@@ -61,12 +73,23 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: dotnet build Apex.Hrms.slnx --configuration Release
-      - run: dotnet test Apex.Hrms.slnx --configuration Release --no-build
+      - run: dotnet restore Apex.Hrms.slnx
+      - run: dotnet build Apex.Hrms.slnx --configuration Release --no-restore -warnaserror
+      - run: >-
+          dotnet test Apex.Hrms.slnx --configuration Release --no-build
+          --filter "Category!=Integration"
+          --logger "trx;LogFileName=results.trx" --results-directory ${{ runner.temp }}/test-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-results
+          path: ${{ runner.temp }}/test-results
+          retention-days: 7
 
   deploy:
     runs-on: ubuntu-latest
     needs: [verify, e2e, api]
+    timeout-minutes: 15
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read

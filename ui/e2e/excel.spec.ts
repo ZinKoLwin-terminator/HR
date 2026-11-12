@@ -125,6 +125,9 @@ test.describe('Excel import', () => {
   test('imports employees through the wizard: template, preview, partial import, history and report', async ({
     page,
   }) => {
+    // Six wizard steps plus two workbook builds and parses (21-29 s on an idle machine): triple the
+    // timeout under load.
+    test.slow();
     await page.goto('/employees/list');
     await expect(page.locator('tr.mat-mdc-row').first()).toBeVisible();
     await page.getByRole('link', { name: 'Import' }).click();

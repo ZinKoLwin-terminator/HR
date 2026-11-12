@@ -7,11 +7,12 @@ namespace Apex.Hrms.Application.Payroll.Runs;
 /// <summary>
 /// Mirrors the PayrollRun interface in payroll.models.ts. ALL FIGURES ARE DEMONSTRATION FIGURES produced from configurable
 /// sample rules: they are not statutory tax, social security or banking calculations. The totals are salary data
-/// (personal data in aggregate): only callers with payroll access receive them.
+/// (personal data in aggregate): only callers holding payroll:View receive them (the payroll routes and the dashboard payroll
+/// summary both check it). Payroll runs are not row-scoped.
 /// </summary>
 /// <param name="TotalBasic">Basic salary actually payable (after proration).</param>
 /// <param name="TotalAllowances">Earnings above basic (allowances, overtime). <c>totalGross = totalBasic + totalAllowances</c>.</param>
-/// <param name="Warnings">Notes from processing (employees skipped for a missing salary assignment or bank account). Empty in Draft.</param>
+/// <param name="Warnings">Notes from processing (employees, named by employee code only, skipped for a missing salary assignment or bank account). Empty in Draft.</param>
 /// <param name="ProcessedBy">Display name of the user who processed the run, as it was then. The same user cannot approve it.</param>
 /// <param name="ApprovedBy">Display name of the user who approved the run, as it was then.</param>
 public sealed record PayrollRunDto(

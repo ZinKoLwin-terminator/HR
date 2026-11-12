@@ -308,7 +308,7 @@ public sealed class BlacklistAndRecruitmentScopeHttpTests : PayrollTestBase, IDi
         var counts = await ReadAsync(await manager.GetAsync("/api/recruitment/counts"));
         Assert.Equal([Id(mayasJob)], counts.GetProperty("jobOpenings").EnumerateArray().Select(item => item.GetProperty("jobOpeningId").GetInt32()));
 
-        var lookup = await ReadAsync(await recruiter.GetAsync($"/api/employees/lookup?search={Tag.ToLowerInvariant()}&pageSize=50"));
+        var lookup = await ReadAsync(await recruiter.GetAsync($"/api/employees/lookup?search={maya.EmployeeCode}&pageSize=50"));
         var first = lookup.GetProperty("items").EnumerateArray().First();
         Assert.Equal(
             ["departmentName", "displayName", "employeeCode", "id", "jobTitle"],

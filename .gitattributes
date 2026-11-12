@@ -1,0 +1,24 @@
+# Line endings. The index already holds LF everywhere; this stops Windows checkouts from
+# committing CRLF and matches .editorconfig (end_of_line = lf) and Prettier (endOfLine lf).
+* text=auto eol=lf
+
+# Windows-only scripts and solution files keep CRLF in the working tree.
+*.ps1  text eol=crlf
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+*.sln  text eol=crlf
+
+# Binary files: never convert or diff as text. (*.xlsx is left to auto-detection: docs/test-data holds a
+# deliberately fake text "xlsx" fixture that must stay text.)
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.pdf     binary
+*.xls     binary
+*.docx    binary
+*.zip     binary
+*.dacpac  binary
+*.woff    binary
+*.woff2   binary

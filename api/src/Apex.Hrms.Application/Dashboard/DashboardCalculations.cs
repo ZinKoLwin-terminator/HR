@@ -138,7 +138,7 @@ public static class DashboardCalculations
 
     /// <summary>
     /// The next 30 days: holidays, birthdays, work anniversaries (a year or more), probation reviews of employees on
-    /// probation, and approved leave that starts after today. Earliest first, ten at most.
+    /// probation, and approved leave that starts after today. Birthdays (personal data) only with <paramref name="includeBirthdays"/>. Earliest first, ten at most.
     /// </summary>
     public static IReadOnlyList<UpcomingEventDto> UpcomingEvents(
         DateOnly today,
@@ -146,7 +146,8 @@ public static class DashboardCalculations
         IReadOnlyList<Holiday> holidays,
         IReadOnlyList<LeaveApplication> approvedLeave,
         IReadOnlyDictionary<int, string> employeeNames,
-        IReadOnlyDictionary<int, string> leaveTypeNames)
+        IReadOnlyDictionary<int, string> leaveTypeNames,
+        bool includeBirthdays)
     {
         var until = today.AddDays(UpcomingWindowDays);
         bool InWindow(DateOnly date) => date >= today && date <= until;
@@ -163,7 +164,7 @@ public static class DashboardCalculations
         foreach (var employee in employees.Where(e => e.IsCurrent))
         {
             var birthday = NextOccurrence(employee.DateOfBirth, today);
-            if (InWindow(birthday))
+            if (includeBirthdays && InWindow(birthday))
             {
                 events.Add(new UpcomingEventDto(birthday, employee.FullName, "Birthday", "Birthday"));
             }

@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.Attendance.Views;
+using Apex.Hrms.Application.Security;
 using Apex.Hrms.Domain.Attendance;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
@@ -35,6 +36,8 @@ public interface IDashboardHandler
 /// GET /api/dashboard/summary. Employees and leave applications are read inside the caller's access scope; "today" is the
 /// date in the business time zone (<see cref="IClock.Today"/>). The attendance figures come from the attendance overview
 /// (the same rules as the attendance screen); when today is a day off the figures are those of the latest working day.
+/// Company-wide parts need their own permission: payroll:View (payroll summary, else null), recruitment:View (recruitment
+/// figures, else null), activity:View (recent activity, else empty) and employees:ViewSensitive (birthdays, else left out).
 /// </summary>
 internal sealed class DashboardHandler(
     IDashboardSource source,
@@ -47,6 +50,7 @@ internal sealed class DashboardHandler(
     IAccessScope<Employee> employeeScope,
     IAccessScope<LeaveApplication> leaveScope,
     ICurrentUser user,
+    ICallerPermissions permissions,
     IClock clock) : IDashboardHandler
 {
     public async Task<Result<DashboardSummaryDto>> HandleAsync(CancellationToken cancellationToken)
@@ -90,9 +94,18 @@ internal sealed class DashboardHandler(
         var approved = leaveRows.Where(application => application.Status == LeaveStatus.Approved).ToList();
 
         var holidayRows = await holidays.ListAsync(holiday => holiday.Date >= today && holiday.Date <= until, cancellationToken);
-        var recruitment = await source.RecruitmentAsync(today, cancellationToken);
-        var payrollRuns = await source.ProcessedPayrollRunsAsync(2, cancellationToken);
-        var recent = await activity.RecentAsync(DashboardCalculations.RecentActivityLimit, cancellationToken);
+        // Company-wide figures go only to callers who hold the module's own View permission: the dashboard:View route
+        // (every role) must not reveal payroll totals, hiring figures, the activity log or birthdays.
+        var recruitment = permissions.Has("recruitment", "View")
+            ? DashboardCalculations.Recruitment(await source.RecruitmentAsync(today, cancellationToken))
+            : null;
+        var payroll = permissions.Has("payroll", "View")
+            ? DashboardCalculations.Payroll(await source.ProcessedPayrollRunsAsync(2, cancellationToken))
+            : null;
+        IReadOnlyList<ActivityEntryDto> recentActivities = permissions.Has("activity", "View")
+            ? [.. (await activity.RecentAsync(DashboardCalculations.RecentActivityLimit, cancellationToken)).Select(ActivityEntryDto.From)]
+            : [];
+        var showBirthdays = permissions.Has("employees", "ViewSensitive");
 
         return Result.Success(new DashboardSummaryDto(
             clock.UtcNow,
@@ -100,12 +113,12 @@ internal sealed class DashboardHandler(
             DashboardCalculations.Attendance(summary),
             submitted.Count,
             [.. DashboardCalculations.PendingLeaves(submitted, employeeNames, leaveTypeNames).Take(DashboardCalculations.PendingLeaveLimit)],
-            DashboardCalculations.Payroll(payrollRuns),
-            DashboardCalculations.Recruitment(recruitment),
+            payroll,
+            recruitment,
             DashboardCalculations.DepartmentDistribution(employees, departmentNames),
             DashboardCalculations.AttendanceTrend(overview.Value.Trend),
             DashboardCalculations.HeadcountGrowth(employees, today),
-            [.. recent.Select(ActivityEntryDto.From)],
-            DashboardCalculations.UpcomingEvents(today, employees, holidayRows, approved, employeeNames, leaveTypeNames)));
+            recentActivities,
+            DashboardCalculations.UpcomingEvents(today, employees, holidayRows, approved, employeeNames, leaveTypeNames, showBirthdays)));
     }
 }

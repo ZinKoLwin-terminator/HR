@@ -1,5 +1,6 @@
 using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Activity;
+using Apex.Hrms.Application.Security;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
@@ -12,7 +13,14 @@ namespace Apex.Hrms.Application.Payroll.Assignments;
 // employee, the job grade and the structure, the activity entries name the employee by code (never the name or the amount),
 // and the last assignment of an employee cannot be deleted. Reads use the generic handlers.
 
+internal static class SalaryAssignmentMessages
+{
+    public const string OwnSalary = "You cannot change your own salary.";
+}
+
 internal sealed class SalaryAssignmentCreateHandler(
+    SelfService self,
+    ICurrentUser user,
     IValidator<SalaryAssignmentCreateRequest> validator,
     SalaryAssignmentRules rules,
     IRepository<SalaryAssignment> repository,
@@ -24,6 +32,18 @@ internal sealed class SalaryAssignmentCreateHandler(
         SalaryAssignmentCreateRequest request,
         CancellationToken cancellationToken)
     {
+        // Before any rule that could answer about the employee (band, start date, clashes): a creator who may not see the
+        // salary of that employee learns nothing, then nobody sets their own salary.
+        if (!self.CanSeeSalaryOf(request.EmployeeId))
+        {
+            return Result.Failure<SalaryAssignmentDto>(NotFoundError.For("Employee", request.EmployeeId));
+        }
+
+        if (user.EmployeeId == request.EmployeeId)
+        {
+            return Result.Failure<SalaryAssignmentDto>(AppError.Conflict(SalaryAssignmentMessages.OwnSalary));
+        }
+
         var valid = await validator.CheckAsync(request, cancellationToken);
         if (valid.IsFailure)
         {
@@ -61,6 +81,7 @@ internal sealed class SalaryAssignmentCreateHandler(
 }
 
 internal sealed class SalaryAssignmentUpdateHandler(
+    ICurrentUser user,
     IValidator<SalaryAssignmentUpdateRequest> validator,
     EntityLoader<SalaryAssignment> loader,
     SalaryAssignmentRules rules,
@@ -86,6 +107,11 @@ internal sealed class SalaryAssignmentUpdateHandler(
         }
 
         var assignment = loaded.Value;
+        if (user.EmployeeId == assignment.EmployeeId || user.EmployeeId == request.EmployeeId)
+        {
+            return Result.Failure<SalaryAssignmentDto>(AppError.Conflict(SalaryAssignmentMessages.OwnSalary));
+        }
+
         var details = request.ToDetails();
         var consistent = SalaryAssignment.Validate(details);
         if (consistent.IsSuccess)
@@ -122,6 +148,7 @@ internal sealed class SalaryAssignmentUpdateHandler(
 
 /// <summary>Deletes an assignment unless it is the last one of its employee. The payroll permission to do this is Edit (the seed has no payroll Delete).</summary>
 internal sealed class SalaryAssignmentDeleteHandler(
+    ICurrentUser user,
     EntityLoader<SalaryAssignment> loader,
     IRepository<SalaryAssignment> repository,
     IRepository<Employee> employees,
@@ -139,6 +166,11 @@ internal sealed class SalaryAssignmentDeleteHandler(
 
         var assignment = loaded.Value;
         var employeeId = assignment.EmployeeId;
+        if (user.EmployeeId == employeeId)
+        {
+            return Result.Failure(AppError.Conflict(SalaryAssignmentMessages.OwnSalary));
+        }
+
         if (!await repository.AnyAsync(other => other.EmployeeId == employeeId && other.Id != id, cancellationToken))
         {
             return Result.Failure(AppError.Conflict(

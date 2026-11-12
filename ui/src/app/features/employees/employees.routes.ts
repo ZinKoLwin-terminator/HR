@@ -45,6 +45,16 @@ export const EMPLOYEE_ROUTES: Routes = [
           ),
       },
       {
+        path: 'letters',
+        title: 'Letters',
+        data: { breadcrumb: 'Letters', permission: 'employees:View' },
+        canActivate: [permissionGuard],
+        loadComponent: () =>
+          import('./employee-letters/employee-letters.component').then(
+            (m) => m.EmployeeLettersComponent,
+          ),
+      },
+      {
         path: 'edit',
         title: 'Edit Employee',
         data: { breadcrumb: 'Edit', permission: 'employees:Edit' },
