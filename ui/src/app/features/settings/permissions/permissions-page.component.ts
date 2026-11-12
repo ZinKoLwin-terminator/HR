@@ -21,6 +21,7 @@ import {
   RoleDataService,
   RolePermissionDataService,
 } from '../../../core/services/data/settings-data.services';
+import { PermissionService } from '../../../core/services/permission.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -79,7 +80,12 @@ const normalise = (grants: PermissionGrants): string =>
         <button mat-stroked-button type="button" [disabled]="!dirty()" (click)="reset()">
           Reset
         </button>
-        <button mat-flat-button type="button" [disabled]="!dirty() || locked()" (click)="save()">
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="!dirty() || locked() || !access.can('settings:Edit')"
+          (click)="save()"
+        >
           Save permissions
         </button>
       </div>
@@ -207,6 +213,7 @@ export class PermissionsPageComponent implements HasUnsavedChanges {
   private readonly permissionsApi = inject(RolePermissionDataService);
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(UiNotificationService);
+  protected readonly access = inject(PermissionService);
   /** True in the API build, where saved permissions live on the server. */
   protected readonly apiMode = inject(SERVER_SESSION);
 

@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const LEAVE_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'applications' },
@@ -37,7 +38,8 @@ export const LEAVE_ROUTES: Routes = [
   {
     path: 'approvals',
     title: 'Leave Approvals',
-    data: { breadcrumb: 'Leave Approvals' },
+    data: { breadcrumb: 'Leave Approvals', permission: 'leave:Approve' },
+    canActivate: [permissionGuard],
     loadComponent: () =>
       import('./leave-applications/leave-pages.component').then(
         (m) => m.LeaveApprovalsPageComponent,

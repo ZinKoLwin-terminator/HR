@@ -22,6 +22,7 @@ import { DOCUMENT_TYPES, DocumentType } from '../../../core/models/employee-extr
 import { Employee } from '../../../core/models/employee.models';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import { EmployeeDocumentDataService } from '../../../core/services/data/employee-extras-data.services';
+import { PermissionService } from '../../../core/services/permission.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { FieldConfig, FieldOption, FormValues } from '../../../shared/components/crud/crud.models';
 import { FormFieldComponent } from '../../../shared/components/form-field/form-field.component';
@@ -61,6 +62,34 @@ interface NavItem {
 
 const MAX_PHOTO_BYTES = 1024 * 1024;
 
+/** Form fields stored by `PUT /employees/{id}/personal` (personal data: the ViewSensitive and EditSensitive keys). */
+const SENSITIVE_FIELDS: ReadonlySet<string> = new Set([
+  'dateOfBirth',
+  'maritalStatus',
+  'nationality',
+  'nationalId',
+  'personalEmail',
+  'phone',
+  'alternatePhone',
+  'addressLine1',
+  'addressLine2',
+  'city',
+  'state',
+  'postalCode',
+  'country',
+  'emergencyName',
+  'emergencyRelationship',
+  'emergencyPhone',
+]);
+
+/** Form fields stored by `PUT /employees/{id}/bank-account` (the ViewBank and EditBank keys). */
+const BANK_FIELDS: ReadonlySet<string> = new Set([
+  'bankName',
+  'bankBranchName',
+  'bankAccountName',
+  'bankAccountNumber',
+]);
+
 @Component({
   selector: 'app-employee-form',
   imports: [
@@ -83,6 +112,7 @@ export class EmployeeFormComponent implements OnInit, AfterViewInit {
   private readonly documentsApi = inject(EmployeeDocumentDataService);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly permissions = inject(PermissionService);
 
   /** Section currently in view, highlighted in the side navigation. */
   protected readonly activeId = signal('personal');
@@ -138,8 +168,24 @@ export class EmployeeFormComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     const { lookups, employee, suggestedCode } = this.data();
-    this.sections = buildEmployeeSections(lookups);
-    this.allFields = this.sections.flatMap((s) => s.fields);
+    const allSections = buildEmployeeSections(lookups);
+    this.allFields = allSections.flatMap((s) => s.fields);
+    // Editing: fields the role may not read are left out and fields it may not change are read-only
+    // (their values are the server's placeholders and are never sent back). Creating needs only
+    // employees:Create, so nothing is restricted. UX only; the server enforces.
+    const hidden = new Set<string>();
+    const locked = new Set<string>();
+    if (employee) {
+      for (const { key } of this.allFields) {
+        const kind = SENSITIVE_FIELDS.has(key) ? 'Sensitive' : BANK_FIELDS.has(key) ? 'Bank' : null;
+        if (!kind) continue;
+        if (!this.permissions.can(`employees:View${kind}`)) hidden.add(key);
+        if (!this.permissions.can(`employees:Edit${kind}`)) locked.add(key);
+      }
+    }
+    this.sections = allSections
+      .map((section) => ({ ...section, fields: section.fields.filter((f) => !hidden.has(f.key)) }))
+      .filter((section) => section.fields.length > 0);
     this.navItems = [
       ...this.sections.map((section) => ({
         id: section.id,
@@ -152,9 +198,11 @@ export class EmployeeFormComponent implements OnInit, AfterViewInit {
     ];
 
     this.form = buildFormGroup(this.allFields, toFormValues(employee, suggestedCode), {
-      disabledKeys: new Set(
-        employee ? this.allFields.filter((f) => f.lockedOnEdit).map((f) => f.key) : [],
-      ),
+      disabledKeys: new Set([
+        ...(employee ? this.allFields.filter((f) => f.lockedOnEdit).map((f) => f.key) : []),
+        ...hidden,
+        ...locked,
+      ]),
       validators: [
         HrmsValidators.dateRange('joiningDate', 'probationEndDate'),
         HrmsValidators.dateRange('joiningDate', 'exitDate'),

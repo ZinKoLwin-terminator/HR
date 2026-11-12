@@ -41,6 +41,7 @@ export function buildLeaveApplicationsConfig(
 
   const submit: CrudExtraAction<LeaveApplication> = {
     id: 'submit',
+    permission: 'Create',
     label: 'Submit for approval',
     icon: 'send',
     visible: isDraft,
@@ -55,6 +56,7 @@ export function buildLeaveApplicationsConfig(
   };
   const approve: CrudExtraAction<LeaveApplication> = {
     id: 'approve',
+    permission: 'Approve',
     label: 'Approve',
     icon: 'check_circle',
     visible: isSubmitted,
@@ -71,6 +73,7 @@ export function buildLeaveApplicationsConfig(
   };
   const reject: CrudExtraAction<LeaveApplication> = {
     id: 'reject',
+    permission: 'Approve',
     label: 'Reject',
     icon: 'cancel',
     destructive: true,
@@ -88,6 +91,7 @@ export function buildLeaveApplicationsConfig(
   };
   const cancel: CrudExtraAction<LeaveApplication> = {
     id: 'cancel',
+    permission: 'Create',
     label: 'Cancel leave',
     icon: 'event_busy',
     destructive: true,

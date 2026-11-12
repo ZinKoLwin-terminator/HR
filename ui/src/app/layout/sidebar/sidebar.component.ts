@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { ConnectedPosition, OverlayModule } from '@angular/cdk/overlay';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { KeyValuePipe } from '@angular/common';
@@ -8,7 +8,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter } from 'rxjs';
 import { APP_CONFIG } from '../../core/configuration/app-config';
-import { NAVIGATION, NavItem } from '../../core/constants/navigation';
+import { NAVIGATION, NavItem, visibleNavigation } from '../../core/constants/navigation';
+import { PermissionService } from '../../core/services/permission.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -33,7 +34,11 @@ export class SidebarComponent {
   /** Emitted after a link is chosen (used to close the mobile drawer). */
   readonly navigated = output<void>();
 
-  protected readonly items = NAVIGATION;
+  private readonly permissions = inject(PermissionService);
+  /** Only the entries the signed-in user's role allows (UX; the server enforces). */
+  protected readonly items = computed(() =>
+    visibleNavigation(NAVIGATION, (key) => this.permissions.can(key)),
+  );
 
   /** Label of the group whose flyout is open in the collapsed icon rail. */
   protected readonly flyout = signal<string | null>(null);
@@ -57,7 +62,7 @@ export class SidebarComponent {
     const sectionOrder = ['MAIN', 'PEOPLE', 'OPERATIONS', 'SYSTEM'];
 
     for (const section of sectionOrder) {
-      const itemsInSection = this.items.filter((item) => item.section === section);
+      const itemsInSection = this.items().filter((item) => item.section === section);
       if (itemsInSection.length > 0) {
         sections.set(section, itemsInSection);
       }
@@ -153,7 +158,7 @@ export class SidebarComponent {
   }
 
   private expandActiveGroup(url: string): void {
-    const active = this.items.find((g) =>
+    const active = this.items().find((g) =>
       g.children?.some((c) => c.route && url.startsWith(c.route)),
     );
     if (active && !this.expanded().has(active.label)) {

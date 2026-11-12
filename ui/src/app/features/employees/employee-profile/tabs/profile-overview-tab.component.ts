@@ -1,8 +1,9 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Employee } from '../../../../core/models/employee.models';
+import { PermissionService } from '../../../../core/services/permission.service';
 import { todayIso, yearsBetween } from '../../../../shared/utilities/date.util';
 
 @Component({
@@ -11,35 +12,37 @@ import { todayIso, yearsBetween } from '../../../../shared/utilities/date.util';
   template: `
     @let e = employee();
     <div class="cards">
-      <section class="card" aria-labelledby="ov-personal">
-        <div class="card__header"><h2 id="ov-personal">Personal information</h2></div>
-        <dl class="info-grid">
-          <div>
-            <dt>Full name</dt>
-            <dd>{{ e.firstName }} {{ e.lastName }}</dd>
-          </div>
-          <div>
-            <dt>Gender</dt>
-            <dd>{{ e.gender }}</dd>
-          </div>
-          <div>
-            <dt>Date of birth</dt>
-            <dd>{{ e.dateOfBirth | date }} ({{ age() }} yrs)</dd>
-          </div>
-          <div>
-            <dt>Marital status</dt>
-            <dd>{{ e.maritalStatus }}</dd>
-          </div>
-          <div>
-            <dt>Nationality</dt>
-            <dd>{{ e.nationality }}</dd>
-          </div>
-          <div>
-            <dt>National ID / passport</dt>
-            <dd>{{ e.nationalId }}</dd>
-          </div>
-        </dl>
-      </section>
+      @if (canSensitive()) {
+        <section class="card" aria-labelledby="ov-personal">
+          <div class="card__header"><h2 id="ov-personal">Personal information</h2></div>
+          <dl class="info-grid">
+            <div>
+              <dt>Full name</dt>
+              <dd>{{ e.firstName }} {{ e.lastName }}</dd>
+            </div>
+            <div>
+              <dt>Gender</dt>
+              <dd>{{ e.gender }}</dd>
+            </div>
+            <div>
+              <dt>Date of birth</dt>
+              <dd>{{ e.dateOfBirth | date }} ({{ age() }} yrs)</dd>
+            </div>
+            <div>
+              <dt>Marital status</dt>
+              <dd>{{ e.maritalStatus }}</dd>
+            </div>
+            <div>
+              <dt>Nationality</dt>
+              <dd>{{ e.nationality }}</dd>
+            </div>
+            <div>
+              <dt>National ID / passport</dt>
+              <dd>{{ e.nationalId }}</dd>
+            </div>
+          </dl>
+        </section>
+      }
 
       <section class="card" aria-labelledby="ov-contact">
         <div class="card__header"><h2 id="ov-contact">Contact details</h2></div>
@@ -50,84 +53,96 @@ import { todayIso, yearsBetween } from '../../../../shared/utilities/date.util';
               <a [href]="'mailto:' + e.workEmail">{{ e.workEmail }}</a>
             </dd>
           </div>
-          <div>
-            <dt>Personal email</dt>
-            <dd>{{ e.personalEmail || '—' }}</dd>
-          </div>
-          <div>
-            <dt>Mobile phone</dt>
-            <dd>{{ e.phone }}</dd>
-          </div>
-          <div>
-            <dt>Alternate phone</dt>
-            <dd>{{ e.alternatePhone || '—' }}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section class="card" aria-labelledby="ov-address">
-        <div class="card__header"><h2 id="ov-address">Address</h2></div>
-        <address class="address">
-          {{ e.address.line1 }}<br />
-          @if (e.address.line2) {
-            {{ e.address.line2 }}<br />
+          @if (canSensitive()) {
+            <div>
+              <dt>Personal email</dt>
+              <dd>{{ e.personalEmail || '—' }}</dd>
+            </div>
           }
-          {{ cityLine() }}<br />
-          {{ e.address.country }}
-        </address>
-      </section>
-
-      <section class="card" aria-labelledby="ov-emergency">
-        <div class="card__header"><h2 id="ov-emergency">Emergency contact</h2></div>
-        <dl class="info-grid">
-          <div>
-            <dt>Name</dt>
-            <dd>{{ e.emergencyContact.name }}</dd>
-          </div>
-          <div>
-            <dt>Relationship</dt>
-            <dd>{{ e.emergencyContact.relationship }}</dd>
-          </div>
-          <div>
-            <dt>Phone</dt>
-            <dd>{{ e.emergencyContact.phone }}</dd>
-          </div>
+          @if (canSensitive()) {
+            <div>
+              <dt>Mobile phone</dt>
+              <dd>{{ e.phone }}</dd>
+            </div>
+          }
+          @if (canSensitive()) {
+            <div>
+              <dt>Alternate phone</dt>
+              <dd>{{ e.alternatePhone || '—' }}</dd>
+            </div>
+          }
         </dl>
       </section>
 
-      <section class="card wide" aria-labelledby="ov-bank">
-        <div class="card__header">
-          <h2 id="ov-bank">Bank information</h2>
-          <button
-            mat-button
-            type="button"
-            (click)="reveal.set(!reveal())"
-            [attr.aria-pressed]="reveal()"
-          >
-            <mat-icon>{{ reveal() ? 'visibility_off' : 'visibility' }}</mat-icon>
-            {{ reveal() ? 'Hide' : 'Show' }} account number
-          </button>
-        </div>
-        <dl class="info-grid">
-          <div>
-            <dt>Bank</dt>
-            <dd>{{ e.bank.bankName }}</dd>
+      @if (canSensitive()) {
+        <section class="card" aria-labelledby="ov-address">
+          <div class="card__header"><h2 id="ov-address">Address</h2></div>
+          <address class="address">
+            {{ e.address.line1 }}<br />
+            @if (e.address.line2) {
+              {{ e.address.line2 }}<br />
+            }
+            {{ cityLine() }}<br />
+            {{ e.address.country }}
+          </address>
+        </section>
+      }
+
+      @if (canSensitive()) {
+        <section class="card" aria-labelledby="ov-emergency">
+          <div class="card__header"><h2 id="ov-emergency">Emergency contact</h2></div>
+          <dl class="info-grid">
+            <div>
+              <dt>Name</dt>
+              <dd>{{ e.emergencyContact.name }}</dd>
+            </div>
+            <div>
+              <dt>Relationship</dt>
+              <dd>{{ e.emergencyContact.relationship }}</dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>{{ e.emergencyContact.phone }}</dd>
+            </div>
+          </dl>
+        </section>
+      }
+
+      @if (canBank()) {
+        <section class="card wide" aria-labelledby="ov-bank">
+          <div class="card__header">
+            <h2 id="ov-bank">Bank information</h2>
+            <button
+              mat-button
+              type="button"
+              (click)="reveal.set(!reveal())"
+              [attr.aria-pressed]="reveal()"
+            >
+              <mat-icon>{{ reveal() ? 'visibility_off' : 'visibility' }}</mat-icon>
+              {{ reveal() ? 'Hide' : 'Show' }} account number
+            </button>
           </div>
-          <div>
-            <dt>Branch</dt>
-            <dd>{{ e.bank.branchName || '—' }}</dd>
-          </div>
-          <div>
-            <dt>Account holder</dt>
-            <dd>{{ e.bank.accountName }}</dd>
-          </div>
-          <div>
-            <dt>Account number</dt>
-            <dd class="num">{{ accountNumber() }}</dd>
-          </div>
-        </dl>
-        <p class="muted note">Sample data only. No real banking details are stored or used.</p>
-      </section>
+          <dl class="info-grid">
+            <div>
+              <dt>Bank</dt>
+              <dd>{{ e.bank.bankName }}</dd>
+            </div>
+            <div>
+              <dt>Branch</dt>
+              <dd>{{ e.bank.branchName || '—' }}</dd>
+            </div>
+            <div>
+              <dt>Account holder</dt>
+              <dd>{{ e.bank.accountName }}</dd>
+            </div>
+            <div>
+              <dt>Account number</dt>
+              <dd class="num">{{ accountNumber() }}</dd>
+            </div>
+          </dl>
+          <p class="muted note">Sample data only. No real banking details are stored or used.</p>
+        </section>
+      }
     </div>
   `,
   styles: `
@@ -186,6 +201,10 @@ import { todayIso, yearsBetween } from '../../../../shared/utilities/date.util';
 export class ProfileOverviewTabComponent {
   readonly employee = input.required<Employee>();
   protected readonly reveal = signal(false);
+  private readonly permissions = inject(PermissionService);
+  /** Personal data and bank details need their own keys (UX only; the server enforces). */
+  protected readonly canSensitive = computed(() => this.permissions.can('employees:ViewSensitive'));
+  protected readonly canBank = computed(() => this.permissions.can('employees:ViewBank'));
   /** "Yangon, Yangon Region 11041" — skips parts that are empty. */
   protected readonly cityLine = computed(() => {
     const a = this.employee().address;

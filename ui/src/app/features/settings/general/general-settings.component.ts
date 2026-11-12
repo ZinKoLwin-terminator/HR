@@ -15,6 +15,7 @@ import { AuthService, SERVER_SESSION } from '../../../core/services/auth.service
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { DemoDataDataService } from '../../../core/services/data/demo-data-data.service';
 import { GeneralSettingsDataService } from '../../../core/services/data/settings-data.services';
+import { PermissionService } from '../../../core/services/permission.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -117,7 +118,11 @@ const MONTHS = [
           <button mat-stroked-button type="button" [disabled]="form.pristine" (click)="reset()">
             Reset
           </button>
-          <button mat-flat-button type="submit" [disabled]="form.pristine || saving()">
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="form.pristine || saving() || !permissions.can('settings:Edit')"
+          >
             Save settings
           </button>
         </div>
@@ -208,6 +213,7 @@ const MONTHS = [
 export class GeneralSettingsComponent implements HasUnsavedChanges {
   private readonly api = inject(GeneralSettingsDataService);
   private readonly toast = inject(UiNotificationService);
+  protected readonly permissions = inject(PermissionService);
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly auth = inject(AuthService);

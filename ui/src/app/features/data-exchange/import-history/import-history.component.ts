@@ -12,6 +12,7 @@ import {
   ImportBatchSummary,
 } from '../../../core/models/excel.models';
 import { ExcelImportDataService } from '../../../core/services/data/excel-data.services';
+import { PermissionService } from '../../../core/services/permission.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { downloadFile } from '../../../core/utilities/file-download';
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
@@ -44,9 +45,11 @@ type Row = ImportBatchSummary & Entity;
       title="Import history"
       description="Every Excel import, its outcome and the problems found. Sample data only: history is cleared when the page is reloaded."
     >
-      <a pageActions mat-flat-button routerLink="/data-exchange/import">
-        <mat-icon>upload_file</mat-icon>New import
-      </a>
+      @if (permissions.can('excel:Import')) {
+        <a pageActions mat-flat-button routerLink="/data-exchange/import">
+          <mat-icon>upload_file</mat-icon>New import
+        </a>
+      }
     </app-page-header>
 
     @if (history.error()) {
@@ -79,6 +82,7 @@ export class ImportHistoryComponent {
   private readonly api = inject(ExcelImportDataService);
   private readonly dialog = inject(MatDialog);
   private readonly toast = inject(UiNotificationService);
+  protected readonly permissions = inject(PermissionService);
 
   protected readonly history = rxResource({ stream: () => this.api.getHistory() });
   protected readonly rows = computed<Row[]>(() =>

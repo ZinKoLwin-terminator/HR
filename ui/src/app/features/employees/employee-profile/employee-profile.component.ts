@@ -10,6 +10,7 @@ import { filter, forkJoin } from 'rxjs';
 import { fullName } from '../../../core/models/employee.models';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
+import { PermissionService } from '../../../core/services/permission.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -55,6 +56,7 @@ export class EmployeeProfileComponent {
   private readonly router = inject(Router);
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(UiNotificationService);
+  protected readonly permissions = inject(PermissionService);
 
   /** `:id` route parameter. */
   readonly id = input.required<string>();
