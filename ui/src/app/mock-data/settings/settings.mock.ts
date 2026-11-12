@@ -20,7 +20,12 @@ type RoleSeed = [
 ];
 const ROLE_SEED: RoleSeed[] = [
   ['HR Administrator', 'Full access to every module, including settings.', true, 'Active'],
-  ['HR Officer', 'Day-to-day HR operations without payroll approval or settings.', false, 'Active'],
+  [
+    'HR Officer',
+    'Day-to-day HR operations and payroll approval, without settings.',
+    false,
+    'Active',
+  ],
   ['Department Manager', 'Views the team and approves attendance and leave.', false, 'Active'],
   ['Payroll Officer', 'Prepares and approves payroll.', false, 'Active'],
   ['Recruiter', 'Manages job openings, candidates and interviews.', false, 'Active'],
@@ -56,7 +61,7 @@ const GRANT_SEED: PermissionGrants[] = [
     organization: ['View', 'Create', 'Edit'],
     recruitment: ['View', 'Create', 'Edit'],
     settings: [],
-    payroll: ['View'],
+    payroll: ['View', 'Approve'],
   }),
   merge(viewOnly(['dashboard', 'employees', 'organization', 'recruitment']), {
     attendance: ['View', 'Approve'],
@@ -64,7 +69,10 @@ const GRANT_SEED: PermissionGrants[] = [
   }),
   merge(viewOnly(['dashboard', 'employees']), { payroll: ['View', 'Create', 'Edit', 'Approve'] }),
   merge(viewOnly(['dashboard']), { recruitment: ['View', 'Create', 'Edit', 'Delete'] }),
-  merge(viewOnly(['dashboard', 'attendance']), { leave: ['View', 'Create'] }),
+  merge(viewOnly(['dashboard', 'attendance']), {
+    leave: ['View', 'Create'],
+    attendance: ['View', 'Create'],
+  }),
   viewOnly(all),
 ];
 
