@@ -64,7 +64,7 @@ internal sealed class EfUnitOfWork(HrmsDbContext context, EfActivityRecorder act
         // Joined mode: the outer transaction belongs to the caller (the Excel import runs every row inside one), so this scope
         // cannot commit it, but it must still be able to undo its own changes: a savepoint taken now is rolled back to when
         // the scope is disposed without a commit.
-        var savepoint = outer is null ? null : "uow_" + Guid.NewGuid().ToString("N");
+        var savepoint = outer is null ? null : "uow_" + Guid.NewGuid().ToString("N")[..28]; // a savepoint name is at most 32 characters
         try
         {
             if (outer is not null)
