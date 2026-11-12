@@ -11,14 +11,16 @@ internal static class CrudEndpoints
     /// Maps the CrudDataService contract methods of the frontend to REST routes under <paramref name="route"/>. Only
     /// the operations in <paramref name="operations"/> are mapped; a workflow resource (such as a payroll run) leaves
     /// out Update and Delete and passes any type for the request it does not use. Every endpoint requires the policy
-    /// of its verb for <paramref name="module"/>. Endpoints only translate HTTP; every rule lives in the use-case handlers.
+    /// of its verb for <paramref name="module"/>; create uses <paramref name="createPermission"/>, normally Create (shifts and
+    /// holidays need Edit, because every employee holds attendance:Create to punch). Endpoints only translate HTTP; every rule lives in the use-case handlers.
     /// </summary>
     public static RouteGroupBuilder MapCrud<TDto, TCreate, TUpdate, TFilter>(
         this IEndpointRouteBuilder routes,
         string route,
         string tag,
         PermissionModule module,
-        CrudOperations operations = CrudOperations.All)
+        CrudOperations operations = CrudOperations.All,
+        Permission createPermission = Permission.Create)
         where TDto : IIdentified
     {
         var group = routes.MapGroup(route).WithTags(tag);
@@ -32,7 +34,7 @@ internal static class CrudEndpoints
         {
             group.MapPost("/", async (TCreate request, ICreateHandler<TCreate, TDto> handler, CancellationToken cancellationToken) =>
                 (await handler.HandleAsync(request, cancellationToken)).ToCreated(dto => $"{route}/{dto.Id}"))
-                .RequireAuthorization(module.PolicyName(Permission.Create));
+                .RequireAuthorization(module.PolicyName(createPermission));
         }
 
         if (operations.HasFlag(CrudOperations.Update))

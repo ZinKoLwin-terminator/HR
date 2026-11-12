@@ -102,3 +102,9 @@ internal sealed class TestCurrentUser(int? userId, string displayName, bool isSy
 
     public string DisplayName { get; } = displayName;
 }
+
+/// <summary>A caller who holds every permission (an approver): row-level scoping lets such a caller see and act for everyone.</summary>
+internal sealed class AllGrantsCallerPermissions : Apex.Hrms.Application.Security.ICallerPermissions
+{
+    public bool Has(string moduleKey, string action) => true;
+}

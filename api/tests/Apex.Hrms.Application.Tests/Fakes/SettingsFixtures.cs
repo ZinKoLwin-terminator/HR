@@ -5,6 +5,7 @@ using Apex.Hrms.Application.Security;
 using Apex.Hrms.Application.Settings;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
+using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Security;
 using Apex.Hrms.Domain.Settings;
 using Microsoft.Extensions.DependencyInjection;
@@ -203,6 +204,15 @@ internal sealed class SettingsHost : IDisposable
         var created = await Host.Get<ICreateHandler<EmployeeCreateRequest, EmployeeDto>>()
             .HandleAsync(EmployeeFixtures.NewEmployee(org, null, email ?? $"person{number}@example.test"), default);
         return ResultAssert.Succeeded(created);
+    }
+
+    /// <summary>Seeds an employee and gives it an exit date directly (no account involved); returns its id.</summary>
+    public async Task<int> MarkLeftAsync()
+    {
+        var employee = await SeedEmployeeAsync();
+        var entity = Host.Repository<Employee>().Items.Single(e => e.Id == employee.Id);
+        typeof(Employee).GetProperty(nameof(Employee.ExitDate))!.SetValue(entity, new DateOnly(2026, 10, 1));
+        return employee.Id;
     }
 
     public async Task ExitAsync(EmployeeDto employee) =>

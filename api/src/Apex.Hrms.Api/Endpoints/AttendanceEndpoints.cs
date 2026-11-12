@@ -20,9 +20,9 @@ internal static class AttendanceEndpoints
 
     public static IEndpointRouteBuilder MapAttendanceEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapCrud<ShiftDto, ShiftCreateRequest, ShiftUpdateRequest, ShiftFilter>("/api/shifts", Tag, Module)
+        app.MapCrud<ShiftDto, ShiftCreateRequest, ShiftUpdateRequest, ShiftFilter>("/api/shifts", Tag, Module, CrudOperations.All, Permission.Edit)
             .MapStatusCommands<ShiftDto>(Module);
-        app.MapCrud<HolidayDto, HolidayCreateRequest, HolidayUpdateRequest, HolidayFilter>("/api/holidays", Tag, Module);
+        app.MapCrud<HolidayDto, HolidayCreateRequest, HolidayUpdateRequest, HolidayFilter>("/api/holidays", Tag, Module, CrudOperations.All, Permission.Edit);
 
         MapRecords(app);
         MapAdjustments(app);

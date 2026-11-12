@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Security;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
@@ -32,6 +33,7 @@ internal sealed class LeaveBalanceHandler(
     IRepository<Employee> employees,
     IAccessScope<Employee> scope,
     ICurrentUser user,
+    SelfService self,
     LeaveBalanceService balances,
     IClock clock) : ILeaveBalanceHandler
 {
@@ -45,6 +47,12 @@ internal sealed class LeaveBalanceHandler(
         {
             var message = $"Year must be between {LeaveBalanceService.FirstYear} and {LeaveBalanceService.LastYear}.";
             return Result.Failure<IReadOnlyList<LeaveBalanceDto>>(AppError.Validation(message, "year", message));
+        }
+
+        if (!self.CanAccess("leave", employeeId))
+        {
+            // Another employee's balance is outside the caller's scope: it looks like a missing employee.
+            return Result.Failure<IReadOnlyList<LeaveBalanceDto>>(NotFoundError.For("Employee", employeeId));
         }
 
         var employee = await employees.FindAsync(employeeId, scope.PredicateFor(user), cancellationToken);

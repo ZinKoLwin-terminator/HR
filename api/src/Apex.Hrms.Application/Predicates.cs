@@ -14,6 +14,11 @@ public static class Predicates
         Expression<Func<T, bool>> right) =>
         Combine(left, right, Expression.AndAlso);
 
+    public static Expression<Func<T, bool>> Or<T>(
+        this Expression<Func<T, bool>> left,
+        Expression<Func<T, bool>> right) =>
+        Combine(left, right, Expression.OrElse);
+
     /// <summary>Matches rows where any of the string fields contains the term (database collation decides case).</summary>
     public static Expression<Func<T, bool>> ContainsAny<T>(
         string term,

@@ -1,6 +1,7 @@
 using Apex.Hrms.Api.Authorization;
 using Apex.Hrms.Api.Http;
 using Apex.Hrms.Application.Employees;
+using Apex.Hrms.Application.Employees.Salary;
 using Apex.Hrms.Application.UseCases;
 using Microsoft.AspNetCore.Mvc;
 
@@ -57,6 +58,11 @@ internal static class EmployeeEndpoints
         group.MapGet("/next-code", async (INextEmployeeCodeHandler handler, CancellationToken cancellationToken) =>
             (await handler.HandleAsync(cancellationToken)).ToOk())
             .RequireAuthorization(Module.PolicyName(Permission.Create));
+
+        // DEMONSTRATION figures for the employee's current salary; a salary is personal data, so this is a payroll permission.
+        group.MapGet("/{id:int}/salary-summary", async (int id, IGetByIdHandler<EmployeeSalarySummaryDto> handler, CancellationToken cancellationToken) =>
+            (await handler.HandleAsync(id, cancellationToken)).ToOk())
+            .RequireAuthorization(PermissionModule.Payroll.PolicyName(Permission.View));
     }
 
     /// <summary>Personal data lives behind its own permission; no other employee endpoint returns it (security review H2).</summary>

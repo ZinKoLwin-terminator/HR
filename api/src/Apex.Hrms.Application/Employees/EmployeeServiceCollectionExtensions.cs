@@ -45,6 +45,6 @@ internal static class EmployeeServiceCollectionExtensions
         services.AddEntityCommand<Employee, ReinstateEmployeeCommand, EmployeeDto, ReinstateEmployeeAction>();
         services.AddEntityCommand<Employee, ChangeEmployeeStatusCommand, EmployeeDto, ChangeEmployeeStatusAction>();
 
-        return services.AddEmployeeReferences();
+        return services.AddEmployeeExtras().AddEmployeeReferences();
     }
 }

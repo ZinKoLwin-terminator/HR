@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Activity;
+using Apex.Hrms.Application.Security;
 using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Attendance;
@@ -107,6 +108,7 @@ internal sealed class OvertimeCreateRequestValidator : RequestValidator<Overtime
 /// </summary>
 internal sealed class OvertimeCreateHandler(
     IValidator<OvertimeCreateRequest> validator,
+    SelfService self,
     IRepository<Employee> employees,
     IRepository<OvertimeRecord> overtime,
     IClock clock,
@@ -123,6 +125,12 @@ internal sealed class OvertimeCreateHandler(
         }
 
         var details = request.ToDetails();
+        var own = self.EnsureCanActFor("attendance", details.EmployeeId);
+        if (own.IsFailure)
+        {
+            return Result.Failure<OvertimeDto>(own.Error);
+        }
+
         if (await employees.FindAsync(details.EmployeeId, cancellationToken) is null)
         {
             return Result.Failure<OvertimeDto>(AppError.Validation(

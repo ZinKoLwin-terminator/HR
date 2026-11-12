@@ -37,15 +37,15 @@ public sealed class RoleAndSettingsHandlerTests : IDisposable
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string> { "dashboard:View" });
         }
 
-        await cache.GetAsync(officer.Id, Load, default);
-        await cache.GetAsync(officer.Id + 1000, Load, default);
-        await cache.GetAsync(officer.Id, Load, default);
+        await cache.GetAsync(officer.Id, [], Load, default);
+        await cache.GetAsync(officer.Id + 1000, [], Load, default);
+        await cache.GetAsync(officer.Id, [], Load, default);
         Assert.Equal(2, loads);
 
         ResultAssert.Succeeded(await SaveGrantsAsync(officer, new() { ["dashboard"] = ["View"] }));
 
-        await cache.GetAsync(officer.Id, Load, default);
-        await cache.GetAsync(officer.Id + 1000, Load, default);
+        await cache.GetAsync(officer.Id, [], Load, default);
+        await cache.GetAsync(officer.Id + 1000, [], Load, default);
         Assert.Equal(3, loads);
     }
 

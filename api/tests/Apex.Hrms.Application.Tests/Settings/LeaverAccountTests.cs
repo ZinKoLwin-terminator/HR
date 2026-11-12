@@ -20,6 +20,21 @@ public sealed class LeaverAccountTests : IDisposable
             new ExitEmployeeCommand(employee.Id, SettingsHost.Version(employee.RowVersion), new DateOnly(2026, 11, 1), "Resigned"),
             default);
 
+    /// <summary>The signed-in HR Administrator who records the exit. With a left employee they cannot sign in, so they do not count as an administrator.</summary>
+    private AppAccount SeedAdministratorCaller(bool leftEmployee)
+    {
+        var admin = settings.Host.Repository<AppRole>().Items.Single(role => role.Name == SettingsHost.AdministratorRole);
+        int? employeeId = null;
+        if (leftEmployee)
+        {
+            employeeId = settings.MarkLeftAsync().GetAwaiter().GetResult();
+        }
+
+        var caller = settings.SeedAccount(admin, employeeId, "Admin Caller", "caller@example.test");
+        settings.Host.User.UserId = caller.Id;
+        return caller;
+    }
+
     [Fact]
     public async Task Exit_deactivates_the_linked_account_and_changes_the_security_stamp_in_one_committed_transaction()
     {
@@ -69,12 +84,13 @@ public sealed class LeaverAccountTests : IDisposable
         var admin = settings.SeedRole(SettingsHost.AdministratorRole, builtIn: true);
         var employee = await settings.SeedEmployeeAsync();
         settings.SeedAccount(admin, employee.Id, "Mia Hartley", "mia@example.test");
+        SeedAdministratorCaller(leftEmployee: true);
         var commits = settings.Host.UnitOfWork.Commits;
 
         var result = await ExitAsync(employee);
 
         ResultAssert.Failed(result, ErrorType.Conflict, "There must always be one active HR Administrator.");
-        Assert.Equal(AccountStatus.Active, settings.Host.Repository<AppAccount>().Items.Single().Status);
+        Assert.Equal(AccountStatus.Active, settings.Host.Repository<AppAccount>().Items.Single(account => account.EmployeeId == employee.Id).Status);
         Assert.Empty(settings.Logins.SessionsInvalidated);
         Assert.Equal(commits, settings.Host.UnitOfWork.Commits);
     }
@@ -85,7 +101,7 @@ public sealed class LeaverAccountTests : IDisposable
         var admin = settings.SeedRole(SettingsHost.AdministratorRole, builtIn: true);
         var employee = await settings.SeedEmployeeAsync();
         settings.SeedAccount(admin, employee.Id, "Mia Hartley", "mia@example.test");
-        settings.SeedAccount(admin, employeeId: null, "Admin Two", "admin2@example.test");
+        SeedAdministratorCaller(leftEmployee: false);
 
         ResultAssert.Succeeded(await ExitAsync(employee));
 

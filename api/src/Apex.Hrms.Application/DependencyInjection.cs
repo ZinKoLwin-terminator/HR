@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.TryAddScoped(typeof(IAccessScope<>), typeof(AllowAllAccessScope<>));
         services.TryAddScoped<AdministratorBootstrap>();
+        services.AddSecurityScoping().AddOwnRecordScopes();
         services.TryAddSingleton(provider => new RoleGrantCache(provider.GetService<TimeProvider>() ?? TimeProvider.System));
         services.TryAddSingleton<IRoleGrantInvalidator>(provider => provider.GetRequiredService<RoleGrantCache>());
         return services.AddOrganization().AddEmployees().AddLeave().AddPayroll().AddAttendance().AddRecruitment().AddSettings().AddActivityAndDashboard().AddExcel();

@@ -13,9 +13,9 @@ internal sealed class EfImportBatchStore(HrmsDbContext context) : IImportBatchSt
     public Task<ImportBatch?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         context.Set<ImportBatch>().Include(batch => batch.Issues).SingleOrDefaultAsync(batch => batch.Id == id, cancellationToken);
 
-    public async Task<PagedResult<ImportBatch>> QueryAsync(int pageIndex, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<ImportBatch>> QueryAsync(int pageIndex, int pageSize, int? uploadedByUserId, CancellationToken cancellationToken)
     {
-        var all = context.Set<ImportBatch>().AsNoTracking();
+        var all = context.Set<ImportBatch>().AsNoTracking().Where(batch => uploadedByUserId == null || batch.UploadedByUserId == uploadedByUserId);
         var total = await all.CountAsync(cancellationToken);
         var index = Paging.ClampPageIndex(pageIndex, total, pageSize);
         var items = await all.OrderByDescending(batch => batch.UploadedAtUtc).ThenByDescending(batch => batch.Id)

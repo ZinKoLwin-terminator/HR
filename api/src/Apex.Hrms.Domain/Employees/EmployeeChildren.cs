@@ -103,6 +103,9 @@ public sealed record DocumentDetails(DocumentType Type, string Title, string Fil
 /// <summary>Document metadata (hr.EmployeeDocument). File contents belong in file storage, not here.</summary>
 public sealed class EmployeeDocument : AuditedEntity
 {
+    public const int TitleMaxLength = 80;
+    public const int FileNameMaxLength = 260;
+
     private EmployeeDocument()
     {
     }
@@ -126,19 +129,44 @@ public sealed class EmployeeDocument : AuditedEntity
         return result.IsFailure ? Result.Failure<EmployeeDocument>(result.Error) : Result.Success(document);
     }
 
-    public static Result Validate(DocumentDetails details)
+    /// <summary>
+    /// Checks the rules that need no other record, without changing anything: title and file name present and not too long,
+    /// the file name a plain name (no folder, no control characters), and the upload date not after <paramref name="today"/>.
+    /// </summary>
+    public static Result Validate(DocumentDetails details, DateOnly today)
     {
         var normalized = details.Normalized();
         return new Violations()
             .Require("title", "Title", normalized.Title)
+            .AddIf(normalized.Title.Length > TitleMaxLength, "title", $"Title must be at most {TitleMaxLength} characters.")
             .Require("fileName", "File name", normalized.FileName)
+            .AddIf(normalized.FileName.Length > FileNameMaxLength, "fileName", $"File name must be at most {FileNameMaxLength} characters.")
+            .AddIf(
+                normalized.FileName.Length > 0 && !IsPlainFileName(normalized.FileName),
+                "fileName",
+                "File name must be a plain file name without folders or control characters.")
+            .AddIf(normalized.UploadedOn > today, "uploadedOn", "Uploaded on cannot be in the future.")
             .ToResult();
     }
+
+    /// <summary>A name without path separators, control characters or the special names "." and "..".</summary>
+    public static bool IsPlainFileName(string fileName) =>
+        fileName is not ("." or "..")
+        && !fileName.Any(character => character is '/' or '\\' || char.IsControl(character));
+
+    /// <summary>The employee of a document never changes: delete it and add a new one instead.</summary>
+    public Result EnsureSameEmployee(int employeeId) =>
+        employeeId != EmployeeId
+            ? Result.Failure(AppError.Validation(
+                "The employee of a document cannot be changed.",
+                "employeeId",
+                "The employee cannot be changed."))
+            : Result.Success();
 
     /// <summary>Applies the details, or changes nothing when a rule is violated.</summary>
     public Result Update(DocumentDetails details, DateOnly today)
     {
-        var valid = Validate(details);
+        var valid = Validate(details, today);
         if (valid.IsFailure)
         {
             return valid;

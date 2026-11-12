@@ -58,15 +58,29 @@ internal sealed class EfUnitOfWork(HrmsDbContext context, EfActivityRecorder act
 
     public async Task<Result<IUnitOfWorkTransaction>> BeginTransactionAsync(string? exclusiveLock, CancellationToken cancellationToken)
     {
-        var joined = context.Database.CurrentTransaction is not null;
-        var transaction = joined ? null : await context.Database.BeginTransactionAsync(cancellationToken);
+        var outer = context.Database.CurrentTransaction;
+        var transaction = outer is null ? await context.Database.BeginTransactionAsync(cancellationToken) : null;
+
+        // Joined mode: the outer transaction belongs to the caller (the Excel import runs every row inside one), so this scope
+        // cannot commit it, but it must still be able to undo its own changes: a savepoint taken now is rolled back to when
+        // the scope is disposed without a commit.
+        var savepoint = outer is null ? null : "uow_" + Guid.NewGuid().ToString("N");
         try
         {
+            if (outer is not null)
+            {
+                await outer.CreateSavepointAsync(savepoint!, cancellationToken);
+            }
+
             if (exclusiveLock is not null && !await TryTakeLockAsync(exclusiveLock, cancellationToken))
             {
                 if (transaction is not null)
                 {
                     await transaction.DisposeAsync();
+                }
+                else
+                {
+                    await outer!.RollbackToSavepointAsync(savepoint!, cancellationToken);
                 }
 
                 return Result.Failure<IUnitOfWorkTransaction>(AppError.Conflict("Another change to the administrators is in progress. Try again."));
@@ -82,7 +96,7 @@ internal sealed class EfUnitOfWork(HrmsDbContext context, EfActivityRecorder act
             throw;
         }
 
-        return Result.Success<IUnitOfWorkTransaction>(new EfTransaction(transaction));
+        return Result.Success<IUnitOfWorkTransaction>(new EfTransaction(transaction ?? outer, savepoint));
     }
 
     /// <summary>
@@ -99,12 +113,36 @@ internal sealed class EfUnitOfWork(HrmsDbContext context, EfActivityRecorder act
         return outcome.Value is int code && code >= 0;
     }
 
-    /// <summary>The transaction this unit of work opened, or nothing to do when it joined one the caller owns.</summary>
-    private sealed class EfTransaction(IDbContextTransaction? transaction) : IUnitOfWorkTransaction
+    /// <summary>
+    /// The transaction this unit of work opened (commit commits, dispose without commit rolls back), or, when it joined one
+    /// the caller owns, a scope over a savepoint: commit leaves the work to the owner, dispose without a commit rolls back to
+    /// the savepoint. The administrator application lock is owned by the outer transaction and stays held until that ends.
+    /// </summary>
+    private sealed class EfTransaction(IDbContextTransaction? transaction, string? savepoint) : IUnitOfWorkTransaction
     {
-        public Task CommitAsync(CancellationToken cancellationToken) =>
-            transaction is null ? Task.CompletedTask : transaction.CommitAsync(cancellationToken);
+        private bool committed;
 
-        public ValueTask DisposeAsync() => transaction is null ? ValueTask.CompletedTask : transaction.DisposeAsync();
+        public Task CommitAsync(CancellationToken cancellationToken)
+        {
+            committed = true;
+            return savepoint is null && transaction is not null ? transaction.CommitAsync(cancellationToken) : Task.CompletedTask;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (transaction is null)
+            {
+                return;
+            }
+
+            if (savepoint is null)
+            {
+                await transaction.DisposeAsync();
+            }
+            else if (!committed)
+            {
+                await transaction.RollbackToSavepointAsync(savepoint);
+            }
+        }
     }
 }

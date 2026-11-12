@@ -49,6 +49,26 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     private static bool IsEmployeeRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/employees", StringComparison.Ordinal);
 
+    private static bool IsEmployeeDocumentRoute(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText!.StartsWith("/api/employee-documents", StringComparison.Ordinal);
+
+    [Fact]
+    public void Employee_documents_are_personal_data_with_sensitive_permissions_and_no_unpaged_list()
+    {
+        var policies = ApiEndpoints().Where(IsEmployeeDocumentRoute)
+            .ToDictionary(
+                endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+                endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
+
+        Assert.Equal(5, policies.Count);
+        Assert.DoesNotContain("GET /api/employee-documents/", policies.Keys);
+        Assert.Equal("employees:ViewSensitive", policies["GET /api/employee-documents/query"]);
+        Assert.Equal("employees:ViewSensitive", policies["GET /api/employee-documents/{id:int}"]);
+        Assert.Equal("employees:EditSensitive", policies["POST /api/employee-documents/"]);
+        Assert.Equal("employees:EditSensitive", policies["PUT /api/employee-documents/{id:int}"]);
+        Assert.Equal("employees:EditSensitive", policies["DELETE /api/employee-documents/{id:int}"]);
+    }
+
     private static bool IsLeaveRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/leave", StringComparison.Ordinal);
 
@@ -131,18 +151,18 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void Six_organization_resources_map_eight_endpoints_each()
     {
         var endpoints = ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint))
             .ToList();
 
         Assert.Equal(48, endpoints.Count);
     }
 
     [Fact]
-    public void Employees_map_fourteen_endpoints_and_no_unpaged_list()
+    public void Employees_map_fifteen_endpoints_and_no_unpaged_list()
     {
         var endpoints = ApiEndpoints().Where(IsEmployeeRoute).ToList();
 
-        Assert.Equal(14, endpoints.Count);
+        Assert.Equal(15, endpoints.Count);
         Assert.DoesNotContain(
             endpoints,
             endpoint => endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Contains(HttpMethods.Get)
@@ -171,6 +191,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("employees:Edit", policies["POST /api/employees/{id:int}/exit"]);
         Assert.Equal("employees:Edit", policies["POST /api/employees/{id:int}/reinstate"]);
         Assert.Equal("employees:Edit", policies["POST /api/employees/{id:int}/status"]);
+        Assert.Equal("payroll:View", policies["GET /api/employees/{id:int}/salary-summary"]);
     }
 
     [Fact]
@@ -211,7 +232,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
         foreach (var endpoint in ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint)))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);
@@ -369,7 +390,8 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("attendance:Approve", policies["POST /api/overtime-records/{id:int}/reject"]);
         Assert.Equal("attendance:Edit", policies["POST /api/shifts/{id:int}/activate"]);
         Assert.Equal("attendance:Delete", policies["DELETE /api/shifts/{id:int}"]);
-        Assert.Equal("attendance:Create", policies["POST /api/holidays/"]);
+        Assert.Equal("attendance:Edit", policies["POST /api/holidays/"]);
+        Assert.Equal("attendance:Edit", policies["POST /api/shifts/"]);
         Assert.Equal("attendance:Edit", policies["PUT /api/holidays/{id:int}"]);
     }
     private Dictionary<string, string?> ActivityPolicies() => ApiEndpoints().Where(IsActivityRoute)

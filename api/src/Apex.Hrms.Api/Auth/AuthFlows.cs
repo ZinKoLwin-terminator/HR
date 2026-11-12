@@ -35,6 +35,13 @@ internal sealed partial class AuthFlows(
     /// <summary>Sliding window of a "remember me" cookie.</summary>
     public static readonly TimeSpan RememberWindow = TimeSpan.FromDays(7);
 
+    /// <summary>Configuration key: the hard end of a "remember me" session in days, however active the user is.</summary>
+    public const string RememberMeMaxDaysKey = "Auth:RememberMeMaxDays";
+
+    public const int DefaultRememberMeMaxDays = 30;
+
+    public const int MaxRememberMeMaxDays = 365;
+
     public const string PasswordResetPageUrlKey = "Auth:PasswordResetUrl";
     public const string GenericSignInFailure = "Sign-in failed. Check your details or contact your administrator.";
     public const string ForgotPasswordAnswer = "If an account exists for this address, a password reset email has been sent.";
@@ -102,10 +109,9 @@ internal sealed partial class AuthFlows(
             IssuedUtc = now,
             ExpiresUtc = now + (request.RememberMe ? RememberWindow : SessionWindow),
         };
-        if (!request.RememberMe)
-        {
-            properties.Items[HrmsClaims.AbsoluteExpiryProperty] = (now + SessionAbsoluteMaximum).ToString("O", CultureInfo.InvariantCulture);
-        }
+        // Both kinds of session have a hard end, enforced by SessionValidator: sliding renewal cannot extend it.
+        var absolute = request.RememberMe ? RememberMeAbsoluteMaximum() : SessionAbsoluteMaximum;
+        properties.Items[HrmsClaims.AbsoluteExpiryProperty] = (now + absolute).ToString("O", CultureInfo.InvariantCulture);
 
         await http.SignInAsync(IdentityConstants.ApplicationScheme, principal, properties);
         await accounts.RecordSignInAsync(account!.Id, cancellationToken);
@@ -115,6 +121,12 @@ internal sealed partial class AuthFlows(
         IssueXsrfCookie(http);
         return Results.Ok(ToMe(account));
     }
+
+    /// <summary>The configured absolute lifetime of a "remember me" session: 30 days by default, 1 to 365 days.</summary>
+    public TimeSpan RememberMeAbsoluteMaximum() =>
+        int.TryParse(configuration[RememberMeMaxDaysKey], NumberStyles.None, CultureInfo.InvariantCulture, out var days) && days is >= 1 and <= MaxRememberMeMaxDays
+            ? TimeSpan.FromDays(days)
+            : TimeSpan.FromDays(DefaultRememberMeMaxDays);
 
     public async Task<IResult> LogoutAsync(HttpContext http)
     {

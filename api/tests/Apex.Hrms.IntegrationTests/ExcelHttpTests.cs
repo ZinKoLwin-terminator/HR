@@ -356,6 +356,37 @@ public sealed class ExcelHttpTests : DatabaseTest, IDisposable
     }
 
     [IntegrationFact]
+    public async Task Another_users_batch_is_not_visible_in_history_detail_or_error_report_but_the_administrator_sees_it()
+    {
+        var codes = await SeedCodesAsync();
+        var preview = await ValidateAsync(await WorkbookAsync(await RowAsync(codes, "1", ("Gender", "Unknown"))), "InsertOnly");
+        var name = $"{Tag}-Viewer";
+        await Sql.ExecuteAsync("INSERT INTO sec.Role (Name, IsSystem, Status) VALUES (@name, 0, 'Active');", ("@name", name));
+        var roleId = await Sql.ScalarAsync<int>("SELECT Id FROM sec.Role WHERE Name = @name", ("@name", name));
+        foreach (var grant in new[] { ("employees", "View"), ("excel", "View") })
+        {
+            await Sql.ExecuteAsync(
+                "INSERT INTO sec.RolePermission (RoleId, ModuleKey, Action) VALUES (@role, @module, @action);",
+                ("@role", roleId),
+                ("@module", grant.Item1),
+                ("@action", grant.Item2));
+        }
+
+        var other = await TestAccounts.CreateAsync(TestAccounts.EmailFor(Tag, "viewer"), roleName: name);
+        using var viewer = factory.CreateBrowserClient(out _);
+        await viewer.SignInAsync(other);
+
+        var history = (await viewer.GetFromJsonAsync<PagedResult<ImportBatchSummaryDto>>("/api/excel/imports/history?pageIndex=0&pageSize=50", Json))!;
+        Assert.DoesNotContain(history.Items, item => item.BatchId == preview.BatchId);
+        Assert.Equal(HttpStatusCode.NotFound, (await viewer.GetAsync($"/api/excel/imports/{preview.BatchId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await viewer.GetAsync($"/api/excel/imports/{preview.BatchId}/error-report")).StatusCode);
+
+        var adminHistory = (await client.GetFromJsonAsync<PagedResult<ImportBatchSummaryDto>>("/api/excel/imports/history?pageIndex=0&pageSize=50", Json))!;
+        Assert.Contains(adminHistory.Items, item => item.BatchId == preview.BatchId);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/excel/imports/{preview.BatchId}/error-report")).StatusCode);
+    }
+
+    [IntegrationFact]
     public async Task History_lists_the_batches_newest_first_with_the_uploader()
     {
         var codes = await SeedCodesAsync();

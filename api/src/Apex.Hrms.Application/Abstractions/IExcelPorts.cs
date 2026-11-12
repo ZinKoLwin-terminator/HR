@@ -52,8 +52,8 @@ public interface IImportBatchStore
     /// <summary>The batch with its issues (tracked, so a change to it is saved by the unit of work), or null.</summary>
     Task<ImportBatch?> FindAsync(Guid id, CancellationToken cancellationToken);
 
-    /// <summary>Newest first, without issues.</summary>
-    Task<PagedResult<ImportBatch>> QueryAsync(int pageIndex, int pageSize, CancellationToken cancellationToken);
+    /// <summary>Newest first, without issues; only the batches of <paramref name="uploadedByUserId"/> when it is given.</summary>
+    Task<PagedResult<ImportBatch>> QueryAsync(int pageIndex, int pageSize, int? uploadedByUserId, CancellationToken cancellationToken);
 }
 
 /// <summary>Starts the one database transaction a validation or an import runs in.</summary>
