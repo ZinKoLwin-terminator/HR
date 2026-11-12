@@ -22,7 +22,10 @@ import {
   TableColumn,
 } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { BATCH_STATUS_LABELS } from '../../../shared/components/excel/excel-labels';
+import {
+  BATCH_STATUS_LABELS,
+  moduleDisplayName,
+} from '../../../shared/components/excel/excel-labels';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { BatchDetailsDialogComponent } from './batch-details-dialog.component';
 
@@ -97,7 +100,11 @@ export class ImportHistoryComponent {
       value: (r) =>
         new Date(r.uploadedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
     },
-    { key: 'moduleLabel', header: 'Module' },
+    {
+      key: 'moduleLabel',
+      header: 'Module',
+      value: (r) => moduleDisplayName(r.moduleCode, r.moduleLabel),
+    },
     { key: 'fileName', header: 'File', hideBelow: 'md' },
     {
       key: 'strategy',
@@ -139,7 +146,8 @@ export class ImportHistoryComponent {
       visible: (r) => r.invalidRows > 0 || r.failedRows > 0 || r.skippedRows > 0,
     },
   ];
-  protected readonly rowLabel = (r: Row) => `${r.moduleLabel} import ${r.fileName}`;
+  protected readonly rowLabel = (r: Row) =>
+    `${moduleDisplayName(r.moduleCode, r.moduleLabel)} import ${r.fileName}`;
 
   protected onAction(event: TableActionEvent<Row>): void {
     if (event.action === 'view') this.view(event.row);

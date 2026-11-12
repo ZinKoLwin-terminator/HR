@@ -68,6 +68,7 @@ export class EmployeeSalariesPageComponent {
 
     return {
       title: 'Employee salaries',
+      excel: { moduleCode: 'salary-assignments' },
       description:
         'Basic salary and salary structure per employee. Add a row with a later date to revise a salary (sample data).',
       entityLabel: 'Salary assignment',

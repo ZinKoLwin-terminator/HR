@@ -28,6 +28,7 @@ import {
   FilterFieldComponent,
   FilterPopupComponent,
 } from '../../../shared/components/filter-popup/filter-popup.component';
+import { ExcelActionsComponent } from '../../../shared/components/excel/excel-actions.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { SortState } from '../../../core/models/common.models';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
@@ -124,6 +125,7 @@ export class LeaveBalanceDialogComponent {
 @Component({
   selector: 'app-leave-balances',
   imports: [
+    ExcelActionsComponent,
     FilterFieldComponent,
     FilterPopupComponent,
     MatButtonModule,
@@ -192,6 +194,13 @@ export class LeaveBalancesComponent {
   protected readonly filterCount = computed(
     () => (this.departmentId() === null ? 0 : 1) + (this.branchId() === null ? 0 : 1),
   );
+
+  /** Filters of the Excel export (the year decides which balances are written). */
+  protected readonly excelFilters = computed<Record<string, unknown>>(() => ({
+    year: this.year(),
+    ...(this.departmentId() === null ? {} : { departmentId: this.departmentId() }),
+    ...(this.branchId() === null ? {} : { branchId: this.branchId() }),
+  }));
 
   protected clearFilters(): void {
     this.departmentId.set(null);

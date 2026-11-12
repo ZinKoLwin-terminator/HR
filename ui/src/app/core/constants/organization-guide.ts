@@ -195,8 +195,8 @@ export const ORGANIZATION_GUIDE: readonly GuideBlock[] = [
   {
     type: 'note',
     text: {
-      en: 'In the demo build the data resets when the page is reloaded; with the API it is saved. There is no Excel import for Organization yet (Employees only).',
-      my: 'Demo Build တွင် Page Reload လုပ်လျှင် ဒေတာ မူလအတိုင်းပြန်ဖြစ်ပြီး API ဖြင့်သုံးလျှင် သိမ်းဆည်းထားသည်။ Organization အတွက် Excel Import မရှိသေးပါ (Employees သာ)။',
+      en: 'In the demo build the data resets when the page is reloaded; with the API it is saved. Companies, branches, departments, sections, positions (job titles) and job grades can be exported to Excel and imported from Excel (Data Exchange → Import); rows are matched by the code and parents are given by their codes.',
+      my: 'Demo Build တွင် Page Reload လုပ်လျှင် ဒေတာ မူလအတိုင်းပြန်ဖြစ်ပြီး API ဖြင့်သုံးလျှင် သိမ်းဆည်းထားသည်။ Companies၊ Branches၊ Departments၊ Sections၊ Positions (Job Title) နှင့် Job Grades များကို Excel ထုတ်နိုင်ပြီး Excel မှ Import လုပ်နိုင်သည် (Data Exchange → Import)။ အတန်းများကို ကုဒ်ဖြင့်ချိတ်ပြီး မိခင် Record များကို ကုဒ်ဖြင့်ပေးရသည်။',
     },
   },
 ];

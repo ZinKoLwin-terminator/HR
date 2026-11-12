@@ -35,7 +35,7 @@ async function downloadWorkbook(page: Page, click: () => Promise<void>, expectTo
   const download = await downloadPromise;
   // The "is ready" toast is short-lived, so check it before parsing the file.
   if (expectToast) {
-    await expect(page.getByText(/employees-export-.*is ready\./).first()).toBeVisible();
+    await expect(page.getByText(/-export-.*is ready\./).first()).toBeVisible();
   }
   const path = await download.path();
   const workbook = new (await lib()).Workbook();
@@ -108,6 +108,38 @@ test.describe('Excel export', () => {
     expect(headers).toEqual(
       expect.arrayContaining(['National ID', 'Bank Account Number', 'Date of Birth']),
     );
+  });
+
+  test('exports the departments from the Organization screen with the same dialog', async ({
+    page,
+  }) => {
+    await page.goto('/organization/departments');
+    await expect(page.locator('tr.mat-mdc-row').first()).toBeVisible();
+    // Departments can be imported as well as exported.
+    await expect(page.getByRole('link', { name: 'Import' })).toBeVisible();
+    await page.getByRole('button', { name: 'Export' }).click();
+    await expect(
+      dialog(page).getByRole('heading', { name: 'Export Departments to Excel' }),
+    ).toBeVisible();
+    await dialog(page).getByRole('radio', { name: 'All records', exact: true }).check();
+    const { workbook, fileName } = await downloadWorkbook(
+      page,
+      () => dialog(page).getByRole('button', { name: 'Export to Excel' }).click(),
+      true,
+    );
+    expect(fileName).toMatch(/^departments-export-\d{8}-\d{4}\.xlsx$/);
+    const sheet = workbook.getWorksheet('Departments')!;
+    const headers = (sheet.getRow(1).values as unknown[]).slice(1);
+    expect(headers).toEqual(
+      expect.arrayContaining(['Department Code', 'Company Code', 'Branch Code', 'Branch']),
+    );
+    expect(sheet.rowCount).toBeGreaterThan(2);
+  });
+
+  test('offers only Export on the leave applications screen (no import)', async ({ page }) => {
+    await page.goto('/leave/applications');
+    await expect(page.getByRole('button', { name: 'Export' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Import' })).toHaveCount(0);
   });
 
   test('requires at least one column', async ({ page }) => {
@@ -259,7 +291,7 @@ test.describe('Excel import', () => {
   });
 
   test('rejects files that are not real Excel workbooks', async ({ page }) => {
-    await page.goto('/data-exchange/import');
+    await page.goto('/data-exchange/import?module=employees');
     await expect(page.getByText('Choose what to import')).toBeVisible();
     await page.getByRole('button', { name: 'Continue to upload' }).click();
     // A renamed text file passes the browser's quick checks but not the importer's content check
@@ -289,7 +321,7 @@ test.describe('Excel import', () => {
   });
 
   test('asks for column mapping when the file does not follow the template', async ({ page }) => {
-    await page.goto('/data-exchange/import');
+    await page.goto('/data-exchange/import?module=employees');
     await page.getByRole('button', { name: 'Continue to upload' }).click();
     const book = new (await lib()).Workbook();
     const sheet = book.addWorksheet('Staff');

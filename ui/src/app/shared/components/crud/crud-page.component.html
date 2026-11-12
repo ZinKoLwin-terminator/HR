@@ -94,22 +94,14 @@
       <ng-container *ngTemplateOutlet="printMenu" />
     </ng-container>
     @if (cfg.excel; as excel) {
-      <ng-container pageTools>
-        @if (canExport()) {
-          <button mat-stroked-button type="button" (click)="openExport()">
-            <mat-icon>download</mat-icon>Export
-          </button>
-        }
-        @if (excel.import !== false && canImport()) {
-          <a
-            mat-stroked-button
-            routerLink="/data-exchange/import"
-            [queryParams]="{ module: excel.moduleCode }"
-          >
-            <mat-icon>upload_file</mat-icon>Import
-          </a>
-        }
-      </ng-container>
+      <app-excel-actions
+        pageTools
+        [moduleCode]="excel.moduleCode"
+        [allowImport]="excel.import !== false"
+        [search]="query.search()"
+        [filters]="excelFilters()"
+        [filterSummary]="excelSummary()"
+      />
     }
     @if (cfg.canCreate !== false && canDo('Create')) {
       <button pageActions mat-flat-button type="button" (click)="openForm()">
@@ -126,10 +118,14 @@
   >
     <ng-container *ngTemplateOutlet="searchAndFilters" />
     <ng-container *ngTemplateOutlet="printMenu" />
-    @if (cfg.excel && canExport()) {
-      <button mat-stroked-button type="button" (click)="openExport()">
-        <mat-icon>download</mat-icon>Export
-      </button>
+    @if (cfg.excel; as excel) {
+      <app-excel-actions
+        [moduleCode]="excel.moduleCode"
+        [allowImport]="false"
+        [search]="query.search()"
+        [filters]="excelFilters()"
+        [filterSummary]="excelSummary()"
+      />
     }
     @if (cfg.canCreate !== false && canDo('Create')) {
       <button mat-flat-button type="button" (click)="openForm()">

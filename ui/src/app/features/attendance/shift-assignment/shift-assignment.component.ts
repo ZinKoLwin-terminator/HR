@@ -17,6 +17,7 @@ import {
 } from '../../../core/services/ui-notification.service';
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
+import { ExcelActionsComponent } from '../../../shared/components/excel/excel-actions.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import {
@@ -31,6 +32,7 @@ import { OrganizationLookupService, options } from '../../organization/organizat
 @Component({
   selector: 'app-shift-assignment',
   imports: [
+    ExcelActionsComponent,
     FilterFieldComponent,
     FilterPopupComponent,
     MatButtonModule,

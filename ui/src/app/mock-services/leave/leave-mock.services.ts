@@ -433,28 +433,35 @@ export class LeaveBalanceMockService implements LeaveBalanceDataService {
     }, this.latency);
   }
 
+  /** Every current employee's balances for a year, unpaged (used by the Excel export). */
+  rowsNow(
+    request: Pick<LeaveBalanceQuery, 'year' | 'search' | 'departmentId' | 'branchId'>,
+  ): EmployeeLeaveBalances[] {
+    const needle = request.search.trim().toLowerCase();
+    return this.employees
+      .records()
+      .filter(
+        (e) =>
+          CURRENT_EMPLOYMENT_STATUSES.includes(e.employmentStatus) &&
+          (request.departmentId === null || e.departmentId === request.departmentId) &&
+          (request.branchId === null || e.branchId === request.branchId) &&
+          (!needle || `${fullName(e)} ${e.employeeCode}`.toLowerCase().includes(needle)),
+      )
+      .map((e) => ({
+        employeeId: e.id,
+        employeeCode: e.employeeCode,
+        employeeName: fullName(e),
+        departmentId: e.departmentId,
+        departmentName: this.departments.findById(e.departmentId)?.name ?? '—',
+        branchId: e.branchId,
+        branchName: this.branches.findById(e.branchId)?.name ?? '—',
+        balances: this.balancesFor(e, request.year),
+      }));
+  }
+
   query(request: LeaveBalanceQuery): Observable<PagedResult<EmployeeLeaveBalances>> {
     return mockResponse(() => {
-      const needle = request.search.trim().toLowerCase();
-      const rows: EmployeeLeaveBalances[] = this.employees
-        .records()
-        .filter(
-          (e) =>
-            CURRENT_EMPLOYMENT_STATUSES.includes(e.employmentStatus) &&
-            (request.departmentId === null || e.departmentId === request.departmentId) &&
-            (request.branchId === null || e.branchId === request.branchId) &&
-            (!needle || `${fullName(e)} ${e.employeeCode}`.toLowerCase().includes(needle)),
-        )
-        .map((e) => ({
-          employeeId: e.id,
-          employeeCode: e.employeeCode,
-          employeeName: fullName(e),
-          departmentId: e.departmentId,
-          departmentName: this.departments.findById(e.departmentId)?.name ?? '—',
-          branchId: e.branchId,
-          branchName: this.branches.findById(e.branchId)?.name ?? '—',
-          balances: this.balancesFor(e, request.year),
-        }));
+      const rows = this.rowsNow(request);
       const sort = request.sort?.active
         ? request.sort
         : { active: 'employeeCode', direction: 'asc' as const };

@@ -30,6 +30,7 @@ import {
   TableActionEvent,
   TableColumn,
 } from '../../../shared/components/data-table/data-table.models';
+import { ExcelActionsComponent } from '../../../shared/components/excel/excel-actions.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import {
@@ -74,6 +75,7 @@ const DETAIL_FIELDS: FieldConfig[] = [
   selector: 'app-attendance-list',
   imports: [
     NgTemplateOutlet,
+    ExcelActionsComponent,
     PageHeaderComponent,
     MatButtonModule,
     MatDatepickerModule,
@@ -157,6 +159,18 @@ export class AttendanceListComponent {
   /** Number of applied filters (excluding the search term). */
   protected readonly filterCount = computed(
     () => this.activeChips().filter((c) => c.key !== 'search').length,
+  );
+
+  /** Filters of the Excel export: the applied filters, plus the exception of the late/early lists. */
+  protected readonly excelFilters = computed<Record<string, unknown>>(() => ({
+    ...this.query.filters(),
+    ...(this.mode() === 'late' ? { lateOnly: true } : {}),
+    ...(this.mode() === 'early' ? { earlyOnly: true } : {}),
+  }));
+  protected readonly excelSummary = computed(() =>
+    this.activeChips()
+      .filter((c) => c.key !== 'search')
+      .map((c) => `${c.name}: ${c.label}`),
   );
 
   protected readonly page = rxResource({

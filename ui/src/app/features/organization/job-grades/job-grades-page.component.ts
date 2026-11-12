@@ -25,6 +25,7 @@ export class JobGradesPageComponent extends OrganizationPageBase<JobGrade> {
   protected buildConfig(): CrudPageConfig<JobGrade> {
     return {
       title: 'Job grades',
+      excel: { moduleCode: 'job-grades' },
       description: 'Grade levels and their sample monthly salary bands.',
       entityLabel: 'Job grade',
       service: this.service,

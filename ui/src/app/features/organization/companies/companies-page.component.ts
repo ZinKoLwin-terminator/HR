@@ -24,6 +24,7 @@ export class CompaniesPageComponent extends OrganizationPageBase<Company> {
   protected buildConfig(): CrudPageConfig<Company> {
     return {
       title: 'Companies',
+      excel: { moduleCode: 'companies' },
       description: 'Legal entities that make up the group.',
       entityLabel: 'Company',
       service: this.service,

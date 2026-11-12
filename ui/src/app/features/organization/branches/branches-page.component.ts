@@ -37,6 +37,7 @@ export class BranchesPageComponent extends OrganizationPageBase<Branch> {
     const personName = nameMap(l.employees, (e) => `${e.firstName} ${e.lastName}`);
     return {
       title: 'Branches',
+      excel: { moduleCode: 'branches' },
       description: 'Head offices, branches, regional offices and warehouses.',
       entityLabel: 'Branch',
       service: this.service,

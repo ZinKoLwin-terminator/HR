@@ -56,6 +56,12 @@
       </app-filter-field>
     </app-filter-popup>
   </ng-container>
+  <app-excel-actions
+    pageTools
+    moduleCode="shift-assignments"
+    [search]="query.search()"
+    [filters]="query.filters()"
+  />
 </app-page-header>
 
 <section

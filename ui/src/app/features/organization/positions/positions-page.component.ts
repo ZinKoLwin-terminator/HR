@@ -36,6 +36,7 @@ export class PositionsPageComponent extends OrganizationPageBase<Position> {
 
     return {
       title: 'Positions',
+      excel: { moduleCode: 'positions' },
       description: 'Approved positions, grades and headcount.',
       entityLabel: 'Position',
       service: this.service,

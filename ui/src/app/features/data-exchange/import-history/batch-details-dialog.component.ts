@@ -8,7 +8,10 @@ import { IMPORT_MODE_LABELS, IMPORT_STRATEGY_LABELS } from '../../../core/models
 import { ExcelImportDataService } from '../../../core/services/data/excel-data.services';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { downloadFile } from '../../../core/utilities/file-download';
-import { BATCH_STATUS_LABELS } from '../../../shared/components/excel/excel-labels';
+import {
+  BATCH_STATUS_LABELS,
+  moduleDisplayName,
+} from '../../../shared/components/excel/excel-labels';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 
 /** Details of one import: summary figures and every recorded problem. */
@@ -29,7 +32,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
         <dl class="facts">
           <div>
             <dt>Module</dt>
-            <dd>{{ b.moduleLabel }}</dd>
+            <dd>{{ moduleName(b.moduleCode, b.moduleLabel) }}</dd>
           </div>
           <div>
             <dt>Status</dt>
@@ -169,6 +172,7 @@ export class BatchDetailsDialogComponent {
 
   protected readonly batch = rxResource({ stream: () => this.api.getBatch(this.data.batchId) });
   protected readonly statusLabels = BATCH_STATUS_LABELS;
+  protected readonly moduleName = moduleDisplayName;
   protected readonly strategyLabels = IMPORT_STRATEGY_LABELS;
   protected readonly modeLabels = IMPORT_MODE_LABELS;
 

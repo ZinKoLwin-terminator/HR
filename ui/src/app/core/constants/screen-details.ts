@@ -31,6 +31,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'A company that branches or employees refer to cannot be deleted; deactivate it instead.',
       'ဘဏ်ခွဲ သို့ ဝန်ထမ်းများ ကိုးကားထားသော ကုမ္ပဏီကို ဖျက်၍မရ၊ Deactivate လုပ်ပါ။',
     ),
+    b(
+      'Export to Excel and import from Excel (Data Exchange → Import) when your role allows it. Rows are matched by the code, parents are given by their codes and Status is Active or Inactive.',
+      'သင့် Role ခွင့်ပြုပါက Excel ထုတ်ခြင်းနှင့် Excel မှ ထည့်သွင်းခြင်း (Data Exchange → Import) ပြုလုပ်နိုင်သည်။ အတန်းများကို ကုဒ်ဖြင့်ချိတ်ပြီး မိခင် Record များကို ကုဒ်ဖြင့်ပေးရသည်။ Status သည် Active သို့ Inactive ဖြစ်သည်။',
+    ),
   ],
   '/organization/branches': [
     b(
@@ -40,6 +44,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     b(
       'Departments, employees and payslips show the branch they sit in.',
       'ဌာန၊ ဝန်ထမ်းနှင့် Payslip များတွင် ၎င်းတို့ရှိသော ဘဏ်ခွဲကို ပြသည်။',
+    ),
+    b(
+      'Export to Excel and import from Excel (Data Exchange → Import) when your role allows it. Rows are matched by the code, parents are given by their codes and Status is Active or Inactive.',
+      'သင့် Role ခွင့်ပြုပါက Excel ထုတ်ခြင်းနှင့် Excel မှ ထည့်သွင်းခြင်း (Data Exchange → Import) ပြုလုပ်နိုင်သည်။ အတန်းများကို ကုဒ်ဖြင့်ချိတ်ပြီး မိခင် Record များကို ကုဒ်ဖြင့်ပေးရသည်။ Status သည် Active သို့ Inactive ဖြစ်သည်။',
     ),
   ],
   '/organization/departments': [
@@ -51,6 +59,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'Used as a filter in attendance and leave lists and in the dashboard department chart.',
       'တက်ရောက်မှုနှင့် ခွင့်စာရင်းများ၏ Filter နှင့် Dashboard ဌာနအလိုက် Chart တွင် သုံးသည်။',
     ),
+    b(
+      'Export to Excel and import from Excel (Data Exchange → Import) when your role allows it. Rows are matched by the code, parents are given by their codes and Status is Active or Inactive.',
+      'သင့် Role ခွင့်ပြုပါက Excel ထုတ်ခြင်းနှင့် Excel မှ ထည့်သွင်းခြင်း (Data Exchange → Import) ပြုလုပ်နိုင်သည်။ အတန်းများကို ကုဒ်ဖြင့်ချိတ်ပြီး မိခင် Record များကို ကုဒ်ဖြင့်ပေးရသည်။ Status သည် Active သို့ Inactive ဖြစ်သည်။',
+    ),
   ],
   '/organization/sections': [
     b(
@@ -60,6 +72,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     b(
       'A section must belong to a department of the same branch.',
       'ဌာနခွဲသည် ဌာနနှင့် ဘဏ်ခွဲ ကိုက်ညီရမည်။',
+    ),
+    b(
+      'Export to Excel and import from Excel (Data Exchange → Import) when your role allows it. Rows are matched by the code, parents are given by their codes and Status is Active or Inactive.',
+      'သင့် Role ခွင့်ပြုပါက Excel ထုတ်ခြင်းနှင့် Excel မှ ထည့်သွင်းခြင်း (Data Exchange → Import) ပြုလုပ်နိုင်သည်။ အတန်းများကို ကုဒ်ဖြင့်ချိတ်ပြီး မိခင် Record များကို ကုဒ်ဖြင့်ပေးရသည်။ Status သည် Active သို့ Inactive ဖြစ်သည်။',
     ),
   ],
   '/organization/positions': [
@@ -71,6 +87,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'Because a position belongs to one department, moving an employee to another department also means choosing a new position.',
       'ရာထူးသည် ဌာနတစ်ခုနှင့်သာဆိုင်သဖြင့် ဝန်ထမ်းကို ဌာနပြောင်းလျှင် ရာထူးအသစ်လည်း ရွေးရမည်။',
     ),
+    b(
+      'Export to Excel and import from Excel (Data Exchange → Import) when your role allows it. Rows are matched by the code, parents are given by their codes and Status is Active or Inactive.',
+      'သင့် Role ခွင့်ပြုပါက Excel ထုတ်ခြင်းနှင့် Excel မှ ထည့်သွင်းခြင်း (Data Exchange → Import) ပြုလုပ်နိုင်သည်။ အတန်းများကို ကုဒ်ဖြင့်ချိတ်ပြီး မိခင် Record များကို ကုဒ်ဖြင့်ပေးရသည်။ Status သည် Active သို့ Inactive ဖြစ်သည်။',
+    ),
   ],
   '/organization/job-grades': [
     b(
@@ -80,6 +100,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     b(
       'The band limits an employee’s basic salary in Payroll, and the grade selects the leave policy (for example managers get more annual leave).',
       'Band သည် Payroll တွင် Basic လစာကို ကန့်သတ်ပြီး Grade က ခွင့် Policy ကို ရွေးသည် (ဥပမာ Manager များ နှစ်ပတ်လည်ခွင့်ပိုရသည်)။',
+    ),
+    b(
+      'Export to Excel and import from Excel (Data Exchange → Import) when your role allows it. Rows are matched by the code, parents are given by their codes and Status is Active or Inactive.',
+      'သင့် Role ခွင့်ပြုပါက Excel ထုတ်ခြင်းနှင့် Excel မှ ထည့်သွင်းခြင်း (Data Exchange → Import) ပြုလုပ်နိုင်သည်။ အတန်းများကို ကုဒ်ဖြင့်ချိတ်ပြီး မိခင် Record များကို ကုဒ်ဖြင့်ပေးရသည်။ Status သည် Active သို့ Inactive ဖြစ်သည်။',
     ),
   ],
   '/organization/reporting-structure': [
@@ -183,6 +207,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'Records are not an input to payroll; wrong ones are fixed through Adjustments.',
       'မှတ်တမ်းများသည် Payroll ၏ input မဟုတ်ပါ။ အမှားများကို Adjustments ဖြင့် ပြင်ရသည်။',
     ),
+    b(
+      'Export the records to Excel (export only: records come from punches and approved adjustments, so there is no import). The filters and date range apply to the file.',
+      'မှတ်တမ်းများကို Excel ထုတ်နိုင်သည် (ထုတ်ရန်သာ — မှတ်တမ်းများသည် Punch နှင့် ခွင့်ပြုပြီး Adjustment မှလာသဖြင့် Import မရှိ)။ Filter နှင့် ရက်စွဲအပိုင်းအခြားက ဖိုင်ကို သက်ရောက်သည်။',
+    ),
   ],
   '/attendance/exceptions': [
     b(
@@ -222,6 +250,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     b(
       'A change applies to future punches; existing records keep their old shift.',
       'ပြောင်းလဲမှုသည် အနာဂတ် Punch များအတွက်သာ — ရှိပြီးသားမှတ်တမ်းများသည် Shift အဟောင်းအတိုင်းကျန်သည်။',
+    ),
+    b(
+      'Export every employee with the current shift to Excel, or import a file with Employee Code and Shift Code to assign shifts in bulk (Data Exchange → Import).',
+      'ဝန်ထမ်းတိုင်း၏ လက်ရှိ Shift ကို Excel ထုတ်နိုင်သည်။ Employee Code နှင့် Shift Code ပါသော ဖိုင်ကို Import လုပ်၍ Shift များကို အစုလိုက်ခွဲပေးနိုင်သည် (Data Exchange → Import)။',
     ),
   ],
   '/attendance/schedules': [
@@ -288,6 +320,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'Balances are calculated, not typed in: available = entitled − approved − submitted days.',
       'လက်ကျန်ကို လက်ဖြင့်မထည့်ရ၊ တွက်ချက်ထားသည် — ရနိုင်ရက် = ရထိုက်ရက် − ခွင့်ပြုပြီး − Submit လုပ်ပြီးရက်။',
     ),
+    b(
+      'Export the balances to Excel for the selected year: one row per employee and leave type (export only: balances are worked out, not stored).',
+      'ရွေးထားသောနှစ်အတွက် လက်ကျန်များကို Excel ထုတ်နိုင်သည် — ဝန်ထမ်းနှင့် ခွင့်အမျိုးအစားတစ်ခုလျှင် တစ်တန်း (ထုတ်ရန်သာ — လက်ကျန်များကို တွက်ထုတ်ထားခြင်းဖြစ်ပြီး သိမ်းမထားပါ)။',
+    ),
   ],
   '/leave/applications': [
     b(
@@ -299,6 +335,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'အလုပ်ရက်သာ ရေတွက်သည်။ အခြားလျှောက်လွှာနှင့်ထပ်ခြင်း၊ လက်ကျန်/ဆက်တိုက်ရက်ကျော်ခြင်း၊ ဝင်ရက်မတိုင်မီစခြင်းတို့ကို ပယ်သည်။',
     ),
     b('You can cancel a request until it starts.', 'မစမီအထိ လျှောက်လွှာကို Cancel လုပ်နိုင်သည်။'),
+    b(
+      'Export the applications to Excel (export only: importing would bypass the submit and approve steps). The filters and the leave date range apply to the file.',
+      'ခွင့်လျှောက်လွှာများကို Excel ထုတ်နိုင်သည် (ထုတ်ရန်သာ — Import လုပ်လျှင် တင်သွင်း/ခွင့်ပြုအဆင့်များကို ကျော်သွားမည်)။ Filter နှင့် ခွင့်ရက်အပိုင်းအခြားက ဖိုင်ကို သက်ရောက်သည်။',
+    ),
   ],
   '/leave/approvals': [
     b(
@@ -349,6 +389,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     b(
       'Basic must be inside the job grade’s band and the date cannot be before joining. Employees with no salary are skipped in payroll with a warning.',
       'Basic သည် Job Grade Band အတွင်းဖြစ်ရမည်၊ ဝင်ရက်မတိုင်မီ မရ။ လစာမသတ်မှတ်သူကို Payroll တွင် သတိပေးချက်နှင့်ကျော်သည်။',
+    ),
+    b(
+      'Export the salary assignments to Excel, or import a file with Employee Code, Effective From, Salary Structure Code and Basic Salary (Data Exchange → Import). Basic salary is hidden in the import preview. Sample figures only.',
+      'လစာသတ်မှတ်ချက်များကို Excel ထုတ်နိုင်သည်၊ သို့မဟုတ် Employee Code၊ Effective From၊ Salary Structure Code နှင့် Basic Salary ပါသော ဖိုင်ကို Import လုပ်နိုင်သည် (Data Exchange → Import)။ Import Preview တွင် Basic Salary ကို ဖျောက်ထားသည်။ နမူနာ ကိန်းဂဏန်းများသာ။',
     ),
   ],
   '/payroll/processing': [
@@ -463,7 +507,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'You can create new employees, update existing ones, or both. Wrong headers, wrong file types and unsafe formulas are rejected before saving.',
       'ဝန်ထမ်းအသစ်ဖန်တီး၊ ရှိပြီးသားကို Update၊ သို့ နှစ်မျိုးလုံးလုပ်နိုင်သည်။ Header မှား၊ ဖိုင်အမျိုးအစားမှားနှင့် အန္တရာယ်ရှိ Formula များကို မသိမ်းမီ ပယ်သည်။',
     ),
-    b('Only Employees can be imported so far.', 'လက်ရှိ Employees ကိုသာ Import လုပ်နိုင်သည်။'),
+    b(
+      'Importable: Employees, Companies, Branches, Departments, Sections, Positions, Job grades, Shift assignments and Salary assignments. Leave applications, leave balances and attendance records are export only.',
+      'Import လုပ်နိုင်သည် — Employees၊ Companies၊ Branches၊ Departments၊ Sections၊ Positions၊ Job grades၊ Shift assignments နှင့် Salary assignments။ Leave applications၊ Leave balances နှင့် Attendance records များကို ထုတ်ရန်သာ။',
+    ),
   ],
   '/data-exchange/history': [
     b(

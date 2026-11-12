@@ -55,6 +55,14 @@
       </app-filter-field>
     </app-filter-popup>
   </ng-container>
+  <app-excel-actions
+    pageTools
+    moduleCode="leave-balances"
+    [allowImport]="false"
+    [search]="search()"
+    [filters]="excelFilters()"
+    [filterSummary]="['Year: ' + year()]"
+  />
 </app-page-header>
 
 @if (page.error() && !result()) {

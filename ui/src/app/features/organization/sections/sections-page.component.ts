@@ -33,6 +33,7 @@ export class SectionsPageComponent extends OrganizationPageBase<Section> {
     const departmentOptions = options(l.departments, (d) => d.name);
     return {
       title: 'Sections',
+      excel: { moduleCode: 'sections' },
       description: 'Teams and units within departments.',
       entityLabel: 'Section',
       service: this.service,

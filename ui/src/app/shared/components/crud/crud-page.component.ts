@@ -20,7 +20,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
-import { ActivatedRoute, ActivatedRouteSnapshot, RouterLink } from '@angular/router';
+import { ActivatedRoute, ActivatedRouteSnapshot } from '@angular/router';
 import { Observable, filter } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import {
@@ -40,7 +40,7 @@ import {
 import { MoneyPipe } from '../../pipes/money.pipe';
 import { ListQuery } from '../../utilities/list-query';
 import { readAllPages } from '../../utilities/paged-query';
-import { ExcelExportService } from '../excel/excel-export.service';
+import { ExcelActionsComponent } from '../excel/excel-actions.component';
 import { DataTableComponent } from '../data-table/data-table.component';
 import { TableAction, TableActionEvent, TableColumn } from '../data-table/data-table.models';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
@@ -81,6 +81,7 @@ function permissionModuleOf(snapshot: ActivatedRouteSnapshot | null): string | n
 @Component({
   selector: 'app-crud-page',
   imports: [
+    ExcelActionsComponent,
     DatePipe,
     DecimalPipe,
     MoneyPipe,
@@ -95,7 +96,6 @@ function permissionModuleOf(snapshot: ActivatedRouteSnapshot | null): string | n
     MatInputModule,
     MatFormFieldModule,
     MatSelectModule,
-    RouterLink,
     SearchFieldComponent,
     DataTableComponent,
     EmptyStateComponent,
@@ -112,7 +112,6 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(UiNotificationService);
-  private readonly excelExport = inject(ExcelExportService);
   private readonly permissions = inject(PermissionService);
   private readonly printer = inject(PrintService);
   private readonly injector = inject(Injector);
@@ -155,14 +154,6 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
     const key =
       this.config().permissionKeys?.[action] ?? (this.module && `${this.module}:${action}`);
     return !key || this.permissions.can(key);
-  }
-
-  protected canExport(): boolean {
-    return this.permissions.can('excel:Export');
-  }
-
-  protected canImport(): boolean {
-    return this.permissions.can('excel:Import');
   }
 
   protected readonly actions = computed<TableAction<T>[]>(() => {
@@ -398,29 +389,28 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
     this.query.setFilter(key, value || null);
   }
 
-  /** Opens the Excel export dialog with the list's current search and filters. */
-  protected openExport(): void {
+  /** Filters handed to the Excel export (the list's applied filters plus the locked ones). */
+  protected readonly excelFilters = computed<Record<string, unknown>>(() => ({
+    ...this.query.filters(),
+    ...this.config().lockedFilters,
+  }));
+
+  /** Short texts describing the applied filters for the export dialog. */
+  protected readonly excelSummary = computed(() => {
     const cfg = this.config();
-    if (!cfg.excel) return;
     const active = this.query.filters();
     const summary = (cfg.filters ?? []).flatMap((f) => {
       const value = active[f.key];
       if (value === null || value === undefined || value === '') return [];
       const label = f.options.find((o) => o.value === value)?.label ?? String(value);
-      return [`: ${label}`];
+      return [`${f.label}: ${label}`];
     });
     const df = cfg.dateFilter;
-    if (df && this.dateValue(df.fromKey)) summary.push(`: ${this.dateValue(df.fromKey)}`);
-    if (df && this.dateValue(df.toKey)) summary.push(`: ${this.dateValue(df.toKey)}`);
-    this.excelExport
-      .open({
-        moduleCode: cfg.excel.moduleCode,
-        search: this.query.search() || undefined,
-        filters: { ...active, ...cfg.lockedFilters },
-        filterSummary: summary,
-      })
-      .subscribe();
-  }
+    if (df && this.dateValue(df.fromKey))
+      summary.push(`${df.fromLabel}: ${this.dateValue(df.fromKey)}`);
+    if (df && this.dateValue(df.toKey)) summary.push(`${df.toLabel}: ${this.dateValue(df.toKey)}`);
+    return summary;
+  });
 
   protected openForm(row?: T): void {
     const cfg = this.config();

@@ -35,6 +35,7 @@ export class DepartmentsPageComponent extends OrganizationPageBase<Department> {
     const people = employeeOptions(l.employees);
     return {
       title: 'Departments',
+      excel: { moduleCode: 'departments' },
       description: 'Functional departments within each branch.',
       entityLabel: 'Department',
       service: this.service,

@@ -180,6 +180,7 @@ export function buildLeaveApplicationsConfig(
   const mode = o.mode;
   const common = {
     entityLabel: 'Leave application',
+    excel: { moduleCode: 'leave-applications', import: false },
     service: o.service,
     hasStatus: false,
     nameOf: label,

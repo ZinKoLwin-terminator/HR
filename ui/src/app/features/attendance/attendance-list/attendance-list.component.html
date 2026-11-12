@@ -114,10 +114,25 @@
     <ng-container pageSearch>
       <ng-container *ngTemplateOutlet="bar" />
     </ng-container>
+    <app-excel-actions
+      pageTools
+      moduleCode="attendance-records"
+      [allowImport]="false"
+      [search]="query.search()"
+      [filters]="excelFilters()"
+      [filterSummary]="excelSummary()"
+    />
   </app-page-header>
 } @else {
   <div class="filters" role="search" aria-label="Filters">
     <ng-container *ngTemplateOutlet="bar" />
+    <app-excel-actions
+      moduleCode="attendance-records"
+      [allowImport]="false"
+      [search]="query.search()"
+      [filters]="excelFilters()"
+      [filterSummary]="excelSummary()"
+    />
   </div>
 }
 @if (activeChips().length > 0) {
