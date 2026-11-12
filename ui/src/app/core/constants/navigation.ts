@@ -98,6 +98,12 @@ export const NAVIGATION: NavItem[] = [
         group: 'Setup',
       },
       {
+        label: 'Holiday Calendar',
+        icon: 'event',
+        route: '/attendance/holidays',
+        group: 'Setup',
+      },
+      {
         label: 'Shift Assignment',
         icon: 'assignment_ind',
         route: '/attendance/shift-assignment',

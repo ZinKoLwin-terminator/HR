@@ -224,6 +224,14 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         text: { en: 'Define shifts and their rules.', my: 'Shift နှင့် စည်းမျဉ်းများ သတ်မှတ်ရန်။' },
       },
       {
+        label: 'Holiday Calendar',
+        route: '/attendance/holidays',
+        text: {
+          en: 'Public and company holidays that affect leave days and working days.',
+          my: 'ခွင့်ရက်နှင့် အလုပ်ရက်ရေကို သက်ရောက်သော အများပြည်သူနှင့် ကုမ္ပဏီအားလပ်ရက်များ။',
+        },
+      },
+      {
         label: 'Shift Assignment',
         route: '/attendance/shift-assignment',
         text: { en: 'Assign shifts to employees.', my: 'ဝန်ထမ်းများကို Shift ခွဲပေးရန်။' },

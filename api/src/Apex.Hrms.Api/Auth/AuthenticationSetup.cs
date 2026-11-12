@@ -31,6 +31,7 @@ internal static class AuthenticationSetup
         services.AddHttpContextAccessor();
         services.Replace(ServiceDescriptor.Scoped<ICurrentUser, HttpContextCurrentUser>());
         services.AddScoped<AuthFlows>();
+        services.AddSingleton<PasswordResetThrottle>();
 
         // Reset tokens come from Identity's data-protection token provider (lifetime set in SecurityPolicy).
         new IdentityBuilder(typeof(IdentityUser), services).AddDefaultTokenProviders();
@@ -96,7 +97,7 @@ internal static class AuthenticationSetup
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            // Per client IP. Behind a reverse proxy, forward the client address (forwarded headers) or every caller shares one bucket.
+            // Per client IP. Behind a reverse proxy, enable Hosting:ForwardedHeaders or every caller shares one bucket.
             options.AddPolicy(RateLimitPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
                 httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions

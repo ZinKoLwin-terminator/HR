@@ -40,11 +40,15 @@ Without a database you cannot sign in: create the first administrator with the `
 | `Email:Smtp:Host`, `Email:Smtp:FromAddress` | Required outside Development for password reset mail. |
 | `Email:Smtp:Port` (587), `Email:Smtp:EnableSsl` (true), `Email:Smtp:FromName` | Optional. |
 | `Email:Smtp:UserName`, `Email:Smtp:Password` | Optional pair (both or neither). **Environment variables or user secrets only**, never an appsettings file. |
+| `DataProtection:KeysPath` | Directory where the data protection key ring (session cookie, antiforgery, reset tokens) is stored. Default `App_Data/keys` under the content root; a relative value starts at the content root. Protect it like a secret (see "Authentication"). |
+| `Hosting:ForwardedHeaders:Enabled` | Behind a reverse proxy, take the client IP and scheme from `X-Forwarded-For` and `X-Forwarded-Proto` (default `false`, so local development is unchanged). The client IP feeds the sign-in rate limit and lockout, the scheme feeds HTTPS redirection and secure cookies. When enabled, `UseForwardedHeaders` runs first in the pipeline with a forward limit of 1 and trusts only the proxies below; enabling it with neither list filled stops startup. |
+| `Hosting:ForwardedHeaders:KnownProxies` | List of trusted proxy IP addresses (for example `["10.0.0.5"]`; as environment variables `Hosting__ForwardedHeaders__KnownProxies__0`). An invalid address stops startup. |
+| `Hosting:ForwardedHeaders:KnownNetworks` | List of trusted proxy networks in CIDR form (for example `["10.0.0.0/8"]`). The framework's loopback defaults are removed: only these lists are trusted. |
 
 Secrets: `dotnet user-secrets set "Email:Smtp:Password" "..." --project src/Apex.Hrms.Api` or the environment variable
 `Email__Smtp__Password`. Configuration is read when the host starts: restart after changing it.
 
-Outside Development the API also uses HTTPS redirection and HSTS. Every response carries
+The per-user password reset limit (one administrator-triggered reset mail per user per minute, in memory per instance) is not configurable. Outside Development the API also uses HTTPS redirection and HSTS. Every response carries
 `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`.
 
 ## HTTP contract (organization module)
@@ -431,7 +435,7 @@ with the initial password or uses forgot-password (the reset-by-email flow).
 | `POST /api/users` | Create | Body `{ employeeId, roleId, status?, initialPassword }`; `201` with the `UserDto`. See the rules below. No credential is ever in a response. |
 | `PUT /api/users/{id}` | Edit | Body `{ roleId, rowVersion }`: only the role changes (the employee never does; status moves are commands). |
 | `POST /api/users/{id}/activate`, `/deactivate`, `/unlock` | Edit | Body `{ rowVersion }`; returns the `UserDto`. |
-| `POST /api/users/{id}/password-reset` | Edit | No body. Sends the same reset mail as forgot-password; `200 { message }`. `503` (`code: "Unknown"`) when email is not configured, before anything else happens. Only for an active user with an active role (`409` otherwise). |
+| `POST /api/users/{id}/password-reset` | Edit | No body (an empty JSON object is fine). Sends the same reset mail as forgot-password (same token, link and mail sender or dev mail sink); `202 Accepted` with no body: the administrator never sees the token or the link. `404` unknown id; `409` (with a message) when the account is not Active ("Activate the account before sending a password reset."), its role is inactive, its employee has left, or it has no email or sign-in; `503` (`code: "Unknown"`) when email is not configured, before anything else happens, or when the mail server refuses; `429` (`code: "Unknown"`, `Retry-After`) for a second request for the same user within a minute. It changes nothing about the account (password, lock state, sessions); sessions end when the user uses the link, because the reset changes the security stamp. Activity note: `Password reset email sent for user "<display name>"` (no address, no token). |
 | `DELETE /api/users/{id}` | Delete | Body `{ rowVersion }`; `204`. Removes the account and its login. |
 | `/api/roles` (get all, `/query`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | `RoleDto`: `{ id, name, description, isSystem, status, rowVersion }`. POST `{ name, description?, status? }` (default Active); PUT `{ name, description?, rowVersion }`. Filter: `status`. |
 | `POST /api/roles/{id}/activate`, `/deactivate` | Edit | Body `{ rowVersion }`. |
@@ -554,9 +558,13 @@ password.
   there is no `__Host-` prefix (it needs https) and the name comes from `Auth:DevelopmentCookieName`; Secure follows the
   request scheme. One code path (`Auth/AuthCookies`, `Auth/AuthenticationSetup`).
 * **CORS** stays without `AllowCredentials`: the frontend reaches the API through the dev proxy on its own origin.
-* **Data protection keys are not persisted yet** (decision pending): cookies and reset tokens do not survive an API
-  restart (with the framework default key ring; on a container or a shared host they may not even survive a recycle).
-  Everyone has to sign in again after a restart.
+* **Data protection keys** are persisted to the directory `DataProtection:KeysPath` (default `App_Data/keys` under the content root,
+  git-ignored), under the application name `Apex.Hrms`, so sessions, antiforgery tokens and reset tokens survive a restart and
+  instances that share the directory share the keys. **The directory holds the secret that signs and encrypts sessions: in production
+  put it on a protected path that only the API account can read and write (and back it up), never in the repository or a public
+  folder.** Several instances must point at the same shared directory. Optionally the keys can be encrypted at rest with a
+  certificate (`ProtectKeysWithCertificate`); that is not wired in here, so add it in `Hosting/HostingSetup` if the deployment needs it.
+  A host that cannot write the directory fails when the first key is created.
 
 ### Antiforgery
 

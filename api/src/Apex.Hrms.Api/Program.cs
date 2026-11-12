@@ -1,6 +1,7 @@
 using Apex.Hrms.Api;
 using Apex.Hrms.Api.Cli;
 using Apex.Hrms.Api.Endpoints;
+using Apex.Hrms.Api.Hosting;
 using Apex.Hrms.Application;
 using Apex.Hrms.Infrastructure;
 using Apex.Hrms.Infrastructure.Email;
@@ -21,6 +22,8 @@ builder.Services
     .AddInfrastructure(builder.Configuration)
     .AddEmailSender(builder.Configuration, builder.Environment.IsDevelopment(), builder.Environment.ContentRootPath)
     .AddExcelUploadFolder(builder.Configuration, builder.Environment.ContentRootPath)
+    .AddHrmsDataProtection(builder.Configuration, builder.Environment.ContentRootPath)
+    .AddHrmsForwardedHeaders(builder.Configuration)
     .AddApi(builder.Configuration, builder.Environment);
 
 var app = builder.Build();

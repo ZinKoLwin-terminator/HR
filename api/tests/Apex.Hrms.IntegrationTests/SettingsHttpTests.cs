@@ -319,7 +319,9 @@ public sealed partial class SettingsHttpTests : DatabaseTest, IDisposable
 
         var reset = await admin.PostAsync($"/api/users/{user.Id}/password-reset", content: null);
 
-        Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, reset.StatusCode);
+        Assert.Equal(string.Empty, await reset.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await admin.PostAsync($"/api/users/{user.Id}/password-reset", content: null)).StatusCode);
         var file = Assert.Single(Directory.GetFiles(factory.MailFolder, "*.eml"));
         var mail = await File.ReadAllTextAsync(file);
         Assert.Contains($"To: {email.ToLowerInvariant()}", mail, StringComparison.OrdinalIgnoreCase);
@@ -330,6 +332,28 @@ public sealed partial class SettingsHttpTests : DatabaseTest, IDisposable
         Assert.Equal(HttpStatusCode.NoContent, choose.StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await LoginAsync(NewClient(), email, newPassword)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await LoginAsync(NewClient(), email, password)).StatusCode);
+    }
+
+    /// <summary>The dev mail sink creates its folder with the first mail, so a missing folder means none were sent.</summary>
+    private int MailCount() =>
+        Directory.Exists(factory.MailFolder) ? Directory.GetFiles(factory.MailFolder, "*.eml").Length : 0;
+
+    [IntegrationFact]
+    public async Task A_password_reset_for_an_inactive_or_unknown_user_is_409_or_404_and_sends_no_mail()
+    {
+        var role = await CreateRoleAsync("Staff");
+        var (user, _, _) = await CreateUserAsync("olive", role);
+        var deactivate = await Command(admin, $"/api/users/{user.Id}/deactivate", Version(user));
+        Assert.Equal(HttpStatusCode.OK, deactivate.StatusCode);
+
+        var mailsBefore = MailCount();
+        var inactive = await admin.PostAsync($"/api/users/{user.Id}/password-reset", content: null);
+        var unknown = await admin.PostAsync("/api/users/2147483000/password-reset", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, inactive.StatusCode);
+        Assert.Equal("Activate the account before sending a password reset.", (await ReadAsync(inactive)).GetProperty("detail").GetString());
+        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+        Assert.Equal(mailsBefore, MailCount());
     }
 
     // ---- Roles ----

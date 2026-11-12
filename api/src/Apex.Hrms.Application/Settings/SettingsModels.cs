@@ -49,8 +49,6 @@ public sealed record UnlockUserCommand(int Id, string? RowVersion) : IEntityComm
     public static UnlockUserCommand From(int id, string? rowVersion) => new(id, rowVersion);
 }
 
-public sealed record MessageDto(string Message);
-
 // ---- Roles ----
 
 /// <summary>Mirrors Role in settings.models.ts.</summary>
@@ -134,8 +132,8 @@ public sealed record GeneralSettingsUpdateRequest(
 
 public interface IUserPasswordResetHandler
 {
-    /// <summary>Sends the password reset email to the user. Nothing about the password is returned.</summary>
-    Task<Result<MessageDto>> HandleAsync(int id, CancellationToken cancellationToken);
+    /// <summary>Sends the password reset email to the user. Nothing about the password, the token or the link is returned.</summary>
+    Task<Result> HandleAsync(int id, CancellationToken cancellationToken);
 }
 
 public interface IPermissionMatrixHandler

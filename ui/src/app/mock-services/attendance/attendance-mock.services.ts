@@ -76,6 +76,11 @@ export class HolidayMockService extends InMemoryCrudService<Holiday> implements 
     super(MOCK_HOLIDAYS, 'holidays');
   }
 
+  /** Same rule as the API: one holiday per date. */
+  protected override validate(candidate: Holiday): void {
+    this.ensureUnique(candidate, 'date', 'A holiday on');
+  }
+
   protected override describe(entity: Holiday): string {
     return `${entity.name} (${entity.date})`;
   }

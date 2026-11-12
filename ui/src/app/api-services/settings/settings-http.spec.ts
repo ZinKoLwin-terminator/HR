@@ -309,15 +309,15 @@ describe('Settings HTTP adapters', () => {
     it('password reset posts without a body and maps 503 to "Email is not configured."', async () => {
       const { http, users } = setup();
       const service = users as UserHttpService;
-      const ok = firstValueFrom(service.resetPassword(4));
+      const ok = firstValueFrom(service.sendPasswordReset(4));
       const req = http.expectOne(
         (r) => r.method === 'POST' && r.url.endsWith('/users/4/password-reset'),
       );
       expect(req.request.body).toBeNull();
-      req.flush({ message: 'Sent.' });
-      expect(await ok).toBe('Sent.');
+      req.flush(null, { status: 202, statusText: 'Accepted' });
+      expect(await ok).toBeUndefined();
 
-      const failure = rejection(firstValueFrom(service.resetPassword(4)));
+      const failure = rejection(firstValueFrom(service.sendPasswordReset(4)));
       http
         .expectOne((r) => r.url.endsWith('/users/4/password-reset'))
         .flush(

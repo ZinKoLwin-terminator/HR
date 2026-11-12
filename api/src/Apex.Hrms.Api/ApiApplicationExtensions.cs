@@ -1,4 +1,5 @@
 using Apex.Hrms.Api.Auth;
+using Apex.Hrms.Api.Hosting;
 using Apex.Hrms.Api.Http;
 
 namespace Apex.Hrms.Api;
@@ -6,12 +7,13 @@ namespace Apex.Hrms.Api;
 internal static class ApiApplicationExtensions
 {
     /// <summary>
-    /// The request pipeline in order: response headers, error handling, transport security (outside Development),
+    /// The request pipeline in order: forwarded headers (only when enabled), response headers, error handling, transport security (outside Development),
     /// CORS, rate limiting, authentication (the session cookie), antiforgery validation of unsafe methods (it needs the
     /// signed-in user), authorization.
     /// </summary>
     public static WebApplication UseApiPipeline(this WebApplication app)
     {
+        app.UseHrmsForwardedHeaders();
         app.UseMiddleware<ApiResponseHeadersMiddleware>();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
