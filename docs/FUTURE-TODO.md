@@ -39,8 +39,13 @@ Priority: **P1** = before real use, **P2** = next features, **P3** = nice to hav
 - [x] **P2** Import/export in API mode for the other modules (API done): organization (`companies`, `branches`,
       `departments`, `sections`, `positions`, `job-grades`), `shift-assignments` and `salary-assignments` import and
       export; `leave-applications`, `leave-balances` and `attendance-records` export only.
-- [ ] **P2** Excel screens for the 11 new API modules (UI pending; the UI offers Employees only). The catalog
-      (`GET /api/excel/modules`) already reports `canImport` and `canExport` per caller.
+- [x] **P2** Excel buttons for the 11 new modules (organization screens, salary and shift assignments, leave
+      applications and balances, attendance records), gated by the catalog and `excel:*`; demo-build modules too.
+- [ ] **P3** Demo build: the mock Excel modules export every row (no own/team scoping) and the mock catalog marks all
+      modules importable; only the `excel:*` keys gate the buttons there. The API enforces both.
+- [ ] **P3** Demo seed: some salary assignments lie outside their employee's grade band, so re-importing an exported
+      salary sheet unchanged reports band errors for those rows.
+- [ ] **P3** Run the Excel buttons against the real API (only compiled so far) and add XLS rows to Playwright.
 - [ ] **P3** Background export (202 + download later) for exports above the row limit (today a 400 with a message).
 - [ ] **P3** `ExportRequest.layout` ("template" layout): the API accepts it; the UI model has no field for it.
 
