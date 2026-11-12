@@ -118,13 +118,17 @@ public sealed class PermissionsHttpTests : DatabaseTest, IDisposable
         var limited = await TestAccounts.CreateAsync(TestAccounts.EmailFor(Tag, "limited"), roleName: $"{Tag}-Limited");
         var client = await SignedInAsync(limited);
 
+        // employees:View is allowed, but the account has no linked employee, so its team is empty: the list
+        // answers 200 and another employee reads as not found (team scoping). The personal-data policies still refuse.
+        var list = await client.GetAsync("/api/employees/query");
         var detail = await client.GetAsync($"/api/employees/{person.Id}");
         var bank = await client.GetAsync($"/api/employees/{person.Id}/bank-account");
         var personal = await client.GetAsync($"/api/employees/{person.Id}/personal");
         var company = await client.GetAsync("/api/companies/query");
         var bankWrite = await client.PutAsJsonAsync($"/api/employees/{person.Id}/bank-account", new { });
 
-        Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, detail.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, bank.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, personal.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, company.StatusCode);

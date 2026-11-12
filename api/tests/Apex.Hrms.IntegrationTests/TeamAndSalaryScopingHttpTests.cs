@@ -195,7 +195,8 @@ public sealed class TeamAndSalaryScopingHttpTests : PayrollTestBase, IDisposable
         var processed = await admin.PostAsJsonAsync($"/api/payroll-runs/{run.Id}/process", new { rowVersion = Requests.Version(run.RowVersion) });
         Assert.Equal(HttpStatusCode.OK, processed.StatusCode);
         var viewer = await SignedInAsRoleAsync("PayrollView", ben.Id, PayrollViewGrants);
-        var approver = await SignedInAsRoleAsync("PayrollApprove", ben.Id, PayrollApproveGrants);
+        // One account per employee (UQ_AppUser_EmployeeId): the approver needs no employee to see every payslip.
+        var approver = await SignedInAsRoleAsync("PayrollApprove", null, PayrollApproveGrants);
         var adaSlipId = (await admin.GetFromJsonAsync<PagedResult<PayslipDto>>($"/api/payslips/query?runId={run.Id}&pageSize=50"))!
             .Items.Single(item => item.EmployeeId == world.Employee.Id).Id;
 
