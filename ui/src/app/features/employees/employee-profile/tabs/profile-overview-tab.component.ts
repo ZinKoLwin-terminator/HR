@@ -1,14 +1,14 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Employee } from '../../../../core/models/employee.models';
 import { PermissionService } from '../../../../core/services/permission.service';
 import { todayIso, yearsBetween } from '../../../../shared/utilities/date.util';
+import { AppDatePipe } from '../../../../shared/pipes/app-date.pipe';
 
 @Component({
   selector: 'app-profile-overview-tab',
-  imports: [DatePipe, MatButtonModule, MatIconModule],
+  imports: [AppDatePipe, MatButtonModule, MatIconModule],
   template: `
     @let e = employee();
     <div class="cards">
@@ -26,7 +26,7 @@ import { todayIso, yearsBetween } from '../../../../shared/utilities/date.util';
             </div>
             <div>
               <dt>Date of birth</dt>
-              <dd>{{ e.dateOfBirth | date }} ({{ age() }} yrs)</dd>
+              <dd>{{ e.dateOfBirth | appDate }} ({{ age() }} yrs)</dd>
             </div>
             <div>
               <dt>Marital status</dt>

@@ -53,7 +53,7 @@
               @let value = cellValue(column, row);
               @switch (column.type) {
                 @case ('date') {
-                  {{ value ? (value | date) : '—' }}
+                  {{ value ? (value | appDate) : '—' }}
                 }
                 @case ('currency') {
                   <span class="num">{{ $any(value) | money }}</span>

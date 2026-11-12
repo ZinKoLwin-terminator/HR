@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import {
   Component,
   Injector,
@@ -35,13 +34,14 @@ import { ProfileHistoryTabComponent } from './tabs/profile-history-tab.component
 import { ProfileLeaveTabComponent } from './tabs/profile-leave-tab.component';
 import { ProfileOverviewTabComponent } from './tabs/profile-overview-tab.component';
 import { ProfileSalaryTabComponent } from './tabs/profile-salary-tab.component';
+import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 
 const TABS = ['overview', 'employment', 'documents', 'history', 'attendance', 'leave', 'salary'];
 
 @Component({
   selector: 'app-employee-profile',
   imports: [
-    DatePipe,
+    AppDatePipe,
     RouterLink,
     MatButtonModule,
     MatIconModule,

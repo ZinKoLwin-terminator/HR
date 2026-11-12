@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, input, output } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Employee, fullName } from '../../../core/models/employee.models';
@@ -7,6 +6,7 @@ import { PermissionService } from '../../../core/services/permission.service';
 import { PrintHeaderComponent } from '../../../shared/components/print/print-header.component';
 import { formatTenure, todayIso, yearsBetween } from '../../../shared/utilities/date.util';
 import { OrgLookups, nameMap } from '../../organization/organization-lookups';
+import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 
 /**
  * Print layout of an employee profile. It shows what the profile screen shows to this user: the
@@ -16,7 +16,7 @@ import { OrgLookups, nameMap } from '../../organization/organization-lookups';
  */
 @Component({
   selector: 'app-profile-print',
-  imports: [DatePipe, PrintHeaderComponent],
+  imports: [AppDatePipe, PrintHeaderComponent],
   template: `
     @let e = employee();
     <app-print-header [title]="'Employee profile · ' + name()" [subtitle]="e.employeeCode" />
@@ -38,12 +38,12 @@ import { OrgLookups, nameMap } from '../../organization/organization-lookups';
         </div>
         <div>
           <dt>Joining date</dt>
-          <dd>{{ e.joiningDate | date: 'mediumDate' }} · {{ tenure() }}</dd>
+          <dd>{{ e.joiningDate | appDate }} · {{ tenure() }}</dd>
         </div>
         @if (e.exitDate) {
           <div>
             <dt>Exit date</dt>
-            <dd>{{ e.exitDate | date: 'mediumDate' }}</dd>
+            <dd>{{ e.exitDate | appDate }}</dd>
           </div>
         }
         <div>
@@ -91,7 +91,7 @@ import { OrgLookups, nameMap } from '../../organization/organization-lookups';
           </div>
           <div>
             <dt>Date of birth</dt>
-            <dd>{{ e.dateOfBirth | date: 'mediumDate' }} ({{ age() }} yrs)</dd>
+            <dd>{{ e.dateOfBirth | appDate }} ({{ age() }} yrs)</dd>
           </div>
           <div>
             <dt>Marital status</dt>
@@ -176,8 +176,8 @@ import { OrgLookups, nameMap } from '../../organization/organization-lookups';
                   <td>{{ d.type }}</td>
                   <td>{{ d.title }}</td>
                   <td>{{ d.fileName }}</td>
-                  <td>{{ d.uploadedOn | date: 'mediumDate' }}</td>
-                  <td>{{ d.expiryDate ? (d.expiryDate | date: 'mediumDate') : '—' }}</td>
+                  <td>{{ d.uploadedOn | appDate }}</td>
+                  <td>{{ d.expiryDate ? (d.expiryDate | appDate) : '—' }}</td>
                 </tr>
               }
             </tbody>

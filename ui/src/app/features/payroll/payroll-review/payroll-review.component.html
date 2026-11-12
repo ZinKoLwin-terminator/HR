@@ -70,15 +70,15 @@
     </ol>
     <p class="meta">
       <app-status-badge [status]="r.status" />
-      <span>Pay date {{ r.payDate | date }}</span>
+      <span>Pay date {{ r.payDate | appDate }}</span>
       @if (r.processedOn) {
-        <span>· processed {{ r.processedOn | date }}</span>
+        <span>· processed {{ r.processedOn | appDate }}</span>
       }
       @if (r.approvedBy) {
-        <span>· approved by {{ r.approvedBy }} on {{ r.approvedOn | date }}</span>
+        <span>· approved by {{ r.approvedBy }} on {{ r.approvedOn | appDate }}</span>
       }
       @if (r.paidOn) {
-        <span>· paid {{ r.paidOn | date }}</span>
+        <span>· paid {{ r.paidOn | appDate }}</span>
       }
     </p>
 

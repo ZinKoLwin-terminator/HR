@@ -1,3 +1,5 @@
+import { isValidTimeZone, isoDateInZone } from './format.util';
+
 /**
  * Date helpers working with ISO `yyyy-MM-dd` strings in LOCAL time.
  * Keeping dates as plain strings avoids timezone drift in forms and mock data.
@@ -15,8 +17,18 @@ export function parseIsoDate(value: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
+let displayTimeZone: string | null = null;
+
+/**
+ * Sets the organization time zone used by {@link todayIso} (from the general settings). `null` goes
+ * back to the browser's own zone. Only "today" is affected; all other helpers stay timezone-free.
+ */
+export function setDisplayTimeZone(zone: string | null): void {
+  displayTimeZone = zone && isValidTimeZone(zone) ? zone : null;
+}
+
 export function todayIso(): string {
-  return toIsoDate(new Date());
+  return displayTimeZone ? isoDateInZone(new Date(), displayTimeZone) : toIsoDate(new Date());
 }
 
 export function addDays(value: string, days: number): string {

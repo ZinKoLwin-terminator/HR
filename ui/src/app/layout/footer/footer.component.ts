@@ -1,12 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { APP_CONFIG } from '../../core/configuration/app-config';
+import { AppSettingsService } from '../../core/services/app-settings.service';
 
 @Component({
   selector: 'app-footer',
   template: `
     <footer class="footer">
       <span
-        >© {{ year }} {{ config.organizationName }} · {{ config.appName }} · v{{
+        >© {{ year }} {{ settings.organizationName() }} · {{ config.appName }} · v{{
           config.version
         }}</span
       >
@@ -27,6 +28,7 @@ import { APP_CONFIG } from '../../core/configuration/app-config';
   `,
 })
 export class FooterComponent {
+  protected readonly settings = inject(AppSettingsService);
   protected readonly config = inject(APP_CONFIG);
   protected readonly year = new Date().getFullYear();
 }

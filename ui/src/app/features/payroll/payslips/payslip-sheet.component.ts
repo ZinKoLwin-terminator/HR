@@ -1,9 +1,9 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Payslip } from '../../../core/models/payroll.models';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { formatDuration } from '../../../shared/utilities/date.util';
+import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 
 /**
  * One payslip as a document: shown on the payslip screen and repeated, one per page, when a run is
@@ -11,7 +11,7 @@ import { formatDuration } from '../../../shared/utilities/date.util';
  */
 @Component({
   selector: 'app-payslip-sheet',
-  imports: [DatePipe, MatIconModule, MoneyPipe],
+  imports: [AppDatePipe, MatIconModule, MoneyPipe],
   templateUrl: './payslip-sheet.component.html',
   styleUrl: './payslip-sheet.component.scss',
 })

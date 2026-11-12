@@ -10,6 +10,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatSidenavContainer, MatSidenavModule } from '@angular/material/sidenav';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
+import { AppSettingsService } from '../../core/services/app-settings.service';
 import { LayoutService } from '../../core/services/layout.service';
 import { FooterComponent } from '../footer/footer.component';
 import { HeaderComponent } from '../header/header.component';
@@ -92,6 +93,8 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 })
 export class MainLayoutComponent {
   protected readonly layout = inject(LayoutService);
+  /** Created here so the saved general settings are loaded once the user is signed in. */
+  private readonly appSettings = inject(AppSettingsService);
 
   private readonly container = viewChild.required(MatSidenavContainer);
   private readonly sidenav = viewChild.required('sidenav', { read: ElementRef });
