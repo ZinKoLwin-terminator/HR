@@ -51,6 +51,16 @@ export interface Candidate extends Entity {
   /** Demo: only the file name is kept. */
   resumeName: string | null;
   notes: string;
+  /**
+   * Write-only. Used for the do-not-rehire check and never returned: omit it to keep the stored
+   * value, send a blank to clear it.
+   */
+  nationalId?: string;
+  /**
+   * True when the candidate matches an employee on the do-not-rehire list. Nothing else is known
+   * to the screens: not which employee and not why. Set by the server (or mock) only.
+   */
+  blacklistMatch?: boolean;
 }
 
 export const candidateName = (c: Pick<Candidate, 'firstName' | 'lastName'>): string =>
@@ -82,6 +92,21 @@ export interface Application extends Entity {
   /** Set when the stage is Rejected. */
   rejectionReason: string | null;
   notes: string;
+  /** See {@link Candidate.blacklistMatch}. */
+  blacklistMatch?: boolean;
+}
+
+/** Text the API's refusal to select a matching candidate always contains. */
+export const BLACKLIST_HIRE_BLOCK_MARKER = 'do-not-rehire';
+
+/** True for the 409 that asks an HR Administrator to approve the hire with a reason. */
+export function isBlacklistHireBlock(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  return (
+    e?.code === 'Conflict' &&
+    typeof e.message === 'string' &&
+    e.message.toLowerCase().includes(BLACKLIST_HIRE_BLOCK_MARKER)
+  );
 }
 
 export type InterviewRound = 'Phone screen' | 'Technical' | 'HR' | 'Final';

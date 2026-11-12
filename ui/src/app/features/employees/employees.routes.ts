@@ -33,6 +33,16 @@ export const EMPLOYEE_ROUTES: Routes = [
       ),
   },
   {
+    path: 'do-not-rehire',
+    title: 'Do-not-rehire list',
+    data: { breadcrumb: 'Do-not-rehire list', permission: 'employees:ViewBlacklist' },
+    canActivate: [permissionGuard],
+    loadComponent: () =>
+      import('./do-not-rehire/do-not-rehire-page.component').then(
+        (m) => m.DoNotRehirePageComponent,
+      ),
+  },
+  {
     path: ':id',
     data: { breadcrumb: 'Employee Profile' },
     children: [

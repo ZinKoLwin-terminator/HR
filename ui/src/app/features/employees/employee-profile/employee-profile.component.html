@@ -87,6 +87,12 @@
     </dl>
   </section>
 
+  <app-profile-blacklist-section
+    [employeeId]="v.employee.id"
+    [employeeName]="v.name"
+    [exitDate]="v.employee.exitDate"
+  />
+
   <mat-tab-group
     class="tabs"
     [selectedIndex]="tabIndex()"

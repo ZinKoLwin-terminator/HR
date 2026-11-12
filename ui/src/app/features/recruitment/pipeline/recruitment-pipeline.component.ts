@@ -10,13 +10,20 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { Observable, filter, forkJoin } from 'rxjs';
 import {
+  BLACKLIST_MATCH_LABEL,
+  BLACKLIST_OVERRIDE_MAX_LENGTH,
+} from '../../../core/models/blacklist.models';
+import {
   APPLICATION_STAGES,
   Application,
   ApplicationStage,
   STAGE_TRANSITIONS,
   candidateName,
+  isBlacklistHireBlock,
 } from '../../../core/models/recruitment.models';
+import { ADMIN_ROLE_NAME } from '../../../core/models/settings.models';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
+import { CurrentUserService } from '../../../core/services/current-user.service';
 import {
   ApplicationDataService,
   CandidateDataService,
@@ -29,6 +36,7 @@ import { EntityFormDialogComponent } from '../../../shared/components/crud/entit
 import { EntityFormDialogData } from '../../../shared/components/crud/crud.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { todayIso } from '../../../shared/utilities/date.util';
 
 interface Card {
@@ -59,6 +67,7 @@ import {
     MatSelectModule,
     PageHeaderComponent,
     EmptyStateComponent,
+    StatusBadgeComponent,
   ],
   template: `
     <app-page-header
@@ -149,6 +158,11 @@ import {
                       </mat-menu>
                     }
                   </div>
+                  @if (card.application.blacklistMatch) {
+                    <div class="card__flag">
+                      <app-status-badge [status]="blacklistLabel" />
+                    </div>
+                  }
                   @if (!jobId()) {
                     <div class="card__job">{{ card.jobTitle }}</div>
                   }
@@ -226,6 +240,9 @@ import {
       justify-content: space-between;
       gap: 4px;
     }
+    .card__flag {
+      margin-top: 6px;
+    }
     .card__job {
       font: var(--mat-sys-label-large);
       margin-top: 2px;
@@ -257,7 +274,14 @@ export class RecruitmentPipelineComponent {
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(UiNotificationService);
 
+  private readonly currentUser = inject(CurrentUserService);
+
   protected readonly stages = APPLICATION_STAGES;
+  protected readonly blacklistLabel = BLACKLIST_MATCH_LABEL;
+  /** Only an HR Administrator may approve the hire of a do-not-rehire match (the server checks too). */
+  protected readonly isAdministrator = computed(() =>
+    this.currentUser.current().roles.includes(ADMIN_ROLE_NAME),
+  );
   protected readonly jobId = signal<number | null>(null);
 
   protected readonly data = rxResource({
@@ -337,10 +361,41 @@ export class RecruitmentPipelineComponent {
   }
 
   protected move(card: Card, stage: ApplicationStage): void {
-    this.run(
-      this.applicationsApi.moveStage(card.application.id, stage),
-      `${card.name} moved to ${stage}.`,
-    );
+    this.applicationsApi.moveStage(card.application.id, stage).subscribe({
+      next: () => {
+        this.toast.success(`${card.name} moved to ${stage}.`);
+        this.data.reload();
+      },
+      error: (error: unknown) => {
+        // Selecting a do-not-rehire match needs an HR Administrator's approval with a reason.
+        // Anyone else just sees the server's message.
+        if (stage === 'Selected' && isBlacklistHireBlock(error) && this.isAdministrator()) {
+          this.approveDespiteMatch(card);
+        } else {
+          this.toast.error(error);
+        }
+      },
+    });
+  }
+
+  private approveDespiteMatch(card: Card): void {
+    this.confirm
+      .prompt({
+        title: 'Approve hire of a do-not-rehire match?',
+        message: `${card.name} matches the do-not-rehire list. As an HR Administrator you can approve the hire with a reason. The approval is logged.`,
+        label: 'Approval reason',
+        required: true,
+        confirmText: 'Approve hire',
+        destructive: true,
+        maxLength: BLACKLIST_OVERRIDE_MAX_LENGTH,
+      })
+      .pipe(filter((reason): reason is string => reason !== null))
+      .subscribe((reason) =>
+        this.run(
+          this.applicationsApi.moveStage(card.application.id, 'Selected', '', reason),
+          `${card.name} moved to Selected with HR approval.`,
+        ),
+      );
   }
 
   protected reject(card: Card): void {

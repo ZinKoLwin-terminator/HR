@@ -21,11 +21,15 @@ const FIELD_KEYS = [
   'experienceYears',
   'resumeName',
   'notes',
+  'nationalId',
 ] as const;
 
 /**
  * HTTP implementation of the candidate contract. The API stores the email in lower case, and
- * blank optional text is sent as null. Update is a full PUT: fields the caller leaves out are
+ * blank optional text is sent as null. `nationalId` is write-only: the API never returns it, so a
+ * row never has one. It is sent only when the caller supplies it (trimmed, at most 40 characters on
+ * the form); a blank field is not sent, so the stored value is kept. `blacklistMatch` is read-only and
+ * defaults to false. Update is a full PUT: fields the caller leaves out are
  * filled from the record as last seen.
  */
 @Injectable({ providedIn: 'root' })
@@ -46,12 +50,15 @@ export class CandidateHttpService
   ];
 
   protected normalise(raw: ApiShape<Candidate>): Versioned<Candidate> {
-    return {
+    const row = {
       ...raw,
       phone: raw.phone ?? '',
       currentEmployer: raw.currentEmployer ?? '',
       notes: raw.notes ?? '',
+      blacklistMatch: raw.blacklistMatch === true,
     } as Versioned<Candidate>;
+    delete row.nationalId;
+    return row;
   }
 
   create(model: CreateModel<Candidate>): Observable<Candidate> {
@@ -75,7 +82,13 @@ export class CandidateHttpService
 
 function body(source: object): Record<string, unknown> {
   const from = source as Record<string, unknown>;
+  const nationalId = from['nationalId'];
   return {
+    // Write-only and never prefilled, so a blank field means "keep the stored value": send it only
+    // when the user typed one.
+    ...(typeof nationalId === 'string' && nationalId.trim()
+      ? { nationalId: nationalId.trim() }
+      : {}),
     firstName: from['firstName'],
     lastName: from['lastName'],
     email: typeof from['email'] === 'string' ? from['email'].trim().toLowerCase() : from['email'],

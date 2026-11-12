@@ -1,6 +1,9 @@
 import { Injectable, Injector, inject } from '@angular/core';
-import { Observable, tap } from 'rxjs';
-import { CreateModel } from '../../core/models/common.models';
+import { Observable, map, tap } from 'rxjs';
+import { BLACKLIST_OVERRIDE_MAX_LENGTH } from '../../core/models/blacklist.models';
+import { CreateModel, UpdateModel } from '../../core/models/common.models';
+import { ADMIN_ROLE_NAME } from '../../core/models/settings.models';
+import { CurrentUserService } from '../../core/services/current-user.service';
 import {
   Application,
   ApplicationFilter,
@@ -28,8 +31,10 @@ import {
 import { matchesEqualityFilters } from '../../shared/utilities/query.util';
 import { isDateInRange, timeToMinutes, todayIso } from '../../shared/utilities/date.util';
 import { DepartmentMockService } from '../organization/organization-mock.services';
+import { BlacklistMockService } from '../employees/blacklist-mock.service';
 import { EmployeeMockService } from '../employees/employee-mock.service';
 import { InMemoryCrudService } from '../in-memory-crud.service';
+import { mockError } from '../mock-response';
 
 @Injectable({ providedIn: 'root' })
 export class JobOpeningMockService
@@ -164,6 +169,7 @@ export class CandidateMockService
   implements CandidateDataService
 {
   private readonly injector = inject(Injector);
+  private readonly blacklist = inject(BlacklistMockService);
   protected readonly entityLabel = 'Candidate';
   protected readonly activityCategory = 'recruitment';
   protected override readonly searchFields = [
@@ -184,6 +190,54 @@ export class CandidateMockService
   protected override prepare(candidate: Candidate): void {
     candidate.experienceYears = Number(candidate.experienceYears);
     candidate.email = candidate.email.trim().toLowerCase();
+    // Write-only and never prefilled: a blank field keeps the stored value (like the HTTP adapter,
+    // which does not send it).
+    if (candidate.nationalId !== undefined) {
+      const typed = String(candidate.nationalId).trim();
+      if (typed) {
+        candidate.nationalId = typed;
+      } else {
+        const stored = this.findById(candidate.id)?.nationalId;
+        if (stored) {
+          candidate.nationalId = stored;
+        } else {
+          delete candidate.nationalId;
+        }
+      }
+    }
+    delete candidate.blacklistMatch; // server-computed, never stored
+  }
+
+  /** Whether a stored candidate matches the do-not-rehire list (used for applications too). */
+  matchesBlacklist(candidate: Candidate): boolean {
+    return this.blacklist.matches(candidate);
+  }
+
+  /** What a caller sees: the match flag, and never the national id. */
+  private present(candidate: Candidate): Candidate {
+    const visible = { ...candidate };
+    delete visible.nationalId;
+    return { ...visible, blacklistMatch: this.blacklist.matches(candidate) };
+  }
+
+  protected override toListItem(entity: Candidate): Candidate {
+    return this.present(entity);
+  }
+
+  override getAll(): Observable<Candidate[]> {
+    return super.getAll().pipe(map((items) => items.map((c) => this.present(c))));
+  }
+
+  override getById(id: number): Observable<Candidate> {
+    return super.getById(id).pipe(map((c) => this.present(c)));
+  }
+
+  override create(model: CreateModel<Candidate>): Observable<Candidate> {
+    return super.create(model).pipe(map((c) => this.present(c)));
+  }
+
+  override update(id: number, changes: UpdateModel<Candidate>): Observable<Candidate> {
+    return super.update(id, changes).pipe(map((c) => this.present(c)));
   }
 
   protected override validate(candidate: Candidate): void {
@@ -211,6 +265,7 @@ export class ApplicationMockService
 {
   private readonly injector = inject(Injector);
   private readonly candidates = inject(CandidateMockService);
+  private readonly user = inject(CurrentUserService);
   protected readonly entityLabel = 'Application';
   protected readonly activityCategory = 'recruitment';
 
@@ -236,12 +291,42 @@ export class ApplicationMockService
     return `${candidate ? candidateName(candidate) : `candidate #${entity.candidateId}`} for ${job?.title ?? `job #${entity.jobOpeningId}`}`;
   }
 
+  /** The match flag is computed from the candidate on every read, never stored. */
+  private present(application: Application): Application {
+    const candidate = this.candidates.findById(application.candidateId);
+    return {
+      ...application,
+      blacklistMatch: !!candidate && this.candidates.matchesBlacklist(candidate),
+    };
+  }
+
+  protected override toListItem(entity: Application): Application {
+    return this.present(entity);
+  }
+
+  override getAll(): Observable<Application[]> {
+    return super.getAll().pipe(map((items) => items.map((a) => this.present(a))));
+  }
+
+  override getById(id: number): Observable<Application> {
+    return super.getById(id).pipe(map((a) => this.present(a)));
+  }
+
+  override create(model: CreateModel<Application>): Observable<Application> {
+    return super.create(model).pipe(map((a) => this.present(a)));
+  }
+
+  override update(id: number, changes: UpdateModel<Application>): Observable<Application> {
+    return super.update(id, changes).pipe(map((a) => this.present(a)));
+  }
+
   countSelected(jobOpeningId: number): number {
     return this.store().filter((a) => a.jobOpeningId === jobOpeningId && a.stage === 'Selected')
       .length;
   }
 
   protected override prepare(candidate: Application, isNew: boolean): void {
+    delete candidate.blacklistMatch; // server-computed, never stored
     if (isNew) {
       candidate.stage = 'Applied';
       candidate.rejectionReason = null;
@@ -306,7 +391,12 @@ export class ApplicationMockService
     return updated;
   }
 
-  moveStage(id: number, stage: ApplicationStage, reason = ''): Observable<Application> {
+  moveStage(
+    id: number,
+    stage: ApplicationStage,
+    reason = '',
+    blacklistOverrideReason = '',
+  ): Observable<Application> {
     return this.respond(() => {
       const app = this.require(id);
       if (!STAGE_TRANSITIONS[app.stage].includes(stage)) {
@@ -326,6 +416,7 @@ export class ApplicationMockService
           );
         }
         if (stage === 'Selected') {
+          this.checkBlacklistGate(app, blacklistOverrideReason);
           const positive = this.interviews
             .records()
             .some(
@@ -355,8 +446,44 @@ export class ApplicationMockService
       }
       this.jobs.syncFilled(job.id);
       this.activity.record('recruitment', `${this.describe(app)} moved to ${stage}`);
-      return updated;
+      return this.present(updated);
     });
+  }
+
+  /**
+   * Selecting is the hiring decision. A candidate who matches the do-not-rehire list is refused
+   * (Conflict) unless an HR Administrator approves with a reason (at most 300 characters). Anyone
+   * else who sends an override is refused (Forbidden). Demo: the approval reason is not stored,
+   * and the activity line names neither the employee nor the reason.
+   */
+  private checkBlacklistGate(app: Application, overrideReason: string): void {
+    const override = (overrideReason ?? '').trim();
+    const isAdmin = this.user.current().roles.includes(ADMIN_ROLE_NAME);
+    if (override && !isAdmin) {
+      throw mockError(
+        'Forbidden',
+        'Only an HR Administrator can approve the hire of a candidate who matches the do-not-rehire list.',
+      );
+    }
+    if (override.length > BLACKLIST_OVERRIDE_MAX_LENGTH) {
+      this.validationError(
+        `The approval reason can have at most ${BLACKLIST_OVERRIDE_MAX_LENGTH} characters.`,
+        { blacklistOverrideReason: `At most ${BLACKLIST_OVERRIDE_MAX_LENGTH} characters.` },
+      );
+    }
+    const candidate = this.candidates.findById(app.candidateId);
+    if (!candidate || !this.candidates.matchesBlacklist(candidate)) {
+      return; // an override for a candidate without a match is ignored
+    }
+    if (!override) {
+      this.conflictError(
+        'This candidate matches the do-not-rehire list. An HR Administrator must approve the hire with a reason.',
+      );
+    }
+    this.activity.record(
+      'recruitment',
+      `Hire of application #${app.id} approved despite a do-not-rehire match`,
+    );
   }
 
   /** Scheduling an interview moves a screened application to the Interview stage. */

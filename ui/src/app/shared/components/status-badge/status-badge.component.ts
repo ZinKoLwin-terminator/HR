@@ -1,4 +1,5 @@
 import { Component, computed, input } from '@angular/core';
+import { BLACKLIST_MATCH_LABEL } from '../../../core/models/blacklist.models';
 
 export type BadgeTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
@@ -44,6 +45,9 @@ const TONES: Record<string, BadgeTone> = {
   'completed with errors': 'warning',
   'failed (rolled back)': 'danger',
   'validated (not imported)': 'info',
+  'in force': 'danger',
+  lifted: 'neutral',
+  [BLACKLIST_MATCH_LABEL.toLowerCase()]: 'danger',
 };
 
 export function badgeTone(status: string): BadgeTone {

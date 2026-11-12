@@ -26,7 +26,11 @@ import {
   PositionDataService,
   SectionDataService,
 } from '../core/services/data/organization-data.services';
-import { EmployeeDataService } from '../core/services/data/employee-data.service';
+import { BlacklistDataService } from '../core/services/data/blacklist-data.service';
+import {
+  EmployeeDataService,
+  EmployeeLookupDataService,
+} from '../core/services/data/employee-data.service';
 import {
   EmployeeDocumentDataService,
   EmployeeSalaryDataService,
@@ -55,6 +59,7 @@ import {
   ExcelModuleCatalogDataService,
 } from '../core/services/data/excel-data.services';
 import {
+  MyPayslipDataService,
   PayrollRunDataService,
   PayslipDataService,
   SalaryAssignmentDataService,
@@ -87,7 +92,9 @@ import {
   ExcelExportHttpService,
   ExcelImportHttpService,
 } from './excel/excel-http.service';
+import { BlacklistHttpService } from './employees/blacklist-http.service';
 import { EmployeeHttpService } from './employees/employee-http.service';
+import { EmployeeLookupHttpService } from './employees/employee-lookup-http.service';
 import { EmployeeDocumentHttpService } from './employees/employee-document-http.service';
 import { EmployeeSalaryHttpService } from './employees/employee-salary-http.service';
 import { EmploymentHistoryHttpService } from './employees/employment-history-http.service';
@@ -109,6 +116,7 @@ import {
   SalaryComponentHttpService,
   SalaryStructureHttpService,
 } from './payroll/payroll-setup-http.services';
+import { MyPayslipHttpService } from './payroll/my-payslip-http.service';
 import { PayslipHttpService } from './payroll/payslip-http.service';
 import { SalaryAssignmentHttpService } from './payroll/salary-assignment-http.service';
 import { apiAuthInterceptor } from './auth/api-auth.interceptor';
@@ -161,6 +169,9 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     // Employees: list, record, personal, bank, status and read-only history.
     bind(EmployeeDataService, EmployeeHttpService),
     bind(EmploymentHistoryDataService, EmploymentHistoryHttpService),
+    // Employee picker for other modules (current employees, no personal data) and the do-not-rehire list.
+    bind(EmployeeLookupDataService, EmployeeLookupHttpService),
+    bind(BlacklistDataService, BlacklistHttpService),
     // Documents (metadata only, personal-data keys) and the server-computed salary summary.
     bind(EmployeeDocumentDataService, EmployeeDocumentHttpService),
     bind(EmployeeSalaryDataService, EmployeeSalaryHttpService),
@@ -202,6 +213,8 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(SalaryAssignmentDataService, SalaryAssignmentHttpService),
     bind(PayrollRunDataService, PayrollRunHttpService),
     bind(PayslipDataService, PayslipHttpService),
+    // Employee self-service: the caller's own released payslips.
+    bind(MyPayslipDataService, MyPayslipHttpService),
     // Real sign-in: cookie session owned by the server, kept in memory only.
     bind(AuthDataService, AuthHttpService),
     { provide: SERVER_SESSION, useValue: true },

@@ -82,6 +82,13 @@ export const NAVIGATION: NavItem[] = [
         permission: 'employees:ViewSensitive',
         group: 'Operations',
       },
+      {
+        label: 'Do-not-rehire list',
+        icon: 'person_off',
+        route: '/employees/do-not-rehire',
+        permission: 'employees:ViewBlacklist',
+        group: 'Operations',
+      },
       { label: 'Employee List', icon: 'badge', route: '/employees/list', group: 'Report' },
     ],
   },
@@ -256,5 +263,13 @@ export const NAVIGATION: NavItem[] = [
       { label: 'Roles', icon: 'admin_panel_settings', route: '/settings/roles' },
       { label: 'Permissions', icon: 'key', route: '/settings/permissions' },
     ],
+  },
+  // Employee self-service: no permission key, every signed-in user sees it. It is listed last so a
+  // user with no module access still lands somewhere useful, while everyone else lands on their module.
+  {
+    label: 'My Payslips',
+    icon: 'receipt_long',
+    route: '/my/payslips',
+    section: 'MAIN',
   },
 ];

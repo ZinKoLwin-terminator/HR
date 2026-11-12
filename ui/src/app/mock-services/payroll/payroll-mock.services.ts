@@ -3,7 +3,10 @@ import { Observable } from 'rxjs';
 import { APP_CONFIG } from '../../core/configuration/app-config';
 import { PayrollRun, Payslip, PayslipFilter } from '../../core/models/payroll.models';
 import { CurrentUserService } from '../../core/services/current-user.service';
+import { mockError, mockResponse } from '../mock-response';
+import { PagedResult } from '../../core/models/common.models';
 import {
+  MyPayslipDataService,
   PayrollRunDataService,
   PayslipDataService,
 } from '../../core/services/data/payroll-data.services';
@@ -14,6 +17,7 @@ import {
   round2,
 } from '../../core/utilities/payroll-calc';
 import { MOCK_PAYROLL_RUNS, MOCK_PAYSLIPS } from '../../mock-data/payroll/payroll-runs.mock';
+import { paginate } from '../../shared/utilities/query.util';
 import { endOfMonth, startOfMonth, todayIso } from '../../shared/utilities/date.util';
 import { HolidayMockService } from '../attendance/attendance-mock.services';
 import { OvertimeMockService } from '../attendance/attendance-workflow-mock.services';
@@ -61,6 +65,54 @@ export class PayslipMockService
 
   removeForRun(runId: number): void {
     this.store.update((items) => items.filter((p) => p.runId !== runId));
+  }
+}
+
+/**
+ * "My payslips" (demo). Same rules as `GET /api/me/payslips`: only payslips of the signed-in
+ * user's own employee, only from Approved or Paid runs, newest period first (page size defaults
+ * to 12); a user without a linked employee gets an empty page; anyone else's payslip is NotFound.
+ */
+@Injectable({ providedIn: 'root' })
+export class MyPayslipMockService implements MyPayslipDataService {
+  private readonly payslips = inject(PayslipMockService);
+  private readonly runs = inject(PayrollRunMockService);
+  private readonly user = inject(CurrentUserService);
+  private readonly latency = inject(APP_CONFIG).mockLatencyMs;
+
+  private mine(): Payslip[] {
+    const employeeId = this.user.current().employeeId;
+    if (employeeId === null) return [];
+    const released = new Map(
+      this.runs
+        .records()
+        .filter((r) => r.status === 'Approved' || r.status === 'Paid')
+        .map((r) => [r.id, r.startDate]),
+    );
+    return this.payslips
+      .records()
+      .filter((p) => p.employeeId === employeeId && released.has(p.runId))
+      .sort(
+        (a, b) =>
+          (released.get(b.runId) ?? '').localeCompare(released.get(a.runId) ?? '') || b.id - a.id,
+      );
+  }
+
+  query(request: { pageIndex: number; pageSize: number }): Observable<PagedResult<Payslip>> {
+    return mockResponse(
+      () => paginate(this.mine(), request.pageIndex, request.pageSize || 12),
+      this.latency,
+    );
+  }
+
+  getById(id: number): Observable<Payslip> {
+    return mockResponse(() => {
+      const found = this.mine().find((p) => p.id === id);
+      if (!found) {
+        throw mockError('NotFound', 'Payslip not found.');
+      }
+      return found;
+    }, this.latency);
   }
 }
 

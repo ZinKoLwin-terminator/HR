@@ -215,6 +215,36 @@ export const EMPLOYEES_GUIDE: readonly GuideBlock[] = [
     ],
   },
 
+  // ───────────── Do-not-rehire ─────────────
+  {
+    type: 'heading',
+    text: { en: 'Do-not-rehire list', my: 'Do-not-rehire စာရင်း' },
+  },
+  {
+    type: 'paragraph',
+    text: {
+      en: 'HR can keep a list of former employees who must not be hired again. Only roles with the “view” permission can see the list and the reason; only roles with the “edit” permission can add or lift entries (in the starting setup, the HR Administrator).',
+      my: 'ပြန်လည်မခန့်အပ်ရန် ဝန်ထမ်းဟောင်းများကို HR က စာရင်းထားနိုင်သည်။ “view” ခွင့်ပြုချက်ရှိသော Role များသာ စာရင်းနှင့် အကြောင်းပြချက်ကို မြင်နိုင်ပြီး “edit” ခွင့်ပြုချက်ရှိသူများသာ ထည့်/ရုပ်သိမ်းနိုင်သည် (စတင်ချိန်တွင် HR Administrator)။',
+    },
+  },
+  {
+    type: 'list',
+    items: [
+      {
+        en: 'Employees → Do-not-rehire list shows entries (Active or Lifted). Open the profile of a former employee to add them: “Add to do-not-rehire list” appears only for an employee with an exit date who is not already listed.',
+        my: 'Employees → Do-not-rehire list တွင် မှတ်တမ်းများ (Active သို့မဟုတ် Lifted) ကိုမြင်ရသည်။ ထွက်ရက်ရှိပြီး မစာရင်းသွင်းရသေးသော ဝန်ထမ်းဟောင်း၏ Profile တွင် “Add to do-not-rehire list” ပေါ်သည်။',
+      },
+      {
+        en: 'A reason is required (500 characters at most), also when lifting. A lifted entry stays as history and the person can be listed again later.',
+        my: 'အကြောင်းပြချက် လိုသည် (စာလုံး ၅၀၀ အထိ)၊ ရုပ်သိမ်းချိန်တွင်လည်း။ ရုပ်သိမ်းပြီးသော မှတ်တမ်းသည် သမိုင်းအဖြစ်ကျန်ပြီး နောက်ပိုင်း ထပ်သွင်းနိုင်သည်။',
+      },
+      {
+        en: 'Recruitment never sees who is listed or why: a matching candidate only gets a warning badge (matched by email, phone number or national ID).',
+        my: 'Recruitment သည် မည်သူစာရင်းသွင်းထားသည်၊ အဘယ်ကြောင့်ဟု မမြင်ရ — ကိုက်ညီသော Candidate တွင် သတိပေးအလံသာပြသည် (Email၊ ဖုန်း သို့မဟုတ် မှတ်ပုံတင်နံပါတ်ဖြင့် ကိုက်ညီမှုစစ်သည်)။',
+      },
+    ],
+  },
+
   // ───────────── Status ─────────────
   {
     type: 'heading',

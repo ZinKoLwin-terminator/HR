@@ -169,6 +169,14 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
           my: 'ဝန်ထမ်းအလိုက် စာရွက်စာတမ်း စာကြည့်တိုက်။',
         },
       },
+      {
+        label: 'Do-not-rehire list',
+        route: '/employees/do-not-rehire',
+        text: {
+          en: 'Former employees who must not be hired again; add and lift entries (HR Administrator).',
+          my: 'ပြန်လည်မခန့်အပ်ရန် ဝန်ထမ်းဟောင်းများ — မှတ်တမ်းထည့်ရန်/ရုပ်သိမ်းရန် (HR Administrator)။',
+        },
+      },
     ],
     rules: [
       {
@@ -178,6 +186,10 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
       {
         en: 'Email and employee code must be unique.',
         my: 'Email နှင့် ဝန်ထမ်းကုဒ် မထပ်ရ။',
+      },
+      {
+        en: 'Only a former employee (one with an exit date) can be put on the do-not-rehire list, once at a time. The list is for people with that permission only.',
+        my: 'ထွက်ရက်ရှိသော ဝန်ထမ်းဟောင်းကိုသာ do-not-rehire စာရင်းသွင်းနိုင်ပြီး တစ်ကြိမ်လျှင် တစ်ခုသာ။ ထိုခွင့်ပြုချက်ရှိသူများသာ ကြည့်နိုင်သည်။',
       },
       {
         en: 'Print a list, or print a profile or a letter (employment certificate, experience letter, leave approval letter) from the browser.',
@@ -378,6 +390,14 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         },
       },
       {
+        label: 'My Payslips',
+        route: '/my/payslips',
+        text: {
+          en: 'Every signed-in user sees their own payslips (approved or paid periods only) and can print them.',
+          my: 'ဝင်ရောက်ထားသူတိုင်း မိမိ၏ စလစ်များ (Approved သို့မဟုတ် Paid Period သာ) ကိုကြည့်၍ ပရင့်ထုတ်နိုင်သည်။',
+        },
+      },
+      {
         label: 'Payroll History',
         route: '/payroll/history',
         text: { en: 'Gross vs net per month.', my: 'လအလိုက် Gross နှင့် Net နှိုင်းယှဉ်။' },
@@ -454,6 +474,14 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
       {
         en: 'An opening becomes Filled automatically when enough candidates are selected.',
         my: 'လူလုံလောက်စွာ ရွေးပြီးလျှင် Opening သည် Filled ဖြစ်သွားသည်။',
+      },
+      {
+        en: 'A candidate who matches the do-not-rehire list is flagged “Matches do-not-rehire list — contact HR”. Selecting them needs an HR Administrator’s approval with a reason.',
+        my: 'Do-not-rehire စာရင်းနှင့် ကိုက်ညီသော Candidate ကို “Matches do-not-rehire list — contact HR” ဟု အလံပြသည်။ Selected လုပ်ရန် HR Administrator ၏ အကြောင်းပြချက်ပါ ခွင့်ပြုချက်လို။',
+      },
+      {
+        en: 'Managers see only the openings they manage, with their applications and candidates.',
+        my: 'Manager များသည် မိမိစီမံသော Opening များနှင့် ၎င်းတို့၏ လျှောက်လွှာ၊ Candidate များကိုသာ မြင်ရသည်။',
       },
     ],
     article: RECRUITMENT_GUIDE,

@@ -26,6 +26,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { formatTenure, todayIso } from '../../../shared/utilities/date.util';
 import { OrganizationLookupService, nameMap } from '../../organization/organization-lookups';
+import { ProfileBlacklistSectionComponent } from './profile-blacklist-section.component';
 import { ProfilePrintComponent } from './profile-print.component';
 import { ProfileAttendanceTabComponent } from './tabs/profile-attendance-tab.component';
 import { ProfileDocumentsTabComponent } from './tabs/profile-documents-tab.component';
@@ -57,6 +58,7 @@ const TABS = ['overview', 'employment', 'documents', 'history', 'attendance', 'l
     ProfileLeaveTabComponent,
     ProfileSalaryTabComponent,
     ProfilePrintComponent,
+    ProfileBlacklistSectionComponent,
   ],
   templateUrl: './employee-profile.component.html',
   styleUrl: './employee-profile.component.scss',
