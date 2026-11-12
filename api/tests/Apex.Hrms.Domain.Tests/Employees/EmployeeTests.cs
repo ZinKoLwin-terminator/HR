@@ -329,6 +329,24 @@ public sealed class EmployeeTests
     }
 
     [Theory]
+    [InlineData("a/b.pdf")]
+    [InlineData("a\b.pdf")]
+    [InlineData("a\u0007b.pdf")]
+    [InlineData("..")]
+    public void Document_file_name_must_be_plain(string fileName) =>
+        FailedOn(EmployeeDocument.Create(5, new DocumentDetails(DocumentType.Other, "Scan", fileName, null, null), Today), "fileName");
+
+    [Fact]
+    public void Document_upload_date_cannot_be_in_the_future_and_the_employee_cannot_change()
+    {
+        FailedOn(EmployeeDocument.Create(5, new DocumentDetails(DocumentType.Other, "Scan", "scan.pdf", Today.AddDays(1), null), Today), "uploadedOn");
+
+        var document = EmployeeDocument.Create(5, new DocumentDetails(DocumentType.Other, "Scan", "scan.pdf", Today, null), Today).Value;
+        Assert.True(document.EnsureSameEmployee(5).IsSuccess);
+        FailedOn(document.EnsureSameEmployee(6), "employeeId");
+    }
+
+    [Theory]
     [InlineData(EmploymentStatus.OnLeave, "On Leave")]
     [InlineData(EmploymentStatus.Active, "Active")]
     public void Employment_status_texts_round_trip(EmploymentStatus status, string text)

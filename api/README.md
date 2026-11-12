@@ -184,7 +184,23 @@ email, phones, address or emergency contact.** Those live behind `/personal`; th
 * **Field names:** `managerId` (database `ManagerEmployeeId`), `status` in the command bodies, nested `address` and
   `emergencyContact` objects in the personal data; validation errors on them are keyed `address.city`,
   `emergencyContact.relationship`, and so on.
-* Documents (`hr.EmployeeDocument`) are mapped and modelled in the domain but have no endpoints yet.
+* **Salary summary:** `GET /api/employees/{id}/salary-summary` (`payroll:View`) returns `EmployeeSalarySummaryDto`
+  (`employeeId, basic, allowances, gross, deductions, net, gradeCode, gradeName, bandMin, bandMax, bandPosition, assumptions`).
+  **DEMONSTRATION figures, not real payroll**: a full month (the business-time-zone current month, no proration, overtime or
+  unpaid leave) at the assignment in force today, worked out with the same `PayCalculator` as payroll runs. `allowances` is gross
+  minus basic; `bandPosition` is the rounded 0 to 100 place of the basic in the job-grade band, clamped (0 when the band has
+  no width). `404` `Employee #id was not found.` or `<First> <Last> has no salary assignment yet.`
+* **Documents** (`hr.EmployeeDocument`) are metadata only (no file is stored or accepted) under `/api/employee-documents`:
+  `GET /query?pageIndex&pageSize&sort&search&employeeId&type` and `GET /{id}` need `employees:ViewSensitive`; `POST`, `PUT /{id}`
+  (with `rowVersion`) and `DELETE /{id}` (body `{ rowVersion }`) need `employees:EditSensitive`. There is no unpaged list
+  (`GET /api/employee-documents` answers `405`). `EmployeeDocumentDto`: `id, employeeId, type, title, fileName, uploadedOn,
+  expiryDate (yyyy-MM-dd or null), rowVersion`. Rules: the employee must exist (`400` on `employeeId`) and cannot change on
+  update (`400`, as for salary assignments); `type` is one of National ID, Passport, Resume, Offer Letter, Employment Contract,
+  Certificate, Work Permit, Medical Report, Other; title 1 to 80 and file name 1 to 260 characters after trimming; the file
+  name is a plain name (no `/` or `\`, no control characters, not `.` or `..`); `uploadedOn` defaults to today and cannot be in
+  the future; `expiryDate` is free. The search matches title, file name and type text. Activity entries read
+  `Document "<title>" created|updated|deleted` (category `employee`); the file name is never written there. Documents are not
+  scoped to the own record: only HR roles hold the sensitive permissions. They are deleted with their employee (database cascade).
 * Organization deletes and moves count employees through the view `hr.EmployeeOrgLink` (placement without personal data),
   not through `hr.Employee`; the view and the sequence must exist in the target database.
 

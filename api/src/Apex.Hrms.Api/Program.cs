@@ -38,6 +38,7 @@ app.MapEmployeeEndpoints();
 app.MapLeaveEndpoints();
 app.MapAttendanceEndpoints();
 app.MapPayrollEndpoints();
+app.MapEmployeeDocumentEndpoints();
 app.MapActivityEndpoints();
 app.MapRecruitmentEndpoints();
 app.MapSettingsEndpoints();
