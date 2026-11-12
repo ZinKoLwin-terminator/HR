@@ -179,6 +179,10 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         en: 'Email and employee code must be unique.',
         my: 'Email နှင့် ဝန်ထမ်းကုဒ် မထပ်ရ။',
       },
+      {
+        en: 'Print a list, or print a profile or a letter (employment certificate, experience letter, leave approval letter) from the browser.',
+        my: 'စာရင်း၊ Profile သို့မဟုတ် စာ (အလုပ်အကိုင်လက်မှတ်၊ အတွေ့အကြုံစာ၊ ခွင့်ခွင့်ပြုစာ) ကို Browser မှ ပရင့်ထုတ်နိုင်သည်။',
+      },
     ],
     article: EMPLOYEES_GUIDE,
     note: {
@@ -368,7 +372,10 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
       {
         label: 'Payslips',
         route: '/payroll/payslips',
-        text: { en: 'View and print payslips.', my: 'စလစ်ကြည့်ရန်၊ ပရင့်ထုတ်ရန်။' },
+        text: {
+          en: 'View and print payslips; print all payslips of a period from Payroll Review.',
+          my: 'စလစ်ကြည့်ရန်၊ ပရင့်ထုတ်ရန်၊ Payroll Review မှ Period တစ်ခုလုံး၏ စလစ်အားလုံး ပရင့်ထုတ်ရန်။',
+        },
       },
       {
         label: 'Payroll History',

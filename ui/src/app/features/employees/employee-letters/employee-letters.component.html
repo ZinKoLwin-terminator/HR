@@ -1,0 +1,133 @@
+@if (data.error()) {
+  <app-empty-state
+    icon="person_off"
+    title="Employee not found"
+    message="This employee may have been deleted, or the link is incorrect."
+  >
+    <a mat-flat-button routerLink="/employees/list">Back to employees</a>
+  </app-empty-state>
+} @else if (data.value(); as d) {
+  <app-page-header
+    class="no-print"
+    [title]="'Letters · ' + employeeName()"
+    description="Choose a template, type the reference and signatory, then print or save as PDF from the browser."
+  >
+    <a pageActions mat-stroked-button [routerLink]="['/employees', d.employee.id]">
+      <mat-icon>arrow_back</mat-icon>Back to profile
+    </a>
+    <button
+      pageActions
+      mat-flat-button
+      type="button"
+      [disabled]="!canPrint()"
+      [attr.aria-label]="'Print letter for ' + employeeName()"
+      (click)="print()"
+    >
+      <mat-icon>print</mat-icon>Print letter
+    </button>
+  </app-page-header>
+
+  <div class="layout">
+    <form
+      class="options card no-print"
+      aria-label="Letter details"
+      (submit)="$event.preventDefault()"
+    >
+      <mat-form-field>
+        <mat-label>Letter</mat-label>
+        <mat-select [value]="kind()" (selectionChange)="setKind($event.value)">
+          @for (k of kinds(); track k.kind) {
+            <mat-option [value]="k.kind">{{ k.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (kind() === 'leave') {
+        <mat-form-field>
+          <mat-label>Approved leave application</mat-label>
+          <mat-select [value]="leaveId()" (selectionChange)="leaveId.set($event.value)">
+            @for (c of leaveChoices(); track c.application.id) {
+              <mat-option [value]="c.application.id">{{ c.label }}</mat-option>
+            } @empty {
+              <mat-option [value]="null" disabled>No approved leave</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+
+      <mat-form-field>
+        <mat-label>Reference number</mat-label>
+        <input
+          matInput
+          maxlength="40"
+          required
+          [value]="referenceNo()"
+          (input)="typed(referenceNo, $event)"
+        />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Letter date</mat-label>
+        <input matInput type="date" [value]="letterDate()" (change)="typed(letterDate, $event)" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Signatory name</mat-label>
+        <input
+          matInput
+          maxlength="80"
+          required
+          [value]="signatoryName()"
+          (input)="typed(signatoryName, $event)"
+        />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Signatory title</mat-label>
+        <input
+          matInput
+          maxlength="80"
+          [value]="signatoryTitle()"
+          (input)="typed(signatoryTitle, $event)"
+        />
+      </mat-form-field>
+
+      @if (missingDetails()) {
+        <p class="hint" role="status">Enter a reference number and a signatory name to print.</p>
+      }
+    </form>
+
+    <div class="preview">
+      @if (result(); as r) {
+        @if (r.error) {
+          <p class="blocked no-print" role="alert">
+            <mat-icon aria-hidden="true">info</mat-icon>{{ r.error }}
+          </p>
+        } @else if (r.letter; as letter) {
+          <article class="letter print-page" aria-label="Letter preview">
+            <header class="letter__head">
+              <p class="letter__org">{{ organizationName() }}</p>
+              <p class="letter__meta">
+                Ref: {{ referenceNo() || '—' }}<br />
+                Date: {{ dateText() }}
+              </p>
+            </header>
+            <h2 class="letter__subject">{{ letter.subject }}</h2>
+            @for (paragraph of letter.paragraphs; track $index) {
+              <p>{{ paragraph }}</p>
+            }
+            <div class="letter__sign">
+              <p class="letter__line">Authorised signatory</p>
+              <p class="letter__who">
+                <strong>{{ signatoryName() || '—' }}</strong>
+                @if (signatoryTitle()) {
+                  <br />{{ signatoryTitle() }}
+                }
+              </p>
+            </div>
+            <p class="letter__note">Sample document generated from demonstration data.</p>
+          </article>
+        }
+      }
+    </div>
+  </div>
+} @else {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading employee" />
+}

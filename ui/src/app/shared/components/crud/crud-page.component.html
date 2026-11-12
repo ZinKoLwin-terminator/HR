@@ -55,10 +55,43 @@
   }
 </ng-template>
 
+<ng-template #printMenu>
+  @if (canPrint()) {
+    <button
+      mat-stroked-button
+      type="button"
+      [matMenuTriggerFor]="printOptions"
+      [disabled]="!result()?.items?.length"
+      [attr.aria-label]="'Print ' + cfg.title"
+    >
+      <mat-icon>print</mat-icon>Print
+    </button>
+    <mat-menu #printOptions="matMenu">
+      <button mat-menu-item type="button" (click)="printCurrent()">
+        <mat-icon>print</mat-icon>
+        <span>Print current view ({{ result()?.items?.length ?? 0 }} rows)</span>
+      </button>
+      @if ((result()?.total ?? 0) > (result()?.items?.length ?? 0)) {
+        <button mat-menu-item type="button" (click)="printAll()">
+          <mat-icon>list_alt</mat-icon>
+          <span>Print all {{ result()?.total }} matching rows (up to {{ printCap }})</span>
+        </button>
+      }
+    </mat-menu>
+  }
+</ng-template>
+
 @if (!cfg.embedded) {
-  <app-page-header [title]="cfg.title" [description]="cfg.description">
+  <app-page-header
+    [title]="cfg.title"
+    [description]="cfg.description"
+    [class.no-print]="printRows() !== null"
+  >
     <ng-container pageSearch>
       <ng-container *ngTemplateOutlet="searchAndFilters" />
+    </ng-container>
+    <ng-container pageTools>
+      <ng-container *ngTemplateOutlet="printMenu" />
     </ng-container>
     @if (cfg.excel; as excel) {
       <ng-container pageTools>
@@ -85,8 +118,14 @@
     }
   </app-page-header>
 } @else {
-  <div class="toolbar toolbar--plain" role="search" [attr.aria-label]="'Filter ' + cfg.title">
+  <div
+    class="toolbar toolbar--plain"
+    role="search"
+    [attr.aria-label]="'Filter ' + cfg.title"
+    [class.no-print]="printRows() !== null"
+  >
     <ng-container *ngTemplateOutlet="searchAndFilters" />
+    <ng-container *ngTemplateOutlet="printMenu" />
     @if (cfg.excel && canExport()) {
       <button mat-stroked-button type="button" (click)="openExport()">
         <mat-icon>download</mat-icon>Export
@@ -122,10 +161,60 @@
     [actions]="actions()"
     [rowLabel]="rowLabel"
     [clickableRows]="true"
+    [class.no-print]="printRows() !== null"
     [emptyTitle]="'No ' + cfg.entityLabel.toLowerCase() + ' records found'"
     (pageChange)="query.onPage($event)"
     (sortChange)="onSort($event)"
     (action)="onAction($event)"
     (rowClick)="openDetails($event)"
   />
+}
+
+@if (printRows(); as rows) {
+  <div class="print-only">
+    <app-print-header [title]="cfg.title" [subtitle]="printSummary()" />
+    @if (printNote()) {
+      <p class="print-note">{{ printNote() }}</p>
+    }
+    <table class="print-table">
+      <caption class="cdk-visually-hidden">
+        {{
+          cfg.title
+        }}
+      </caption>
+      <thead>
+        <tr>
+          @for (column of cfg.columns; track column.key) {
+            <th scope="col" [class.align-end]="column.align === 'end'">{{ column.header }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows; track row.id) {
+          <tr>
+            @for (column of cfg.columns; track column.key) {
+              <td [class.align-end]="column.align === 'end'">
+                @let value = cellValue(column, row);
+                @switch (column.type) {
+                  @case ('date') {
+                    {{ value ? (value | date: 'mediumDate') : '—' }}
+                  }
+                  @case ('currency') {
+                    {{ $any(value) | money }}
+                  }
+                  @case ('number') {
+                    {{ $any(value) | number }}
+                  }
+                  @default {
+                    {{ value ?? '—' }}
+                  }
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+    <p class="print-note">{{ rows.length }} row{{ rows.length === 1 ? '' : 's' }}</p>
+  </div>
 }

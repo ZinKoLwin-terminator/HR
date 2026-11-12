@@ -1,6 +1,16 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, effect, inject, input, linkedSignal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import {
+  Component,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  linkedSignal,
+  signal,
+} from '@angular/core';
+import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,6 +28,7 @@ import {
 } from '../../../core/models/payroll.models';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { PermissionService } from '../../../core/services/permission.service';
+import { PrintService } from '../../../core/services/print.service';
 import {
   PayrollRunDataService,
   PayslipDataService,
@@ -37,6 +48,7 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { formatDuration } from '../../../shared/utilities/date.util';
 import { ListQuery } from '../../../shared/utilities/list-query';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
+import { PayslipSheetComponent } from '../payslips/payslip-sheet.component';
 
 type Row = Payslip;
 
@@ -58,6 +70,7 @@ type Row = Payslip;
     DataTableComponent,
     EmptyStateComponent,
     MoneyPipe,
+    PayslipSheetComponent,
   ],
   templateUrl: './payroll-review.component.html',
   styleUrl: './payroll-review.component.scss',
@@ -74,6 +87,8 @@ export class PayrollReviewComponent {
   private readonly router = inject(Router);
   private readonly appConfig = inject(APP_CONFIG);
   private readonly permissions = inject(PermissionService);
+  private readonly printer = inject(PrintService);
+  private readonly injector = inject(Injector);
   /** UX only (the server enforces): process needs payroll:Edit, the other actions payroll:Approve. */
   protected readonly canProcess = computed(() => this.permissions.can('payroll:Edit'));
   protected readonly canApprove = computed(() => this.permissions.can('payroll:Approve'));
@@ -153,6 +168,14 @@ export class PayrollReviewComponent {
       map((all) => ({ ...all, pageIndex: 0, pageSize: all.items.length })),
     );
   }
+  /** Every payslip of the period, in employee-code order, for printing. */
+  protected readonly allPayslipList = computed(() =>
+    [...(this.allPayslips.value()?.items ?? [])].sort((a, b) =>
+      a.employeeCode.localeCompare(b.employeeCode),
+    ),
+  );
+  /** True while the whole run is laid out for printing (one payslip per page). */
+  protected readonly printingAll = signal(false);
   protected readonly departments = computed(() => {
     const map = new Map<string, { name: string; count: number; gross: number; net: number }>();
     for (const p of this.allPayslips.value()?.items ?? []) {
@@ -207,6 +230,9 @@ export class PayrollReviewComponent {
   protected readonly rowLabel = (p: Row) => p.employeeName;
 
   constructor() {
+    this.printer.afterPrint$
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.printingAll.set(false));
     effect(() => {
       const value = this.page.value();
       if (value && value.pageIndex !== this.query.pageIndex()) {
@@ -222,6 +248,12 @@ export class PayrollReviewComponent {
     if (p.overtimeMinutes) notes.push(`Overtime ${formatDuration(p.overtimeMinutes)}`);
     if (p.unpaidLeaveDays) notes.push(`${p.unpaidLeaveDays} unpaid leave day(s)`);
     return notes.join(' · ') || '—';
+  }
+
+  /** Lays out every payslip of the period, one per page, then opens the print dialog. */
+  protected printAll(): void {
+    this.printingAll.set(true);
+    afterNextRender(() => this.printer.print(), { injector: this.injector });
   }
 
   protected setDepartment(value: number | null): void {

@@ -124,6 +124,11 @@ export interface CrudPageConfig<T extends Entity> {
    * UX only: the server enforces its own keys.
    */
   permissionKeys?: Partial<Record<string, string>>;
+  /**
+   * Shows a Print action (browser print of the current view, or of every matching row). Default
+   * true, except for an embedded list (a profile tab), which is printed with its host screen.
+   */
+  printable?: boolean;
   /** Shows Export (and Import) buttons for this list, backed by the Excel module with this code. */
   excel?: { moduleCode: string; import?: boolean };
 }
