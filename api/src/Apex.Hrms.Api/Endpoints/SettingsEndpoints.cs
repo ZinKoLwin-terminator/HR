@@ -1,7 +1,10 @@
+using System.Globalization;
+using Apex.Hrms.Api.Auth;
 using Apex.Hrms.Api.Authorization;
 using Apex.Hrms.Api.Http;
 using Apex.Hrms.Application.Settings;
 using Apex.Hrms.Application.UseCases;
+using Apex.Hrms.Domain.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Apex.Hrms.Api.Endpoints;
@@ -66,10 +69,29 @@ internal static class SettingsEndpoints
         group.MapStatusCommands<UserDto>(Module)
             .MapCommand<UserDto, UnlockUserCommand>("unlock", Module);
 
+        // 202 with no body: the mail is sent and the administrator never sees the token or the link. One per user per minute.
         group.MapPost(
             "/{id:int}/password-reset",
-            async (int id, IUserPasswordResetHandler handler, CancellationToken cancellationToken) =>
-                (await handler.HandleAsync(id, cancellationToken)).ToOk())
+            async (int id, IUserPasswordResetHandler handler, PasswordResetThrottle throttle, HttpContext http, CancellationToken cancellationToken) =>
+            {
+                if (!throttle.TryAcquire(id, out var retryAfter))
+                {
+                    http.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+                    return Results.Problem(
+                        statusCode: StatusCodes.Status429TooManyRequests,
+                        title: "Too many requests",
+                        detail: "A password reset email was just sent to this user. Wait a minute before sending another.",
+                        extensions: new Dictionary<string, object?> { [ApiProblems.CodeKey] = ErrorType.Unknown.ToString() });
+                }
+
+                var result = await handler.HandleAsync(id, cancellationToken);
+                if (result.IsFailure)
+                {
+                    throttle.Release(id);
+                }
+
+                return result.ToAccepted();
+            })
             .RequireAuthorization(Module.PolicyName(Permission.Edit));
     }
 

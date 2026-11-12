@@ -626,23 +626,29 @@ internal sealed class DeleteUserHandler(
 }
 
 /// <summary>
-/// An administrator asks for the password reset email of a user (the same mail forgot-password sends). It fails closed with
-/// <see cref="ErrorType.Unavailable"/> (HTTP 503) when email is not configured, before anything else happens.
+/// An administrator asks for the password reset email of a user (the same mail forgot-password sends: token, link and mail
+/// all stay on the server). It fails closed with <see cref="ErrorType.Unavailable"/> (HTTP 503) when email is not configured,
+/// before anything else happens. It changes nothing about the account: not the password, the lock state or the sessions (the
+/// reset itself changes the security stamp when the user uses the link).
 /// </summary>
 internal sealed class UserPasswordResetHandler(
     EntityLoader<AppAccount> loader,
     IRepository<AppRole> roles,
+    IRepository<Employee> employees,
     IEmailSender email,
     IAccountLogins logins,
     IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     UserMapping mapper) : IUserPasswordResetHandler
 {
-    public const string SentMessage = "A password reset email has been sent to the user.";
+    public const string NotActiveMessage = "Activate the account before sending a password reset.";
+    public const string RoleInactiveMessage = "The account's role is inactive. Activate the role before sending a password reset.";
+    public const string LeaverMessage = "This user's employee has left the company, so no password reset can be sent.";
+    public const string NoLoginMessage = "This account has no email address or sign-in to send a password reset to.";
     public const string NotConfiguredMessage = "Password reset by email is not configured on this server. Ask an administrator to configure email.";
     public const string SendFailedMessage = "The password reset email could not be sent. Try again later.";
 
-    public async Task<Result<MessageDto>> HandleAsync(int id, CancellationToken cancellationToken)
+    public async Task<Result> HandleAsync(int id, CancellationToken cancellationToken)
     {
         try
         {
@@ -650,21 +656,36 @@ internal sealed class UserPasswordResetHandler(
         }
         catch (EmailNotConfiguredException)
         {
-            return Result.Failure<MessageDto>(AppError.Unavailable(NotConfiguredMessage));
+            return Result.Failure(AppError.Unavailable(NotConfiguredMessage));
         }
 
         var loaded = await loader.LoadAsync(id, cancellationToken);
         if (loaded.IsFailure)
         {
-            return Result.Failure<MessageDto>(loaded.Error);
+            return Result.Failure(loaded.Error);
         }
 
         var account = loaded.Value;
-        var role = await roles.FindAsync(account.RoleId, cancellationToken);
-        if (account.ExternalSubject is null || account.Status != AccountStatus.Active || role is not { IsActive: true })
+        if (account.Status != AccountStatus.Active)
         {
-            return Result.Failure<MessageDto>(AppError.Conflict(
-                "Only an active user with an active role can get a password reset. Activate the user first."));
+            return Result.Failure(AppError.Conflict(NotActiveMessage));
+        }
+
+        var role = await roles.FindAsync(account.RoleId, cancellationToken);
+        if (role is not { IsActive: true })
+        {
+            return Result.Failure(AppError.Conflict(RoleInactiveMessage));
+        }
+
+        if (account.EmployeeId is { } employeeId
+            && await employees.AnyAsync(employee => employee.Id == employeeId && employee.ExitDate != null, cancellationToken))
+        {
+            return Result.Failure(AppError.Conflict(LeaverMessage));
+        }
+
+        if (account.ExternalSubject is null || string.IsNullOrWhiteSpace(account.Email))
+        {
+            return Result.Failure(AppError.Conflict(NoLoginMessage));
         }
 
         try
@@ -673,17 +694,17 @@ internal sealed class UserPasswordResetHandler(
         }
         catch (EmailNotConfiguredException)
         {
-            return Result.Failure<MessageDto>(AppError.Unavailable(NotConfiguredMessage));
+            return Result.Failure(AppError.Unavailable(NotConfiguredMessage));
         }
 #pragma warning disable CA1031 // A mail server failure is reported as "unavailable"; the exception text could hold the address.
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return Result.Failure<MessageDto>(AppError.Unavailable(SendFailedMessage));
+            return Result.Failure(AppError.Unavailable(SendFailedMessage));
         }
 #pragma warning restore CA1031
 
+        // The note names the user by display name only: no address, never a token.
         activity.Record(ActivityCategories.System, $"Password reset email sent for user \"{mapper.Describe(account)}\"");
-        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
-        return saved.IsFailure ? Result.Failure<MessageDto>(saved.Error) : Result.Success(new MessageDto(SentMessage));
+        return await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }
