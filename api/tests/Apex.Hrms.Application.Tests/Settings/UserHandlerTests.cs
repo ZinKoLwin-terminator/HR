@@ -546,14 +546,38 @@ public sealed class UserHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task A_password_reset_for_a_locked_account_asks_to_activate_it_first()
+    public async Task A_password_reset_for_a_locked_account_asks_to_unlock_it_and_an_inactive_one_to_activate_it()
     {
         var officer = OfficerRole();
         var locked = settings.SeedAccount(officer, employeeId: null, "Mia Hartley", "mia@example.test", AccountStatus.Locked);
         var inactive = settings.SeedAccount(officer, employeeId: null, "Olive Officer", "olive@example.test", AccountStatus.Inactive);
 
-        ResultAssert.Failed(await settings.Handler<IUserPasswordResetHandler>().HandleAsync(locked.Id, default), ErrorType.Conflict, "Activate the account before sending a password reset.");
+        ResultAssert.Failed(await settings.Handler<IUserPasswordResetHandler>().HandleAsync(locked.Id, default), ErrorType.Conflict, "Unlock the account before sending a password reset.");
         ResultAssert.Failed(await settings.Handler<IUserPasswordResetHandler>().HandleAsync(inactive.Id, default), ErrorType.Conflict, "Activate the account before sending a password reset.");
+        Assert.Empty(settings.Logins.ResetMailsFor);
+    }
+
+    [Fact]
+    public async Task A_password_reset_for_an_account_locked_out_by_failed_sign_ins_is_refused()
+    {
+        var officer = OfficerRole();
+        var target = settings.SeedAccount(officer, employeeId: null, "Mia Hartley", "mia@example.test");
+        settings.Logins.LockedOut.Add(target.ExternalSubject!);
+
+        ResultAssert.Failed(await settings.Handler<IUserPasswordResetHandler>().HandleAsync(target.Id, default), ErrorType.Conflict, "Unlock the account before sending a password reset.");
+        Assert.Empty(settings.Logins.ResetMailsFor);
+    }
+
+    [Fact]
+    public async Task A_password_reset_for_your_own_account_is_refused()
+    {
+        var officer = OfficerRole();
+        var me = settings.SeedAccount(officer, employeeId: null, "Mia Hartley", "mia@example.test");
+        settings.Host.User.UserId = me.Id;
+
+        var error = ResultAssert.Failed(await settings.Handler<IUserPasswordResetHandler>().HandleAsync(me.Id, default), ErrorType.Conflict);
+
+        Assert.Contains("your own account", error.Message, StringComparison.Ordinal);
         Assert.Empty(settings.Logins.ResetMailsFor);
     }
 

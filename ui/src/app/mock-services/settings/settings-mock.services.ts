@@ -191,6 +191,15 @@ export class UserMockService extends InMemoryCrudService<AppUser> implements Use
       if (!user) {
         throw mockError('NotFound', 'User not found.');
       }
+      // Same rules as the API: never your own account, and a locked account is unlocked first.
+      if (user.id === this.currentUser.current().id) {
+        this.conflictError(
+          'You cannot send a password reset to your own account. Use Forgot password on the sign-in page.',
+        );
+      }
+      if (user.status === 'Locked') {
+        this.conflictError('Unlock the account before sending a password reset.');
+      }
       if (user.status === 'Inactive') {
         this.conflictError('Activate the account before sending a password reset.');
       }

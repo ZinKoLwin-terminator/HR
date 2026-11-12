@@ -639,8 +639,11 @@ internal sealed class UserPasswordResetHandler(
     IAccountLogins logins,
     IActivityRecorder activity,
     IUnitOfWork unitOfWork,
-    UserMapping mapper) : IUserPasswordResetHandler
+    UserMapping mapper,
+    ICurrentUser currentUser) : IUserPasswordResetHandler
 {
+    public const string OwnAccountMessage = "You cannot send a password reset to your own account. Use Forgot password on the sign-in page.";
+    public const string LockedMessage = "Unlock the account before sending a password reset.";
     public const string NotActiveMessage = "Activate the account before sending a password reset.";
     public const string RoleInactiveMessage = "The account's role is inactive. Activate the role before sending a password reset.";
     public const string LeaverMessage = "This user's employee has left the company, so no password reset can be sent.";
@@ -666,9 +669,26 @@ internal sealed class UserPasswordResetHandler(
         }
 
         var account = loaded.Value;
+        var notSelf = UserRules.EnsureNotSelf(account, currentUser, OwnAccountMessage);
+        if (notSelf.IsFailure)
+        {
+            return notSelf;
+        }
+
+        if (account.Status == AccountStatus.Locked)
+        {
+            return Result.Failure(AppError.Conflict(LockedMessage));
+        }
+
         if (account.Status != AccountStatus.Active)
         {
             return Result.Failure(AppError.Conflict(NotActiveMessage));
+        }
+
+        // Locked out by failed sign-ins (the Identity lockout): unlock first, as for a stored Locked status.
+        if (await UserRules.IsLockedAsync(logins, account, cancellationToken))
+        {
+            return Result.Failure(AppError.Conflict(LockedMessage));
         }
 
         var role = await roles.FindAsync(account.RoleId, cancellationToken);

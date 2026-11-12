@@ -86,7 +86,10 @@ describe('UserMockService.sendPasswordReset', () => {
   it('succeeds for an active user and records an activity entry', async () => {
     const users = TestBed.inject(UserDataService);
     const activity = TestBed.inject(ActivityMockService);
-    const active = (await firstValueFrom(users.getAll())).find((u) => u.status === 'Active')!;
+    const own = TestBed.inject(CurrentUserService).current().id;
+    const active = (await firstValueFrom(users.getAll())).find(
+      (u) => u.status === 'Active' && u.id !== own,
+    )!;
     await expect(firstValueFrom(users.sendPasswordReset(active.id))).resolves.toBeUndefined();
     expect(
       activity
@@ -105,6 +108,27 @@ describe('UserMockService.sendPasswordReset', () => {
     await expect(firstValueFrom(users.sendPasswordReset(target.id))).rejects.toMatchObject({
       code: 'Conflict',
       message: 'Activate the account before sending a password reset.',
+    });
+  });
+
+  it('refuses a locked account and asks to unlock it first', async () => {
+    const users = TestBed.inject(UserDataService);
+    const own = TestBed.inject(CurrentUserService).current().id;
+    const target = (await firstValueFrom(users.getAll())).find(
+      (u) => u.status === 'Active' && u.id !== own,
+    )!;
+    await firstValueFrom(users.update(target.id, { status: 'Locked' }));
+    await expect(firstValueFrom(users.sendPasswordReset(target.id))).rejects.toMatchObject({
+      code: 'Conflict',
+      message: 'Unlock the account before sending a password reset.',
+    });
+  });
+
+  it('refuses your own account', async () => {
+    const users = TestBed.inject(UserDataService);
+    const own = TestBed.inject(CurrentUserService).current().id;
+    await expect(firstValueFrom(users.sendPasswordReset(own))).rejects.toMatchObject({
+      code: 'Conflict',
     });
   });
 });
