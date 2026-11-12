@@ -19,7 +19,9 @@
     >
       <mat-icon>download</mat-icon>Download report
     </button>
-    <a mat-flat-button routerLink="/employees/new"><mat-icon>person_add</mat-icon>Add employee</a>
+    @if (permissions.can('employees:Create')) {
+      <a mat-flat-button routerLink="/employees/new"><mat-icon>person_add</mat-icon>Add employee</a>
+    }
   </ng-container>
 </app-page-header>
 
@@ -98,7 +100,9 @@
 
     <div class="grid grid--wide">
       <app-department-chart [departments]="s.departmentDistribution" />
-      <app-activity-feed-card [activities]="s.recentActivities" />
+      @if (permissions.can('activity:View')) {
+        <app-activity-feed-card [activities]="s.recentActivities" />
+      }
     </div>
   </div>
 } @else {

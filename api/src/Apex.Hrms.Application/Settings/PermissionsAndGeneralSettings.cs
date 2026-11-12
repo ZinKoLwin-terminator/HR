@@ -19,7 +19,8 @@ internal sealed class PermissionMatrixHandler(
     IPermissionStore store,
     EntityLoader<AppRole> loader,
     IRepository<AppRole> roles,
-    IActivityRecorder activity) : IPermissionMatrixHandler
+    IActivityRecorder activity,
+    IRoleGrantInvalidator grantCache) : IPermissionMatrixHandler
 {
     public const string ViewAction = "View";
     public const string AdministratorMessage = "HR Administrator always has full access and cannot be changed.";
@@ -81,6 +82,9 @@ internal sealed class PermissionMatrixHandler(
         {
             return Result.Failure<RolePermissionsDto>(saved.Error);
         }
+
+        // Committed: the permission check must read the new grants from now on, not the cached ones.
+        grantCache.Invalidate(roleId);
 
         // The role was saved with the grants, so it carries the new row version.
         var grants = await store.GrantsAsync(roleId, cancellationToken);

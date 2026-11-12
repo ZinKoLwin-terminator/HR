@@ -173,16 +173,70 @@ public sealed class UserHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task When_saving_the_account_fails_the_login_that_was_created_first_is_removed_again()
+    public async Task The_login_and_the_account_are_created_in_one_transaction_that_is_committed_only_when_the_account_is_saved()
     {
         var role = OfficerRole();
         var employee = await settings.SeedEmployeeAsync();
+        var commitsBefore = settings.Host.UnitOfWork.Commits;
+
+        ResultAssert.Succeeded(await settings.CreateUserAsync(employee.Id, role.Id));
+
+        Assert.Equal(commitsBefore + 1, settings.Host.UnitOfWork.Commits);
+        Assert.Null(settings.Host.UnitOfWork.TransactionLocks[^1]);
+    }
+
+    [Fact]
+    public async Task When_saving_the_account_fails_nothing_is_committed_and_no_compensating_delete_runs()
+    {
+        var role = OfficerRole();
+        var employee = await settings.SeedEmployeeAsync();
+        var commitsBefore = settings.Host.UnitOfWork.Commits;
         settings.Host.UnitOfWork.FailNextSaveWith = AppError.Conflict("A record with the same unique value already exists.");
 
         var result = await settings.CreateUserAsync(employee.Id, role.Id);
 
+        // The identity user was written inside the transaction, which is rolled back by the database (the integration test
+        // proves that no auth.User row is left); the handler does not try to repair anything by hand.
         ResultAssert.Failed(result, ErrorType.Conflict);
-        Assert.Equal(["sub-1"], settings.Logins.Deleted);
+        Assert.Equal(commitsBefore, settings.Host.UnitOfWork.Commits);
+        Assert.Empty(settings.Logins.Deleted);
+    }
+
+    [Fact]
+    public void The_create_request_never_prints_the_initial_password()
+    {
+        var request = new UserCreateRequest(7, 3, "Active", "a-secret-initial-password");
+
+        var text = request.ToString();
+
+        Assert.DoesNotContain("a-secret-initial-password", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("InitialPassword", text, StringComparison.Ordinal);
+        Assert.Contains("EmployeeId = 7", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Demoting_deactivating_or_deleting_an_administrator_takes_the_administrator_lock_in_a_transaction()
+    {
+        var admin = settings.SeedRole(SettingsHost.AdministratorRole, builtIn: true);
+        var officer = OfficerRole();
+        var one = settings.SeedAccount(admin, employeeId: null, "Admin One", "admin1@example.test");
+        var two = settings.SeedAccount(admin, employeeId: null, "Admin Two", "admin2@example.test");
+        var three = settings.SeedAccount(admin, employeeId: null, "Admin Three", "admin3@example.test");
+        var unitOfWork = settings.Host.UnitOfWork;
+
+        ResultAssert.Succeeded(await settings.Handler<IUpdateHandler<UserUpdateRequest, UserDto>>()
+            .HandleAsync(one.Id, new UserUpdateRequest(officer.Id, SettingsHost.Version(one.RowVersion)), default));
+        ResultAssert.Succeeded(await settings.Handler<ICommandHandler<DeactivateCommand, UserDto>>()
+            .HandleAsync(new DeactivateCommand(two.Id, SettingsHost.Version(two.RowVersion)), default));
+        // Admin Three is now the last one: the refused delete still held the lock and was never committed.
+        var commits = unitOfWork.Commits;
+        ResultAssert.Failed(
+            await settings.Handler<IDeleteHandler<UserDto>>().HandleAsync(three.Id, SettingsHost.Version(three.RowVersion), default),
+            ErrorType.Conflict,
+            "There must always be one active HR Administrator.");
+
+        Assert.Equal(commits, unitOfWork.Commits);
+        Assert.Equal(3, unitOfWork.TransactionLocks.Count(name => name == Application.Security.SecurityPolicy.AdministratorLockName));
     }
 
     // ---- Update (role) ----

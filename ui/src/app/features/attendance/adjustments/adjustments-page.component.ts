@@ -62,6 +62,7 @@ export class AdjustmentsPageComponent {
       extraActions: [
         {
           id: 'approve',
+          permission: 'Approve',
           label: 'Approve and apply',
           icon: 'check_circle',
           visible: pending,
@@ -76,6 +77,7 @@ export class AdjustmentsPageComponent {
         },
         {
           id: 'reject',
+          permission: 'Approve',
           label: 'Reject',
           icon: 'cancel',
           destructive: true,

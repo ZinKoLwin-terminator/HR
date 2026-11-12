@@ -25,7 +25,7 @@ public static class DependencyInjection
 
     /// <summary>
     /// Registers persistence, ASP.NET Core Identity (user and password stores in the auth schema, lockout and
-    /// password rules), the account directory, the clock and the placeholder current user. The connection string
+    /// password rules), the account directory, the clock and the anonymous placeholder current user (the Api layer replaces it). The connection string
     /// comes from configuration key <c>ConnectionStrings:Hrms</c> (user-secrets or environment variables for anything
     /// with a password); the business time zone from <c>Business:TimeZone</c> (default Asia/Yangon).
     /// The current user is registered with TryAdd: the Api layer replaces it with its own <see cref="ICurrentUser"/>.

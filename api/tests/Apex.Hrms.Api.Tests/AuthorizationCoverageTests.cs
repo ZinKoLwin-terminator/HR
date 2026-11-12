@@ -9,8 +9,8 @@ namespace Apex.Hrms.Api.Tests;
 
 /// <summary>
 /// Architecture rule: no endpoint of the API is mapped without an authorization policy, and the policy matches what
-/// the endpoint does. The policies check no permission yet (phase 3) but each requires a signed-in user; this test
-/// keeps the seams complete so the real permission check can be added in one place without finding forgotten endpoints.
+/// the endpoint does. Each module policy is a PermissionRequirement checked against sec.RolePermission (see PermissionHandler);
+/// this test keeps the seams complete so no endpoint is forgotten and the policy names the frontend relies on stay stable.
 /// </summary>
 public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFactory<Program>>
 {

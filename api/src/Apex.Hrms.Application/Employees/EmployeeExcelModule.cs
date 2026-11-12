@@ -37,7 +37,7 @@ internal sealed record EmployeeExcelDependencies(
 /// <summary>
 /// The employee module of the Excel import and export. Imported rows go through the same create and update handlers as
 /// the API, so a row is accepted only when a create or an update through the API would be accepted. The permissions
-/// listed are the ones those calls need (placeholders until the permission check exists).
+/// listed are the ones those calls need; the Excel endpoints enforce them by name through the same permission check as the routes.
 /// </summary>
 internal sealed class EmployeeExcelModule(EmployeeExcelDependencies deps) : IExcelModule
 {

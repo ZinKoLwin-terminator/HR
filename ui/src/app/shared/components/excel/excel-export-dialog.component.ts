@@ -18,6 +18,7 @@ import {
   errorMessage,
 } from '../../../core/services/ui-notification.service';
 import { downloadFile } from '../../../core/utilities/file-download';
+import { PermissionService } from '../../../core/services/permission.service';
 
 export interface ExcelExportDialogData {
   moduleCode: string;
@@ -121,7 +122,7 @@ export interface ExcelExportDialogData {
               </mat-checkbox>
             }
           </div>
-          @if (sensitiveColumns().length) {
+          @if (sensitiveColumns().length && mayIncludeSensitive()) {
             <mat-checkbox
               class="sensitive"
               [ngModel]="includeSensitive()"
@@ -224,6 +225,7 @@ export class ExcelExportDialogComponent {
   private readonly exportApi = inject(ExcelExportDataService);
   private readonly catalogApi = inject(ExcelModuleCatalogDataService);
   private readonly toast = inject(UiNotificationService);
+  private readonly permissions = inject(PermissionService);
 
   protected readonly catalog = rxResource({ stream: () => this.catalogApi.getModules() });
   protected readonly info = computed<ExcelModuleInfo | undefined>(() =>
@@ -253,6 +255,12 @@ export class ExcelExportDialogComponent {
   );
   protected readonly sensitiveColumns = computed(() =>
     this.exportColumns().filter((c) => c.sensitive),
+  );
+  /** The server needs the module's ViewSensitive and ViewBank to export those columns (UX only). */
+  protected readonly mayIncludeSensitive = computed(
+    () =>
+      this.permissions.can(`${this.data.moduleCode}:ViewSensitive`) &&
+      this.permissions.can(`${this.data.moduleCode}:ViewBank`),
   );
   protected readonly sensitiveNames = computed(() =>
     this.sensitiveColumns()

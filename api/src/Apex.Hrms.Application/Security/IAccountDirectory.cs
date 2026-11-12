@@ -13,12 +13,14 @@ public sealed record AccountSnapshot(
     string Email,
     string? ExternalSubject,
     AccountStatus Status,
+    int RoleId,
     string RoleName,
     bool RoleActive,
+    bool EmployeeLeft,
     IReadOnlyList<string> Permissions)
 {
-    /// <summary>An account signs in only when it is Active and its role is active.</summary>
-    public bool CanSignIn => Status == AccountStatus.Active && RoleActive;
+    /// <summary>An account signs in only when it is Active, its role is active and its linked employee has no exit date.</summary>
+    public bool CanSignIn => Status == AccountStatus.Active && RoleActive && !EmployeeLeft;
 }
 
 /// <summary>Reads the business accounts (sec.AppUser) that identity users are linked to.</summary>

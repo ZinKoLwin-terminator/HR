@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
+import { PermissionService } from '../../../core/services/permission.service';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -45,6 +46,8 @@ import { OrganizationLookupService, options } from '../../organization/organizat
   styleUrl: './shift-assignment.component.scss',
 })
 export class ShiftAssignmentComponent {
+  /** Assigning a shift edits the employee: employees:Edit (UX only; the server enforces). */
+  protected readonly permissions = inject(PermissionService);
   private readonly employeesApi = inject(EmployeeDataService);
   private readonly shiftsApi = inject(ShiftDataService);
   private readonly lookupService = inject(OrganizationLookupService);

@@ -62,10 +62,12 @@
     </ng-container>
     @if (cfg.excel; as excel) {
       <ng-container pageTools>
-        <button mat-stroked-button type="button" (click)="openExport()">
-          <mat-icon>download</mat-icon>Export
-        </button>
-        @if (excel.import !== false) {
+        @if (canExport()) {
+          <button mat-stroked-button type="button" (click)="openExport()">
+            <mat-icon>download</mat-icon>Export
+          </button>
+        }
+        @if (excel.import !== false && canImport()) {
           <a
             mat-stroked-button
             routerLink="/data-exchange/import"
@@ -76,7 +78,7 @@
         }
       </ng-container>
     }
-    @if (cfg.canCreate !== false) {
+    @if (cfg.canCreate !== false && canDo('Create')) {
       <button pageActions mat-flat-button type="button" (click)="openForm()">
         <mat-icon>add</mat-icon>Add {{ cfg.entityLabel.toLowerCase() }}
       </button>
@@ -85,12 +87,12 @@
 } @else {
   <div class="toolbar toolbar--plain" role="search" [attr.aria-label]="'Filter ' + cfg.title">
     <ng-container *ngTemplateOutlet="searchAndFilters" />
-    @if (cfg.excel) {
+    @if (cfg.excel && canExport()) {
       <button mat-stroked-button type="button" (click)="openExport()">
         <mat-icon>download</mat-icon>Export
       </button>
     }
-    @if (cfg.canCreate !== false) {
+    @if (cfg.canCreate !== false && canDo('Create')) {
       <button mat-flat-button type="button" (click)="openForm()">
         <mat-icon>add</mat-icon>Add {{ cfg.entityLabel.toLowerCase() }}
       </button>

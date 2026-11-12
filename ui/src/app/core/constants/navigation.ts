@@ -8,13 +8,43 @@ export interface NavItem {
   section?: string;
   /** Sub-heading shown above a run of consecutive children that share it. */
   group?: string;
+  /**
+   * Server permission key (`module:Action`) needed to see the entry. On a group it is the default
+   * for its children; a child may name its own. Entries without one are always shown. UX only: the
+   * server enforces the same keys.
+   */
+  permission?: string;
+}
+
+/** The entries (and groups with at least one entry) the user may see. */
+export function visibleNavigation(
+  items: NavItem[],
+  can: (permission: string) => boolean,
+): NavItem[] {
+  return items.flatMap((item) => {
+    if (!item.children) {
+      return !item.permission || can(item.permission) ? [item] : [];
+    }
+    const children = item.children.filter((child) => {
+      const key = child.permission ?? item.permission;
+      return !key || can(key);
+    });
+    return children.length > 0 ? [{ ...item, children }] : [];
+  });
 }
 
 /** Single source of truth for the sidebar. Routes must exist in the route config. */
 export const NAVIGATION: NavItem[] = [
-  { label: 'Dashboard', icon: 'space_dashboard', route: '/dashboard', section: 'MAIN' },
+  {
+    label: 'Dashboard',
+    icon: 'space_dashboard',
+    route: '/dashboard',
+    section: 'MAIN',
+    permission: 'dashboard:View',
+  },
   {
     label: 'Organization',
+    permission: 'organization:View',
     icon: 'corporate_fare',
     section: 'OPERATIONS',
     children: [
@@ -34,14 +64,22 @@ export const NAVIGATION: NavItem[] = [
   },
   {
     label: 'Employees',
+    permission: 'employees:View',
     icon: 'groups',
     section: 'PEOPLE',
     children: [
-      { label: 'Add Employee', icon: 'person_add', route: '/employees/new', group: 'Operations' },
+      {
+        label: 'Add Employee',
+        icon: 'person_add',
+        route: '/employees/new',
+        group: 'Operations',
+        permission: 'employees:Create',
+      },
       {
         label: 'Employee Documents',
         icon: 'folder_shared',
         route: '/employees/documents',
+        permission: 'employees:ViewSensitive',
         group: 'Operations',
       },
       { label: 'Employee List', icon: 'badge', route: '/employees/list', group: 'Report' },
@@ -49,6 +87,7 @@ export const NAVIGATION: NavItem[] = [
   },
   {
     label: 'Attendance',
+    permission: 'attendance:View',
     icon: 'schedule',
     section: 'PEOPLE',
     children: [
@@ -74,6 +113,7 @@ export const NAVIGATION: NavItem[] = [
         label: 'Check In / Out',
         icon: 'touch_app',
         route: '/attendance/check-in',
+        permission: 'attendance:Create',
         group: 'Operations',
       },
       { label: 'Overtime', icon: 'more_time', route: '/attendance/overtime', group: 'Operations' },
@@ -105,6 +145,7 @@ export const NAVIGATION: NavItem[] = [
   },
   {
     label: 'Leave Management',
+    permission: 'leave:View',
     icon: 'beach_access',
     section: 'PEOPLE',
     children: [
@@ -120,6 +161,7 @@ export const NAVIGATION: NavItem[] = [
         label: 'Leave Approvals',
         icon: 'task_alt',
         route: '/leave/approvals',
+        permission: 'leave:Approve',
         group: 'Operations',
       },
       {
@@ -138,6 +180,7 @@ export const NAVIGATION: NavItem[] = [
   },
   {
     label: 'Payroll',
+    permission: 'payroll:View',
     icon: 'payments',
     section: 'OPERATIONS',
     children: [
@@ -171,6 +214,7 @@ export const NAVIGATION: NavItem[] = [
   },
   {
     label: 'Recruitment',
+    permission: 'recruitment:View',
     icon: 'person_search',
     section: 'OPERATIONS',
     children: [
@@ -182,15 +226,22 @@ export const NAVIGATION: NavItem[] = [
   },
   {
     label: 'Data Exchange',
+    permission: 'excel:View',
     icon: 'swap_vert',
     section: 'SYSTEM',
     children: [
-      { label: 'Import Data', icon: 'upload_file', route: '/data-exchange/import' },
+      {
+        label: 'Import Data',
+        icon: 'upload_file',
+        route: '/data-exchange/import',
+        permission: 'excel:Import',
+      },
       { label: 'Import History', icon: 'history', route: '/data-exchange/history' },
     ],
   },
   {
     label: 'Settings',
+    permission: 'settings:View',
     icon: 'settings',
     section: 'SYSTEM',
     children: [

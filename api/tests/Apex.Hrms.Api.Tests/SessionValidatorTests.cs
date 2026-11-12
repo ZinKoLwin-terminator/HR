@@ -58,8 +58,8 @@ public sealed class SessionValidatorTests
         }
     }
 
-    private static AccountSnapshot Snapshot(AccountStatus status = AccountStatus.Active, bool roleActive = true) =>
-        new(7, null, "TST- Test Person", "tst@example.test", "subject-1", status, "HR Administrator", roleActive, []);
+    private static AccountSnapshot Snapshot(AccountStatus status = AccountStatus.Active, bool roleActive = true, bool employeeLeft = false) =>
+        new(7, null, "TST- Test Person", "tst@example.test", "subject-1", status, 1, "HR Administrator", roleActive, employeeLeft, []);
 
     private static (CookieValidatePrincipalContext Context, FakeAccounts Accounts, RecordingAuthentication Authentication) Arrange(
         DateTimeOffset now,
@@ -114,6 +114,17 @@ public sealed class SessionValidatorTests
     public async Task A_session_of_an_account_that_can_no_longer_sign_in_is_rejected(AccountStatus status, bool roleActive)
     {
         var (context, _, authentication) = Arrange(Now, Snapshot(status, roleActive), absoluteExpiry: Now.AddHours(1));
+
+        await SessionValidator.ValidateAsync(context);
+
+        Assert.Null(context.Principal);
+        Assert.Equal(1, authentication.SignOuts);
+    }
+
+    [Fact]
+    public async Task A_session_of_an_account_whose_employee_has_left_is_rejected()
+    {
+        var (context, _, authentication) = Arrange(Now, Snapshot(employeeLeft: true), absoluteExpiry: Now.AddHours(1));
 
         await SessionValidator.ValidateAsync(context);
 

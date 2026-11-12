@@ -21,6 +21,7 @@ using Apex.Hrms.Domain.Payroll;
 using Apex.Hrms.Domain.Recruitment;
 using Apex.Hrms.Domain.Security;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Apex.Hrms.Application.Tests.Fakes;
 
@@ -77,6 +78,7 @@ internal sealed class TestHost : IDisposable
         services.AddSingleton<ILeaveApplicationNumberSequence>(LeaveNumbers);
         services.AddSingleton<IJobOpeningCodeSequence>(JobCodes);
         services.AddSingleton<IBusinessWeek>(Week);
+        services.TryAddSingleton<Apex.Hrms.Application.Settings.IAccountLogins>(new FakeAccountLogins());
         services.AddApplication();
         configure?.Invoke(services);
         provider = services.BuildServiceProvider();

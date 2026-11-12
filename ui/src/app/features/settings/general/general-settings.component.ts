@@ -11,10 +11,11 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { HasUnsavedChanges } from '../../../core/guards/unsaved-changes.guard';
 import { isAppError } from '../../../core/models/common.models';
 import { DATE_FORMATS, GeneralSettings, TIMEZONES } from '../../../core/models/settings.models';
-import { AuthService } from '../../../core/services/auth.service';
+import { AuthService, SERVER_SESSION } from '../../../core/services/auth.service';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { DemoDataDataService } from '../../../core/services/data/demo-data-data.service';
 import { GeneralSettingsDataService } from '../../../core/services/data/settings-data.services';
+import { PermissionService } from '../../../core/services/permission.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -50,10 +51,7 @@ const MONTHS = [
     EmptyStateComponent,
   ],
   template: `
-    <app-page-header
-      title="General settings"
-      description="Organization-wide preferences. Demo only: saved in memory and not applied to other screens."
-    />
+    <app-page-header title="General settings" [description]="description" />
 
     @if (resource.error()) {
       <app-empty-state icon="error" title="Settings could not be loaded">
@@ -120,7 +118,11 @@ const MONTHS = [
           <button mat-stroked-button type="button" [disabled]="form.pristine" (click)="reset()">
             Reset
           </button>
-          <button mat-flat-button type="submit" [disabled]="form.pristine || saving()">
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="form.pristine || saving() || !permissions.can('settings:Edit')"
+          >
             Save settings
           </button>
         </div>
@@ -211,9 +213,14 @@ const MONTHS = [
 export class GeneralSettingsComponent implements HasUnsavedChanges {
   private readonly api = inject(GeneralSettingsDataService);
   private readonly toast = inject(UiNotificationService);
+  protected readonly permissions = inject(PermissionService);
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly auth = inject(AuthService);
+  private readonly apiMode = inject(SERVER_SESSION);
+  protected readonly description = this.apiMode
+    ? 'Organization-wide preferences, saved on the server. Only HR Administrators can change them. Other screens do not use these values yet.'
+    : 'Organization-wide preferences. Demo only: saved in memory and not applied to other screens.';
   protected readonly demoData = inject(DemoDataDataService);
   protected readonly resetting = signal(false);
 
@@ -303,7 +310,9 @@ export class GeneralSettingsComponent implements HasUnsavedChanges {
       next: (saved) => {
         this.saving.set(false);
         this.load(saved);
-        this.toast.success('General settings saved (simulation).');
+        this.toast.success(
+          this.apiMode ? 'General settings saved.' : 'General settings saved (simulation).',
+        );
       },
       error: (error: unknown) => {
         this.saving.set(false);

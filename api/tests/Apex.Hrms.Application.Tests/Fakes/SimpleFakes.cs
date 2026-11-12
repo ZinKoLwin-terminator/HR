@@ -39,6 +39,28 @@ internal sealed class FakeUnitOfWork(FakeDatabase database, FakeActivityLog? act
 
         return Task.FromResult(failure is null ? Result.Success() : Result.Failure(failure));
     }
+
+    /// <summary>The exclusive lock name of every transaction a handler began (null when it asked for none).</summary>
+    public List<string?> TransactionLocks { get; } = [];
+
+    public int Commits { get; private set; }
+
+    public Task<Result<IUnitOfWorkTransaction>> BeginTransactionAsync(string? exclusiveLock, CancellationToken cancellationToken)
+    {
+        TransactionLocks.Add(exclusiveLock);
+        return Task.FromResult(Result.Success<IUnitOfWorkTransaction>(new FakeTransaction(this)));
+    }
+
+    private sealed class FakeTransaction(FakeUnitOfWork owner) : IUnitOfWorkTransaction
+    {
+        public Task CommitAsync(CancellationToken cancellationToken)
+        {
+            owner.Commits++;
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
 }
 
 internal sealed class FakeCurrentUser : ICurrentUser

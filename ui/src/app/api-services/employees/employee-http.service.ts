@@ -28,6 +28,7 @@ import {
   EmploymentStatus,
 } from '../../core/models/employee.models';
 import { EmployeeDataService } from '../../core/services/data/employee-data.service';
+import { PermissionService } from '../../core/services/permission.service';
 import {
   BranchDataService,
   DepartmentDataService,
@@ -131,6 +132,7 @@ const EXITED: readonly EmploymentStatus[] = ['Resigned', 'Terminated'];
 export class EmployeeHttpService implements EmployeeDataService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = inject(API_BASE_URL);
+  private readonly permissions = inject(PermissionService);
   private readonly branches = inject(BranchDataService);
   private readonly departments = inject(DepartmentDataService);
   private readonly positions = inject(PositionDataService);
@@ -603,6 +605,12 @@ export class EmployeeHttpService implements EmployeeDataService {
 
   /** GET /{id}/personal. A 403 gives placeholders; every other failure is an error. */
   private loadPersonal(id: number): Observable<PersonalState> {
+    // Without the key the call can only answer 403 (and a toast): do not make it.
+    if (!this.permissions.can('employees:ViewSensitive')) {
+      const state: PersonalState = { values: forbiddenPersonal(), forbidden: true };
+      this.personals.set(id, state);
+      return of(state);
+    }
     return this.http.get<EmployeePersonalApi>(`${this.url}/${id}/personal`).pipe(
       map((api) => ({
         values: toPersonalValues(api),
@@ -625,6 +633,20 @@ export class EmployeeHttpService implements EmployeeDataService {
    */
   private loadBank(id: number, dto: EmployeeApi): Observable<BankState> {
     const masked = dto.bankAccountMasked ?? '';
+    if (!this.permissions.can('employees:ViewBank')) {
+      const state: BankState = {
+        values: {
+          bankName: NOT_PERMITTED,
+          branchName: '',
+          accountName: NOT_PERMITTED,
+          accountNumber: masked,
+        },
+        exists: masked !== '',
+        forbidden: true,
+      };
+      this.banks.set(id, state);
+      return of(state);
+    }
     return this.http.get<BankAccountApi>(`${this.url}/${id}/bank-account`).pipe(
       map((api) => this.bankState(api, masked)),
       catchError((e) => {

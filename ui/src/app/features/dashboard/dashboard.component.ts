@@ -21,6 +21,7 @@ import {
 } from 'chart.js';
 import { provideCharts } from 'ng2-charts';
 import { CurrentUserService } from '../../core/services/current-user.service';
+import { PermissionService } from '../../core/services/permission.service';
 import { DashboardDataService } from '../../core/services/data/dashboard-data.service';
 import { errorMessage } from '../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
@@ -83,6 +84,7 @@ import { UpcomingEventsCardComponent } from './widgets/upcoming-events-card.comp
 export class DashboardComponent {
   private readonly dashboardApi = inject(DashboardDataService);
   protected readonly user = inject(CurrentUserService);
+  protected readonly permissions = inject(PermissionService);
 
   protected readonly summary = rxResource({ stream: () => this.dashboardApi.getSummary() });
   protected downloadReport(): void {

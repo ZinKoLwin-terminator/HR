@@ -25,6 +25,30 @@ public sealed class RoleAndSettingsHandlerTests : IDisposable
         settings.Handler<IUpdateHandler<RoleUpdateRequest, RoleDto>>()
             .HandleAsync(role.Id, new RoleUpdateRequest(name, description ?? role.Description, SettingsHost.Version(role.RowVersion)), default);
 
+    [Fact]
+    public async Task Saving_the_grants_of_a_role_empties_the_cached_grants_of_that_role_only()
+    {
+        var (_, officer) = await AdminAndOfficerAsync();
+        var cache = settings.Host.Get<Application.Security.RoleGrantCache>();
+        var loads = 0;
+        Task<IReadOnlySet<string>> Load(CancellationToken _)
+        {
+            loads++;
+            return Task.FromResult<IReadOnlySet<string>>(new HashSet<string> { "dashboard:View" });
+        }
+
+        await cache.GetAsync(officer.Id, Load, default);
+        await cache.GetAsync(officer.Id + 1000, Load, default);
+        await cache.GetAsync(officer.Id, Load, default);
+        Assert.Equal(2, loads);
+
+        ResultAssert.Succeeded(await SaveGrantsAsync(officer, new() { ["dashboard"] = ["View"] }));
+
+        await cache.GetAsync(officer.Id, Load, default);
+        await cache.GetAsync(officer.Id + 1000, Load, default);
+        Assert.Equal(3, loads);
+    }
+
     // ---- Roles ----
 
     [Fact]

@@ -118,6 +118,12 @@ export interface CrudPageConfig<T extends Entity> {
   canEdit?: (row: T) => boolean;
   /** Hide Delete for rows that cannot be deleted. */
   canDelete?: (row: T) => boolean;
+  /**
+   * Overrides the server permission key behind an action, by action name (`Create`, `Edit`,
+   * `Delete`). By default the key is the screen's route module plus the action (`leave:Create`).
+   * UX only: the server enforces its own keys.
+   */
+  permissionKeys?: Partial<Record<string, string>>;
   /** Shows Export (and Import) buttons for this list, backed by the Excel module with this code. */
   excel?: { moduleCode: string; import?: boolean };
 }
@@ -141,6 +147,8 @@ export interface CrudExtraAction<T extends Entity> {
   };
   run: (row: T, input: string) => Observable<unknown>;
   successMessage: (row: T) => string;
+  /** Action (within the screen's module) the role needs to see this action: `Approve`, `Create`, ... Default `Edit`. */
+  permission?: string;
   /** Skip the success toast and list refresh (e.g. an action that just navigates). */
   silent?: boolean;
 }

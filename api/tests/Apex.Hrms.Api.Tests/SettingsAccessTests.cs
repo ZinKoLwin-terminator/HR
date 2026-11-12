@@ -25,10 +25,10 @@ public sealed class SettingsAccessTests : IClassFixture<WebApplicationFactory<Pr
 
     private HttpClient ClientFor(string roleName, AccountStatus status = AccountStatus.Active, bool roleActive = true, IEmailSender? email = null)
     {
-        var account = new AccountSnapshot(1, null, "TST- Test User", "tst@example.test", "tst-subject", status, roleName, roleActive, []);
-        var host = SignedInHost.Customize(factory).WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        // Every role holds every grant here, so only the administrator requirement can refuse the caller.
+        var account = AccessFakes.Account(roleName, status, roleActive);
+        var host = SignedInHost.Customize(factory, account, AccessFakes.AllGrants).WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
         {
-            services.AddScoped<IAccountDirectory>(_ => new FakeDirectory(account));
             if (email is not null)
             {
                 services.AddSingleton(email);
@@ -154,17 +154,6 @@ public sealed class SettingsAccessTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal("Choose a listed format.", errors.GetProperty("dateFormat")[0].GetString());
         Assert.Equal("Use a 3-letter code such as MMK.", errors.GetProperty("currencyCode")[0].GetString());
         Assert.Equal("Choose a month.", errors.GetProperty("fiscalYearStartMonth")[0].GetString());
-    }
-
-    private sealed class FakeDirectory(AccountSnapshot account) : IAccountDirectory
-    {
-        public Task<AccountSnapshot?> FindByExternalSubjectAsync(string externalSubject, bool includePermissions, CancellationToken cancellationToken) =>
-            Task.FromResult<AccountSnapshot?>(account);
-
-        public Task<AccountSnapshot?> FindByIdAsync(int accountId, bool includePermissions, CancellationToken cancellationToken) =>
-            Task.FromResult<AccountSnapshot?>(account);
-
-        public Task RecordSignInAsync(int accountId, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class UnconfiguredEmail : IEmailSender
