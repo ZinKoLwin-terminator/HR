@@ -24,6 +24,8 @@ Without a database you cannot sign in: create the first administrator with the `
 
 ## Configuration
 
+For production settings, hosting notes and the go-live checklist see [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).
+
 | Key | Meaning |
 | --- | --- |
 | `ConnectionStrings:Hrms` | SQL Server connection string (required). |
