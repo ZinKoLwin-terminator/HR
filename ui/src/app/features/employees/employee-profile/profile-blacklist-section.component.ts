@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,6 +17,7 @@ import {
   UiNotificationService,
   errorMessage,
 } from '../../../core/services/ui-notification.service';
+import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 
 /**
  * Do-not-rehire section of a FORMER employee's profile (one with an exit date).
@@ -32,7 +32,7 @@ import {
  */
 @Component({
   selector: 'app-profile-blacklist-section',
-  imports: [DatePipe, MatButtonModule, MatIconModule, MatProgressBarModule],
+  imports: [AppDatePipe, MatButtonModule, MatIconModule, MatProgressBarModule],
   template: `
     @if (visible()) {
       <section class="card blacklist no-print" aria-labelledby="blacklist-heading">
@@ -48,7 +48,7 @@ import {
           <button mat-stroked-button type="button" (click)="entry.reload()">Try again</button>
         } @else if (active(); as e) {
           <p class="blacklist__status">
-            On the do-not-rehire list since {{ e.blacklistedOn | date }}, added by
+            On the do-not-rehire list since {{ e.blacklistedOn | appDate }}, added by
             {{ e.blacklistedBy }}.
           </p>
           <dl class="blacklist__reason">

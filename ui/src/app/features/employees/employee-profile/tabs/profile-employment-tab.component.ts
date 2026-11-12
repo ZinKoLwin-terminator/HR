@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -7,10 +6,11 @@ import { ShiftDataService } from '../../../../core/services/data/attendance-data
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
 import { formatTenure, todayIso } from '../../../../shared/utilities/date.util';
 import { OrgLookups, nameMap } from '../../../organization/organization-lookups';
+import { AppDatePipe } from '../../../../shared/pipes/app-date.pipe';
 
 @Component({
   selector: 'app-profile-employment-tab',
-  imports: [DatePipe, RouterLink, StatusBadgeComponent],
+  imports: [AppDatePipe, RouterLink, StatusBadgeComponent],
   template: `
     @let e = employee();
     <div class="cards">
@@ -31,7 +31,7 @@ import { OrgLookups, nameMap } from '../../../organization/organization-lookups'
           </div>
           <div>
             <dt>Joining date</dt>
-            <dd>{{ e.joiningDate | date }}</dd>
+            <dd>{{ e.joiningDate | appDate }}</dd>
           </div>
           <div>
             <dt>Tenure</dt>
@@ -39,12 +39,12 @@ import { OrgLookups, nameMap } from '../../../organization/organization-lookups'
           </div>
           <div>
             <dt>Probation end</dt>
-            <dd>{{ e.probationEndDate ? (e.probationEndDate | date) : '—' }}</dd>
+            <dd>{{ e.probationEndDate ? (e.probationEndDate | appDate) : '—' }}</dd>
           </div>
           @if (e.exitDate) {
             <div>
               <dt>Exit date</dt>
-              <dd>{{ e.exitDate | date }}</dd>
+              <dd>{{ e.exitDate | appDate }}</dd>
             </div>
           }
         </dl>

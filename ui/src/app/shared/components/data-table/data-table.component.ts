@@ -1,4 +1,4 @@
-import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { Component, computed, contentChildren, input, model, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -15,6 +15,7 @@ import { EmptyStateComponent } from '../empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../status-badge/status-badge.component';
 import { CellTemplateDirective } from './cell-template.directive';
 import { TableAction, TableActionEvent, TableColumn } from './data-table.models';
+import { AppDatePipe } from '../../pipes/app-date.pipe';
 
 /**
  * Presentational table for paged data. Paging/sorting are "remote" — the
@@ -24,6 +25,7 @@ import { TableAction, TableActionEvent, TableColumn } from './data-table.models'
 @Component({
   selector: 'app-data-table',
   imports: [
+    AppDatePipe,
     MatTableModule,
     MatSortModule,
     MatPaginatorModule,
@@ -34,7 +36,6 @@ import { TableAction, TableActionEvent, TableColumn } from './data-table.models'
     MatCheckboxModule,
     MatTooltipModule,
     NgTemplateOutlet,
-    DatePipe,
     DecimalPipe,
     MoneyPipe,
     StatusBadgeComponent,

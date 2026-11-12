@@ -2,7 +2,7 @@
   <span class="brand__logo" aria-hidden="true"><img src="logo.png" alt="" /></span>
   @if (!collapsed()) {
     <span class="brand__text">
-      <span class="brand__name">{{ config.organizationName }}</span>
+      <span class="brand__name">{{ settings.organizationName() }}</span>
       <span class="brand__product">HR Management System</span>
     </span>
   }

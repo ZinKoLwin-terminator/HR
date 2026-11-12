@@ -28,6 +28,6 @@ describe('GeneralSettingsComponent', () => {
 
   it('keeps the demo text in the mock build', async () => {
     const text = await render(false);
-    expect(text).toContain('Demo only: saved in memory');
+    expect(text).toContain('Demo only: saved in this browser');
   });
 });

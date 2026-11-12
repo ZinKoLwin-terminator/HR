@@ -10,7 +10,7 @@
       <p class="company">{{ p.companyName }}</p>
       <h1>Payslip · {{ p.periodName }}</h1>
     </div>
-    <p class="generated">Generated {{ p.generatedOn | date }}</p>
+    <p class="generated">Generated {{ p.generatedOn | appDate }}</p>
   </header>
 
   <dl class="person info-grid">
@@ -131,5 +131,5 @@
     This document is generated for demonstration only. No payment has been made and no bank has been
     contacted.
   </p>
-  <p class="printed print-only">Printed on {{ today | date: 'mediumDate' }}</p>
+  <p class="printed print-only">Printed on {{ today | appDate }}</p>
 </article>

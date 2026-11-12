@@ -12,7 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -56,6 +56,7 @@ import {
 } from './crud.models';
 import { EntityDetailsDialogComponent } from './entity-details-dialog.component';
 import { EntityFormDialogComponent } from './entity-form-dialog.component';
+import { AppDatePipe } from '../../pipes/app-date.pipe';
 
 type Row = Entity & { status?: string };
 
@@ -81,7 +82,7 @@ function permissionModuleOf(snapshot: ActivatedRouteSnapshot | null): string | n
 @Component({
   selector: 'app-crud-page',
   imports: [
-    DatePipe,
+    AppDatePipe,
     DecimalPipe,
     MoneyPipe,
     NgTemplateOutlet,
