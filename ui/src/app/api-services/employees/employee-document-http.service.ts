@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, catchError, switchMap } from 'rxjs';
+import { EMPTY, Observable, catchError, expand, map, reduce, switchMap } from 'rxjs';
 import { CreateModel, UpdateModel } from '../../core/models/common.models';
 import { EmployeeDocument } from '../../core/models/employee-extras.models';
 import { EmployeeDocumentDataService } from '../../core/services/data/employee-extras-data.services';
@@ -16,6 +16,9 @@ import {
  * metadata is sent and stored (no file contents). The profile tab and the documents screen page
  * through `/query?employeeId&type&search`. PUT carries the `rowVersion`; DELETE sends it as a body.
  */
+/** The server clamps page sizes to 200. */
+const DOCUMENT_PAGE_SIZE = 200;
+
 @Injectable({ providedIn: 'root' })
 export class EmployeeDocumentHttpService
   extends RecruitmentHttpBase<EmployeeDocument>
@@ -27,6 +30,21 @@ export class EmployeeDocumentHttpService
 
   protected normalise(raw: ApiShape<EmployeeDocument>): Versioned<EmployeeDocument> {
     return { ...raw, expiryDate: raw.expiryDate || null } as Versioned<EmployeeDocument>;
+  }
+
+  /** The API has no unpaged list of documents (personal data): read every page of `/query`. */
+  override getAll(): Observable<EmployeeDocument[]> {
+    const page = (pageIndex: number) => this.query({ pageIndex, pageSize: DOCUMENT_PAGE_SIZE });
+    return page(0).pipe(
+      expand((result) =>
+        result.items.length > 0 && (result.pageIndex + 1) * result.pageSize < result.total
+          ? page(result.pageIndex + 1)
+          : EMPTY,
+      ),
+      map((result) => result.items),
+      reduce((all, items) => [...all, ...items], [] as EmployeeDocument[]),
+      catchError((e) => this.fail(e)),
+    );
   }
 
   create(model: CreateModel<EmployeeDocument>): Observable<EmployeeDocument> {

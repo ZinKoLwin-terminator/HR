@@ -74,6 +74,19 @@ describe('employee documents and salary summary HTTP adapters', () => {
     expect((await result).items[0].title).toBe('Passport copy');
   });
 
+  it('reads every document through paged /query (the API has no unpaged list)', async () => {
+    const { http, docs } = setup();
+    const result = firstValueFrom(docs.getAll());
+    const first = http.expectOne((r) => r.url === '/api/employee-documents/query');
+    expect(first.request.params.get('pageIndex')).toBe('0');
+    expect(first.request.params.get('pageSize')).toBe('200');
+    first.flush({ items: [doc], total: 201, pageIndex: 0, pageSize: 200 });
+    const second = http.expectOne((r) => r.url === '/api/employee-documents/query');
+    expect(second.request.params.get('pageIndex')).toBe('1');
+    second.flush({ items: [{ ...doc, id: 8 }], total: 201, pageIndex: 1, pageSize: 200 });
+    expect((await result).map((d) => d.id)).toEqual([7, 8]);
+  });
+
   it('creates with metadata only and no rowVersion or id', async () => {
     const { http, docs } = setup();
     const result = firstValueFrom(
