@@ -5,6 +5,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { forkJoin } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import { LeaveApplication } from '../../../core/models/leave.models';
+import { AuthService } from '../../../core/services/auth.service';
 import { HolidayDataService } from '../../../core/services/data/attendance-data.services';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import {
@@ -23,6 +24,7 @@ function useLeaveConfig(mode: LeaveListMode) {
   const typesApi = inject(LeaveTypeDataService);
   const holidaysApi = inject(HolidayDataService);
   const weekendDays = inject(APP_CONFIG).weekendDays;
+  const auth = inject(AuthService);
   const lookups = rxResource({
     stream: () =>
       forkJoin({
@@ -34,7 +36,13 @@ function useLeaveConfig(mode: LeaveListMode) {
   return computed<CrudPageConfig<LeaveApplication> | null>(() => {
     const l = lookups.value();
     return l
-      ? buildLeaveApplicationsConfig({ mode, service: applications, weekendDays, ...l })
+      ? buildLeaveApplicationsConfig({
+          mode,
+          service: applications,
+          weekendDays,
+          ownEmployeeId: auth.session()?.employeeId ?? null,
+          ...l,
+        })
       : null;
   });
 }

@@ -6,7 +6,7 @@ import {
   AttendanceAdjustment,
   AttendanceStatus,
 } from '../../../core/models/attendance.models';
-import { SERVER_SESSION } from '../../../core/services/auth.service';
+import { AuthService, SERVER_SESSION } from '../../../core/services/auth.service';
 import { fullName } from '../../../core/models/employee.models';
 import { AttendanceAdjustmentDataService } from '../../../core/services/data/attendance-data.services';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
@@ -32,6 +32,7 @@ export class AdjustmentsPageComponent {
   private readonly adjustments = inject(AttendanceAdjustmentDataService);
   private readonly employeesApi = inject(EmployeeDataService);
   private readonly apiMode = inject(SERVER_SESSION);
+  private readonly auth = inject(AuthService);
   private readonly employees = rxResource({ stream: () => this.employeesApi.getAll() });
 
   protected readonly config = computed<CrudPageConfig<AttendanceAdjustment> | null>(() => {
@@ -41,6 +42,10 @@ export class AdjustmentsPageComponent {
     }
     const names = new Map(people.map((e) => [e.id, `${fullName(e)} (${e.employeeCode})`]));
     const pending = (a: AttendanceAdjustment) => a.status === 'Pending';
+    // Nobody decides their own adjustment (the server refuses it too).
+    const own = this.auth.session()?.employeeId ?? null;
+    const decidable = (a: AttendanceAdjustment) =>
+      pending(a) && (own == null || a.employeeId !== own);
     const code = (a: AttendanceAdjustment) => `ADJ-${String(a.id).padStart(4, '0')}`;
     const range = (a: string | null, b: string | null) => `${a ?? '—'} – ${b ?? '—'}`;
     const statusOptions = APPROVAL_STATUSES.map((s) => ({ value: s, label: s }));
@@ -68,7 +73,7 @@ export class AdjustmentsPageComponent {
           permission: 'Approve',
           label: 'Approve and apply',
           icon: 'check_circle',
-          visible: pending,
+          visible: decidable,
           confirm: {
             title: 'Approve adjustment?',
             message: (a) =>
@@ -84,7 +89,7 @@ export class AdjustmentsPageComponent {
           label: 'Reject',
           icon: 'cancel',
           destructive: true,
-          visible: pending,
+          visible: decidable,
           prompt: {
             title: 'Reject adjustment?',
             message: (a) =>

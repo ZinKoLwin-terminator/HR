@@ -29,6 +29,17 @@ async function rowMenu(page: Page, rowText: string | RegExp, action: string) {
   await page.getByRole('menuitem', { name: action }).click();
 }
 
+/** The signed-in demo user (EMP002) cannot decide their own requests, so pick someone else's. */
+async function othersPendingMenu(page: Page, action: string) {
+  await rows(page)
+    .filter({ hasText: 'Pending' })
+    .filter({ hasNotText: 'Su Myat Noe' })
+    .first()
+    .getByRole('button', { name: /^Actions for/ })
+    .click();
+  await page.getByRole('menuitem', { name: action }).click();
+}
+
 /** Total from the paginator, e.g. "1 – 10 of 37" → 37. */
 async function total(page: Page): Promise<number> {
   const text = await page.locator('mat-paginator .mat-mdc-paginator-range-label').innerText();
@@ -335,13 +346,13 @@ test.describe('overtime', () => {
     const pending = await total(page);
     expect(pending).toBeGreaterThan(2);
 
-    await rowMenu(page, 'Pending', 'Approve');
+    await othersPendingMenu(page, 'Approve');
     await expect(dialog(page)).toContainText('Approve');
     await dialog(page).getByRole('button', { name: 'Approve' }).click();
     await expect(page.getByText(/Overtime for .* approved\./)).toBeVisible();
     await expect.poll(() => total(page)).toBe(pending - 1);
 
-    await rowMenu(page, 'Pending', 'Reject');
+    await othersPendingMenu(page, 'Reject');
     await confirmDialog(page).getByLabel('Reason for rejection').fill('Not pre-approved');
     await confirmDialog(page).getByRole('button', { name: 'Reject' }).click();
     await expect(page.getByText(/Overtime for .* rejected\./)).toBeVisible();
@@ -404,13 +415,13 @@ test.describe('attendance adjustments', () => {
     const pending = await total(page);
     expect(pending).toBeGreaterThanOrEqual(3);
 
-    await rowMenu(page, 'Pending', 'Approve and apply');
+    await othersPendingMenu(page, 'Approve and apply');
     await expect(dialog(page)).toContainText('Apply the requested times');
     await dialog(page).getByRole('button', { name: 'Approve' }).click();
     await expect(page.getByText(/ADJ-\d{4} approved and applied/)).toBeVisible();
     await expect.poll(() => total(page)).toBe(pending - 1);
 
-    await rowMenu(page, 'Pending', 'Reject');
+    await othersPendingMenu(page, 'Reject');
     await confirmDialog(page).getByLabel('Reason for rejection').fill('Times do not match the log');
     await confirmDialog(page).getByRole('button', { name: 'Reject' }).click();
     await expect(page.getByText(/ADJ-\d{4} rejected/)).toBeVisible();
@@ -490,7 +501,7 @@ test.describe('attendance adjustments', () => {
     // Wait for the search to narrow the list to our request before acting on a row.
     await expect(rows(page)).toHaveCount(1);
     await expect(rows(page).first()).toContainText('07:11 – 19:44');
-    await rowMenu(page, 'Pending', 'Approve and apply');
+    await othersPendingMenu(page, 'Approve and apply');
     await dialog(page).getByRole('button', { name: 'Approve' }).click();
     await expect(page.getByText(/approved and applied/)).toBeVisible();
 

@@ -17,6 +17,8 @@ export interface LeaveConfigOptions {
   types: LeaveType[];
   holidays: Holiday[];
   weekendDays: readonly number[];
+  /** The signed-in person's employee: nobody approves or rejects their own leave. */
+  ownEmployeeId?: number | null;
 }
 
 const statusOptions = LEAVE_STATUSES.map((s) => ({ value: s, label: s }));
@@ -35,6 +37,8 @@ export function buildLeaveApplicationsConfig(
   const label = (a: LeaveApplication) => `${a.applicationNo} · ${employeeName(a)}`;
   const isDraft = (a: LeaveApplication) => a.status === 'Draft';
   const isSubmitted = (a: LeaveApplication) => a.status === 'Submitted';
+  const canDecide = (a: LeaveApplication) =>
+    isSubmitted(a) && (o.ownEmployeeId == null || a.employeeId !== o.ownEmployeeId);
   const canCancel = (a: LeaveApplication) =>
     isSubmitted(a) || (a.status === 'Approved' && a.startDate > todayIso());
   const days = (a: LeaveApplication) => `${a.days} day${a.days === 1 ? '' : 's'}`;
@@ -59,7 +63,7 @@ export function buildLeaveApplicationsConfig(
     permission: 'Approve',
     label: 'Approve',
     icon: 'check_circle',
-    visible: isSubmitted,
+    visible: canDecide,
     prompt: {
       title: 'Approve leave?',
       message: (a) =>
@@ -77,7 +81,7 @@ export function buildLeaveApplicationsConfig(
     label: 'Reject',
     icon: 'cancel',
     destructive: true,
-    visible: isSubmitted,
+    visible: canDecide,
     prompt: {
       title: 'Reject leave?',
       message: (a) =>

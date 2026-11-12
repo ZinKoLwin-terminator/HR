@@ -2,7 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { APPROVAL_STATUSES, OvertimeRecord } from '../../../core/models/attendance.models';
-import { SERVER_SESSION } from '../../../core/services/auth.service';
+import { AuthService, SERVER_SESSION } from '../../../core/services/auth.service';
 import { fullName } from '../../../core/models/employee.models';
 import { OvertimeDataService } from '../../../core/services/data/attendance-data.services';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
@@ -26,6 +26,7 @@ export class OvertimePageComponent {
   private readonly overtime = inject(OvertimeDataService);
   private readonly employeesApi = inject(EmployeeDataService);
   private readonly apiMode = inject(SERVER_SESSION);
+  private readonly auth = inject(AuthService);
   private readonly employees = rxResource({ stream: () => this.employeesApi.getAll() });
 
   protected readonly config = computed<CrudPageConfig<OvertimeRecord> | null>(() => {
@@ -35,6 +36,9 @@ export class OvertimePageComponent {
     }
     const names = new Map(people.map((e) => [e.id, `${fullName(e)} (${e.employeeCode})`]));
     const pending = (o: OvertimeRecord) => o.status === 'Pending';
+    // Nobody decides their own overtime (the server refuses it too).
+    const own = this.auth.session()?.employeeId ?? null;
+    const decidable = (o: OvertimeRecord) => pending(o) && (own == null || o.employeeId !== own);
     const label = (o: OvertimeRecord) =>
       `OT-${String(o.id).padStart(4, '0')} · ${names.get(o.employeeId) ?? ''}`;
     const statusOptions = APPROVAL_STATUSES.map((s) => ({ value: s, label: s }));
@@ -61,7 +65,7 @@ export class OvertimePageComponent {
           permission: 'Approve',
           label: 'Approve',
           icon: 'check_circle',
-          visible: pending,
+          visible: decidable,
           confirm: {
             title: 'Approve overtime?',
             message: (o) =>
@@ -77,7 +81,7 @@ export class OvertimePageComponent {
           label: 'Reject',
           icon: 'cancel',
           destructive: true,
-          visible: pending,
+          visible: decidable,
           prompt: {
             title: 'Reject overtime?',
             message: (o) =>

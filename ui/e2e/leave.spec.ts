@@ -317,11 +317,17 @@ test.describe('leave approvals', () => {
       .getByRole('navigation', { name: 'Main navigation' })
       .getByRole('link', { name: 'Leave Approvals' })
       .click();
-    await expect(rows(page).filter({ hasText: 'Su Myat Noe' })).toHaveCount(1);
-    await rowMenu(page, 'Su Myat Noe', 'Approve');
-    await dialog(page).getByRole('button', { name: 'Approve' }).click();
-    await expect(page.getByText('You cannot decide your own leave request.')).toBeVisible();
-    await expect(rows(page).filter({ hasText: 'Su Myat Noe' })).toHaveCount(1);
+    // The screen does not offer a decision on your own request (the service refuses it too).
+    const own = rows(page).filter({ hasText: 'Su Myat Noe' });
+    await expect(own).toHaveCount(1);
+    const actions = own.getByRole('button', { name: /^Actions for/ });
+    if ((await actions.count()) > 0) {
+      await actions.click();
+      await expect(page.getByRole('menuitem', { name: 'Approve' })).toHaveCount(0);
+      await expect(page.getByRole('menuitem', { name: 'Reject' })).toHaveCount(0);
+      await page.keyboard.press('Escape');
+    }
+    await expect(own).toHaveCount(1);
   });
 });
 
