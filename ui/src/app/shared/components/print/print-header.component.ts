@@ -1,6 +1,6 @@
-import { DatePipe } from '@angular/common';
 import { Component, inject, input } from '@angular/core';
 import { PrintService } from '../../../core/services/print.service';
+import { AppDatePipe } from '../../pipes/app-date.pipe';
 
 /**
  * Heading of a printed page: organization name, document title and the print date. Put it inside a
@@ -8,7 +8,7 @@ import { PrintService } from '../../../core/services/print.service';
  */
 @Component({
   selector: 'app-print-header',
-  imports: [DatePipe],
+  imports: [AppDatePipe],
   template: `
     <header class="print-header">
       <p class="print-header__org">{{ print.organizationName() }}</p>
@@ -16,7 +16,7 @@ import { PrintService } from '../../../core/services/print.service';
       @if (subtitle()) {
         <p class="print-header__subtitle">{{ subtitle() }}</p>
       }
-      <p class="print-header__date">Printed on {{ today | date: 'mediumDate' }}</p>
+      <p class="print-header__date">Printed on {{ today | appDate }}</p>
     </header>
   `,
   styles: `
@@ -48,8 +48,4 @@ export class PrintHeaderComponent {
   readonly title = input.required<string>();
   readonly subtitle = input<string>();
   protected readonly today = new Date();
-
-  constructor() {
-    this.print.loadOrganizationName();
-  }
 }

@@ -1,14 +1,15 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { PayrollSummary } from '../../../core/models/dashboard.models';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 
 @Component({
   selector: 'app-payroll-summary-card',
-  imports: [MoneyPipe, DatePipe, DecimalPipe, StatusBadgeComponent, MatIconModule, RouterLink],
+  imports: [AppDatePipe, MoneyPipe, DecimalPipe, StatusBadgeComponent, MatIconModule, RouterLink],
   template: `
     <section class="card payroll" aria-labelledby="payroll-heading">
       <div class="card__header">
@@ -47,7 +48,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
           </div>
           <div>
             <dt>Pay date</dt>
-            <dd>{{ p.payDate | date }}</dd>
+            <dd>{{ p.payDate | appDate }}</dd>
           </div>
         </dl>
       } @else {

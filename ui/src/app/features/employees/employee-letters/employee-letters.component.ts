@@ -158,10 +158,6 @@ export class EmployeeLettersComponent {
   );
   protected readonly canPrint = computed(() => !!this.result()?.letter && !this.missingDetails());
 
-  constructor() {
-    this.printer.loadOrganizationName();
-  }
-
   protected setKind(kind: LetterKind): void {
     this.kind.set(kind);
   }

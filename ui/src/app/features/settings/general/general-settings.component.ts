@@ -11,6 +11,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { HasUnsavedChanges } from '../../../core/guards/unsaved-changes.guard';
 import { isAppError } from '../../../core/models/common.models';
 import { DATE_FORMATS, GeneralSettings, TIMEZONES } from '../../../core/models/settings.models';
+import { AppSettingsService } from '../../../core/services/app-settings.service';
 import { AuthService, SERVER_SESSION } from '../../../core/services/auth.service';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { DemoDataDataService } from '../../../core/services/data/demo-data-data.service';
@@ -35,7 +36,7 @@ const MONTHS = [
   'December',
 ];
 
-/** Organization-wide preferences. Saved in memory only; other screens do not read these values. */
+/** Organization-wide preferences. Saving applies them across the app through AppSettingsService. */
 @Component({
   selector: 'app-general-settings',
   imports: [
@@ -213,14 +214,15 @@ const MONTHS = [
 export class GeneralSettingsComponent implements HasUnsavedChanges {
   private readonly api = inject(GeneralSettingsDataService);
   private readonly toast = inject(UiNotificationService);
+  private readonly appSettings = inject(AppSettingsService);
   protected readonly permissions = inject(PermissionService);
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly auth = inject(AuthService);
   private readonly apiMode = inject(SERVER_SESSION);
   protected readonly description = this.apiMode
-    ? 'Organization-wide preferences, saved on the server. Only HR Administrators can change them. Other screens do not use these values yet.'
-    : 'Organization-wide preferences. Demo only: saved in memory and not applied to other screens.';
+    ? 'Organization-wide preferences, saved on the server. Only HR Administrators can change them. The date format, currency, time zone and organization name apply to the screens of users who can open this page; other users see the defaults.'
+    : 'Organization-wide preferences. Demo only: saved in this browser. Date format, currency, time zone and organization name apply across the app.';
   protected readonly demoData = inject(DemoDataDataService);
   protected readonly resetting = signal(false);
 
@@ -310,6 +312,7 @@ export class GeneralSettingsComponent implements HasUnsavedChanges {
       next: (saved) => {
         this.saving.set(false);
         this.load(saved);
+        this.appSettings.apply(saved);
         this.toast.success(
           this.apiMode ? 'General settings saved.' : 'General settings saved (simulation).',
         );

@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,6 +5,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { HistoryEventType } from '../../../../core/models/employee-extras.models';
 import { EmploymentHistoryDataService } from '../../../../core/services/data/employee-extras-data.services';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { AppDatePipe } from '../../../../shared/pipes/app-date.pipe';
 
 const ICONS: Record<HistoryEventType, string> = {
   Joined: 'login',
@@ -20,7 +20,7 @@ const ICONS: Record<HistoryEventType, string> = {
 
 @Component({
   selector: 'app-profile-history-tab',
-  imports: [DatePipe, MatIconModule, MatProgressBarModule, EmptyStateComponent],
+  imports: [AppDatePipe, MatIconModule, MatProgressBarModule, EmptyStateComponent],
   template: `
     <section class="card" aria-labelledby="hist-heading">
       <div class="card__header">
@@ -45,7 +45,7 @@ const ICONS: Record<HistoryEventType, string> = {
                 </div>
                 <p>{{ entry.details }}</p>
                 <span class="muted"
-                  >{{ entry.date | date }} · recorded by {{ entry.recordedBy }}</span
+                  >{{ entry.date | appDate }} · recorded by {{ entry.recordedBy }}</span
                 >
               </div>
             </li>

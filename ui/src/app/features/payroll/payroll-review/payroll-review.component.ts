@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import {
   Component,
   Injector,
@@ -49,6 +48,7 @@ import { formatDuration } from '../../../shared/utilities/date.util';
 import { ListQuery } from '../../../shared/utilities/list-query';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
 import { PayslipSheetComponent } from '../payslips/payslip-sheet.component';
+import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 
 type Row = Payslip;
 
@@ -56,7 +56,7 @@ type Row = Payslip;
 @Component({
   selector: 'app-payroll-review',
   imports: [
-    DatePipe,
+    AppDatePipe,
     RouterLink,
     MatButtonModule,
     MatFormFieldModule,

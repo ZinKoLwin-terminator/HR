@@ -197,7 +197,7 @@
                 @let value = cellValue(column, row);
                 @switch (column.type) {
                   @case ('date') {
-                    {{ value ? (value | date: 'mediumDate') : '—' }}
+                    {{ value ? (value | appDate) : '—' }}
                   }
                   @case ('currency') {
                     {{ $any(value) | money }}

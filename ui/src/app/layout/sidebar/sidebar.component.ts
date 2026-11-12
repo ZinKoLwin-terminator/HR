@@ -9,6 +9,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/ro
 import { filter } from 'rxjs';
 import { APP_CONFIG } from '../../core/configuration/app-config';
 import { NAVIGATION, NavItem, visibleNavigation } from '../../core/constants/navigation';
+import { AppSettingsService } from '../../core/services/app-settings.service';
 import { PermissionService } from '../../core/services/permission.service';
 
 @Component({
@@ -29,6 +30,7 @@ import { PermissionService } from '../../core/services/permission.service';
 export class SidebarComponent {
   private readonly router = inject(Router);
   protected readonly config = inject(APP_CONFIG);
+  protected readonly settings = inject(AppSettingsService);
 
   readonly collapsed = input(false);
   /** Emitted after a link is chosen (used to close the mobile drawer). */
