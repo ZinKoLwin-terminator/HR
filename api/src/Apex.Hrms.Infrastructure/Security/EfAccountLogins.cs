@@ -43,7 +43,25 @@ internal sealed class EfAccountLogins(
     {
         if (await users.FindByIdAsync(subject) is { } user)
         {
-            await users.DeleteAsync(user);
+            ThrowIfFailed(await users.DeleteAsync(user));
+        }
+    }
+
+    public async Task InvalidateSessionsAsync(string subject, CancellationToken cancellationToken)
+    {
+        if (await users.FindByIdAsync(subject) is { } user)
+        {
+            ThrowIfFailed(await users.UpdateSecurityStampAsync(user));
+        }
+    }
+
+    /// <summary>A refusal inside the caller's transaction: throwing rolls it back. Identity error codes carry no personal data.</summary>
+    private static void ThrowIfFailed(IdentityResult result)
+    {
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"The identity store refused the change: {string.Join(',', result.Errors.Select(error => error.Code))}.");
         }
     }
 

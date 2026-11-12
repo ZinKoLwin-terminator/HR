@@ -22,6 +22,8 @@ internal sealed class FakeAccountLogins : IAccountLogins
 
     public List<string> Unlocked { get; } = [];
 
+    public List<string> SessionsInvalidated { get; } = [];
+
     public List<string> ResetMailsFor { get; } = [];
 
     public HashSet<string> LockedOut { get; } = [];
@@ -46,6 +48,12 @@ internal sealed class FakeAccountLogins : IAccountLogins
     public Task DeleteAsync(string subject, CancellationToken cancellationToken)
     {
         Deleted.Add(subject);
+        return Task.CompletedTask;
+    }
+
+    public Task InvalidateSessionsAsync(string subject, CancellationToken cancellationToken)
+    {
+        SessionsInvalidated.Add(subject);
         return Task.CompletedTask;
     }
 

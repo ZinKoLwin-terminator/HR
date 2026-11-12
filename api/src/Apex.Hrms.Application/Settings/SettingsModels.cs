@@ -28,7 +28,18 @@ public sealed record UserFilter(int? RoleId = null, string? Status = null);
 /// POST body. <c>Status</c> is Active (default) or Inactive. The initial password is hashed at once and never returned,
 /// logged or stored in plain text.
 /// </summary>
-public sealed record UserCreateRequest(int EmployeeId, int RoleId, string? Status, string? InitialPassword);
+public sealed record UserCreateRequest(int EmployeeId, int RoleId, string? Status, string? InitialPassword)
+{
+    /// <summary>
+    /// The compiler-generated ToString prints every property, which would print <see cref="InitialPassword"/>. This override
+    /// leaves the password out, so it cannot reach a log, an exception message or a test failure.
+    /// </summary>
+    private bool PrintMembers(System.Text.StringBuilder builder)
+    {
+        builder.Append(System.Globalization.CultureInfo.InvariantCulture, $"EmployeeId = {EmployeeId}, RoleId = {RoleId}, Status = {Status}");
+        return true;
+    }
+}
 
 /// <summary>PUT body: only the role changes. The linked employee never does; status moves are commands.</summary>
 public sealed record UserUpdateRequest(int RoleId, string? RowVersion) : IVersionedRequest;
@@ -157,8 +168,17 @@ public interface IAccountLogins
     /// </summary>
     Task<Result<string>> CreateAsync(string email, string password, CancellationToken cancellationToken);
 
-    /// <summary>Removes an identity user (a rollback of a failed create, or the delete of an account).</summary>
+    /// <summary>
+    /// Removes an identity user (the delete of an account). It writes through the shared database context, so call it inside the
+    /// <see cref="Apex.Hrms.Application.Abstractions.IUnitOfWorkTransaction"/> of the delete: nothing is compensated by hand.
+    /// </summary>
     Task DeleteAsync(string subject, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Changes the Identity security stamp, which ends every open session of the user at its next request. Call it inside the
+    /// transaction of the change that made the sessions unwelcome (an employee who left).
+    /// </summary>
+    Task InvalidateSessionsAsync(string subject, CancellationToken cancellationToken);
 
     /// <summary>Clears the sign-in lockout and the count of failed attempts.</summary>
     Task UnlockAsync(string subject, CancellationToken cancellationToken);
