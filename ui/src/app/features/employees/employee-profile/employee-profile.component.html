@@ -7,7 +7,7 @@
     <a mat-flat-button routerLink="/employees/list">Back to employees</a>
   </app-empty-state>
 } @else if (view(); as v) {
-  <section class="card hero" aria-label="Employee summary">
+  <section class="card hero" aria-label="Employee summary" [class.no-print]="printing()">
     <div class="hero__top">
       <app-avatar
         [name]="v.name"
@@ -23,6 +23,21 @@
         <p class="hero__role">{{ v.position }} · {{ v.department }}</p>
       </div>
       <div class="hero__actions">
+        <button
+          mat-stroked-button
+          type="button"
+          [attr.aria-label]="'Print profile of ' + v.name"
+          (click)="printProfile()"
+        >
+          <mat-icon>print</mat-icon>Print profile
+        </button>
+        <a
+          mat-stroked-button
+          [routerLink]="['/employees', v.employee.id, 'letters']"
+          [attr.aria-label]="'Letters and certificates for ' + v.name"
+        >
+          <mat-icon>description</mat-icon>Letters
+        </a>
         @if (permissions.can('employees:Edit')) {
           <a mat-flat-button [routerLink]="['/employees', v.employee.id, 'edit']">
             <mat-icon>edit</mat-icon>Edit
@@ -79,6 +94,7 @@
     animationDuration="0ms"
     mat-align-tabs="start"
     aria-label="Employee information"
+    [class.no-print]="printing()"
   >
     <mat-tab label="Overview">
       <ng-template matTabContent>
@@ -158,6 +174,15 @@
       </ng-template>
     </mat-tab>
   </mat-tab-group>
+
+  @if (printing()) {
+    <app-profile-print
+      class="print-only"
+      [employee]="v.employee"
+      [org]="v.org"
+      (ready)="onPrintReady()"
+    />
+  }
 } @else {
   <mat-progress-bar mode="indeterminate" aria-label="Loading employee" />
 }

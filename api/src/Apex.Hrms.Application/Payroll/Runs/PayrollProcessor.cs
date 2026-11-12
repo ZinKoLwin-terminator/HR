@@ -103,7 +103,7 @@ internal sealed class PayrollProcessor(
 
         foreach (var employee in staff)
         {
-            var label = $"{employee.EmployeeCode} {employee.FirstName} {employee.LastName}";
+            var label = employee.EmployeeCode;
             if (!latestAssignment.TryGetValue(employee.Id, out var assignment)
                 || !structureById.TryGetValue(assignment.SalaryStructureId, out var structure))
             {

@@ -34,10 +34,21 @@ public sealed class PermissionHandlerTests
     private async Task<AuthorizationHandlerContext> RunAsync(
         PermissionRequirement requirement,
         AccountSnapshot? account,
-        bool withAccountClaim = true)
+        bool withAccountClaim = true,
+        int? employeeClaim = null)
     {
         var handler = new PermissionHandler(new FakeAccountDirectory(account), store, cache, Caller, teams, Team);
-        var claims = withAccountClaim ? new[] { new Claim(HrmsClaims.AccountId, AccessFakes.AccountId.ToString(System.Globalization.CultureInfo.InvariantCulture)) } : [];
+        var claims = new List<Claim>();
+        if (withAccountClaim)
+        {
+            claims.Add(new Claim(HrmsClaims.AccountId, AccessFakes.AccountId.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        }
+
+        if (employeeClaim is { } employee)
+        {
+            claims.Add(new Claim(HrmsClaims.EmployeeId, employee.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        }
+
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
         var context = new AuthorizationHandlerContext([requirement], user, resource: null);
         await handler.HandleAsync(context);
@@ -87,6 +98,35 @@ public sealed class PermissionHandlerTests
         var context = await RunAsync(Needs("employees", "View"), AccessFakes.Account("HR Officer", employeeLeft: true));
 
         Assert.False(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task A_cookie_employee_that_differs_from_the_live_account_employee_is_denied_and_sets_nothing()
+    {
+        var context = await RunAsync(Needs("employees", "View"), AccessFakes.Account("HR Officer", employeeId: 7), employeeClaim: 8);
+
+        Assert.False(context.HasSucceeded);
+        Assert.True(context.HasFailed);
+        Assert.False(Caller.Has("employees", "View"));
+        Assert.False(Team.IsLoaded);
+    }
+
+    [Theory]
+    [InlineData(null, 7)]
+    [InlineData(7, null)]
+    public async Task A_cookie_with_an_employee_the_account_lacks_or_the_other_way_round_is_denied(int? claim, int? live)
+    {
+        var context = await RunAsync(Needs("employees", "View"), AccessFakes.Account("HR Officer", employeeId: live), employeeClaim: claim);
+
+        Assert.False(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task A_cookie_employee_that_matches_the_live_account_succeeds()
+    {
+        var context = await RunAsync(Needs("employees", "View"), AccessFakes.Account("HR Officer", employeeId: 7), employeeClaim: 7);
+
+        Assert.True(context.HasSucceeded);
     }
 
     [Fact]
@@ -180,8 +220,8 @@ public sealed class PermissionHandlerTests
     [Fact]
     public async Task The_direct_reports_of_the_callers_employee_are_handed_to_the_request_once_for_several_checks()
     {
-        await RunAsync(Needs("employees", "View"), AccessFakes.Account(employeeId: 7));
-        await RunAsync(Needs("leave", "Approve"), AccessFakes.Account(employeeId: 7));
+        await RunAsync(Needs("employees", "View"), AccessFakes.Account(employeeId: 7), employeeClaim: 7);
+        await RunAsync(Needs("leave", "Approve"), AccessFakes.Account(employeeId: 7), employeeClaim: 7);
 
         Assert.Equal([11, 12], Team.DirectReportIds);
         Assert.Equal(1, teams.Lookups);

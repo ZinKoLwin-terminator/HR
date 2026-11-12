@@ -27,13 +27,16 @@ public sealed class SettingsAccessTests : IClassFixture<WebApplicationFactory<Pr
     {
         // Every role holds every grant here, so only the administrator requirement can refuse the caller.
         var account = AccessFakes.Account(roleName, status, roleActive);
-        var host = SignedInHost.Customize(factory, account, AccessFakes.AllGrants).WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        WebApplicationFactory<Program> Build() => SignedInHost.Customize(factory, account, AccessFakes.AllGrants).WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
         {
             if (email is not null)
             {
                 services.AddSingleton(email);
             }
         }));
+
+        // A host without a per-test service is the same for the same caller, so it is shared (starting a host is slow).
+        var host = email is null ? SignedInHost.Cached(factory, $"{roleName}|{status}|{roleActive}", _ => Build()) : Build();
         return BrowserHandler.CreateClient(host.Server.CreateHandler(), out _);
     }
 

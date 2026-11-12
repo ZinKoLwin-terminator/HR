@@ -48,7 +48,7 @@ Without a database you cannot sign in: create the first administrator with the `
 Secrets: `dotnet user-secrets set "Email:Smtp:Password" "..." --project src/Apex.Hrms.Api` or the environment variable
 `Email__Smtp__Password`. Configuration is read when the host starts: restart after changing it.
 
-The per-user password reset limit (one administrator-triggered reset mail per user per minute, in memory per instance) is not configurable. Outside Development the API also uses HTTPS redirection and HSTS. Every response carries
+The password reset limits (one administrator-triggered reset mail per user per minute, and at most 20 per calling administrator in 10 minutes, in memory per instance; the allowance is given back only when no mail was sent) are not configurable. Outside Development the API also uses HTTPS redirection and HSTS. Every response carries
 `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`.
 
 ## HTTP contract (organization module)
@@ -354,9 +354,16 @@ table requires a masked account), is skipped with a warning.
   business time zone. A bad filter is `400` with the field in `errors`.
 * Activity messages use the wording of the frontend mock services with ids and codes; an employee is named by code, never by
   name, and no national id, bank detail or salary is ever written.
-* `app.Notification` has one `IsRead` flag per row: reading a broadcast (no recipient) marks it read for everyone.
+* `app.Notification` has one `IsRead` flag per row: reading a broadcast (no recipient) marks it read for everyone. A user can
+  only reach their own rows and the broadcasts (every store query filters on the recipient, another user's id is `404`).
+  Proposal for per-user read state of broadcasts (needs a schema change, not applied): a table
+  `app.NotificationRead (NotificationId bigint NOT NULL, UserId int NOT NULL, ReadAtUtc datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+  PK (NotificationId, UserId), FK NotificationId -> app.Notification ON DELETE CASCADE, FK UserId -> sec.AppUser ON DELETE CASCADE)`
+  with an index on `UserId`. Broadcasts would then be read when a row exists for the caller; `IsRead`/`ReadAtUtc` would stay
+  for rows with a recipient. The API change is `EfNotificationStore` plus the two mark-read handlers; the response shape does not change.
 * The dashboard recruitment and payroll figures are read with plain SQL from `rec.*` and `pay.PayrollRun` (recruitment has its own
   API, see below; there is no payroll module yet); the payroll totals are demonstration figures.
+* The dashboard needs only `dashboard:View`, but its company-wide parts need their own grant, so an Employee-role caller gets none of them: `payroll` (the latest processed run and its totals) is `null` without `payroll:View`; `recruitment` (open jobs, candidates, interviews, funnel) is `null` without `recruitment:View`; `recentActivities` is `[]` without `activity:View`; birthday events are left out of `upcomingEvents` without `employees:ViewSensitive`. Headcount, attendance, pending leave and the department chart stay in the caller's row scope. The UI must tolerate a `null` payroll and recruitment, and an empty activity list.
 ## HTTP contract (recruitment module)
 
 Policies (checked against the role's grants): `recruitment:View|Create|Edit|Delete` (the mock has no approval step, so there is
@@ -657,7 +664,10 @@ the user lacks using the `permissions` of `GET /api/auth/me`; the server stays t
   too (`403`, "Only an HR Administrator can record the exit of an HR Administrator."), and nobody records their own exit (`409`,
   "You cannot record your own exit.").
 * A transaction that joins one the caller already holds (the Excel import) creates a savepoint and rolls back to it when disposed without a commit;
-  the administrator application lock belongs to the outer transaction and is held until that ends.
+  the administrator application lock belongs to the outer transaction and is held until that ends. Verified by `JoinedTransactionTests`:
+  a joined scope that commits keeps the lock until the outer transaction ends; a joined scope disposed without a commit gives it
+  up, because SQL Server releases locks taken after a savepoint when it rolls back to it (nothing of that scope survives, so no
+  rule check is left unprotected). The savepoint name is at most 32 characters (SQL Server limit): `uow_` plus 28 hex digits.
 
 ### Row-level scoping
 
@@ -669,19 +679,20 @@ A caller's **team** is their own employee record plus their **direct reports**: 
 | --- | --- | --- | --- |
 | Leave applications, balances, calendar; attendance records, adjustments, overtime, attendance overview, work schedule (per module) | holds the module's `Approve` **and** `employees:Edit` (HR Officer, HR Administrator in the seed) | holds the module's `Approve` but not `employees:Edit` (Department Manager) | everyone else (Employee) |
 | Employees (list, query, get, profile, personal, history, bank, salary summary reads, documents, the employees Excel export, the dashboard's employee figures) | holds `employees:Edit` **or** `payroll:View` | everyone else | not applicable: a caller with no linked employee sees nobody |
-| Payslips, salary assignments, the employee salary summary | holds `payroll:Approve` (Payroll Officer, HR Administrator) | not applicable | everyone else with the route's `payroll:View` (HR Officer, Auditor) |
+| Payslips, salary assignments, the employee salary summary | holds `payroll:Approve` (Payroll Officer, HR Administrator) | not applicable | everyone else with the route's `payroll:View` (Auditor) |
 
 Payroll runs (totals only) are not scoped. A caller with no linked employee (the built-in administrator) sees what their tier gives to everyone and nothing otherwise; the HR Administrator holds every grant, so it is in the "All" tier everywhere.
 
 * An employee outside the caller's tier is `404` on get, update, delete and every command (cancel, submit, approve, reject ...), and absent from lists, the leave calendar, `/api/leave/balances?employeeId=`, the attendance overview, the work schedule and the dashboard's figures. A manager can therefore approve or reject only the requests of direct reports (a non-report's request is `404`).
 * Nobody decides their own request: a manager's own leave, adjustment or overtime request is visible to them but approving or rejecting it is `409` Conflict ("You cannot decide your own request.", a domain rule that predates the tiers). Only an HR-tier approver with a different employee, or the built-in administrator (no employee), decides it.
 * Creating or changing (leave PUT) a record for another employee is `403` Forbidden, like punches: leave applications, attendance adjustments and overtime. HR tier may file for anyone; the manager tier for their own record and direct reports ("You can only act for your own record and your direct reports."); the own tier for themselves ("You can only act for your own employee record.").
-* A salary assignment created through `payroll:Create` is not checked against the tier (only reads, updates and deletes are); keep `payroll:Create` and `payroll:Edit` together with `payroll:Approve`, or the creator cannot see what they made.
+* Salary assignments: nobody creates, updates or deletes an assignment of their own employee record (`409` "You cannot change your own salary."), whatever their grants. A create runs the tier check first: a creator without `payroll:Approve` gets `404` for any employee but themselves, before any validation rule (band, start date, clash) can answer about that employee. Keep `payroll:Create` and `payroll:Edit` together with `payroll:Approve`, or the creator cannot see what they made.
 * System code is not scoped: payroll processing, deletion checks, reference counts, hiring (which creates an employee) and the Excel import all read through `IRepository<T>` without a scope. Only handlers that inject `IAccessScope<T>` are scoped, and they run inside a request whose permission check filled the grants.
 * Creating shifts and holidays needs `attendance:Edit` (not Create), because every employee holds `attendance:Create` to punch.
 * Excel import batches (history, detail, error report, execute) belong to their uploader and to HR Administrators (`404` otherwise); detail and error report also run the module's view policies (`employees:View` for employees). The module check runs after the batch lookup, so an unknown batch answers `404` before it. The employees import needs `employees:Create`, `Edit`, `EditSensitive` and `EditBank`, so it always runs in the "All" tier.
 * Not scoped yet: recruitment (job openings, candidates, applications and interviews).
-* Seed note: the starter grants in the database project give Department Manager `employees:View` (team-scoped: themselves and direct reports), HR Officer `payroll:View,Approve` (every payslip; never approving a run they processed) and Employee `attendance:View,Create` (own punches and requests). Starter grants are written only into an empty roles table, so an existing database needs them added in Settings > Permissions.
+* The own-record rules read the employee id of the session cookie; the team is read from the live account. When the two differ (the account was linked to another employee after sign-in) every permission check is refused until the user signs in again. An account with no linked employee punches for another employee only in the "All" attendance tier. Payroll run warnings name an employee by code only.
+* Seed note: the starter grants in the database project give Department Manager `employees:View` (team-scoped: themselves and direct reports), HR Officer `payroll:View,Approve` (every payslip; never approving a run they processed) (so HR Officer is in the all-payslips tier, as intended) and Employee `attendance:View,Create` (own punches and requests). Starter grants are written only into an empty roles table, so an existing database needs them added in Settings > Permissions.
 
 ### Authorization seams
 

@@ -945,25 +945,131 @@ a {
   }
 }
 
-// Printing (e.g. a payslip): hide the application chrome and keep only the page content.
+// ---------------------------------------------------------------------------
+// Printing. The user prints (or saves as PDF) from the browser. The application chrome is hidden,
+// the content runs full width in black on white, and `.print-only` / `.no-print` mark what is
+// printed only / never printed. Browsers do not guarantee background colours on paper, so the
+// printed layout does not rely on them.
+// ---------------------------------------------------------------------------
+.print-only {
+  display: none !important;
+}
+
+@page {
+  size: A4;
+  margin: 15mm 12mm;
+}
+
 @media print {
+  .print-only {
+    display: block !important;
+  }
+
+  // Shell: sidebar, top bar, footer, breadcrumbs, toasts and menus; controls that mean nothing on paper.
   mat-sidenav,
   app-header,
   app-footer,
   app-breadcrumbs,
   .skip-link,
-  .no-print {
+  .cdk-overlay-container,
+  .no-print,
+  button,
+  a.mat-mdc-button-base,
+  mat-paginator,
+  mat-progress-bar,
+  .mat-mdc-tab-header,
+  .page-header__search,
+  .page-header__tools,
+  .page-header__actions,
+  app-search-field,
+  app-filter-popup {
     display: none !important;
+  }
+
+  // The app scrolls inside a fixed-height shell; paper needs the natural height.
+  html,
+  body,
+  app-main-layout,
+  .shell,
+  .mat-drawer-container,
+  .mat-drawer-content,
+  .shell__content,
+  .shell__main {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+    position: static !important;
+    background: #fff !important;
+    color: #000 !important;
   }
 
   mat-sidenav-content {
     margin-left: 0 !important;
   }
 
-  html,
-  body,
-  .shell {
-    background: #fff !important;
+  .shell__main {
+    padding: 0 !important;
+  }
+
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  .card,
+  .print-avoid-break,
+  tr,
+  figure {
+    break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  // One document (payslip, letter) per page: every one after the first starts a new page.
+  .print-page {
+    break-inside: avoid;
+  }
+
+  .print-page + .print-page {
+    break-before: page;
+  }
+
+  // Plain table used by printed lists.
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+
+    th,
+    td {
+      padding: 3px 5px;
+      border: 1px solid #555;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      font-weight: 700;
+      background: #eee !important;
+    }
+
+    .align-end {
+      text-align: right;
+    }
+  }
+
+  .print-note {
+    margin: 0 0 8px;
+    font-size: 10.5px;
   }
 }
 

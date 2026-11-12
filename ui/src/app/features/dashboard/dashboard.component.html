@@ -93,8 +93,12 @@
 
     <div class="grid grid--ops">
       <app-pending-leaves-card [items]="s.pendingLeaves" [total]="s.pendingLeaveApprovals" />
-      <app-payroll-summary-card [payroll]="s.payroll" />
-      <app-recruitment-summary-card [recruitment]="s.recruitment" />
+      @if (permissions.can('payroll:View')) {
+        <app-payroll-summary-card [payroll]="s.payroll" />
+      }
+      @if (s.recruitment; as recruitment) {
+        <app-recruitment-summary-card [recruitment]="recruitment" />
+      }
       <app-quick-access-card />
     </div>
 

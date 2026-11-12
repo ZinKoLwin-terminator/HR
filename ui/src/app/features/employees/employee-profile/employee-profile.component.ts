@@ -1,6 +1,14 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, input } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import {
+  Component,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -11,12 +19,14 @@ import { fullName } from '../../../core/models/employee.models';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import { PermissionService } from '../../../core/services/permission.service';
+import { PrintService } from '../../../core/services/print.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { formatTenure, todayIso } from '../../../shared/utilities/date.util';
 import { OrganizationLookupService, nameMap } from '../../organization/organization-lookups';
+import { ProfilePrintComponent } from './profile-print.component';
 import { ProfileAttendanceTabComponent } from './tabs/profile-attendance-tab.component';
 import { ProfileDocumentsTabComponent } from './tabs/profile-documents-tab.component';
 import { ProfileEmploymentTabComponent } from './tabs/profile-employment-tab.component';
@@ -46,6 +56,7 @@ const TABS = ['overview', 'employment', 'documents', 'history', 'attendance', 'l
     ProfileAttendanceTabComponent,
     ProfileLeaveTabComponent,
     ProfileSalaryTabComponent,
+    ProfilePrintComponent,
   ],
   templateUrl: './employee-profile.component.html',
   styleUrl: './employee-profile.component.scss',
@@ -57,6 +68,11 @@ export class EmployeeProfileComponent {
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(UiNotificationService);
   protected readonly permissions = inject(PermissionService);
+  private readonly printer = inject(PrintService);
+  private readonly injector = inject(Injector);
+
+  /** True while the print layout of the profile is on the page. */
+  protected readonly printing = signal(false);
 
   /** `:id` route parameter. */
   readonly id = input.required<string>();
@@ -94,6 +110,23 @@ export class EmployeeProfileComponent {
       tenure: formatTenure(employee.joiningDate, employee.exitDate ?? todayIso()),
     };
   });
+
+  constructor() {
+    this.printer.afterPrint$.pipe(takeUntilDestroyed()).subscribe(() => this.printing.set(false));
+  }
+
+  /** Lays out the print version (it loads the document list if the user may see it), then prints. */
+  protected printProfile(): void {
+    if (this.printing()) {
+      this.printer.print();
+      return;
+    }
+    this.printing.set(true);
+  }
+
+  protected onPrintReady(): void {
+    afterNextRender(() => this.printer.print(), { injector: this.injector });
+  }
 
   protected onTab(index: number): void {
     this.router.navigate([], {

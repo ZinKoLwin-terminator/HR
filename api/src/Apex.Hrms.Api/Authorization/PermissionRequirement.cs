@@ -26,7 +26,7 @@ internal sealed class PermissionRequirement(string module, string action) : IAut
 /// rows of sec.RolePermission for the role of that account; they come through <see cref="RoleGrantCache"/>, which holds a
 /// role's grants while the role row version is unchanged. The held grants are also handed to the request's <see cref="CallerPermissions"/>.
 /// HR Administrator has no special path: it is allowed because its role holds every grant in the seed. Anything unclear
-/// (no account id claim, no account, an inactive account, an action that is not part of the permission model) is refused.
+/// (an employee claim that differs from the live account's employee, no account id claim, no account, an inactive account, an action that is not part of the permission model) is refused.
 /// </summary>
 internal sealed class PermissionHandler(
     IAccountDirectory accounts,
@@ -54,6 +54,17 @@ internal sealed class PermissionHandler(
         var account = await accounts.FindByIdAsync(accountId, includePermissions: false, CancellationToken.None);
         if (account is not { CanSignIn: true })
         {
+            return;
+        }
+
+        // The cookie carries the employee id that "own record" rules read (ICurrentUser); the team comes from the live account.
+        // If the account was relinked to another employee after sign-in the two disagree: refuse until the user signs in again.
+        var claimedEmployee = int.TryParse(context.User.FindFirstValue(HrmsClaims.EmployeeId), NumberStyles.None, CultureInfo.InvariantCulture, out var claimed)
+            ? claimed
+            : (int?)null;
+        if (claimedEmployee != account.EmployeeId)
+        {
+            context.Fail();
             return;
         }
 

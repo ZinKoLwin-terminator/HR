@@ -273,8 +273,9 @@ public sealed class DashboardCalculationTests
     private static IReadOnlyList<UpcomingEventDto> Events(
         IReadOnlyList<Holiday>? holidays = null,
         IReadOnlyList<LeaveApplication>? leave = null,
-        IReadOnlyList<EmployeeFigureRow>? employees = null) =>
-        DashboardCalculations.UpcomingEvents(Today, employees ?? Employees, holidays ?? [], leave ?? [], EmployeeNames, LeaveTypeNames);
+        IReadOnlyList<EmployeeFigureRow>? employees = null,
+        bool includeBirthdays = true) =>
+        DashboardCalculations.UpcomingEvents(Today, employees ?? Employees, holidays ?? [], leave ?? [], EmployeeNames, LeaveTypeNames, includeBirthdays);
 
     [Fact]
     public void Upcoming_events_cover_holidays_birthdays_anniversaries_probation_and_approved_leave_in_date_order()
@@ -292,6 +293,16 @@ public sealed class DashboardCalculationTests
                 new UpcomingEventDto(D(2026, 11, 25), "Noel Pryce", "Probation review due", "Probation"),
             ],
             events);
+    }
+
+    [Fact]
+    public void Birthdays_are_left_out_unless_asked_for_but_the_other_events_stay()
+    {
+        var events = Events(employees: Employees, includeBirthdays: false);
+
+        Assert.DoesNotContain(events, e => e.Type == "Birthday");
+        Assert.Contains(events, e => e.Type == "Work Anniversary");
+        Assert.Contains(Events(employees: Employees), e => e.Type == "Birthday");
     }
 
     [Fact]

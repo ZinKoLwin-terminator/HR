@@ -17,7 +17,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     private readonly WebApplicationFactory<Program> factory;
 
     public AuthorizationCoverageTests(WebApplicationFactory<Program> factory) =>
-        this.factory = factory.WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+        this.factory = SignedInHost.Cached(factory, "development", shared => shared.WithWebHostBuilder(builder => builder.UseEnvironment("Development")));
 
     private List<RouteEndpoint> ApiEndpoints()
     {
