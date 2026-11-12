@@ -509,7 +509,7 @@ public sealed class UserHandlerTests : IDisposable
 
         var result = await settings.Handler<IUserPasswordResetHandler>().HandleAsync(user.Id, default);
 
-        Assert.Equal(UserPasswordResetHandlerMessages.Sent, ResultAssert.Succeeded(result).Message);
+        Assert.True(result.IsSuccess);
         Assert.Single(settings.Logins.ResetMailsFor);
         Assert.Equal("Password reset email sent for user \"Mia Hartley\"", settings.Host.ActivityLog.LastMessage);
         Assert.DoesNotContain("@", settings.Host.ActivityLog.LastMessage, StringComparison.Ordinal);
@@ -527,6 +527,71 @@ public sealed class UserHandlerTests : IDisposable
         Assert.Empty(settings.Logins.ResetMailsFor);
     }
 
+
+    [Fact]
+    public async Task A_password_reset_mails_exactly_the_target_user_and_changes_nothing_else()
+    {
+        var officer = OfficerRole();
+        var target = settings.SeedAccount(officer, employeeId: null, "Mia Hartley", "mia@example.test");
+        var other = settings.SeedAccount(officer, employeeId: null, "Olive Officer", "olive@example.test");
+
+        var result = await settings.Handler<IUserPasswordResetHandler>().HandleAsync(target.Id, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(["seed-mia@example.test"], settings.Logins.ResetMailsFor);
+        Assert.Empty(settings.Logins.SessionsInvalidated);
+        Assert.Empty(settings.Logins.Unlocked);
+        Assert.Equal(AccountStatus.Active, target.Status);
+        Assert.Equal(AccountStatus.Active, other.Status);
+    }
+
+    [Fact]
+    public async Task A_password_reset_for_a_locked_account_asks_to_activate_it_first()
+    {
+        var officer = OfficerRole();
+        var locked = settings.SeedAccount(officer, employeeId: null, "Mia Hartley", "mia@example.test", AccountStatus.Locked);
+        var inactive = settings.SeedAccount(officer, employeeId: null, "Olive Officer", "olive@example.test", AccountStatus.Inactive);
+
+        ResultAssert.Failed(await settings.Handler<IUserPasswordResetHandler>().HandleAsync(locked.Id, default), ErrorType.Conflict, "Activate the account before sending a password reset.");
+        ResultAssert.Failed(await settings.Handler<IUserPasswordResetHandler>().HandleAsync(inactive.Id, default), ErrorType.Conflict, "Activate the account before sending a password reset.");
+        Assert.Empty(settings.Logins.ResetMailsFor);
+    }
+
+    [Fact]
+    public async Task A_password_reset_for_the_account_of_a_leaver_is_a_conflict()
+    {
+        var officer = OfficerRole();
+        var employeeId = await settings.MarkLeftAsync();
+        var account = settings.SeedAccount(officer, employeeId, "Mia Hartley", "mia@example.test");
+
+        var result = await settings.Handler<IUserPasswordResetHandler>().HandleAsync(account.Id, default);
+
+        ResultAssert.Failed(result, ErrorType.Conflict, "This user's employee has left the company, so no password reset can be sent.");
+        Assert.Empty(settings.Logins.ResetMailsFor);
+    }
+
+    [Fact]
+    public async Task A_password_reset_for_an_account_without_a_login_is_a_conflict()
+    {
+        var officer = OfficerRole();
+        var account = settings.SeedAccount(officer, employeeId: null, "Mia Hartley", "mia@example.test", linked: false);
+
+        var result = await settings.Handler<IUserPasswordResetHandler>().HandleAsync(account.Id, default);
+
+        ResultAssert.Failed(result, ErrorType.Conflict, "This account has no email address or sign-in to send a password reset to.");
+        Assert.Empty(settings.Logins.ResetMailsFor);
+    }
+
+    [Fact]
+    public async Task A_password_reset_for_an_account_with_an_inactive_role_is_a_conflict()
+    {
+        var role = settings.SeedRole("Retired Role", active: false);
+        var account = settings.SeedAccount(role, employeeId: null, "Mia Hartley", "mia@example.test");
+
+        var result = await settings.Handler<IUserPasswordResetHandler>().HandleAsync(account.Id, default);
+
+        ResultAssert.Failed(result, ErrorType.Conflict, "The account's role is inactive. Activate the role before sending a password reset.");
+    }
     [Fact]
     public async Task A_mail_server_failure_is_unavailable_and_does_not_leak_the_exception_text()
     {
@@ -565,10 +630,4 @@ public sealed class UserHandlerTests : IDisposable
         Assert.Single(bySearch.Items);
         ResultAssert.FailedOnField(badSort, "sort");
     }
-}
-
-/// <summary>The wording the password reset handler returns, kept in one place for the assertions.</summary>
-internal static class UserPasswordResetHandlerMessages
-{
-    public const string Sent = "A password reset email has been sent to the user.";
 }

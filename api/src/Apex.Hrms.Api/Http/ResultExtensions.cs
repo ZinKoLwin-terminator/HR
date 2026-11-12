@@ -17,5 +17,8 @@ internal static class ResultExtensions
     public static IResult ToNoContent(this Result result) =>
         result.IsSuccess ? Results.NoContent() : result.ToProblem();
 
+    public static IResult ToAccepted(this Result result) =>
+        result.IsSuccess ? Results.Accepted() : result.ToProblem();
+
     private static IResult ToProblem(this Result result) => Results.Problem(ApiProblems.From(result.Error));
 }
