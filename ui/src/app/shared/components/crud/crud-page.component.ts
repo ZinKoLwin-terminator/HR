@@ -285,7 +285,7 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
       title: isEdit
         ? `Edit ${cfg.entityLabel.toLowerCase()}`
         : `Add ${cfg.entityLabel.toLowerCase()}`,
-      fields: cfg.fields.filter((f) => !f.detailsOnly),
+      fields: cfg.fields.filter((f) => !f.detailsOnly && !(isEdit && f.createOnly)),
       groupValidators: cfg.groupValidators,
       value: row ? (row as unknown as FormValues) : cfg.newItem(),
       id: row?.id ?? null,
@@ -324,7 +324,7 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
           data: {
             title: cfg.nameOf(row),
             subtitle: `${cfg.entityLabel} details`,
-            fields: cfg.fields,
+            fields: cfg.fields.filter((f) => !f.createOnly),
             row: row as unknown as FormValues,
             id: row.id,
           },

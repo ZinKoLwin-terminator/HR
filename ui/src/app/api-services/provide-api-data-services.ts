@@ -46,6 +46,12 @@ import {
   NotificationDataService,
 } from '../core/services/data/activity-data.service';
 import { DashboardDataService } from '../core/services/data/dashboard-data.service';
+import {
+  GeneralSettingsDataService,
+  RoleDataService,
+  RolePermissionDataService,
+  UserDataService,
+} from '../core/services/data/settings-data.services';
 import { API_BASE_URL } from './api-base-url';
 import { ActivityHttpService } from './activity/activity-http.service';
 import { NotificationHttpService } from './activity/notification-http.service';
@@ -70,6 +76,11 @@ import { ApplicationHttpService } from './recruitment/application-http.service';
 import { CandidateHttpService } from './recruitment/candidate-http.service';
 import { InterviewHttpService } from './recruitment/interview-http.service';
 import { JobOpeningHttpService } from './recruitment/job-opening-http.service';
+import {
+  GeneralSettingsHttpService,
+  RolePermissionHttpService,
+} from './settings/settings-config-http.services';
+import { RoleHttpService, UserHttpService } from './settings/user-role-http.services';
 import { apiAuthInterceptor } from './auth/api-auth.interceptor';
 import { AuthHttpService } from './auth/auth-http.service';
 import {
@@ -96,7 +107,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
 }
 
 /**
- * Binds ONLY the Organization, Employee (employees, employment history), Leave, Attendance, Recruitment, Dashboard, Activity and Notification contracts to HTTP. Every other contract stays on its mock
+ * Binds ONLY the Organization, Employee (employees, employment history), Leave, Attendance, Recruitment, Settings, Dashboard, Activity and Notification contracts to HTTP. Every other contract stays on its mock
  * (the adapter is per dependency cluster). Register it AFTER `provideMockDataServices()` so
  * these bindings win; `app.config.ts` does that and the switch defaults to off.
  */
@@ -143,6 +154,11 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(DashboardDataService, DashboardHttpService),
     bind(ActivityDataService, ActivityHttpService),
     bind(NotificationDataService, NotificationHttpService),
+    // Settings: users and roles (status commands, admin-only), permission matrix, general settings.
+    bind(UserDataService, UserHttpService),
+    bind(RoleDataService, RoleHttpService),
+    bind(RolePermissionDataService, RolePermissionHttpService),
+    bind(GeneralSettingsDataService, GeneralSettingsHttpService),
     // Real sign-in: cookie session owned by the server, kept in memory only.
     bind(AuthDataService, AuthHttpService),
     { provide: SERVER_SESSION, useValue: true },

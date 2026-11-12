@@ -15,6 +15,7 @@ import {
   PermissionAction,
   PermissionGrants,
 } from '../../../core/models/settings.models';
+import { SERVER_SESSION } from '../../../core/services/auth.service';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import {
   RoleDataService,
@@ -50,11 +51,13 @@ const normalise = (grants: PermissionGrants): string =>
       description="Choose what each role can do in every module."
     />
 
-    <p class="notice" role="note">
-      <mat-icon aria-hidden="true">info</mat-icon>
-      Simulation only — these permissions are stored in memory and are not enforced anywhere in this
-      demo.
-    </p>
+    @if (!apiMode) {
+      <p class="notice" role="note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        Simulation only — these permissions are stored in memory and are not enforced anywhere in
+        this demo.
+      </p>
+    }
 
     @if (roles.error() || permissions.error()) {
       <app-empty-state icon="error" title="Permissions could not be loaded">
@@ -204,6 +207,8 @@ export class PermissionsPageComponent implements HasUnsavedChanges {
   private readonly permissionsApi = inject(RolePermissionDataService);
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(UiNotificationService);
+  /** True in the API build, where saved permissions live on the server. */
+  protected readonly apiMode = inject(SERVER_SESSION);
 
   protected readonly modules = PERMISSION_MODULES;
   protected readonly actions = PERMISSION_ACTIONS;
@@ -283,7 +288,11 @@ export class PermissionsPageComponent implements HasUnsavedChanges {
     if (id === null) return;
     this.permissionsApi.save(id, this.grants()).subscribe({
       next: () => {
-        this.toast.success(`Permissions of ${this.roleName()} saved (simulation).`);
+        this.toast.success(
+          this.apiMode
+            ? `Permissions of ${this.roleName()} saved.`
+            : `Permissions of ${this.roleName()} saved (simulation).`,
+        );
         this.permissions.reload();
       },
       error: (error: unknown) => this.toast.error(error),

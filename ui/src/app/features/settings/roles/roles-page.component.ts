@@ -4,6 +4,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { Role } from '../../../core/models/settings.models';
+import { SERVER_SESSION } from '../../../core/services/auth.service';
 import {
   RoleDataService,
   UserDataService,
@@ -28,6 +29,7 @@ export class RolesPageComponent {
   private readonly roles = inject(RoleDataService);
   private readonly usersApi = inject(UserDataService);
   private readonly router = inject(Router);
+  private readonly apiMode = inject(SERVER_SESSION);
   protected readonly lookups = rxResource({
     stream: () => forkJoin({ roles: this.roles.getAll(), users: this.usersApi.getAll() }),
   });
@@ -40,8 +42,9 @@ export class RolesPageComponent {
     const members = (r: Role) => l.users.filter((u) => u.roleId === r.id).length;
     return {
       title: 'Roles',
-      description:
-        'Roles group users. Built-in roles cannot be renamed or deleted. Demo only: roles are not enforced.',
+      description: this.apiMode
+        ? 'Roles group users. Built-in roles cannot be renamed or deleted. Only HR Administrators can manage roles.'
+        : 'Roles group users. Built-in roles cannot be renamed or deleted. Demo only: roles are not enforced.',
       entityLabel: 'Role',
       service: this.roles,
       hasStatus: false,

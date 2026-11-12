@@ -133,7 +133,7 @@ export const MAX_FILE_BYTES = 5 * 1024 * 1024;
               [formControl]="ctl()"
               [placeholder]="field().placeholder ?? ''"
               [attr.maxlength]="field().maxLength ?? null"
-              autocomplete="off"
+              [attr.autocomplete]="field().type === 'password' ? 'new-password' : 'off'"
             />
           }
         }

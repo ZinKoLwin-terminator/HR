@@ -4,6 +4,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { forkJoin } from 'rxjs';
 import { AppUser, USER_STATUSES } from '../../../core/models/settings.models';
 import { CurrentUserService } from '../../../core/services/current-user.service';
+import { MIN_PASSWORD_LENGTH, SERVER_SESSION } from '../../../core/services/auth.service';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import {
   RoleDataService,
@@ -32,6 +33,8 @@ export class UsersPageComponent {
   private readonly rolesApi = inject(RoleDataService);
   private readonly employeesApi = inject(EmployeeDataService);
   private readonly me = inject(CurrentUserService);
+  /** True in the API build: real accounts, so a create needs an initial password. */
+  private readonly apiMode = inject(SERVER_SESSION);
   protected readonly lookups = rxResource({
     stream: () =>
       forkJoin({
@@ -51,8 +54,9 @@ export class UsersPageComponent {
     const myId = this.me.current().id;
     return {
       title: 'Users',
-      description:
-        'Application users and their roles. Demo only: there is no sign-in, and roles are not enforced.',
+      description: this.apiMode
+        ? 'Application users and their roles. Only HR Administrators can manage users.'
+        : 'Application users and their roles. Demo only: there is no sign-in, and roles are not enforced.',
       entityLabel: 'User',
       service: this.users,
       hasStatus: false,
@@ -120,6 +124,20 @@ export class UsersPageComponent {
           required: true,
           options: () => STATUS_OPTIONS,
         },
+        ...(this.apiMode
+          ? [
+              {
+                key: 'initialPassword',
+                label: 'Initial password',
+                type: 'password' as const,
+                required: true,
+                createOnly: true,
+                fullWidth: true,
+                minLength: MIN_PASSWORD_LENGTH,
+                hint: `At least ${MIN_PASSWORD_LENGTH} characters. Share it with the user in person; it is never shown again.`,
+              },
+            ]
+          : []),
         { key: 'email', label: 'Email', type: 'text', detailsOnly: true },
         { key: 'lastLoginOn', label: 'Last sign-in', type: 'date', detailsOnly: true },
       ],

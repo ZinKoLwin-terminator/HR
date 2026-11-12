@@ -66,7 +66,7 @@ export function normalizeValues(fields: readonly FieldConfig[], raw: FormValues)
   const result: FormValues = { ...raw };
   for (const field of fields) {
     const value = raw[field.key];
-    if (typeof value === 'string') {
+    if (typeof value === 'string' && field.type !== 'password') {
       result[field.key] = value.trim();
     }
     if (

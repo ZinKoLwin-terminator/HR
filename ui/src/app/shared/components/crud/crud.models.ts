@@ -13,6 +13,8 @@ export type FieldType =
   | 'email'
   | 'tel'
   | 'url'
+  /** Masked text for a secret. Never trimmed, never shown again; use with `createOnly`. */
+  | 'password'
   /** Chooses a file; the control stores the file name (demo: contents are not kept). */
   | 'file'
   /** HH:mm value from a native time picker. */
@@ -64,6 +66,8 @@ export interface FieldConfig {
   fullWidth?: boolean;
   /** Cannot be changed after creation (e.g. codes). */
   lockedOnEdit?: boolean;
+  /** Only on the create form (e.g. an initial password); not shown when editing or in details. */
+  createOnly?: boolean;
   /** Shown in the details dialog only when set. */
   detailsOnly?: boolean;
   /**
