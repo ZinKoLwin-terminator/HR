@@ -138,6 +138,51 @@ internal static class UserRules
     }
 
     /// <summary>
+    /// Runs a change that could take <paramref name="account"/> out of the HR Administrator group (a demotion, a deactivation
+    /// or a delete) so that two concurrent changes cannot both pass the last-administrator rule: one transaction holds the
+    /// administrator application lock, checks the rule against the committed data, runs <paramref name="apply"/> (the domain
+    /// change and its activity entry), saves, runs <paramref name="afterSave"/> (identity store writes that belong to the
+    /// same change) and commits. A refusal or a failure at any step rolls everything back.
+    /// </summary>
+    public static async Task<Result> ChangeAdministratorAsync(
+        IUnitOfWork unitOfWork,
+        IRepository<AppAccount> accounts,
+        IRepository<AppRole> roles,
+        AppAccount account,
+        Action apply,
+        Func<Task>? afterSave,
+        CancellationToken cancellationToken)
+    {
+        var begun = await unitOfWork.BeginTransactionAsync(SecurityPolicy.AdministratorLockName, cancellationToken);
+        if (begun.IsFailure)
+        {
+            return Result.Failure(begun.Error);
+        }
+
+        await using var transaction = begun.Value;
+        var notLast = await EnsureNotLastAdministratorAsync(accounts, roles, account, cancellationToken);
+        if (notLast.IsFailure)
+        {
+            return notLast;
+        }
+
+        apply();
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (saved.IsFailure)
+        {
+            return saved;
+        }
+
+        if (afterSave is not null)
+        {
+            await afterSave();
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Fails when <paramref name="account"/> is the only active HR Administrator who can sign in. Call before a change that
     /// would take the account out of that group (a demotion, a deactivation or a delete).
     /// </summary>
@@ -252,6 +297,15 @@ internal sealed class CreateUserHandler(
             return Fail("An account with this email address already exists.", "employeeId", "This work email is already used by another account.");
         }
 
+        // The identity user and the account are one change: a single transaction on the shared database context, so a failed
+        // account save rolls the identity user back too and no login can be left without an account.
+        var begun = await unitOfWork.BeginTransactionAsync(exclusiveLock: null, cancellationToken);
+        if (begun.IsFailure)
+        {
+            return Result.Failure<UserDto>(begun.Error);
+        }
+
+        await using var transaction = begun.Value;
         var login = await logins.CreateAsync(email, request.InitialPassword!, cancellationToken);
         if (login.IsFailure)
         {
@@ -263,26 +317,13 @@ internal sealed class CreateUserHandler(
         accounts.Add(account);
         activity.Record(ActivityCategories.System, ActivityMessages.Created(mapper.Label, mapper.Describe(account)));
 
-        var saved = false;
-        try
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (saved.IsFailure)
         {
-            var result = await unitOfWork.SaveChangesAsync(cancellationToken);
-            if (result.IsFailure)
-            {
-                return Result.Failure<UserDto>(result.Error);
-            }
-
-            saved = true;
-        }
-        finally
-        {
-            if (!saved)
-            {
-                // The identity user was created first; do not leave a login that has no account.
-                await logins.DeleteAsync(login.Value, CancellationToken.None);
-            }
+            return Result.Failure<UserDto>(saved.Error);
         }
 
+        await transaction.CommitAsync(cancellationToken);
         return Result.Success(UserMapping.ToDto(account, lockedOut: false));
     }
 
@@ -331,14 +372,22 @@ internal sealed class UpdateUserHandler(
                 return Result.Failure<UserDto>(notSelf.Error);
             }
 
-            var notLast = await UserRules.EnsureNotLastAdministratorAsync(accounts, roles, account, cancellationToken);
-            if (notLast.IsFailure)
-            {
-                return Result.Failure<UserDto>(notLast.Error);
-            }
-
-            account.ChangeRole(request.RoleId);
-            activity.Record(ActivityCategories.System, ActivityMessages.Updated(mapper.Label, mapper.Describe(account)));
+            // The rule check and the write run under the administrator lock in one transaction (see ChangeAdministratorAsync).
+            var changed = await UserRules.ChangeAdministratorAsync(
+                unitOfWork,
+                accounts,
+                roles,
+                account,
+                () =>
+                {
+                    account.ChangeRole(request.RoleId);
+                    activity.Record(ActivityCategories.System, ActivityMessages.Updated(mapper.Label, mapper.Describe(account)));
+                },
+                afterSave: null,
+                cancellationToken);
+            return changed.IsFailure
+                ? Result.Failure<UserDto>(changed.Error)
+                : Result.Success(UserMapping.ToDto(account, await UserRules.IsLockedAsync(logins, account, cancellationToken)));
         }
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -418,14 +467,21 @@ internal sealed class DeactivateUserHandler(
                 return Result.Failure<UserDto>(notSelf.Error);
             }
 
-            var notLast = await UserRules.EnsureNotLastAdministratorAsync(accounts, roles, account, cancellationToken);
-            if (notLast.IsFailure)
-            {
-                return Result.Failure<UserDto>(notLast.Error);
-            }
-
-            account.Deactivate();
-            activity.Record(ActivityCategories.System, ActivityMessages.Updated(mapper.Label, mapper.Describe(account)));
+            var changed = await UserRules.ChangeAdministratorAsync(
+                unitOfWork,
+                accounts,
+                roles,
+                account,
+                () =>
+                {
+                    account.Deactivate();
+                    activity.Record(ActivityCategories.System, ActivityMessages.Updated(mapper.Label, mapper.Describe(account)));
+                },
+                afterSave: null,
+                cancellationToken);
+            return changed.IsFailure
+                ? Result.Failure<UserDto>(changed.Error)
+                : Result.Success(UserMapping.ToDto(account, await UserRules.IsLockedAsync(logins, account, cancellationToken)));
         }
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -499,27 +555,25 @@ internal sealed class DeleteUserHandler(
             return notSelf;
         }
 
-        var notLast = await UserRules.EnsureNotLastAdministratorAsync(accounts, roles, account, cancellationToken);
-        if (notLast.IsFailure)
-        {
-            return notLast;
-        }
-
-        activity.Record(ActivityCategories.System, ActivityMessages.Deleted(mapper.Label, mapper.Describe(account)));
-        accounts.Remove(account);
-        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
-        if (saved.IsFailure)
-        {
-            return saved;
-        }
-
-        // The account is gone, so the login can no longer be used; removing it is housekeeping.
-        if (account.ExternalSubject is { } subject)
-        {
-            await logins.DeleteAsync(subject, cancellationToken);
-        }
-
-        return Result.Success();
+        // The account row and the identity user go in one transaction, under the administrator lock: a failure leaves both.
+        return await UserRules.ChangeAdministratorAsync(
+            unitOfWork,
+            accounts,
+            roles,
+            account,
+            () =>
+            {
+                activity.Record(ActivityCategories.System, ActivityMessages.Deleted(mapper.Label, mapper.Describe(account)));
+                accounts.Remove(account);
+            },
+            afterSave: async () =>
+            {
+                if (account.ExternalSubject is { } subject)
+                {
+                    await logins.DeleteAsync(subject, cancellationToken);
+                }
+            },
+            cancellationToken);
     }
 }
 

@@ -18,7 +18,8 @@ open a database connection.
 
 Sign-in (phase 1) is implemented: ASP.NET Core Identity with a same-site cookie, see "Authentication" below. Every
 endpoint requires a signed-in user except the four anonymous `/api/auth` endpoints. Per-permission checks (which role may
-do what) are still placeholders until phase 3. Do not store real data until the permission checks exist.
+do what) are real (phase 3): see "Permission check" below. Row-level scoping (own record, own team) does not exist yet, so
+do not store real data.
 Without a database you cannot sign in: create the first administrator with the `bootstrap-admin` command first.
 
 ## Configuration
@@ -97,7 +98,7 @@ Every error is `application/problem+json` (RFC 9457):
 | `NotFound` | 404 | No such record, or outside the caller's access scope. |
 | `Conflict` | 409 | Stale `rowVersion`, record still referenced, payroll finality, foreign key violation. |
 | `Unauthorized` | 401 | Not signed in (or the session ended), a failed sign-in, or an audited write with no signed-in user. Never a redirect. |
-| `Forbidden` | 403 | The caller is not an HR Administrator on a settings endpoint (a real check). The other permission checks come in phase 3. |
+| `Forbidden` | 403 | The caller's role does not hold the permission of the route (`module:Action` in `sec.RolePermission`), or the caller is not an HR Administrator on a settings endpoint. |
 | `Unknown` | 500 | Unexpected failure; the message is generic. Quote `traceId` to find it in the server log. |
 | `Unknown` | 503 | A needed service is not configured: password reset by email without email settings (`POST /api/users/{id}/password-reset`, `POST /api/auth/forgot-password`). The body has `code: "Unknown"`. |
 
@@ -188,7 +189,7 @@ email, phones, address or emergency contact.** Those live behind `/personal`; th
 ## HTTP contract (leave module)
 
 Three resources, two reads and four workflow commands. Policies: `leave:View`, `leave:Create`, `leave:Edit`,
-`leave:Delete`, `leave:Approve` (placeholders until phase 3, like every module policy). Balances are never stored (the
+`leave:Delete`, `leave:Approve` (checked against the role's grants, see "Permission check"). Balances are never stored (the
 schema has no balance table): they are worked out from the leave applications on every request.
 
 | Route | Policy | Body | Returns |
@@ -247,7 +248,7 @@ documentName, status, appliedOn, approverId, actionedByName, actionedOn, approve
 
 ## HTTP contract (attendance module)
 
-Policies (placeholders until phase 3, like leave): `attendance:View|Create|Edit|Delete|Approve`. Times travel as `"HH:mm"`
+Policies (checked against the role's grants): `attendance:View|Create|Edit|Delete|Approve`. Times travel as `"HH:mm"`
 (24 hours, to the minute; `"HH:mm:ss"` is also accepted on input); dates as `yyyy-MM-dd`. Every update, delete and command
 needs `rowVersion` as described for the organization module.
 
@@ -305,7 +306,7 @@ Rules (the attendance rules are demonstrations, not statutory calculations):
   API, see below; there is no payroll module yet); the payroll totals are demonstration figures.
 ## HTTP contract (recruitment module)
 
-Policies (placeholders until phase 3): `recruitment:View|Create|Edit|Delete` (the mock has no approval step, so there is
+Policies (checked against the role's grants): `recruitment:View|Create|Edit|Delete` (the mock has no approval step, so there is
 no `Approve`). Dates are `yyyy-MM-dd`, times `"HH:mm"`. Every update, delete and command needs `rowVersion` as described for
 the organization module. Candidates, applications and interviews hold personal data and interviewers' opinions (score,
 recommendation, feedback); the unpaged "get all" routes the frontend contract needs are kept for the four resources.
@@ -517,8 +518,8 @@ cookie in their response; use the new value afterwards. Enforced in `Auth/Antifo
 ### Deny by default
 
 `AuthorizationSetup` sets a fallback policy that requires a signed-in user, so an endpoint without its own policy is
-protected. A named policy replaces the fallback for its endpoint, so each placeholder policy (`organization:View` ...)
-requires a signed-in user too; checking the permission itself is phase 3 (`TODO(Permissions)`). Only the four anonymous
+protected. A named policy replaces the fallback for its endpoint, so each permission policy (`organization:View` ...)
+requires a signed-in user itself and then the permission (`PermissionRequirement`). Only the four anonymous
 `/api/auth` endpoints and the OpenAPI document opt out with `AllowAnonymous`; a test pins that list. A 401 or 403 is a status
 code, never a redirect.
 
@@ -555,12 +556,44 @@ Exit codes: 0 created, 1 refused or cancelled, 2 usage.
 * Tokens come from Identity's `GeneratePasswordResetTokenAsync`, work once and expire after 1 hour. Only an Active
   account receives a mail.
 
-### Authorization seams (permissions come in phase 3)
+### Permission check
+
+Every module policy (`employees:ViewBank`, `leave:Approve`, `excel:Export` ...) is a `PermissionRequirement(module, action)`
+handled by `Authorization/PermissionHandler`, on every request:
+
+1. The account is read live from the database (`IAccountDirectory.FindByIdAsync`, by the `hrms:uid` claim, never by a claim
+   about the role). It must be Active, have an active role, and its employee must have no exit date.
+2. The grants are the rows of `sec.RolePermission` for the role of that account, read through `IPermissionStore.GrantsAsync`
+   and cached per role in the singleton `RoleGrantCache` for 30 seconds at most. The account, its status and its role are
+   never cached, so a deactivated user, an inactive role or a leaver is refused at once; only the grant sets are cached.
+3. The cache is emptied for a role when its grants are saved (`PermissionMatrixHandler`) or the role is deactivated or deleted,
+   so the instance that handled the change sees it at once. A second API instance sees it after the 30 seconds.
+4. A policy that is not a module and action of `PermissionModule.All` is refused, and HR Administrator has no special path:
+   it passes because the seed gives that role every action. The Excel endpoints ask the same policies by name for the
+   module of the file (and the sensitive export policies), so they are enforced too.
+
+The settings routes keep the extra `hr-administrator` requirement. `PermissionPolicyHttpTests` (403 without the grant, 204
+with it, no database), `PermissionHandlerTests` and the integration `PermissionsHttpTests` cover it. The UI should hide what
+the user lacks using the `permissions` of `GET /api/auth/me`; the server stays the authority.
+
+### Leavers and administrators
+
+* Recording an employee's exit (`ExitEmployeeHandler`, also used by the Excel import) switches off the linked account and
+  changes the Identity security stamp in the same transaction, so open sessions end. Sign-in and the session check also refuse
+  an account whose employee has an exit date.
+* Creating a user (identity user plus account) and deleting one run in one database transaction on the shared context
+  (`IUnitOfWork.BeginTransactionAsync`); nothing is repaired by hand after a failure.
+* A demotion, deactivation, delete or exit that could remove an HR Administrator takes the application lock
+  `hrms:administrator-changes` (`sp_getapplock`, owned by the transaction) before it checks the last-administrator rule, so two
+  concurrent requests cannot both pass it. A request that cannot get the lock within 15 seconds is a `409`.
+
+### Authorization seams
 
 * `MapCrud` and `MapCommand` take a `PermissionModule` (for example `organization`) and attach a named policy per
   verb: `organization:View` (GET), `organization:Create` (POST), `organization:Edit` (PUT and commands),
   `organization:Delete` (DELETE). The policies are registered in `Authorization/AuthorizationSetup.cs`; they require a
-  signed-in user and check nothing else yet. New modules must be added to `PermissionModule.All`.
+  signed-in user and the permission (see "Permission check"). New modules must be added to `PermissionModule.All` and to the
+  seed of the database project (`sec.PermissionModuleAction`), or nobody can be granted them.
 * `IAccessScope<TEntity>` returns a predicate from the `ICurrentUser`; it is applied inside the database query by get all,
   query, get by id, update, delete and every command, so a record outside the scope is `404`. The default allows all.
   Register a closed `IAccessScope<Company>` etc. to narrow a resource.

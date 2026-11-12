@@ -15,6 +15,12 @@ public static class SecurityPolicy
     /// <summary>The built-in role the bootstrap command assigns (sec.Role name, created by the post-deployment script).</summary>
     public const string AdministratorRoleName = "HR Administrator";
 
+    /// <summary>
+    /// The application lock (<c>sp_getapplock</c>) that every change which could remove an HR Administrator holds for the
+    /// length of its transaction, so two concurrent changes cannot both pass the "last administrator" check.
+    /// </summary>
+    public const string AdministratorLockName = "hrms:administrator-changes";
+
     /// <summary>A message when <paramref name="password"/> breaks the password rule, otherwise null.</summary>
     public static string? PasswordViolation(string? password) =>
         string.IsNullOrEmpty(password) || password.Length < PasswordMinimumLength

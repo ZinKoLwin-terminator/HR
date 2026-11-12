@@ -1,5 +1,6 @@
 using Apex.Hrms.Application.Security;
 using Apex.Hrms.Domain.Common;
+using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Security;
 using Apex.Hrms.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -43,6 +44,8 @@ internal sealed class EfAccountDirectory(HrmsDbContext context, TimeProvider tim
                 account.Status,
                 RoleId = role.Id,
                 RoleName = role.Name,
+                EmployeeLeft = account.EmployeeId != null
+                    && context.Set<Employee>().Any(employee => employee.Id == account.EmployeeId && employee.ExitDate != null),
                 RoleStatus = role.Status,
             }).SingleOrDefaultAsync(cancellationToken);
         if (row is null)
@@ -67,8 +70,10 @@ internal sealed class EfAccountDirectory(HrmsDbContext context, TimeProvider tim
             row.Email,
             row.ExternalSubject,
             row.Status,
+            row.RoleId,
             row.RoleName,
             row.RoleStatus == RecordStatus.Active,
+            row.EmployeeLeft,
             permissions);
     }
 }

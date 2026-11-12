@@ -40,7 +40,8 @@ internal static class EmployeeServiceCollectionExtensions
         services.AddDelete<Employee, EmployeeDto>();
 
         // Commands: leaving, coming back, and moving between the current statuses.
-        services.AddEntityCommand<Employee, ExitEmployeeCommand, EmployeeDto, ExitEmployeeAction>();
+        services.AddScoped<ICommandAction<Employee, ExitEmployeeCommand>, ExitEmployeeAction>();
+        services.AddScoped<ICommandHandler<ExitEmployeeCommand, EmployeeDto>, ExitEmployeeHandler>();
         services.AddEntityCommand<Employee, ReinstateEmployeeCommand, EmployeeDto, ReinstateEmployeeAction>();
         services.AddEntityCommand<Employee, ChangeEmployeeStatusCommand, EmployeeDto, ChangeEmployeeStatusAction>();
 

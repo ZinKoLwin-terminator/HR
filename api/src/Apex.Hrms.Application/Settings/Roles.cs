@@ -4,6 +4,7 @@ using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Application.References;
+using Apex.Hrms.Application.Security;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Security;
@@ -117,6 +118,7 @@ internal sealed class DeactivateRoleHandler(
     IRecordCounter<AppAccount> accounts,
     IActivityRecorder activity,
     IUnitOfWork unitOfWork,
+    IRoleGrantInvalidator grantCache,
     RoleMapping mapper) : ICommandHandler<DeactivateCommand, RoleDto>
 {
     public async Task<Result<RoleDto>> HandleAsync(DeactivateCommand command, CancellationToken cancellationToken)
@@ -148,6 +150,11 @@ internal sealed class DeactivateRoleHandler(
         }
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (saved.IsSuccess)
+        {
+            grantCache.Invalidate(role.Id);
+        }
+
         return saved.IsFailure ? Result.Failure<RoleDto>(saved.Error) : Result.Success(mapper.ToDto(role));
     }
 }
@@ -159,6 +166,7 @@ internal sealed class DeleteRoleHandler(
     IRepository<AppRole> roles,
     IActivityRecorder activity,
     IUnitOfWork unitOfWork,
+    IRoleGrantInvalidator grantCache,
     RoleMapping mapper) : IDeleteHandler<RoleDto>
 {
     public async Task<Result> HandleAsync(int id, string? rowVersion, CancellationToken cancellationToken)
@@ -184,6 +192,12 @@ internal sealed class DeleteRoleHandler(
 
         activity.Record(Domain.Activity.ActivityCategories.System, ActivityMessages.Deleted(mapper.Label, mapper.Describe(role)));
         roles.Remove(role);
-        return await unitOfWork.SaveChangesAsync(cancellationToken);
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (saved.IsSuccess)
+        {
+            grantCache.Invalidate(id);
+        }
+
+        return saved;
     }
 }

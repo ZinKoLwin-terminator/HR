@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using Apex.Hrms.Application.Security;
+using Apex.Hrms.Application.Settings;
 using Apex.Hrms.TestSupport;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -22,18 +24,30 @@ internal static class SignedInHost
     public static HttpClient CreateClient(WebApplicationFactory<Program> factory) =>
         BrowserHandler.CreateClient(Customize(factory).Server.CreateHandler(), out _);
 
-    public static WebApplicationFactory<Program> Customize(WebApplicationFactory<Program> factory) =>
+    /// <summary>
+    /// The signed-in caller is account 1. Without arguments it is an active HR Administrator whose role holds every grant;
+    /// pass an account and the grants of its role to test what the permission check does with them (no database is read).
+    /// </summary>
+    public static WebApplicationFactory<Program> Customize(
+        WebApplicationFactory<Program> factory,
+        AccountSnapshot? account = null,
+        IEnumerable<string>? grants = null) =>
         factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
-            builder.ConfigureTestServices(services => services
-                .AddAuthentication(options =>
-                {
-                    options.DefaultScheme = Scheme;
-                    options.DefaultAuthenticateScheme = Scheme;
-                    options.DefaultChallengeScheme = Scheme;
-                })
-                .AddScheme<AuthenticationSchemeOptions, AlwaysSignedInHandler>(Scheme, _ => { }));
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddScoped<IAccountDirectory>(_ => new FakeAccountDirectory(account ?? AccessFakes.Account()));
+                services.AddScoped<IPermissionStore>(_ => new FakeGrantStore(grants ?? AccessFakes.AllGrants));
+                services
+                    .AddAuthentication(options =>
+                    {
+                        options.DefaultScheme = Scheme;
+                        options.DefaultAuthenticateScheme = Scheme;
+                        options.DefaultChallengeScheme = Scheme;
+                    })
+                    .AddScheme<AuthenticationSchemeOptions, AlwaysSignedInHandler>(Scheme, _ => { });
+            });
         });
 
     private sealed class AlwaysSignedInHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)

@@ -250,6 +250,7 @@ internal sealed partial class AuthFlows(
         { Status: AccountStatus.Inactive } => "AccountInactive",
         { Status: AccountStatus.Locked } => "AccountLocked",
         { RoleActive: false } => "RoleInactive",
+        { EmployeeLeft: true } => "EmployeeLeft",
         _ => null,
     };
 
