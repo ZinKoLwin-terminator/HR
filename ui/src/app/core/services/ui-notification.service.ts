@@ -41,6 +41,10 @@ export function errorMessage(
   if (isAppError(error)) {
     return error.message;
   }
+  // A resource wraps a non-Error rejection (such as an AppError) and keeps the original as `cause`.
+  if (error instanceof Error && isAppError(error.cause)) {
+    return error.cause.message;
+  }
   if (error instanceof Error && error.message) {
     return error.message;
   }

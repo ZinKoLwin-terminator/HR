@@ -215,6 +215,8 @@ test.describe('shift management', () => {
   test('validates times, creates, edits and deletes a shift; protects assigned shifts', async ({
     page,
   }) => {
+    // One long flow (about 15 steps, 14-26 s on an idle machine): triple the timeout under load.
+    test.slow();
     await page.goto('/attendance/shifts');
     await expect(rows(page)).toHaveCount(5);
     await expect(rows(page).filter({ hasText: 'General Shift' })).toContainText('09:00 – 18:00');
@@ -251,7 +253,12 @@ test.describe('shift management', () => {
     // Edit: the code is locked
     await rowMenu(page, 'Evening Support', 'Edit');
     await expect(dialog(page).getByLabel('Shift code')).toBeDisabled();
+    // Wait for the dialog's initial focus (first enabled field). Filling earlier races with it: the
+    // dialog moves focus to Shift name after fill focused the grace field, so "20" landed in the name.
+    await expect(dialog(page).getByLabel('Shift name')).toBeFocused();
     await dialog(page).getByLabel('Late grace period').fill('20');
+    await expect(dialog(page).getByLabel('Late grace period')).toHaveValue('20');
+    await expect(dialog(page).getByLabel('Shift name')).toHaveValue('Evening Support');
     await dialog(page).getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText('Shift "Evening Support" updated successfully.')).toBeVisible();
 

@@ -163,7 +163,7 @@ describe('Employee Excel import/export', { timeout: 30_000 }, () => {
           .map(([cell]) => cell.replace(/\d+/g, '')),
       );
       expect(dropDownColumns.size).toBe(5); // gender, marital status, relationship, type, status
-    });
+    }, 30_000); // builds and parses a whole workbook: slow on a busy machine
   });
 
   describe('validation', () => {
