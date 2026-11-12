@@ -742,3 +742,8 @@ Payroll runs (totals only) are not scoped. A caller with no linked employee (the
 * **Run:** `dotnet test api/tests/Apex.Hrms.IntegrationTests`, or everything except them with
   `dotnet test api/Apex.Hrms.slnx --filter "Category!=Integration"`. The first run starts LocalDB (`sqllocaldb start
   MSSQLLocalDB`) and deploys the schema, which takes longer.
+* **CI:** the `api` job in `.github/workflows/ci.yml` (ubuntu-latest, .NET 10) restores, builds with
+  `-warnaserror` and runs `--filter "Category!=Integration"`, uploading the .trx results as an artifact. The integration
+  tests are not run in CI: they need LocalDB and the dacpac from the separate database repository. Running them later
+  would take a SQL Server service container, the dacpac published as an artifact from that repository, and a connection
+  setting in `SqlServerEnvironment` (today LocalDB only).
