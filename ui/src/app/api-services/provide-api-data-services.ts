@@ -45,6 +45,11 @@ import {
   ActivityDataService,
   NotificationDataService,
 } from '../core/services/data/activity-data.service';
+import {
+  ExcelExportDataService,
+  ExcelImportDataService,
+  ExcelModuleCatalogDataService,
+} from '../core/services/data/excel-data.services';
 import { DashboardDataService } from '../core/services/data/dashboard-data.service';
 import {
   GeneralSettingsDataService,
@@ -66,6 +71,11 @@ import {
   AttendanceOverviewHttpService,
   WorkScheduleHttpService,
 } from './attendance/attendance-views-http.services';
+import {
+  ExcelCatalogHttpService,
+  ExcelExportHttpService,
+  ExcelImportHttpService,
+} from './excel/excel-http.service';
 import { EmployeeHttpService } from './employees/employee-http.service';
 import { EmploymentHistoryHttpService } from './employees/employment-history-http.service';
 import { LeaveApplicationHttpService } from './leave/leave-application-http.service';
@@ -107,7 +117,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
 }
 
 /**
- * Binds ONLY the Organization, Employee (employees, employment history), Leave, Attendance, Recruitment, Settings, Dashboard, Activity and Notification contracts to HTTP. Every other contract stays on its mock
+ * Binds ONLY the Organization, Employee (employees, employment history), Leave, Attendance, Recruitment, Settings, Excel, Dashboard, Activity and Notification contracts to HTTP. Every other contract stays on its mock
  * (the adapter is per dependency cluster). Register it AFTER `provideMockDataServices()` so
  * these bindings win; `app.config.ts` does that and the switch defaults to off.
  */
@@ -159,6 +169,10 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(RoleDataService, RoleHttpService),
     bind(RolePermissionDataService, RolePermissionHttpService),
     bind(GeneralSettingsDataService, GeneralSettingsHttpService),
+    // Excel import and export: files are parsed and built on the server.
+    bind(ExcelModuleCatalogDataService, ExcelCatalogHttpService),
+    bind(ExcelImportDataService, ExcelImportHttpService),
+    bind(ExcelExportDataService, ExcelExportHttpService),
     // Real sign-in: cookie session owned by the server, kept in memory only.
     bind(AuthDataService, AuthHttpService),
     { provide: SERVER_SESSION, useValue: true },
