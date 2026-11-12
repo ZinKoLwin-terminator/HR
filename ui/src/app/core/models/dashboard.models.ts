@@ -90,7 +90,8 @@ export interface DashboardSummary {
   pendingLeaveApprovals: number;
   pendingLeaves: PendingLeaveItem[];
   payroll: PayrollSummary | null;
-  recruitment: RecruitmentSummary;
+  /** Null when the caller lacks recruitment:View (API); always present in the demo build. */
+  recruitment: RecruitmentSummary | null;
   departmentDistribution: CountByLabel[];
   attendanceTrend: AttendanceTrendPoint[];
   headcountGrowth: HeadcountGrowthPoint[];
