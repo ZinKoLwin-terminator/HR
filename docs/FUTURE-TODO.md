@@ -74,8 +74,14 @@ Priority: **P1** = before real use, **P2** = next features, **P3** = nice to hav
       interviewer is not in that list, so the interview list shows "—" for them.
 
 ### Settings
-- [ ] **P2** Apply general settings in the other screens (date format, currency, timezone, fiscal year start, email
-      notifications, weekly digest). Today they are saved but not used. **In progress.**
+- [x] **P2** Apply general settings in the other screens: date format, currency, time zone ("today") and organization
+      name now drive record dates, amounts, the sidebar, footer, print header and letters (`AppSettingsService`).
+- [ ] **P2** Public display-settings endpoint (organization name, date format, currency, time zone) for every
+      signed-in user. Today `GET /api/general-settings` needs `settings:View`, so other users see the defaults.
+- [ ] **P3** Fiscal year start is stored but unused (leave balance years and payroll years come from server data).
+- [ ] **P3** Fixed en-GB dates in letters, document expiry text and import history; calendar headers keep their own
+      patterns.
+- [ ] **P2** Email notifications and weekly digest settings: server side, not implemented.
 
 ### Employees and self-service
 - [x] **P2** Employee self-service payslips: **My Payslips** (`/my/payslips`) shows the caller's own payslips of Approved
