@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { forkJoin } from 'rxjs';
+import { forkJoin, map } from 'rxjs';
 import {
   JOB_OPENING_STATUSES,
   JobOpening,
@@ -9,7 +9,7 @@ import {
   RECRUITMENT_EMPLOYMENT_TYPES,
 } from '../../../core/models/recruitment.models';
 import { DepartmentDataService } from '../../../core/services/data/organization-data.services';
-import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
+import { EmployeeLookupDataService } from '../../../core/services/data/employee-data.service';
 import {
   ApplicationDataService,
   JobOpeningDataService,
@@ -21,7 +21,10 @@ import {
   FieldOption,
 } from '../../../shared/components/crud/crud.models';
 import { todayIso } from '../../../shared/utilities/date.util';
-import { employeeOptions, nameMap, options } from '../../organization/organization-lookups';
+import { nameMap, options } from '../../organization/organization-lookups';
+
+/** Most rows the picker asks for in one request (the API's page limit). */
+const MANAGER_PICKER_SIZE = 200;
 
 const toOptions = (values: readonly string[]): FieldOption[] =>
   values.map((v) => ({ value: v, label: v }));
@@ -41,13 +44,17 @@ const toOptions = (values: readonly string[]): FieldOption[] =>
 export class JobOpeningsPageComponent {
   private readonly jobs = inject(JobOpeningDataService);
   private readonly departmentsApi = inject(DepartmentDataService);
-  private readonly employeesApi = inject(EmployeeDataService);
+  private readonly employeeLookup = inject(EmployeeLookupDataService);
   private readonly applicationsApi = inject(ApplicationDataService);
   private readonly lookups = rxResource({
     stream: () =>
       forkJoin({
         departments: this.departmentsApi.getAll(),
-        employees: this.employeesApi.getAll(),
+        // The picker needs only the non-personal lookup, so a recruiter without access to the
+        // employee module can still choose a hiring manager.
+        managers: this.employeeLookup
+          .query({ pageIndex: 0, pageSize: MANAGER_PICKER_SIZE })
+          .pipe(map((page) => page.items)),
         applications: this.applicationsApi.getAll(),
       }),
   });
@@ -181,7 +188,10 @@ export class JobOpeningsPageComponent {
           label: 'Hiring manager',
           type: 'select',
           required: true,
-          options: () => employeeOptions(l.employees.filter((e) => !e.exitDate)),
+          options: () =>
+            l.managers
+              .map((m) => ({ value: m.id, label: `${m.displayName} (${m.employeeCode})` }))
+              .sort((a, b) => a.label.localeCompare(b.label)),
         },
         {
           key: 'employmentType',

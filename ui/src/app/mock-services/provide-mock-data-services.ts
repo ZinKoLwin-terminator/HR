@@ -15,7 +15,11 @@ import {
 import { AuthDataService } from '../core/services/data/auth-data.service';
 import { AuthMockService } from './auth/auth-mock.service';
 import { DashboardDataService } from '../core/services/data/dashboard-data.service';
-import { EmployeeDataService } from '../core/services/data/employee-data.service';
+import { BlacklistDataService } from '../core/services/data/blacklist-data.service';
+import {
+  EmployeeDataService,
+  EmployeeLookupDataService,
+} from '../core/services/data/employee-data.service';
 import {
   EmployeeDocumentDataService,
   EmployeeSalaryDataService,
@@ -37,6 +41,7 @@ import {
   SectionDataService,
 } from '../core/services/data/organization-data.services';
 import {
+  MyPayslipDataService,
   PayrollRunDataService,
   PayslipDataService,
   SalaryAssignmentDataService,
@@ -96,6 +101,8 @@ import { DemoDataDataService } from '../core/services/data/demo-data-data.servic
 import { DemoDataMockService } from './demo-data/demo-data-mock.service';
 import { setPersistence } from './persistence';
 import { setEmptyData } from './seed-mode';
+import { BlacklistMockService } from './employees/blacklist-mock.service';
+import { EmployeeLookupMockService } from './employees/employee-lookup-mock.service';
 import { EmployeeMockService } from './employees/employee-mock.service';
 import {
   EmployeeDocumentMockService,
@@ -117,7 +124,11 @@ import {
   PositionMockService,
   SectionMockService,
 } from './organization/organization-mock.services';
-import { PayrollRunMockService, PayslipMockService } from './payroll/payroll-mock.services';
+import {
+  MyPayslipMockService,
+  PayrollRunMockService,
+  PayslipMockService,
+} from './payroll/payroll-mock.services';
 import {
   SalaryAssignmentMockService,
   SalaryComponentMockService,
@@ -157,6 +168,8 @@ export function provideMockDataServices(options: MockDataOptions = {}): Environm
     bind(JobGradeDataService, JobGradeMockService),
     bind(PositionDataService, PositionMockService),
     bind(EmployeeDataService, EmployeeMockService),
+    bind(EmployeeLookupDataService, EmployeeLookupMockService),
+    bind(BlacklistDataService, BlacklistMockService),
     bind(EmployeeDocumentDataService, EmployeeDocumentMockService),
     bind(EmploymentHistoryDataService, EmploymentHistoryMockService),
     bind(EmployeeSalaryDataService, EmployeeSalaryMockService),
@@ -174,6 +187,7 @@ export function provideMockDataServices(options: MockDataOptions = {}): Environm
     bind(LeaveCalendarDataService, LeaveCalendarMockService),
     bind(PayrollRunDataService, PayrollRunMockService),
     bind(PayslipDataService, PayslipMockService),
+    bind(MyPayslipDataService, MyPayslipMockService),
     bind(SalaryComponentDataService, SalaryComponentMockService),
     bind(SalaryStructureDataService, SalaryStructureMockService),
     bind(SalaryAssignmentDataService, SalaryAssignmentMockService),

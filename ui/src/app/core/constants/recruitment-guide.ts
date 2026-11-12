@@ -105,6 +105,29 @@ export const RECRUITMENT_GUIDE: readonly GuideBlock[] = [
         en: 'A candidate who has applications cannot be deleted.',
         my: 'လျှောက်လွှာပါသော Candidate ကို မဖျက်နိုင်။',
       },
+      {
+        en: 'National ID is optional and is used only for the do-not-rehire check. It is never shown again; when editing, leave it blank to keep the stored value.',
+        my: 'မှတ်ပုံတင်နံပါတ်သည် မဖြည့်လည်းရပြီး do-not-rehire စစ်ဆေးရန်သာ သုံးသည်။ ပြန်မပြပါ — ပြင်ချိန်တွင် အလွတ်ထားလျှင် သိမ်းထားသောတန်ဖိုးကို ဆက်ထားမည်။',
+      },
+    ],
+  },
+
+  // ───────────── Do-not-rehire check ─────────────
+  {
+    type: 'heading',
+    text: { en: 'Do-not-rehire check', my: 'Do-not-rehire စစ်ဆေးမှု' },
+  },
+  {
+    type: 'list',
+    items: [
+      {
+        en: 'A candidate whose email, phone number or national ID matches a former employee on the do-not-rehire list is flagged “Matches do-not-rehire list — contact HR” on the candidate list, the application and the pipeline card. You are never told who or why: contact HR.',
+        my: 'Email၊ ဖုန်း သို့မဟုတ် မှတ်ပုံတင်နံပါတ်သည် do-not-rehire စာရင်းရှိ ဝန်ထမ်းဟောင်းနှင့် ကိုက်ညီသော Candidate ကို Candidate စာရင်း၊ လျှောက်လွှာနှင့် Pipeline Card တွင် “Matches do-not-rehire list — contact HR” ဟု အလံပြသည်။ မည်သူ၊ အဘယ်ကြောင့်ဟု မပြပါ — HR ကိုဆက်သွယ်ပါ။',
+      },
+      {
+        en: 'Moving a flagged candidate to Selected is refused. An HR Administrator is offered a dialog to approve the hire with a reason (300 characters at most); anyone else sees the refusal message.',
+        my: 'အလံပါသော Candidate ကို Selected သို့ရွှေ့ရန် ငြင်းပယ်သည်။ HR Administrator အား အကြောင်းပြချက် (စာလုံး ၃၀၀ အထိ) ဖြင့် ခွင့်ပြုရန် Dialog ပေးပြီး အခြားသူများတွင် ငြင်းပယ်ချက်မက်ဆေ့ချ်သာမြင်ရသည်။',
+      },
     ],
   },
 

@@ -87,6 +87,12 @@ export const routes: Routes = [
           import('./features/recruitment/recruitment.routes').then((m) => m.RECRUITMENT_ROUTES),
       },
       {
+        path: 'my',
+        data: { breadcrumb: 'My' },
+        loadChildren: () =>
+          import('./features/self-service/self-service.routes').then((m) => m.SELF_SERVICE_ROUTES),
+      },
+      {
         path: 'data-exchange',
         data: { breadcrumb: 'Data Exchange', permission: 'excel:View' },
         canActivate: [permissionGuard],

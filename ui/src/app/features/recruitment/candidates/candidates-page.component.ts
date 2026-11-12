@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { BLACKLIST_MATCH_LABEL } from '../../../core/models/blacklist.models';
 import {
   CANDIDATE_SOURCES,
   Candidate,
@@ -65,6 +66,12 @@ export class CandidatesPageComponent {
         },
         { key: 'source', header: 'Source', sortable: true, hideBelow: 'md', nowrap: true },
         {
+          key: 'blacklistMatch',
+          header: 'Do-not-rehire check',
+          type: 'status',
+          value: (c) => (c.blacklistMatch ? BLACKLIST_MATCH_LABEL : ''),
+        },
+        {
           key: 'applications',
           header: 'Applications',
           type: 'number',
@@ -94,8 +101,22 @@ export class CandidatesPageComponent {
           required: true,
           options: () => SOURCE_OPTIONS,
         },
+        {
+          key: 'nationalId',
+          label: 'National ID (optional)',
+          type: 'text',
+          maxLength: 40,
+          formOnly: true,
+          hint: 'Used only to check the do-not-rehire list and never shown again. When editing, leave it blank to keep the stored value.',
+        },
         { key: 'resumeName', label: 'Resume (demo: file name only)', type: 'file' },
         { key: 'notes', label: 'Notes', type: 'textarea', maxLength: 300, fullWidth: true },
+        {
+          key: 'blacklistMatch',
+          label: BLACKLIST_MATCH_LABEL,
+          type: 'toggle',
+          detailsOnly: true,
+        },
       ],
     };
   });

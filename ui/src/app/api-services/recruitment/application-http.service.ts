@@ -21,8 +21,11 @@ const FIELD_KEYS = ['jobOpeningId', 'candidateId', 'notes'] as const;
  *    by the server.
  *  - Update changes the notes only; the opening and the candidate are sent as the record has them
  *    (the API answers 400 if they differ).
- *  - `moveStage` is the `stage` command with `{ rowVersion, stage, reason? }`. A rejection without
- *    a reason is refused locally, before any request, with a field error on `reason`.
+ *  - `moveStage` is the `stage` command with `{ rowVersion, stage, reason?, blacklistOverrideReason? }`.
+ *    A rejection without a reason is refused locally, before any request, with a field error on
+ *    `reason`. The override reason is only sent when selecting a candidate; the API answers 409
+ *    when a matching candidate is selected without it and 403 when a caller who is not an HR
+ *    Administrator sends it.
  */
 @Injectable({ providedIn: 'root' })
 export class ApplicationHttpService
@@ -34,7 +37,11 @@ export class ApplicationHttpService
   protected readonly sortKeys = ['id', 'jobOpeningId', 'candidateId', 'stage', 'appliedOn'];
 
   protected normalise(raw: ApiShape<Application>): Versioned<Application> {
-    return { ...raw, notes: raw.notes ?? '' } as Versioned<Application>;
+    return {
+      ...raw,
+      notes: raw.notes ?? '',
+      blacklistMatch: raw.blacklistMatch === true,
+    } as Versioned<Application>;
   }
 
   create(model: CreateModel<Application>): Observable<Application> {
@@ -55,8 +62,14 @@ export class ApplicationHttpService
     );
   }
 
-  moveStage(id: number, stage: ApplicationStage, reason = ''): Observable<Application> {
+  moveStage(
+    id: number,
+    stage: ApplicationStage,
+    reason = '',
+    blacklistOverrideReason = '',
+  ): Observable<Application> {
     const text = reason.trim();
+    const override = blacklistOverrideReason.trim();
     if (stage === 'Rejected' && !text) {
       return throwError(() =>
         validation(
@@ -69,6 +82,7 @@ export class ApplicationHttpService
     return this.command(id, 'stage', {
       stage,
       ...(stage === 'Rejected' ? { reason: text } : {}),
+      ...(stage === 'Selected' && override ? { blacklistOverrideReason: override } : {}),
     }).pipe(catchError((e) => this.fail(e)));
   }
 }

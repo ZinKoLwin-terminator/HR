@@ -111,6 +111,14 @@ export interface EmployeeListItem extends Entity {
   shiftName: string;
 }
 
+/** Minimal, non-personal employee row for pickers (no email, phone, dates or salary). */
+export interface EmployeeLookupItem extends Entity {
+  employeeCode: string;
+  displayName: string;
+  jobTitle: string;
+  departmentName: string;
+}
+
 export interface EmployeeFilter {
   departmentId: number | null;
   branchId: number | null;

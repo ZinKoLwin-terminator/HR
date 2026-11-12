@@ -13,6 +13,7 @@ import { isDateInRange, todayIso, yearsBetween } from '../../shared/utilities/da
 import { matchesEqualityFilters } from '../../shared/utilities/query.util';
 import { ShiftMockService } from '../attendance/attendance-mock.services';
 import { InMemoryCrudService } from '../in-memory-crud.service';
+import { BlacklistMockService } from './blacklist-mock.service';
 // Import cycle with the extras file is safe: classes are only used inside methods / injection.
 import {
   EmployeeDocumentMockService,
@@ -202,6 +203,12 @@ export class EmployeeMockService
     if (reports > 0) {
       this.conflictError(
         `${fullName(entity)} manages ${reports} employee(s). Reassign their direct reports before deleting.`,
+      );
+    }
+    const listed = this.injector.get(BlacklistMockService).historyCount(entity.id);
+    if (listed > 0) {
+      this.conflictError(
+        `${fullName(entity)} is used by ${listed} do-not-rehire entry(ies) and cannot be deleted.`,
       );
     }
   }

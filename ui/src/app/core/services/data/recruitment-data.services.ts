@@ -23,8 +23,19 @@ export abstract class ApplicationDataService extends CrudDataService<
   Application,
   ApplicationFilter
 > {
-  /** Moves an application along the pipeline; `reason` is required when rejecting. */
-  abstract moveStage(id: number, stage: ApplicationStage, reason?: string): Observable<Application>;
+  /**
+   * Moves an application along the pipeline; `reason` is required when rejecting.
+   *
+   * Selecting a candidate who matches the do-not-rehire list is a Conflict until an HR
+   * Administrator approves it: resend with `blacklistOverrideReason` (at most 300 characters).
+   * A caller who is not an HR Administrator gets Forbidden for an override.
+   */
+  abstract moveStage(
+    id: number,
+    stage: ApplicationStage,
+    reason?: string,
+    blacklistOverrideReason?: string,
+  ): Observable<Application>;
 }
 
 export abstract class InterviewDataService extends CrudDataService<

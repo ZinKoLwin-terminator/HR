@@ -30,3 +30,16 @@ export abstract class PayslipDataService {
   abstract getById(id: number): Observable<Payslip>;
   abstract query(request: PageRequest<PayslipFilter>): Observable<PagedResult<Payslip>>;
 }
+
+/**
+ * Employee self-service: the signed-in user's own payslips, newest period first. Only payslips of
+ * Approved or Paid runs. No payroll permission is needed; a user without a linked employee gets
+ * an empty page. Another employee's payslip is NotFound.
+ */
+export abstract class MyPayslipDataService {
+  abstract query(request: {
+    pageIndex: number;
+    pageSize: number;
+  }): Observable<PagedResult<Payslip>>;
+  abstract getById(id: number): Observable<Payslip>;
+}

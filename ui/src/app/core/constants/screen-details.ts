@@ -125,6 +125,20 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'ဝန်ထမ်းအသစ်သည် Probation ဖြင့်စသည်။ သိမ်းလိုက်ခြင်းက လစာ၊ Shift၊ User Account မဖန်တီးပါ — သီးခြားထည့်ရမည်။',
     ),
   ],
+  '/employees/do-not-rehire': [
+    b(
+      'Former employees who must not be hired again. Filter Active (in force) or Lifted, and search by employee code or name. Open an entry to read its reason.',
+      'ပြန်လည်မခန့်အပ်ရန် ဝန်ထမ်းဟောင်းများ။ Active (အသက်ဝင်) သို့မဟုတ် Lifted ဖြင့် Filter စစ်၍ ဝန်ထမ်းကုဒ်/အမည်ဖြင့်ရှာနိုင်သည်။ မှတ်တမ်းကိုဖွင့်၍ အကြောင်းပြချက်ဖတ်နိုင်သည်။',
+    ),
+    b(
+      'Add entry: choose a former employee (one with an exit date) and give a reason (500 characters at most). One entry in force per person. Lift entry needs a reason; the entry stays as history.',
+      'Add entry — ထွက်ရက်ရှိသော ဝန်ထမ်းဟောင်းကိုရွေး၍ အကြောင်းပြချက် (စာလုံး ၅၀၀ အထိ) ပေးပါ။ လူတစ်ဦးလျှင် အသက်ဝင်မှတ်တမ်း တစ်ခုသာ။ Lift entry တွင် အကြောင်းပြချက်လို၊ မှတ်တမ်းသည် သမိုင်းအဖြစ်ကျန်သည်။',
+    ),
+    b(
+      'Needs the “view do-not-rehire” permission to open; adding or lifting needs the “edit” permission. The reason is shown here and on the former employee’s profile only.',
+      'ဖွင့်ရန် “view do-not-rehire” ခွင့်ပြုချက်လိုပြီး ထည့်/ရုပ်သိမ်းရန် “edit” ခွင့်ပြုချက်လို။ အကြောင်းပြချက်ကို ဤနေရာနှင့် ဝန်ထမ်းဟောင်း Profile တွင်သာ ပြသည်။',
+    ),
+  ],
   '/employees/documents': [
     b(
       'A library of documents per employee (contract, ID copy, certificates…). You can upload, filter and delete entries.',
@@ -365,6 +379,16 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'Payslip သည် Snapshot — နောက်ပိုင်း လစာ Setup ပြောင်းလည်း မပြောင်းပါ။',
     ),
   ],
+  '/my/payslips': [
+    b(
+      'Your own payslips, newest period first (12 per page). Only periods that are approved or paid appear; nothing from a draft or pending period.',
+      'သင့်ကိုယ်ပိုင် စလစ်များ၊ Period အသစ်ဆုံးအရင် (တစ်မျက်နှာလျှင် ၁၂)။ Approved သို့မဟုတ် Paid Period သာပေါ်ပြီး Draft/Pending Period မှ မပါပါ။',
+    ),
+    b(
+      'Open one to see it as a sheet and use Print payslip. Only the masked account number is shown. Every signed-in user has this page; if your account is not linked to an employee it is empty.',
+      'ဖွင့်၍ စလစ်စာရွက်အဖြစ်ကြည့်ပြီး Print payslip သုံးနိုင်သည်။ ဖုံးထားသော အကောင့်နံပါတ်သာပြသည်။ ဝင်ရောက်သူတိုင်းတွင် ဤစာမျက်နှာရှိပြီး ဝန်ထမ်းနှင့် မချိတ်ထားလျှင် အလွတ်ဖြစ်သည်။',
+    ),
+  ],
   '/payroll/history': [
     b(
       'Compares gross and net pay month by month, as a chart with a table alternative.',
@@ -374,6 +398,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
   ],
 
   '/recruitment/job-openings': [
+    b(
+      'The hiring manager is chosen from current employees (name, code only). A manager sees only the openings they manage.',
+      'Hiring manager ကို လက်ရှိဝန်ထမ်းများမှ (အမည်၊ ကုဒ်သာ) ရွေးသည်။ Manager သည် မိမိစီမံသော Opening များကိုသာမြင်ရသည်။',
+    ),
     b(
       'Create a vacancy as Draft, then Publish, Put on hold, Resume, Close or Reopen it.',
       'လစ်လပ်ချက်ကို Draft ဖြင့်ဖန်တီးပြီး Publish၊ Hold၊ Resume၊ Close၊ Reopen လုပ်သည်။',
@@ -387,6 +415,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     b(
       'Applicant database: add people, attach a resume (file name only) and apply them to an opening.',
       'လျှောက်ထားသူ ဒေတာ — လူထည့်၊ Resume (ဖိုင်အမည်သာ) တွဲ၊ Opening တစ်ခုသို့ လျှောက်ထားပေးသည်။',
+    ),
+    b(
+      'A candidate matching the do-not-rehire list (by email, phone or national ID) shows the badge “Matches do-not-rehire list — contact HR”. National ID is optional, write-only and never shown again; when editing, a blank field keeps the stored value.',
+      'Do-not-rehire စာရင်းနှင့် ကိုက်ညီသော Candidate (Email၊ ဖုန်း သို့မဟုတ် မှတ်ပုံတင်) တွင် “Matches do-not-rehire list — contact HR” Badge ပေါ်သည်။ မှတ်ပုံတင်နံပါတ်သည် မဖြည့်လည်းရ၊ ရေးသွင်းရုံသာ၊ ပြန်မပြပါ — ပြင်ချိန်တွင် အလွတ်ထားလျှင် သိမ်းထားသောတန်ဖိုးကို ဖယ်ရှားသည်။',
     ),
     b(
       'Email must be unique. Applications only open for Open openings, one per candidate per opening. A candidate with applications cannot be deleted.',
@@ -411,6 +443,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     b(
       'Rejecting needs a reason and cancels scheduled interviews. Selected needs a completed interview with “Hire” or “Strong hire” and a free vacancy.',
       'ပယ်ချလျှင် အကြောင်းပြချက်လိုပြီး ချိန်းထားသော အင်တာဗျူးများကို ပယ်ဖျက်သည်။ Selected ရန် “Hire/Strong hire” ပါသောအင်တာဗျူးပြီးခြင်းနှင့် လစ်လပ်နေသောနေရာလို။',
+    ),
+    b(
+      'A card with the do-not-rehire badge cannot be moved to Selected until an HR Administrator approves with a reason (a dialog appears for that role; others see the refusal message).',
+      'Do-not-rehire Badge ပါသော Card ကို HR Administrator က အကြောင်းပြချက်ဖြင့် မခွင့်ပြုမချင်း Selected သို့ မရွှေ့နိုင် (ထို Role အတွက် Dialog ပေါ်ပြီး အခြားသူများတွင် ငြင်းပယ်ချက်မက်ဆေ့ချ်ပေါ်သည်)။',
     ),
     b(
       'Selecting does not create the employee: HR registers them in Employees by hand.',

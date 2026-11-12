@@ -70,6 +70,8 @@ export interface FieldConfig {
   createOnly?: boolean;
   /** Shown in the details dialog only when set. */
   detailsOnly?: boolean;
+  /** Only on the forms (create and edit); never in the details dialog (e.g. a write-only value). */
+  formOnly?: boolean;
   /**
    * Makes the field read-only and calculated from the other values
    * (e.g. leave days from the dates). Saved with the form.
@@ -114,6 +116,11 @@ export interface CrudPageConfig<T extends Entity> {
   dateFilter?: DateRangeFilterConfig;
   /** Extra row actions shown before Edit / Delete. */
   extraActions?: CrudExtraAction<T>[];
+  /**
+   * Set to `false` for a list whose rows are never edited (no Edit action; the details dialog is
+   * read-only). Default true.
+   */
+  editable?: boolean;
   /** Hide Edit for rows that can no longer be edited (e.g. decided requests). */
   canEdit?: (row: T) => boolean;
   /** Hide Delete for rows that cannot be deleted. */
@@ -149,6 +156,8 @@ export interface CrudExtraAction<T extends Entity> {
     label: string;
     required: boolean;
     confirmText: string;
+    /** Longest text accepted (default 250). */
+    maxLength?: number;
   };
   run: (row: T, input: string) => Observable<unknown>;
   successMessage: (row: T) => string;

@@ -1,8 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { forkJoin } from 'rxjs';
-import { fullName } from '../../../core/models/employee.models';
+import { forkJoin, map } from 'rxjs';
 import {
   INTERVIEW_MODES,
   INTERVIEW_RECOMMENDATIONS,
@@ -10,7 +9,7 @@ import {
   Interview,
   candidateName,
 } from '../../../core/models/recruitment.models';
-import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
+import { EmployeeLookupDataService } from '../../../core/services/data/employee-data.service';
 import {
   ApplicationDataService,
   CandidateDataService,
@@ -20,10 +19,10 @@ import {
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig, FieldOption } from '../../../shared/components/crud/crud.models';
 import { todayIso } from '../../../shared/utilities/date.util';
-import { employeeOptions } from '../../organization/organization-lookups';
 
 const toOptions = (values: readonly string[]): FieldOption[] =>
   values.map((v) => ({ value: v, label: v }));
+const INTERVIEWER_PICKER_SIZE = 200;
 const STATUS_OPTIONS = toOptions(['Scheduled', 'Completed', 'Cancelled']);
 
 /**
@@ -46,14 +45,18 @@ export class InterviewsPageComponent {
   private readonly applicationsApi = inject(ApplicationDataService);
   private readonly candidatesApi = inject(CandidateDataService);
   private readonly jobsApi = inject(JobOpeningDataService);
-  private readonly employeesApi = inject(EmployeeDataService);
+  // Interviewers come from the non-personal lookup (current employees), so a recruiter without
+  // access to the employee module can still schedule interviews.
+  private readonly employeeLookup = inject(EmployeeLookupDataService);
   private readonly lookups = rxResource({
     stream: () =>
       forkJoin({
         applications: this.applicationsApi.getAll(),
         candidates: this.candidatesApi.getAll(),
         jobs: this.jobsApi.getAll(),
-        employees: this.employeesApi.getAll(),
+        employees: this.employeeLookup
+          .query({ pageIndex: 0, pageSize: INTERVIEWER_PICKER_SIZE })
+          .pipe(map((page) => page.items)),
       }),
   });
 
@@ -62,7 +65,11 @@ export class InterviewsPageComponent {
     if (!l) {
       return null;
     }
-    const people = new Map(l.employees.map((e) => [e.id, fullName(e)]));
+    const people = new Map(l.employees.map((e) => [e.id, e.displayName]));
+    const interviewerOptions: FieldOption[] = l.employees.map((e) => ({
+      value: e.id,
+      label: `${e.displayName} (${e.employeeCode})`,
+    }));
     const candidates = new Map(l.candidates.map((c) => [c.id, candidateName(c)]));
     const jobs = new Map(l.jobs.map((j) => [j.id, j.title]));
     const appLabel = (id: number) => {
@@ -84,7 +91,7 @@ export class InterviewsPageComponent {
       defaultSort: { active: 'date', direction: 'desc' },
       filters: [
         { key: 'status', label: 'Status', options: STATUS_OPTIONS },
-        { key: 'interviewerId', label: 'Interviewer', options: employeeOptions(l.employees) },
+        { key: 'interviewerId', label: 'Interviewer', options: interviewerOptions },
       ],
       dateFilter: {
         fromKey: 'dateFrom',
@@ -172,7 +179,7 @@ export class InterviewsPageComponent {
           label: 'Interviewer',
           type: 'select',
           required: true,
-          options: () => employeeOptions(l.employees.filter((e) => !e.exitDate)),
+          options: () => interviewerOptions,
         },
         { key: 'date', label: 'Date', type: 'date', required: true },
         { key: 'startTime', label: 'Start time', type: 'time', required: true },

@@ -149,6 +149,9 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
    * module (`Create`, `Edit`, `Delete`, `Approve`, ...). The server enforces the same keys.
    */
   protected canDo(action: string): boolean {
+    if (action === 'Edit' && this.config().editable === false) {
+      return false;
+    }
     const key =
       this.config().permissionKeys?.[action] ?? (this.module && `${this.module}:${action}`);
     return !key || this.permissions.can(key);
@@ -365,6 +368,7 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
           required: action.prompt.required,
           confirmText: action.prompt.confirmText,
           destructive: action.destructive,
+          maxLength: action.prompt.maxLength,
         })
         .pipe(filter((text): text is string => text !== null))
         .subscribe((text) => execute(text));
@@ -464,7 +468,7 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
           data: {
             title: cfg.nameOf(row),
             subtitle: `${cfg.entityLabel} details`,
-            fields: cfg.fields.filter((f) => !f.createOnly),
+            fields: cfg.fields.filter((f) => !f.createOnly && !f.formOnly),
             row: row as unknown as FormValues,
             id: row.id,
             readonly: !this.canDo('Edit'),
