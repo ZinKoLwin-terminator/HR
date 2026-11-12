@@ -317,14 +317,27 @@ describe('Settings HTTP adapters', () => {
       req.flush(null, { status: 202, statusText: 'Accepted' });
       expect(await ok).toBeUndefined();
 
+      // The server says which mail problem it was; that text is shown as is.
       const failure = rejection(firstValueFrom(service.sendPasswordReset(4)));
       http
         .expectOne((r) => r.url.endsWith('/users/4/password-reset'))
         .flush(
-          { code: 'Unknown', detail: 'No mail host.' },
+          {
+            code: 'Unknown',
+            detail: 'The password reset email could not be sent. Try again later.',
+          },
           { status: 503, statusText: 'Unavailable' },
         );
-      expect((await failure).message).toBe('Email is not configured.');
+      expect((await failure).message).toBe(
+        'The password reset email could not be sent. Try again later.',
+      );
+
+      // Without a server message, 503 means mail is not configured.
+      const bare = rejection(firstValueFrom(service.sendPasswordReset(4)));
+      http
+        .expectOne((r) => r.url.endsWith('/users/4/password-reset'))
+        .flush(null, { status: 503, statusText: 'Unavailable' });
+      expect((await bare).message).toBe('Email is not configured.');
     });
 
     it('maps 403 to the administrators-only message and 409 to the reload message', async () => {

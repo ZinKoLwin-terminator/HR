@@ -20,10 +20,16 @@ export function settingsError(error: unknown, forbiddenMessage = ADMIN_ONLY_MESS
   return mapped.code === 'Forbidden' ? { ...mapped, message: forbiddenMessage } : mapped;
 }
 
-/** Password reset: 503 means the server has no mail settings. */
+/**
+ * Password reset: 503 means mail is unavailable — either not configured or the mail server
+ * refused. The server's own text tells the two apart; without one, assume "not configured".
+ */
 export function passwordResetError(error: unknown): AppError {
   if (error instanceof HttpErrorResponse && error.status === 503) {
-    return { code: 'Unknown', message: EMAIL_NOT_CONFIGURED_MESSAGE };
+    const detail = (error.error as { detail?: unknown } | null)?.detail;
+    const message =
+      typeof detail === 'string' && detail.trim() ? detail : EMAIL_NOT_CONFIGURED_MESSAGE;
+    return { code: 'Unknown', message };
   }
   return settingsError(error);
 }

@@ -681,7 +681,7 @@ Payroll runs (totals only) are not scoped. A caller with no linked employee (the
 * Creating shifts and holidays needs `attendance:Edit` (not Create), because every employee holds `attendance:Create` to punch.
 * Excel import batches (history, detail, error report, execute) belong to their uploader and to HR Administrators (`404` otherwise); detail and error report also run the module's view policies (`employees:View` for employees). The module check runs after the batch lookup, so an unknown batch answers `404` before it. The employees import needs `employees:Create`, `Edit`, `EditSensitive` and `EditBank`, so it always runs in the "All" tier.
 * Not scoped yet: recruitment (job openings, candidates, applications and interviews).
-* Seed note: the Department Manager role has no `employees` grant in the seed ("until manager scope exists"). With the team scope it can safely hold `employees:View` (the manager would see themselves and direct reports); the seed is not changed by the API.
+* Seed note: the starter grants in the database project give Department Manager `employees:View` (team-scoped: themselves and direct reports), HR Officer `payroll:View,Approve` (every payslip; never approving a run they processed) and Employee `attendance:View,Create` (own punches and requests). Starter grants are written only into an empty roles table, so an existing database needs them added in Settings > Permissions.
 
 ### Authorization seams
 

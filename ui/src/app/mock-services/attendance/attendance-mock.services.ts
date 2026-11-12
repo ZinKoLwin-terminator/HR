@@ -78,7 +78,14 @@ export class HolidayMockService extends InMemoryCrudService<Holiday> implements 
 
   /** Same rule as the API: one holiday per date. */
   protected override validate(candidate: Holiday): void {
-    this.ensureUnique(candidate, 'date', 'A holiday on');
+    const taken = this.store().some(
+      (item) => item.id !== candidate.id && item.date === candidate.date,
+    );
+    if (taken) {
+      this.validationError(`There is already a holiday on ${candidate.date}.`, {
+        date: 'Another holiday uses this date.',
+      });
+    }
   }
 
   protected override describe(entity: Holiday): string {
