@@ -35,6 +35,8 @@ export interface PayrollRun extends Entity {
   /** Notes from processing (e.g. employees skipped for a missing salary). */
   warnings: string[];
   processedOn: string | null;
+  /** Who processed the run (API only; the person who processed it cannot approve it). */
+  processedBy?: string | null;
   approvedBy: string | null;
   approvedOn: string | null;
   paidOn: string | null;

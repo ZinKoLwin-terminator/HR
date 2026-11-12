@@ -50,6 +50,13 @@ import {
   ExcelImportDataService,
   ExcelModuleCatalogDataService,
 } from '../core/services/data/excel-data.services';
+import {
+  PayrollRunDataService,
+  PayslipDataService,
+  SalaryAssignmentDataService,
+  SalaryComponentDataService,
+  SalaryStructureDataService,
+} from '../core/services/data/payroll-data.services';
 import { DashboardDataService } from '../core/services/data/dashboard-data.service';
 import {
   GeneralSettingsDataService,
@@ -91,6 +98,13 @@ import {
   RolePermissionHttpService,
 } from './settings/settings-config-http.services';
 import { RoleHttpService, UserHttpService } from './settings/user-role-http.services';
+import { PayrollRunHttpService } from './payroll/payroll-run-http.service';
+import {
+  SalaryComponentHttpService,
+  SalaryStructureHttpService,
+} from './payroll/payroll-setup-http.services';
+import { PayslipHttpService } from './payroll/payslip-http.service';
+import { SalaryAssignmentHttpService } from './payroll/salary-assignment-http.service';
 import { apiAuthInterceptor } from './auth/api-auth.interceptor';
 import { AuthHttpService } from './auth/auth-http.service';
 import {
@@ -117,7 +131,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
 }
 
 /**
- * Binds ONLY the Organization, Employee (employees, employment history), Leave, Attendance, Recruitment, Settings, Excel, Dashboard, Activity and Notification contracts to HTTP. Every other contract stays on its mock
+ * Binds ONLY the Organization, Employee (employees, employment history), Leave, Attendance, Recruitment, Settings, Excel, Dashboard, Activity, Notification and Payroll contracts to HTTP. Every other contract stays on its mock
  * (the adapter is per dependency cluster). Register it AFTER `provideMockDataServices()` so
  * these bindings win; `app.config.ts` does that and the switch defaults to off.
  */
@@ -173,6 +187,12 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(ExcelModuleCatalogDataService, ExcelCatalogHttpService),
     bind(ExcelImportDataService, ExcelImportHttpService),
     bind(ExcelExportDataService, ExcelExportHttpService),
+    // Payroll: components, structures, assignments (paged), runs (with the workflow commands) and read-only payslips.
+    bind(SalaryComponentDataService, SalaryComponentHttpService),
+    bind(SalaryStructureDataService, SalaryStructureHttpService),
+    bind(SalaryAssignmentDataService, SalaryAssignmentHttpService),
+    bind(PayrollRunDataService, PayrollRunHttpService),
+    bind(PayslipDataService, PayslipHttpService),
     // Real sign-in: cookie session owned by the server, kept in memory only.
     bind(AuthDataService, AuthHttpService),
     { provide: SERVER_SESSION, useValue: true },

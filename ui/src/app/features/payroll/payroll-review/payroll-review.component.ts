@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { Router, RouterLink } from '@angular/router';
-import { Observable, filter } from 'rxjs';
+import { EMPTY, Observable, expand, filter, map, reduce } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import { PagedResult } from '../../../core/models/common.models';
 import {
@@ -17,6 +17,7 @@ import {
   PayslipFilter,
 } from '../../../core/models/payroll.models';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
+import { PermissionService } from '../../../core/services/permission.service';
 import {
   PayrollRunDataService,
   PayslipDataService,
@@ -72,6 +73,10 @@ export class PayrollReviewComponent {
   private readonly toast = inject(UiNotificationService);
   private readonly router = inject(Router);
   private readonly appConfig = inject(APP_CONFIG);
+  private readonly permissions = inject(PermissionService);
+  /** UX only (the server enforces): process needs payroll:Edit, the other actions payroll:Approve. */
+  protected readonly canProcess = computed(() => this.permissions.can('payroll:Edit'));
+  protected readonly canApprove = computed(() => this.permissions.can('payroll:Approve'));
 
   protected readonly runId = computed(() => Number(this.id()));
   protected readonly steps: readonly string[] = PAYROLL_RUN_STATUSES;
@@ -128,9 +133,26 @@ export class PayrollReviewComponent {
   /** All payslips of the period (for the department summary), independent of table filters. */
   private readonly allPayslips = rxResource({
     params: () => ({ run: this.runId(), has: this.hasPayslips() }),
-    stream: ({ params }) =>
-      this.payslipsApi.query({ pageIndex: 0, pageSize: 1000, filters: { runId: params.run } }),
+    stream: ({ params }) => this.allPayslipsOf(params.run),
   });
+  /** Every payslip of a run, read in pages (the API serves at most 200 per page). */
+  private allPayslipsOf(runId: number): Observable<PagedResult<Payslip>> {
+    const pageSize = 200;
+    const read = (pageIndex: number) =>
+      this.payslipsApi.query({ pageIndex, pageSize, filters: { runId } });
+    return read(0).pipe(
+      expand((page) =>
+        (page.pageIndex + 1) * page.pageSize < page.total ? read(page.pageIndex + 1) : EMPTY,
+      ),
+      reduce((all, page) => ({ ...page, items: [...all.items, ...page.items] }), {
+        items: [] as Payslip[],
+        total: 0,
+        pageIndex: 0,
+        pageSize,
+      } as PagedResult<Payslip>),
+      map((all) => ({ ...all, pageIndex: 0, pageSize: all.items.length })),
+    );
+  }
   protected readonly departments = computed(() => {
     const map = new Map<string, { name: string; count: number; gross: number; net: number }>();
     for (const p of this.allPayslips.value()?.items ?? []) {

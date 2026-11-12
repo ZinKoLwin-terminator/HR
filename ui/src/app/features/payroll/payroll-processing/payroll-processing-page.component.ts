@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
+import { SERVER_SESSION } from '../../../core/services/auth.service';
 import { PAYROLL_RUN_STATUSES, PayrollRun } from '../../../core/models/payroll.models';
 import { PayrollRunDataService } from '../../../core/services/data/payroll-data.services';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
@@ -30,6 +31,7 @@ const MONTHS = [
 export class PayrollProcessingPageComponent {
   private readonly runs = inject(PayrollRunDataService);
   private readonly router = inject(Router);
+  private readonly apiMode = inject(SERVER_SESSION);
 
   private readonly year = new Date().getFullYear();
   private readonly isDraft = (r: PayrollRun) => r.status === 'Draft';
@@ -48,6 +50,7 @@ export class PayrollProcessingPageComponent {
   };
   private readonly process: CrudExtraAction<PayrollRun> = {
     id: 'process',
+    permission: 'Edit',
     label: 'Process payroll',
     icon: 'calculate',
     visible: this.isDraft,
@@ -58,7 +61,8 @@ export class PayrollProcessingPageComponent {
       confirmText: 'Process',
     },
     run: (r) => this.runs.process(r.id),
-    successMessage: (r) => `${r.periodName} processed. Review the payslips, then approve.`,
+    successMessage: (r) =>
+      `${r.periodName} processed. Review the payslips and any warnings, then approve.`,
   };
   private readonly approve: CrudExtraAction<PayrollRun> = {
     id: 'approve',
@@ -91,6 +95,7 @@ export class PayrollProcessingPageComponent {
   };
   private readonly returnToDraft: CrudExtraAction<PayrollRun> = {
     id: 'return',
+    permission: 'Approve',
     label: 'Return to draft',
     icon: 'undo',
     destructive: true,
@@ -112,6 +117,8 @@ export class PayrollProcessingPageComponent {
       'Create a period, process it to generate sample payslips, review, approve, then mark it as paid. No real payments are made.',
     entityLabel: 'Payroll period',
     service: this.runs,
+    // The payroll module has no Delete permission: the server needs payroll:Edit to delete.
+    permissionKeys: { Delete: 'payroll:Edit' },
     hasStatus: false,
     searchLabel: 'Search by period',
     defaultSort: { active: 'startDate', direction: 'desc' },
@@ -201,6 +208,10 @@ export class PayrollProcessingPageComponent {
       { key: 'employeeCount', label: 'Employees paid', type: 'number', detailsOnly: true },
       { key: 'totalGross', label: 'Total gross (sample)', type: 'number', detailsOnly: true },
       { key: 'totalNet', label: 'Total net (sample)', type: 'number', detailsOnly: true },
+      // The server records who processed a run (nobody approves their own run).
+      ...(this.apiMode
+        ? [{ key: 'processedBy', label: 'Processed by', type: 'text' as const, detailsOnly: true }]
+        : []),
       { key: 'approvedBy', label: 'Approved by', type: 'text', detailsOnly: true },
       { key: 'approvedOn', label: 'Approved on', type: 'date', detailsOnly: true },
       { key: 'paidOn', label: 'Paid on', type: 'date', detailsOnly: true },

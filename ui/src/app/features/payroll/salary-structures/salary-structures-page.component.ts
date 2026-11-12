@@ -62,6 +62,8 @@ export class SalaryStructuresPageComponent {
         'Sets of allowances and deductions applied to employees. All figures are sample data.',
       entityLabel: 'Salary structure',
       service: this.structures,
+      // The payroll module has no Delete permission: the server needs payroll:Edit to delete.
+      permissionKeys: { Delete: 'payroll:Edit' },
       searchLabel: 'Search by code or name',
       defaultSort: { active: 'name', direction: 'asc' },
       filters: [{ key: 'status', label: 'Status', options: STATUS_OPTIONS }],

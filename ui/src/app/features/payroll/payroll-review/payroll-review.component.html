@@ -14,22 +14,22 @@
     <a pageActions mat-stroked-button routerLink="/payroll/processing"
       ><mat-icon>arrow_back</mat-icon>All periods</a
     >
-    @if (r.status === 'Draft') {
+    @if (r.status === 'Draft' && canProcess()) {
       <button pageActions mat-flat-button type="button" (click)="process(r)">
         <mat-icon>calculate</mat-icon>Process payroll
       </button>
     }
-    @if (r.status === 'Pending Approval') {
+    @if (r.status === 'Pending Approval' && canApprove()) {
       <button pageActions mat-flat-button type="button" (click)="approve(r)">
         <mat-icon>check_circle</mat-icon>Approve
       </button>
     }
-    @if (r.status === 'Approved') {
+    @if (r.status === 'Approved' && canApprove()) {
       <button pageActions mat-flat-button type="button" (click)="markPaid(r)">
         <mat-icon>paid</mat-icon>Mark as paid (sample)
       </button>
     }
-    @if (r.status === 'Pending Approval' || r.status === 'Approved') {
+    @if ((r.status === 'Pending Approval' || r.status === 'Approved') && canApprove()) {
       <button
         pageActions
         mat-stroked-button

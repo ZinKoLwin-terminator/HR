@@ -72,6 +72,8 @@ export class EmployeeSalariesPageComponent {
         'Basic salary and salary structure per employee. Add a row with a later date to revise a salary (sample data).',
       entityLabel: 'Salary assignment',
       service: this.assignmentsApi,
+      // The payroll module has no Delete permission: the server needs payroll:Edit to delete.
+      permissionKeys: { Delete: 'payroll:Edit' },
       hasStatus: false,
       searchLabel: 'Search by remarks',
       defaultSort: { active: 'effectiveFrom', direction: 'desc' },

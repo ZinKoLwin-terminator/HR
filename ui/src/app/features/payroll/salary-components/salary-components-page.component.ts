@@ -51,6 +51,8 @@ export class SalaryComponentsPageComponent {
         'Allowances and deductions used to build salary structures. All amounts are sample values.',
       entityLabel: 'Salary component',
       service: this.components,
+      // The payroll module has no Delete permission: the server needs payroll:Edit to delete.
+      permissionKeys: { Delete: 'payroll:Edit' },
       searchLabel: 'Search by code or name',
       defaultSort: { active: 'type', direction: 'asc' },
       filters: [
