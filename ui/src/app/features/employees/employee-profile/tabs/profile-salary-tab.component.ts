@@ -4,13 +4,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import { EmployeeSalaryDataService } from '../../../../core/services/data/employee-extras-data.services';
+import { errorMessage } from '../../../../core/services/ui-notification.service';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 
 @Component({
   selector: 'app-profile-salary-tab',
   imports: [MoneyPipe, MatIconModule, MatProgressBarModule, RouterLink],
   template: `
-    @if (!summary()) {
+    @if (errorText()) {
+      <p class="banner" role="alert">{{ errorText() }}</p>
+    } @else if (!summary()) {
       <mat-progress-bar mode="indeterminate" aria-label="Loading salary" />
     } @else {
       @let s = summary()!;
@@ -142,4 +145,7 @@ export class ProfileSalaryTabComponent {
     stream: ({ params }) => this.salaryApi.getSummary(params.id),
   });
   protected readonly summary = computed(() => this.resource.value() ?? null);
+  protected readonly errorText = computed(() =>
+    this.resource.error() ? errorMessage(this.resource.error()) : '',
+  );
 }

@@ -462,8 +462,8 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'Action တစ်ခုပေးလျှင် View ပါပေးသည်၊ View ဖယ်လျှင် Module တစ်ခုလုံးရှင်းသည်။ HR Administrator ကို ပြင်၍မရ။',
     ),
     b(
-      'In this version nothing is enforced: it is a UI simulation of how access control will work.',
-      'ဤ Version တွင် အမှန်တကယ်မကန့်သတ်ပါ — Access Control အလုပ်လုပ်ပုံ၏ UI နမူနာသာ။',
+      'In the demo build permissions are simulated. With the API the server enforces them, and the screens hide what your role cannot use.',
+      'Demo Build တွင် Permission သည် နမူနာသာ။ API ဖြင့်သုံးလျှင် Server က အမှန်တကယ်ကန့်သတ်ပြီး သင့် Role မသုံးနိုင်သည့်အရာများကို Screen များက ဖျောက်ထားသည်။',
     ),
   ],
 };

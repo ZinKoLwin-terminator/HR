@@ -27,7 +27,11 @@ import {
   SectionDataService,
 } from '../core/services/data/organization-data.services';
 import { EmployeeDataService } from '../core/services/data/employee-data.service';
-import { EmploymentHistoryDataService } from '../core/services/data/employee-extras-data.services';
+import {
+  EmployeeDocumentDataService,
+  EmployeeSalaryDataService,
+  EmploymentHistoryDataService,
+} from '../core/services/data/employee-extras-data.services';
 import {
   LeaveApplicationDataService,
   LeaveBalanceDataService,
@@ -84,6 +88,8 @@ import {
   ExcelImportHttpService,
 } from './excel/excel-http.service';
 import { EmployeeHttpService } from './employees/employee-http.service';
+import { EmployeeDocumentHttpService } from './employees/employee-document-http.service';
+import { EmployeeSalaryHttpService } from './employees/employee-salary-http.service';
 import { EmploymentHistoryHttpService } from './employees/employment-history-http.service';
 import { LeaveApplicationHttpService } from './leave/leave-application-http.service';
 import { LeaveBalanceHttpService } from './leave/leave-balance-http.service';
@@ -131,7 +137,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
 }
 
 /**
- * Binds ONLY the Organization, Employee (employees, employment history), Leave, Attendance, Recruitment, Settings, Excel, Dashboard, Activity, Notification and Payroll contracts to HTTP. Every other contract stays on its mock
+ * Binds ONLY the Organization, Employee (employees, history, documents, salary summary), Leave, Attendance, Recruitment, Settings, Excel, Dashboard, Activity, Notification and Payroll contracts to HTTP. Only the demo-data contract stays on its mock
  * (the adapter is per dependency cluster). Register it AFTER `provideMockDataServices()` so
  * these bindings win; `app.config.ts` does that and the switch defaults to off.
  */
@@ -155,6 +161,9 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     // Employees: list, record, personal, bank, status and read-only history.
     bind(EmployeeDataService, EmployeeHttpService),
     bind(EmploymentHistoryDataService, EmploymentHistoryHttpService),
+    // Documents (metadata only, personal-data keys) and the server-computed salary summary.
+    bind(EmployeeDocumentDataService, EmployeeDocumentHttpService),
+    bind(EmployeeSalaryDataService, EmployeeSalaryHttpService),
     // Leave: types, policies, applications (with the submit/approve/reject/cancel commands), balances, calendar.
     bind(LeaveTypeDataService, LeaveTypeHttpService),
     bind(LeavePolicyDataService, LeavePolicyHttpService),
