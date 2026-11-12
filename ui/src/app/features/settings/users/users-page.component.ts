@@ -77,6 +77,21 @@ export class UsersPageComponent {
           run: (u) => this.users.update(u.id, { status: 'Active' }),
           successMessage: (u) => `${u.displayName} unlocked.`,
         },
+        {
+          id: 'password-reset',
+          label: 'Send password reset',
+          icon: 'mail_lock',
+          // Not on your own row: change your own password from your profile.
+          visible: (u) => u.id !== myId,
+          confirm: {
+            title: 'Send password reset?',
+            message: (u) =>
+              `Send a password reset email to ${u.displayName}? They will choose a new password from the link.`,
+            confirmText: 'Send email',
+          },
+          run: (u) => this.users.sendPasswordReset(u.id),
+          successMessage: () => 'Password reset email sent.',
+        },
       ],
       columns: [
         { key: 'displayName', header: 'User', sortable: true },

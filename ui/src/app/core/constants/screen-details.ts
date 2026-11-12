@@ -186,6 +186,16 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'ဤ Setting များက Late၊ Half Day နှင့် OT တွက်ချက်မှုကို ဆုံးဖြတ်သည်။ Inactive Shift ကို အသစ်မခွဲပေးနိုင်။',
     ),
   ],
+  '/attendance/holidays': [
+    b(
+      'Add, edit or delete public and company holidays. There can be one holiday per date.',
+      'အများပြည်သူနှင့် ကုမ္ပဏီအားလပ်ရက်များကို ထည့်၊ ပြင်၊ ဖျက်နိုင်သည် — တစ်ရက်လျှင် အားလပ်ရက်တစ်ခုသာ ရှိနိုင်သည်။',
+    ),
+    b(
+      'Holidays affect leave day counts and working days: they are not counted as leave days, and payroll excludes them from working days. Punches on a holiday count as Present.',
+      'အားလပ်ရက်များသည် ခွင့်ရက်ရေနှင့် အလုပ်ရက်ရေကို သက်ရောက်သည် — ခွင့်ရက်အဖြစ် မရေတွက်ပါ၊ လစာတွက်ချက်ရာတွင်လည်း အလုပ်ရက်မှ နုတ်သည်။ အားလပ်ရက်တွင် Punch လုပ်လျှင် Present ဟု သတ်မှတ်သည်။',
+    ),
+  ],
   '/attendance/shift-assignment': [
     b(
       'Assign a shift to employees (one at a time or in bulk).',

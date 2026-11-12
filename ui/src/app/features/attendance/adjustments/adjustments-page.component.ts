@@ -6,6 +6,7 @@ import {
   AttendanceAdjustment,
   AttendanceStatus,
 } from '../../../core/models/attendance.models';
+import { SERVER_SESSION } from '../../../core/services/auth.service';
 import { fullName } from '../../../core/models/employee.models';
 import { AttendanceAdjustmentDataService } from '../../../core/services/data/attendance-data.services';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
@@ -30,6 +31,7 @@ const FORCEABLE: AttendanceStatus[] = ['Present', 'Late', 'Half Day', 'Absent'];
 export class AdjustmentsPageComponent {
   private readonly adjustments = inject(AttendanceAdjustmentDataService);
   private readonly employeesApi = inject(EmployeeDataService);
+  private readonly apiMode = inject(SERVER_SESSION);
   private readonly employees = rxResource({ stream: () => this.employeesApi.getAll() });
 
   protected readonly config = computed<CrudPageConfig<AttendanceAdjustment> | null>(() => {
@@ -53,7 +55,8 @@ export class AdjustmentsPageComponent {
       searchLabel: 'Search by reason',
       defaultSort: { active: 'date', direction: 'desc' },
       nameOf: code,
-      canEdit: pending,
+      // The API has no update for these: a pending request is deleted and made again.
+      canEdit: (r) => !this.apiMode && pending(r),
       canDelete: pending,
       filters: [
         { key: 'employeeId', label: 'Employee', options: employeeOptions(people) },

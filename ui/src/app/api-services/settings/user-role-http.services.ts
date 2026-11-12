@@ -1,5 +1,15 @@
 import { Injectable } from '@angular/core';
-import { EMPTY, Observable, catchError, expand, of, reduce, switchMap, throwError } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  catchError,
+  expand,
+  map,
+  of,
+  reduce,
+  switchMap,
+  throwError,
+} from 'rxjs';
 import { CreateModel, UpdateModel } from '../../core/models/common.models';
 import {
   AppUser,
@@ -110,10 +120,10 @@ export class UserHttpService extends SettingsHttpBase<AppUser> implements UserDa
     return this.update(id, { status } as UpdateModel<AppUser>);
   }
 
-  /** Emails a reset link to the user. The server answers 503 when email is not configured. */
-  resetPassword(id: number): Observable<string> {
-    return this.http.post<{ message?: string }>(`${this.url}/${id}/password-reset`, null).pipe(
-      switchMap((result) => of(result?.message ?? 'A password reset email was sent.')),
+  /** Emails a reset link to the user (202, no body). The server answers 503 when email is not configured. */
+  sendPasswordReset(id: number): Observable<void> {
+    return this.http.post<void>(`${this.url}/${id}/password-reset`, null).pipe(
+      map(() => undefined),
       catchError((e) => throwError(() => passwordResetError(e))),
     );
   }

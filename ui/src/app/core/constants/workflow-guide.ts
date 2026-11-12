@@ -125,6 +125,7 @@ export const MAP_NODES: readonly MapNode[] = [
     id: 'holidays',
     label: 'Holiday calendar',
     icon: 'event',
+    route: '/attendance/holidays',
     x: 760,
     y: 130,
     summary: {

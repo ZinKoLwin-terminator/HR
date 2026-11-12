@@ -45,6 +45,13 @@ export const ATTENDANCE_ROUTES: Routes = [
       import('./shifts/shifts-page.component').then((m) => m.ShiftsPageComponent),
   },
   {
+    path: 'holidays',
+    title: 'Holiday Calendar',
+    data: { breadcrumb: 'Holiday Calendar' },
+    loadComponent: () =>
+      import('./holidays/holidays-page.component').then((m) => m.HolidaysPageComponent),
+  },
+  {
     path: 'shift-assignment',
     title: 'Shift Assignment',
     data: { breadcrumb: 'Shift Assignment' },
