@@ -55,6 +55,7 @@ export class OvertimePageComponent {
       extraActions: [
         {
           id: 'approve',
+          permission: 'Approve',
           label: 'Approve',
           icon: 'check_circle',
           visible: pending,
@@ -69,6 +70,7 @@ export class OvertimePageComponent {
         },
         {
           id: 'reject',
+          permission: 'Approve',
           label: 'Reject',
           icon: 'cancel',
           destructive: true,

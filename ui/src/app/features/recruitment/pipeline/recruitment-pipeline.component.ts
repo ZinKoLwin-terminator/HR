@@ -23,6 +23,7 @@ import {
   InterviewDataService,
   JobOpeningDataService,
 } from '../../../core/services/data/recruitment-data.services';
+import { PermissionService } from '../../../core/services/permission.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { EntityFormDialogComponent } from '../../../shared/components/crud/entity-form-dialog.component';
 import { EntityFormDialogData } from '../../../shared/components/crud/crud.models';
@@ -83,15 +84,17 @@ import {
           </app-filter-field>
         </app-filter-popup>
       </ng-container>
-      <button
-        pageActions
-        mat-flat-button
-        type="button"
-        [disabled]="!data.value()"
-        (click)="addApplication()"
-      >
-        <mat-icon>person_add</mat-icon>Add application
-      </button>
+      @if (permissions.can('recruitment:Create')) {
+        <button
+          pageActions
+          mat-flat-button
+          type="button"
+          [disabled]="!data.value()"
+          (click)="addApplication()"
+        >
+          <mat-icon>person_add</mat-icon>Add application
+        </button>
+      }
     </app-page-header>
 
     @if (data.error()) {
@@ -110,36 +113,41 @@ import {
                 <li class="card">
                   <div class="card__head">
                     <strong>{{ card.name }}</strong>
-                    <button
-                      mat-icon-button
-                      type="button"
-                      [matMenuTriggerFor]="menu"
-                      [attr.aria-label]="'Actions for ' + card.name"
-                    >
-                      <mat-icon>more_vert</mat-icon>
-                    </button>
-                    <mat-menu #menu="matMenu">
-                      @for (next of forwardStages(card.application); track next) {
-                        <button mat-menu-item type="button" (click)="move(card, next)">
-                          <mat-icon>arrow_forward</mat-icon>Move to {{ next }}
-                        </button>
-                      }
-                      @if (canReject(card.application)) {
-                        <button mat-menu-item type="button" (click)="reject(card)">
-                          <mat-icon>block</mat-icon>Reject…
-                        </button>
-                      }
-                      @if (card.application.stage === 'Applied') {
-                        <button mat-menu-item type="button" (click)="remove(card)">
-                          <mat-icon>delete</mat-icon>Remove application
-                        </button>
-                      }
-                      @if (
-                        !forwardStages(card.application).length && !canReject(card.application)
-                      ) {
-                        <button mat-menu-item type="button" disabled>No actions available</button>
-                      }
-                    </mat-menu>
+                    @if (permissions.can('recruitment:Edit')) {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [matMenuTriggerFor]="menu"
+                        [attr.aria-label]="'Actions for ' + card.name"
+                      >
+                        <mat-icon>more_vert</mat-icon>
+                      </button>
+                      <mat-menu #menu="matMenu">
+                        @for (next of forwardStages(card.application); track next) {
+                          <button mat-menu-item type="button" (click)="move(card, next)">
+                            <mat-icon>arrow_forward</mat-icon>Move to {{ next }}
+                          </button>
+                        }
+                        @if (canReject(card.application)) {
+                          <button mat-menu-item type="button" (click)="reject(card)">
+                            <mat-icon>block</mat-icon>Reject…
+                          </button>
+                        }
+                        @if (
+                          card.application.stage === 'Applied' &&
+                          permissions.can('recruitment:Delete')
+                        ) {
+                          <button mat-menu-item type="button" (click)="remove(card)">
+                            <mat-icon>delete</mat-icon>Remove application
+                          </button>
+                        }
+                        @if (
+                          !forwardStages(card.application).length && !canReject(card.application)
+                        ) {
+                          <button mat-menu-item type="button" disabled>No actions available</button>
+                        }
+                      </mat-menu>
+                    }
                   </div>
                   @if (!jobId()) {
                     <div class="card__job">{{ card.jobTitle }}</div>
@@ -240,6 +248,7 @@ import {
   `,
 })
 export class RecruitmentPipelineComponent {
+  protected readonly permissions = inject(PermissionService);
   private readonly applicationsApi = inject(ApplicationDataService);
   private readonly candidatesApi = inject(CandidateDataService);
   private readonly jobsApi = inject(JobOpeningDataService);

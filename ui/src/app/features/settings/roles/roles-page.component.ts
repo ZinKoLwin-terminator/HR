@@ -56,6 +56,7 @@ export class RolesPageComponent {
       extraActions: [
         {
           id: 'permissions',
+          permission: 'View',
           label: 'Edit permissions',
           icon: 'tune',
           silent: true,

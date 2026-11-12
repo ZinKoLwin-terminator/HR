@@ -36,6 +36,7 @@ export class PayrollProcessingPageComponent {
 
   private readonly review: CrudExtraAction<PayrollRun> = {
     id: 'review',
+    permission: 'View',
     label: 'Review',
     icon: 'fact_check',
     silent: true,
@@ -61,6 +62,7 @@ export class PayrollProcessingPageComponent {
   };
   private readonly approve: CrudExtraAction<PayrollRun> = {
     id: 'approve',
+    permission: 'Approve',
     label: 'Approve',
     icon: 'check_circle',
     visible: (r) => r.status === 'Pending Approval',
@@ -74,6 +76,7 @@ export class PayrollProcessingPageComponent {
   };
   private readonly markPaid: CrudExtraAction<PayrollRun> = {
     id: 'paid',
+    permission: 'Approve',
     label: 'Mark as paid (sample)',
     icon: 'paid',
     visible: (r) => r.status === 'Approved',

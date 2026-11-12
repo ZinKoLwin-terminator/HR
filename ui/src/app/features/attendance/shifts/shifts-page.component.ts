@@ -41,6 +41,8 @@ export class ShiftsPageComponent {
       title: 'Shift management',
       description: 'Define working hours, breaks, grace periods and working days.',
       entityLabel: 'Shift',
+      // Creating a shift needs attendance:Edit on the server (not Create, which is the employee's own punches and requests).
+      permissionKeys: { Create: 'attendance:Edit' },
       service: this.shifts,
       searchLabel: 'Search by code or name',
       defaultSort: { active: 'startTime', direction: 'asc' },

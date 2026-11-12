@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { permissionGuard } from '../../core/guards/permission.guard';
 import { unsavedChangesGuard } from '../../core/guards/unsaved-changes.guard';
 
 export const EMPLOYEE_ROUTES: Routes = [
@@ -13,7 +14,8 @@ export const EMPLOYEE_ROUTES: Routes = [
   {
     path: 'new',
     title: 'Add Employee',
-    data: { breadcrumb: 'Add Employee' },
+    data: { breadcrumb: 'Add Employee', permission: 'employees:Create' },
+    canActivate: [permissionGuard],
     canDeactivate: [unsavedChangesGuard],
     loadComponent: () =>
       import('./employee-form/employee-form-page.component').then(
@@ -23,7 +25,8 @@ export const EMPLOYEE_ROUTES: Routes = [
   {
     path: 'documents',
     title: 'Employee Documents',
-    data: { breadcrumb: 'Employee Documents' },
+    data: { breadcrumb: 'Employee Documents', permission: 'employees:ViewSensitive' },
+    canActivate: [permissionGuard],
     loadComponent: () =>
       import('./employee-documents/employee-documents-page.component').then(
         (m) => m.EmployeeDocumentsPageComponent,
@@ -44,7 +47,8 @@ export const EMPLOYEE_ROUTES: Routes = [
       {
         path: 'edit',
         title: 'Edit Employee',
-        data: { breadcrumb: 'Edit' },
+        data: { breadcrumb: 'Edit', permission: 'employees:Edit' },
+        canActivate: [permissionGuard],
         canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./employee-form/employee-form-page.component').then(
