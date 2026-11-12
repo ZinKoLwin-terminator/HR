@@ -43,6 +43,7 @@ internal sealed class TestHost : IDisposable
         services.AddSingleton<ICurrentUser>(User);
         services.AddSingleton<IUnitOfWork>(UnitOfWork);
         services.AddSingleton<Apex.Hrms.Application.Security.ICallerPermissions>(Permissions);
+        services.AddSingleton<Apex.Hrms.Application.Security.ICallerTeam>(Team);
         services.AddSingleton<IActivityRecorder>(ActivityLog);
         services.AddSingleton<IActivityLogStore>(ActivityLog);
         services.AddSingleton<INotificationStore>(Notifications);
@@ -102,6 +103,9 @@ internal sealed class TestHost : IDisposable
 
     /// <summary>What the caller's role grants. Holds every permission (an approver) unless a test narrows it.</summary>
     public FakeCallerPermissions Permissions { get; } = new();
+
+    /// <summary>Who reports directly to the caller. Nobody until a test calls <c>Team.Set</c>.</summary>
+    public Apex.Hrms.Application.Security.CallerTeam Team { get; } = new();
 
     public FakeEmployees Employees { get; } = new();
 

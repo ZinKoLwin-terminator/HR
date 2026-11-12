@@ -12,7 +12,7 @@ namespace Apex.Hrms.Application.Employees.Salary;
 /// <summary>
 /// Mirrors EmployeeSalarySummary in employee-extras.models.ts. DEMONSTRATION figures: a full month at the current salary
 /// assignment worked out with the sample pay rules, not real payroll, tax or statutory pay. A salary is personal data:
-/// the route needs payroll:View and nothing here is logged.
+/// the route needs payroll:View, only payroll:Approve sees another employee's figures, and nothing here is logged.
 /// </summary>
 /// <param name="BandPosition">0 to 100: where the basic salary sits inside the job-grade band (0 when the band has no width).</param>
 /// <param name="Assumptions">Plain-language description of the sample rules behind the figures.</param>
@@ -33,6 +33,7 @@ public sealed record EmployeeSalarySummaryDto(
 /// <summary>GET /api/employees/{id}/salary-summary; the id is the employee id.</summary>
 internal sealed class EmployeeSalarySummaryHandler(
     EntityLoader<Employee> employees,
+    Apex.Hrms.Application.Security.SelfService self,
     IRepository<SalaryAssignment> assignments,
     IRepository<SalaryStructure> structures,
     IRepository<SalaryComponent> components,
@@ -52,6 +53,12 @@ internal sealed class EmployeeSalarySummaryHandler(
         }
 
         var employee = loaded.Value;
+        if (!self.CanSeeSalaryOf(employeeId))
+        {
+            // Salary figures of another employee need payroll:Approve; outside that rule the employee looks missing, like any scoped record.
+            return Result.Failure<EmployeeSalarySummaryDto>(NotFoundError.For("Employee", employeeId));
+        }
+
         var today = clock.Today;
         var assignment = (await assignments.ListAsync(
                 a => a.EmployeeId == employeeId && a.EffectiveFrom <= today,

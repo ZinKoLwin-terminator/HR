@@ -24,6 +24,8 @@ public sealed class PermissionHandlerTests
     private readonly MovableTime time = new();
     private readonly RoleGrantCache cache;
     private CallerPermissions Caller { get; } = new();
+    private CallerTeam Team { get; } = new();
+    private readonly FakeTeamDirectory teams = new(new Dictionary<int, int[]> { [7] = [11, 12] });
 
     private readonly FakeGrantStore store = new(["employees:View", "leave:View", "leave:Approve"]);
 
@@ -34,7 +36,7 @@ public sealed class PermissionHandlerTests
         AccountSnapshot? account,
         bool withAccountClaim = true)
     {
-        var handler = new PermissionHandler(new FakeAccountDirectory(account), store, cache, Caller);
+        var handler = new PermissionHandler(new FakeAccountDirectory(account), store, cache, Caller, teams, Team);
         var claims = withAccountClaim ? new[] { new Claim(HrmsClaims.AccountId, AccessFakes.AccountId.ToString(System.Globalization.CultureInfo.InvariantCulture)) } : [];
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
         var context = new AuthorizationHandlerContext([requirement], user, resource: null);
@@ -173,6 +175,25 @@ public sealed class PermissionHandlerTests
 
         Assert.True(Caller.Has("leave", "Approve"));
         Assert.False(Caller.Has("attendance", "Approve"));
+    }
+
+    [Fact]
+    public async Task The_direct_reports_of_the_callers_employee_are_handed_to_the_request_once_for_several_checks()
+    {
+        await RunAsync(Needs("employees", "View"), AccessFakes.Account(employeeId: 7));
+        await RunAsync(Needs("leave", "Approve"), AccessFakes.Account(employeeId: 7));
+
+        Assert.Equal([11, 12], Team.DirectReportIds);
+        Assert.Equal(1, teams.Lookups);
+    }
+
+    [Fact]
+    public async Task An_account_without_an_employee_has_no_team_and_none_is_looked_up()
+    {
+        await RunAsync(Needs("employees", "View"), AccessFakes.Account());
+
+        Assert.Empty(Team.DirectReportIds);
+        Assert.Equal(0, teams.Lookups);
     }
 
     [Fact]

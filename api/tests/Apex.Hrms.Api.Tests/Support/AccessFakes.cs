@@ -21,8 +21,9 @@ internal static class AccessFakes
         AccountStatus status = AccountStatus.Active,
         bool roleActive = true,
         bool employeeLeft = false,
-        byte[]? roleVersion = null) =>
-        new(AccountId, null, "TST- Test User", "tst@example.test", "tst-subject", status, RoleId, roleName, roleActive, employeeLeft, [], roleVersion);
+        byte[]? roleVersion = null,
+        int? employeeId = null) =>
+        new(AccountId, employeeId, "TST- Test User", "tst@example.test", "tst-subject", status, RoleId, roleName, roleActive, employeeLeft, [], roleVersion);
 }
 
 internal sealed class FakeAccountDirectory(AccountSnapshot? account) : IAccountDirectory
@@ -60,4 +61,16 @@ internal sealed class FakeGrantStore(IEnumerable<string> grants) : IPermissionSt
 
     public Task<Result> ReplaceGrantsAsync(AppRole role, IReadOnlyCollection<(string ModuleKey, string Action)> grants, CancellationToken cancellationToken) =>
         throw new NotSupportedException();
+}
+
+/// <summary>Direct reports by manager employee id; counts the lookups so a test can see the team is read once per request.</summary>
+internal sealed class FakeTeamDirectory(IReadOnlyDictionary<int, int[]>? reports = null) : Apex.Hrms.Application.Security.ITeamDirectory
+{
+    public int Lookups { get; private set; }
+
+    public Task<IReadOnlyList<int>> DirectReportIdsAsync(int managerEmployeeId, CancellationToken cancellationToken)
+    {
+        Lookups++;
+        return Task.FromResult<IReadOnlyList<int>>(reports is not null && reports.TryGetValue(managerEmployeeId, out var ids) ? ids : []);
+    }
 }

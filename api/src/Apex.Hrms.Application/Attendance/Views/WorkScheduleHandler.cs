@@ -37,7 +37,7 @@ internal sealed class WorkScheduleHandler(
         var days = Enumerable.Range(0, WeekDays).Select(weekStart.AddDays).ToList();
 
         var predicate = scope.PredicateFor(user)
-            .And(self.Rows<Employee>("attendance", own => employee => employee.Id == own))
+            .And(self.Rows<Employee>("attendance", ids => employee => ids.Contains(employee.Id)))
             .And(employee => employee.Status != EmploymentStatus.Resigned && employee.Status != EmploymentStatus.Terminated);
         if (request.DepartmentId is { } departmentId)
         {

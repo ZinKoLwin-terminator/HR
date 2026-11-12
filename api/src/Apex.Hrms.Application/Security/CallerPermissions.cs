@@ -32,6 +32,8 @@ internal static class SecurityScopingExtensions
     {
         services.TryAddScoped<CallerPermissions>();
         services.TryAddScoped<ICallerPermissions>(provider => provider.GetRequiredService<CallerPermissions>());
+        services.TryAddScoped<CallerTeam>();
+        services.TryAddScoped<ICallerTeam>(provider => provider.GetRequiredService<CallerTeam>());
         services.TryAddScoped<SelfService>();
         return services;
     }

@@ -56,7 +56,7 @@ internal sealed class AttendanceOverviewHandler(
         var date = overviewDay;
         var from = date.AddDays(-(LookbackDays - 1));
         var predicate = scope.PredicateFor(user)
-            .And(self.Rows<Employee>("attendance", own => employee => employee.Id == own))
+            .And(self.Rows<Employee>("attendance", ids => employee => ids.Contains(employee.Id)))
             .And(employee => employee.JoiningDate <= date && (employee.ExitDate == null || employee.ExitDate >= date));
         if (branchId is { } branch)
         {

@@ -18,8 +18,8 @@ open a database connection.
 
 Sign-in (phase 1) is implemented: ASP.NET Core Identity with a same-site cookie, see "Authentication" below. Every
 endpoint requires a signed-in user except the four anonymous `/api/auth` endpoints. Per-permission checks (which role may
-do what) are real (phase 3): see "Permission check" below. Row-level scoping of leave and attendance (own records) is real
-too, see "Row-level scoping"; team scoping for managers and scoping of the other modules (payroll, recruitment, employees)
+do what) are real (phase 3): see "Permission check" below. Row-level scoping (own record, direct reports for managers, everyone for HR and payroll staff) of leave, attendance, employees and salary data is real
+too, see "Row-level scoping"; scoping of recruitment
 does not exist yet, so do not store real data.
 Without a database you cannot sign in: create the first administrator with the `bootstrap-admin` command first.
 
@@ -653,14 +653,27 @@ the user lacks using the `permissions` of `GET /api/auth/me`; the server stays t
 
 ### Row-level scoping
 
-Leave and attendance hold per-employee data, so a caller who lacks the module's `Approve` permission (`leave:Approve`, `attendance:Approve`) sees and acts only for their own employee. HR Officers, managers and administrators hold Approve and keep the full view. **Team scoping for managers is not implemented**: an approver sees the whole module.
+Per-employee data is scoped inside the database predicate by `IAccessScope<T>`, from the caller's grants (`ICallerPermissions`) and team (`ICallerTeam`). Both are filled per request by `PermissionHandler` (the grants from `RoleGrantCache`, the team by one query through `ITeamDirectory`); before any permission check both are empty (own rows only, the safe side). The rules live in `Application/Security/SelfService`; the scopes are in `OwnRecordScopes`.
 
-* `Application/Security/SelfService` and the scopes in `OwnRecordScopes` (`IAccessScope<LeaveApplication>`, `<AttendanceRecord>`, `<AttendanceAdjustment>`, `<OvertimeRecord>`) apply `EmployeeId == caller's employee`; a caller with no linked employee and no Approve sees nothing. The caller's grants come from `ICallerPermissions`, filled per request by `PermissionHandler` from the same `RoleGrantCache`; before any permission check it is empty (own rows only, the safe side).
-* Another employee's record is `404` on get, update, delete and every command (cancel, submit ...), and absent from lists. Lists, the leave calendar, `/api/leave/balances?employeeId=` (`404` for a colleague), the attendance overview and the work schedule show only the caller's own rows; the dashboard's leave and attendance figures follow the same scope.
-* Creating or changing (leave PUT) a record for another employee is `403` Forbidden ("You can only act for your own employee record."), like punches: leave applications, attendance adjustments and overtime. Approvers may file for anyone.
+A caller's **team** is their own employee record plus their **direct reports**: the employees whose `hr.Employee.ManagerEmployeeId` is the caller's employee. Not the head of a department, not indirect reports.
+
+| Data | All | Team (own record and direct reports) | Own record only |
+| --- | --- | --- | --- |
+| Leave applications, balances, calendar; attendance records, adjustments, overtime, attendance overview, work schedule (per module) | holds the module's `Approve` **and** `employees:Edit` (HR Officer, HR Administrator in the seed) | holds the module's `Approve` but not `employees:Edit` (Department Manager) | everyone else (Employee) |
+| Employees (list, query, get, profile, personal, history, bank, salary summary reads, documents, the employees Excel export, the dashboard's employee figures) | holds `employees:Edit` **or** `payroll:View` | everyone else | not applicable: a caller with no linked employee sees nobody |
+| Payslips, salary assignments, the employee salary summary | holds `payroll:Approve` (Payroll Officer, HR Administrator) | not applicable | everyone else with the route's `payroll:View` (HR Officer, Auditor) |
+
+Payroll runs (totals only) are not scoped. A caller with no linked employee (the built-in administrator) sees what their tier gives to everyone and nothing otherwise; the HR Administrator holds every grant, so it is in the "All" tier everywhere.
+
+* An employee outside the caller's tier is `404` on get, update, delete and every command (cancel, submit, approve, reject ...), and absent from lists, the leave calendar, `/api/leave/balances?employeeId=`, the attendance overview, the work schedule and the dashboard's figures. A manager can therefore approve or reject only the requests of direct reports (a non-report's request is `404`).
+* Nobody decides their own request: a manager's own leave, adjustment or overtime request is visible to them but approving or rejecting it is `409` Conflict ("You cannot decide your own request.", a domain rule that predates the tiers). Only an HR-tier approver with a different employee, or the built-in administrator (no employee), decides it.
+* Creating or changing (leave PUT) a record for another employee is `403` Forbidden, like punches: leave applications, attendance adjustments and overtime. HR tier may file for anyone; the manager tier for their own record and direct reports ("You can only act for your own record and your direct reports."); the own tier for themselves ("You can only act for your own employee record.").
+* A salary assignment created through `payroll:Create` is not checked against the tier (only reads, updates and deletes are); keep `payroll:Create` and `payroll:Edit` together with `payroll:Approve`, or the creator cannot see what they made.
+* System code is not scoped: payroll processing, deletion checks, reference counts, hiring (which creates an employee) and the Excel import all read through `IRepository<T>` without a scope. Only handlers that inject `IAccessScope<T>` are scoped, and they run inside a request whose permission check filled the grants.
 * Creating shifts and holidays needs `attendance:Edit` (not Create), because every employee holds `attendance:Create` to punch.
-* Excel import batches (history, detail, error report, execute) belong to their uploader and to HR Administrators (`404` otherwise); detail and error report also run the module's view policies (`employees:View` for employees). The module check runs after the batch lookup, so an unknown batch answers `404` before it.
-* Not scoped yet: payroll (`payroll:View` is held by HR Officer, Payroll Officer, Auditor and HR Administrator in the seed), recruitment, employees.
+* Excel import batches (history, detail, error report, execute) belong to their uploader and to HR Administrators (`404` otherwise); detail and error report also run the module's view policies (`employees:View` for employees). The module check runs after the batch lookup, so an unknown batch answers `404` before it. The employees import needs `employees:Create`, `Edit`, `EditSensitive` and `EditBank`, so it always runs in the "All" tier.
+* Not scoped yet: recruitment (job openings, candidates, applications and interviews).
+* Seed note: the Department Manager role has no `employees` grant in the seed ("until manager scope exists"). With the team scope it can safely hold `employees:View` (the manager would see themselves and direct reports); the seed is not changed by the API.
 
 ### Authorization seams
 

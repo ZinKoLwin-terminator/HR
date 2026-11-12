@@ -65,7 +65,7 @@ public sealed class OwnRecordScopingTests : IDisposable
         var (mia, noah, type) = await SeedLeaveAsync();
         await host.CreateApplicationAsync(LeaveFixtures.NewApplication(mia.Id, type.Id, D(11, 16)));
         await host.CreateApplicationAsync(LeaveFixtures.NewApplication(noah.Id, type.Id, D(11, 17)));
-        SignInAsEmployee(mia, "leave:View", "leave:Approve");
+        SignInAsEmployee(mia, "leave:View", "leave:Approve", "employees:Edit");
 
         Assert.Equal(2, ResultAssert.Succeeded(await ListLeave()).Total);
     }
@@ -112,7 +112,7 @@ public sealed class OwnRecordScopingTests : IDisposable
     public async Task An_approver_can_create_leave_for_another_employee()
     {
         var (mia, noah, type) = await SeedLeaveAsync();
-        SignInAsEmployee(mia, "leave:View", "leave:Create", "leave:Approve");
+        SignInAsEmployee(mia, "leave:View", "leave:Create", "leave:Approve", "employees:Edit");
 
         ResultAssert.Succeeded(await host.CreateApplication(LeaveFixtures.NewApplication(noah.Id, type.Id, D(11, 17))));
     }
@@ -185,7 +185,7 @@ public sealed class OwnRecordScopingTests : IDisposable
         var (mia, noah) = await SeedAttendanceAsync();
         await host.PunchAsync(mia.Id, "CheckIn", 9, 0);
         await host.PunchAsync(noah.Id, "CheckIn", 9, 5);
-        SignInAsEmployee(mia, "attendance:View", "attendance:Approve");
+        SignInAsEmployee(mia, "attendance:View", "attendance:Approve", "employees:Edit");
 
         Assert.Equal(2, ResultAssert.Succeeded(await ListRecords()).Total);
     }

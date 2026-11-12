@@ -28,7 +28,13 @@ internal sealed class PermissionRequirement(string module, string action) : IAut
 /// HR Administrator has no special path: it is allowed because its role holds every grant in the seed. Anything unclear
 /// (no account id claim, no account, an inactive account, an action that is not part of the permission model) is refused.
 /// </summary>
-internal sealed class PermissionHandler(IAccountDirectory accounts, IPermissionStore grants, RoleGrantCache cache, CallerPermissions caller)
+internal sealed class PermissionHandler(
+    IAccountDirectory accounts,
+    IPermissionStore grants,
+    RoleGrantCache cache,
+    CallerPermissions caller,
+    ITeamDirectory teams,
+    CallerTeam team)
     : AuthorizationHandler<PermissionRequirement>
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
@@ -55,6 +61,13 @@ internal sealed class PermissionHandler(IAccountDirectory accounts, IPermissionS
 
         // The access scopes of the request (own rows or everything) read the same grants.
         caller.Set(held);
+
+        // ... and the direct reports of the caller (read once per request), which the manager tier of those scopes needs.
+        if (account.EmployeeId is { } employeeId && !team.IsLoaded)
+        {
+            team.Set(await teams.DirectReportIdsAsync(employeeId, CancellationToken.None));
+        }
+
         if (held.Contains(requirement.Key))
         {
             context.Succeed(requirement);
