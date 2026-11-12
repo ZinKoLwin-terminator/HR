@@ -8,7 +8,13 @@ import {
 } from '../../models/settings.models';
 import { CrudDataService } from './crud-data.service';
 
-export abstract class UserDataService extends CrudDataService<AppUser> {}
+export abstract class UserDataService extends CrudDataService<AppUser> {
+  /**
+   * Emails the user a link to choose a new password (administrators only). Refused with
+   * `Conflict` for an inactive account or a leaver.
+   */
+  abstract sendPasswordReset(id: number): Observable<void>;
+}
 export abstract class RoleDataService extends CrudDataService<Role> {}
 
 /** Role permission matrix (UI simulation only — nothing is enforced). */

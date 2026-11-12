@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { APPROVAL_STATUSES, OvertimeRecord } from '../../../core/models/attendance.models';
+import { SERVER_SESSION } from '../../../core/services/auth.service';
 import { fullName } from '../../../core/models/employee.models';
 import { OvertimeDataService } from '../../../core/services/data/attendance-data.services';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
@@ -24,6 +25,7 @@ import { employeeOptions } from '../../organization/organization-lookups';
 export class OvertimePageComponent {
   private readonly overtime = inject(OvertimeDataService);
   private readonly employeesApi = inject(EmployeeDataService);
+  private readonly apiMode = inject(SERVER_SESSION);
   private readonly employees = rxResource({ stream: () => this.employeesApi.getAll() });
 
   protected readonly config = computed<CrudPageConfig<OvertimeRecord> | null>(() => {
@@ -46,7 +48,8 @@ export class OvertimePageComponent {
       searchLabel: 'Search by reason',
       defaultSort: { active: 'date', direction: 'desc' },
       nameOf: label,
-      canEdit: pending,
+      // The API has no update for these: a pending request is deleted and made again.
+      canEdit: (r) => !this.apiMode && pending(r),
       canDelete: pending,
       filters: [
         { key: 'employeeId', label: 'Employee', options: employeeOptions(people) },

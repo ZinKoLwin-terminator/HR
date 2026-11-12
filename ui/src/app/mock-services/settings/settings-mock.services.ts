@@ -184,6 +184,26 @@ export class UserMockService extends InMemoryCrudService<AppUser> implements Use
     }
   }
 
+  /** Simulated: nothing is sent. Mirrors the API rules for who can be sent a reset. */
+  sendPasswordReset(id: number): Observable<void> {
+    return this.respond(() => {
+      const user = this.findById(id);
+      if (!user) {
+        throw mockError('NotFound', 'User not found.');
+      }
+      if (user.status === 'Inactive') {
+        this.conflictError('Activate the account before sending a password reset.');
+      }
+      if (this.employees.findById(user.employeeId)?.exitDate) {
+        this.conflictError('This employee has left, so a password reset cannot be sent.');
+      }
+      this.activity.record(
+        'system',
+        `Password reset email sent to ${user.displayName} (simulation)`,
+      );
+    });
+  }
+
   protected override beforeDelete(entity: AppUser): void {
     if (entity.id === this.currentUser.current().id) {
       this.conflictError('You cannot delete your own account.');
