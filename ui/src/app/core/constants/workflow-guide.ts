@@ -362,8 +362,8 @@ export const WORKFLOWS: readonly Workflow[] = [
         module: 'Settings',
         title: { en: 'Create users and roles', my: 'User နှင့် Role ဖန်တီးပါ' },
         text: {
-          en: 'Give people accounts. In this version permissions are a simulation.',
-          my: 'လူများအတွက် Account ပေးပါ။ ဤ Version တွင် Permission သည် နမူနာသာ။',
+          en: 'Give people accounts. In the demo build permissions are simulated; with the API the server enforces them.',
+          my: 'လူများအတွက် Account ပေးပါ။ Demo Build တွင် Permission သည် နမူနာသာ၊ API ဖြင့်သုံးလျှင် Server က ကန့်သတ်သည်။',
         },
         route: '/settings/users',
       },

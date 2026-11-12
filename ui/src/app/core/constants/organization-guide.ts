@@ -195,8 +195,8 @@ export const ORGANIZATION_GUIDE: readonly GuideBlock[] = [
   {
     type: 'note',
     text: {
-      en: 'Demo data resets when the page is reloaded. There is no Excel import for Organization yet (Employees only).',
-      my: 'Demo ဒေတာဖြစ်၍ Page Reload လုပ်လျှင် မူလအတိုင်းပြန်ဖြစ်သည်။ Organization အတွက် Excel Import မရှိသေးပါ (Employees သာ)။',
+      en: 'In the demo build the data resets when the page is reloaded; with the API it is saved. There is no Excel import for Organization yet (Employees only).',
+      my: 'Demo Build တွင် Page Reload လုပ်လျှင် ဒေတာ မူလအတိုင်းပြန်ဖြစ်ပြီး API ဖြင့်သုံးလျှင် သိမ်းဆည်းထားသည်။ Organization အတွက် Excel Import မရှိသေးပါ (Employees သာ)။',
     },
   },
 ];

@@ -80,7 +80,7 @@ describe('organization HTTP adapter', () => {
       expect(TestBed.inject(PositionDataService)).toBeInstanceOf(PositionHttpService);
     });
 
-    it('leaves every other contract on its mock', () => {
+    it('leaves only the demo-data contract on its mock', () => {
       setup();
       expect(TestBed.inject(DemoDataDataService)).toBeInstanceOf(DemoDataMockService);
     });

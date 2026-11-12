@@ -303,8 +303,8 @@ export const PAYROLL_GUIDE: readonly GuideBlock[] = [
   {
     type: 'note',
     text: {
-      en: 'Current calculation uses demonstration rules: no income tax, no social security (SSB), no bank integration. Data is not stored in a database, so it resets on reload.',
-      my: 'လက်ရှိ တွက်ချက်မှုက Demo စည်းမျဉ်း ဖြစ်ပါတယ်။ Income Tax၊ SSB၊ ဘဏ်ချိတ်ဆက်မှု မပါသေးပါဘူး။ Data ကို Database မှာ မသိမ်းထားလို့ Reload လုပ်ရင် ပျောက်ပါတယ်။',
+      en: 'Current calculation uses demonstration rules: no income tax, no social security (SSB), no bank integration. In the demo build data is not stored, so it resets on reload; with the API it is saved.',
+      my: 'လက်ရှိ တွက်ချက်မှုက Demo စည်းမျဉ်း ဖြစ်ပါတယ်။ Income Tax၊ SSB၊ ဘဏ်ချိတ်ဆက်မှု မပါသေးပါဘူး။ Demo Build မှာ Data မသိမ်းထားလို့ Reload လုပ်ရင် ပျောက်ပါတယ်၊ API နဲ့သုံးရင် သိမ်းထားပါတယ်။',
     },
   },
 ];

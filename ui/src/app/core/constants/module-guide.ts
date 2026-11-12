@@ -526,8 +526,8 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
       },
     ],
     note: {
-      en: 'Roles and permissions are a UI simulation in this version; nothing is enforced yet.',
-      my: 'ဤ Version တွင် Role နှင့် Permission သည် UI နမူနာသာဖြစ်ပြီး အမှန်တကယ် မကန့်သတ်သေးပါ။',
+      en: 'In the demo build roles and permissions are simulated. With the API the server enforces them, and the screens hide what your role cannot use.',
+      my: 'Demo Build တွင် Role နှင့် Permission သည် နမူနာသာဖြစ်သည်။ API ဖြင့်သုံးလျှင် Server က အမှန်တကယ်ကန့်သတ်ပြီး သင့် Role မသုံးနိုင်သည့်အရာများကို Screen များက ဖျောက်ထားသည်။',
     },
   },
 ];
