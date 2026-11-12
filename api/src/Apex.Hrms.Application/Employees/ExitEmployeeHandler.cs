@@ -22,6 +22,8 @@ internal sealed class ExitEmployeeHandler(
     ICommandAction<Employee, ExitEmployeeCommand> action,
     IEntityDescriptor<Employee> descriptor,
     IEnumerable<ICommandActivity<Employee, ExitEmployeeCommand>> wording,
+    IRepository<Employee> employees,
+    ICurrentUser currentUser,
     IRepository<AppAccount> accounts,
     IRepository<AppRole> roles,
     IAccountLogins logins,
@@ -30,6 +32,9 @@ internal sealed class ExitEmployeeHandler(
     IUnitOfWork unitOfWork,
     IDtoMapper<Employee, EmployeeDto> mapper) : ICommandHandler<ExitEmployeeCommand, EmployeeDto>
 {
+    public const string OwnExitMessage = "You cannot record your own exit.";
+    public const string AdministratorOnlyMessage = "Only an HR Administrator can record the exit of an HR Administrator.";
+
     public async Task<Result<EmployeeDto>> HandleAsync(ExitEmployeeCommand command, CancellationToken cancellationToken)
     {
         var loaded = await loader.LoadForChangeAsync(command.Id, command.RowVersion, cancellationToken);
@@ -39,6 +44,11 @@ internal sealed class ExitEmployeeHandler(
         }
 
         var employee = loaded.Value;
+        if (currentUser.EmployeeId is { } own && own == employee.Id)
+        {
+            return Result.Failure<EmployeeDto>(AppError.Conflict(OwnExitMessage));
+        }
+
         var executed = action.Execute(employee, command);
         if (executed.IsFailure)
         {
@@ -46,11 +56,18 @@ internal sealed class ExitEmployeeHandler(
         }
 
         var account = await FindActiveAccountAsync(employee.Id, cancellationToken);
+        if (account is not null && await IsAdministratorAccountAsync(account, cancellationToken)
+            && !await UserRules.IsAdministratorAsync(accounts, roles, currentUser, cancellationToken))
+        {
+            return Result.Failure<EmployeeDto>(AppError.Forbidden(AdministratorOnlyMessage));
+        }
+
         var result = account is null
             ? await SaveAsync(employee, command, cancellationToken)
             : await UserRules.ChangeAdministratorAsync(
                 unitOfWork,
                 accounts,
+                employees,
                 roles,
                 account,
                 () =>
@@ -70,6 +87,9 @@ internal sealed class ExitEmployeeHandler(
 
         return result.IsFailure ? Result.Failure<EmployeeDto>(result.Error) : Result.Success(mapper.ToDto(employee));
     }
+
+    private async Task<bool> IsAdministratorAccountAsync(AppAccount account, CancellationToken cancellationToken) =>
+        await roles.FindAsync(account.RoleId, cancellationToken) is { Name: SecurityPolicy.AdministratorRoleName };
 
     /// <summary>The tracked account of the employee when it is not already inactive; null when there is nothing to switch off.</summary>
     private async Task<AppAccount?> FindActiveAccountAsync(int employeeId, CancellationToken cancellationToken)

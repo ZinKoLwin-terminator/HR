@@ -79,7 +79,12 @@
   <button
     mat-flat-button
     type="button"
-    [disabled]="selected().size === 0 || targetShiftId() === null || saving()"
+    [disabled]="
+      selected().size === 0 ||
+      targetShiftId() === null ||
+      saving() ||
+      !permissions.can('employees:Edit')
+    "
     (click)="assign()"
   >
     <mat-icon>assignment_ind</mat-icon>Assign to selected

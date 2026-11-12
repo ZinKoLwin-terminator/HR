@@ -23,6 +23,8 @@ public sealed class PermissionHandlerTests
 
     private readonly MovableTime time = new();
     private readonly RoleGrantCache cache;
+    private CallerPermissions Caller { get; } = new();
+
     private readonly FakeGrantStore store = new(["employees:View", "leave:View", "leave:Approve"]);
 
     public PermissionHandlerTests() => cache = new RoleGrantCache(time);
@@ -32,7 +34,7 @@ public sealed class PermissionHandlerTests
         AccountSnapshot? account,
         bool withAccountClaim = true)
     {
-        var handler = new PermissionHandler(new FakeAccountDirectory(account), store, cache);
+        var handler = new PermissionHandler(new FakeAccountDirectory(account), store, cache, Caller);
         var claims = withAccountClaim ? new[] { new Claim(HrmsClaims.AccountId, AccessFakes.AccountId.ToString(System.Globalization.CultureInfo.InvariantCulture)) } : [];
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
         var context = new AuthorizationHandlerContext([requirement], user, resource: null);
@@ -93,7 +95,8 @@ public sealed class PermissionHandlerTests
     }
 
     [Theory]
-    [InlineData("payroll", "View")]
+    [InlineData("timesheets", "View")]
+    [InlineData("payroll", "Delete")]
     [InlineData("employees", "Approve")]
     [InlineData("employees", "view")]
     [InlineData("", "")]
@@ -108,7 +111,7 @@ public sealed class PermissionHandlerTests
     }
 
     [Fact]
-    public async Task Grants_are_cached_per_role_for_a_short_time_and_read_again_after_it()
+    public async Task Grants_are_cached_per_role_while_the_row_version_is_unchanged_and_read_again_after_the_safety_lifetime()
     {
         await RunAsync(Needs("employees", "View"), AccessFakes.Account());
         await RunAsync(Needs("leave", "Approve"), AccessFakes.Account());
@@ -118,7 +121,7 @@ public sealed class PermissionHandlerTests
         await RunAsync(Needs("employees", "View"), AccessFakes.Account());
 
         Assert.Equal(2, store.Reads);
-        Assert.True(RoleGrantCache.Lifetime <= TimeSpan.FromSeconds(60));
+        Assert.True(RoleGrantCache.Lifetime <= TimeSpan.FromMinutes(5));
     }
 
     [Fact]
@@ -149,26 +152,27 @@ public sealed class PermissionHandlerTests
     }
 
     [Fact]
-    public async Task A_load_that_started_before_an_invalidation_is_not_stored()
+    public async Task A_new_role_row_version_reads_the_grants_again_without_any_invalidation()
     {
-        var gate = new TaskCompletionSource();
-        var loads = 0;
+        await RunAsync(Needs("employees", "ViewBank"), AccessFakes.Account(roleVersion: [1]));
+        Assert.False((await RunAsync(Needs("employees", "ViewBank"), AccessFakes.Account(roleVersion: [1]))).HasSucceeded);
+        Assert.Equal(1, store.Reads);
 
-        async Task<IReadOnlySet<string>> Slow(CancellationToken _)
-        {
-            loads++;
-            await gate.Task;
-            return new HashSet<string> { "stale:View" };
-        }
+        // Another instance saved the grants: the role row (and so its row version) moved, this instance never heard of it.
+        store.Grants.Add("employees:ViewBank");
+        Assert.False((await RunAsync(Needs("employees", "ViewBank"), AccessFakes.Account(roleVersion: [1]))).HasSucceeded);
 
-        var pending = cache.GetAsync(5, Slow, default).AsTask();
-        cache.Invalidate(5);
-        gate.SetResult();
-        await pending;
-        await cache.GetAsync(5, _ => Task.FromResult<IReadOnlySet<string>>(new HashSet<string>()), default);
+        Assert.True((await RunAsync(Needs("employees", "ViewBank"), AccessFakes.Account(roleVersion: [2]))).HasSucceeded);
+        Assert.Equal(2, store.Reads);
+    }
 
-        Assert.Equal(1, loads);
-        Assert.Empty(await cache.GetAsync(5, _ => Task.FromResult<IReadOnlySet<string>>(new HashSet<string> { "x:y" }), default));
+    [Fact]
+    public async Task The_held_grants_are_handed_to_the_request_so_the_access_scopes_can_tell_an_approver()
+    {
+        await RunAsync(Needs("employees", "View"), AccessFakes.Account());
+
+        Assert.True(Caller.Has("leave", "Approve"));
+        Assert.False(Caller.Has("attendance", "Approve"));
     }
 
     [Fact]

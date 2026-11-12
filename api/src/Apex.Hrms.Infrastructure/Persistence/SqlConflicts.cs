@@ -18,13 +18,14 @@ internal static partial class SqlConflicts
     private const int UniqueConstraintViolation = 2627;
     private const int ConstraintConflict = 547;
 
-    // THROW numbers raised by the payroll finality triggers in the database project (pay schema).
+    // THROW numbers raised by the payroll lock triggers in the database project (pay schema): an approved run and its
+    // payslips are locked, a paid run is final.
     private static readonly Dictionary<int, string> FinalityMessages = new Dictionary<int, string>
     {
-        [51001] = "A paid payroll run is final and cannot be changed or deleted.",
-        [51002] = "Payslips of a paid payroll run are final.",
-        [51003] = "Payslip lines of a paid payroll run are final.",
-        [51004] = "Warnings of a paid payroll run are final.",
+        [51001] = "A paid payroll run is final, and an approved one can only be marked as paid or returned to draft.",
+        [51002] = "Payslips of an approved or paid payroll run are locked.",
+        [51003] = "Payslip lines of an approved or paid payroll run are locked.",
+        [51004] = "Warnings of an approved or paid payroll run are locked.",
     };
 
     // Check constraints whose name does not end in the field they guard.
@@ -68,6 +69,16 @@ internal static partial class SqlConflicts
             "A completed interview needs a score and a recommendation; other interviews have neither.",
             "score",
             "Check the score and recommendation."),
+        ["UQ_PayrollRun_Year_Month"] = AppError.Validation(
+            "A payroll period for that month already exists.",
+            "month",
+            "This period already exists."),
+        ["UQ_SalaryAssignment_EmployeeId_EffectiveFrom"] = AppError.Validation(
+            "This employee already has a salary starting on that date.",
+            "effectiveFrom",
+            "Another assignment starts on this date."),
+        ["CK_PayrollRun_ApproverNotProcessor"] = AppError.Conflict(
+            "You processed this payroll period, so you cannot approve it. Another approver must do it."),
         ["UQ_OvertimeRecord_EmployeeId_Date"] = AppError.Validation(
             "Overtime is already recorded for this employee on that date.",
             "date",

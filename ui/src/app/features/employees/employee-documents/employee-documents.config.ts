@@ -53,6 +53,12 @@ export function buildDocumentsConfig(
     title: 'Employee documents',
     description: 'Contracts, IDs, certificates and permits. Keep an eye on expiry dates.',
     entityLabel: 'Document',
+    // Documents are personal data: the server's personal-data keys govern them (UX; the server enforces).
+    permissionKeys: {
+      Create: 'employees:EditSensitive',
+      Edit: 'employees:EditSensitive',
+      Delete: 'employees:EditSensitive',
+    },
     service: opts.service,
     hasStatus: false,
     embedded: scoped,

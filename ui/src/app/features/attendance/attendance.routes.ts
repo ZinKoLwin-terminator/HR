@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const ATTENDANCE_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'overview' },
@@ -14,7 +15,8 @@ export const ATTENDANCE_ROUTES: Routes = [
   {
     path: 'check-in',
     title: 'Check In / Out',
-    data: { breadcrumb: 'Check In / Out' },
+    data: { breadcrumb: 'Check In / Out', permission: 'attendance:Create' },
+    canActivate: [permissionGuard],
     loadComponent: () => import('./check-in/check-in.component').then((m) => m.CheckInComponent),
   },
   {

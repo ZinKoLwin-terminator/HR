@@ -50,6 +50,9 @@ internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Pe
 
     public static readonly PermissionModule Attendance = new("attendance", [.. Standard, Permission.Approve]);
 
+    /// <summary>Payroll has no Delete in the database seed (View, Create, Edit, Approve only): deleting a draft period or a salary row needs Edit.</summary>
+    public static readonly PermissionModule Payroll = new("payroll", [Permission.View, Permission.Create, Permission.Edit, Permission.Approve]);
+
     /// <summary>The dashboard is read only.</summary>
     public static readonly PermissionModule Dashboard = new("dashboard", [Permission.View]);
 
@@ -66,7 +69,7 @@ internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Pe
     public static readonly PermissionModule Excel = new("excel", [Permission.View, Permission.Import, Permission.Export]);
 
 
-    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Recruitment, Dashboard, Activity, Settings, Excel];
+    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Payroll, Recruitment, Dashboard, Activity, Settings, Excel];
 
     public string PolicyName(Permission permission) => $"{Key}:{permission}";
 }

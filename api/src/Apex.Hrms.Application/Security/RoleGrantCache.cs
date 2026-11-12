@@ -13,52 +13,51 @@ public interface IRoleGrantInvalidator
 }
 
 /// <summary>
-/// A short-lived, per-role cache of the "module:Action" grants in sec.RolePermission. It exists only to spare the database
-/// one query per request: the account, its status and its role are never cached (they are read live on every request), so a
-/// deactivated user or a demoted administrator loses access at once, and a changed grant is seen at once by this instance
-/// because the Settings handlers invalidate the role. Another instance of the API sees it after at most
-/// <see cref="Lifetime"/>. A load that started before an invalidation is not stored.
+/// A per-role cache of the "module:Action" grants in sec.RolePermission. It exists only to spare the database one query per
+/// request. The account, its status and its role are never cached (they are read live on every request, and that read
+/// includes the role's row version), so a deactivated user or a demoted administrator loses access at once.
+/// <para>
+/// Validity is keyed on the role's <c>RowVersion</c>: saving the grants of a role always updates the role row in the same
+/// transaction (<c>EfPermissionStore.ReplaceGrantsAsync</c>), so a changed grant set always arrives with a new row version.
+/// An entry is used only while the row version read for this request equals the one it was loaded under. That is exact
+/// invalidation on every API instance and has no check-then-store race: the row version is read before the grants, so a load
+/// can at worst be stored under an older version, which the next request replaces. <see cref="Lifetime"/> is only a safety
+/// net for grants edited directly in the database, which do not move the row version.
+/// </para>
 /// </summary>
 public sealed class RoleGrantCache(TimeProvider time) : IRoleGrantInvalidator
 {
-    /// <summary>The longest a grant set is served without reading the database again.</summary>
-    public static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(30);
+    /// <summary>The longest a grant set is served without reading the database again (covers edits made outside the API).</summary>
+    public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
 
     private readonly ConcurrentDictionary<int, Entry> entries = new();
-    private long generation;
 
+    /// <param name="roleId">The role.</param>
+    /// <param name="roleRowVersion">The row version of the role read in this request.</param>
+    /// <param name="load">Reads the grants from the database.</param>
+    /// <param name="cancellationToken">Cancels the load.</param>
     public async ValueTask<IReadOnlySet<string>> GetAsync(
         int roleId,
+        byte[] roleRowVersion,
         Func<CancellationToken, Task<IReadOnlySet<string>>> load,
         CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
-        if (entries.TryGetValue(roleId, out var cached) && cached.ExpiresAt > now)
+        if (entries.TryGetValue(roleId, out var cached)
+            && cached.ExpiresAt > now
+            && cached.RowVersion.AsSpan().SequenceEqual(roleRowVersion))
         {
             return cached.Grants;
         }
 
-        var before = Interlocked.Read(ref generation);
         var grants = await load(cancellationToken);
-        if (Interlocked.Read(ref generation) == before)
-        {
-            entries[roleId] = new Entry(grants, now + Lifetime);
-        }
-
+        entries[roleId] = new Entry([.. roleRowVersion], grants, now + Lifetime);
         return grants;
     }
 
-    public void Invalidate(int roleId)
-    {
-        Interlocked.Increment(ref generation);
-        entries.TryRemove(roleId, out _);
-    }
+    public void Invalidate(int roleId) => entries.TryRemove(roleId, out _);
 
-    public void InvalidateAll()
-    {
-        Interlocked.Increment(ref generation);
-        entries.Clear();
-    }
+    public void InvalidateAll() => entries.Clear();
 
-    private sealed record Entry(IReadOnlySet<string> Grants, DateTimeOffset ExpiresAt);
+    private sealed record Entry(byte[] RowVersion, IReadOnlySet<string> Grants, DateTimeOffset ExpiresAt);
 }

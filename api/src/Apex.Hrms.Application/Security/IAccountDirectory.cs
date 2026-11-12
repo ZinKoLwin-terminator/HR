@@ -4,7 +4,8 @@ namespace Apex.Hrms.Application.Security;
 
 /// <summary>
 /// A business account with its role, as sign-in and the session check need it. <see cref="Permissions"/> holds
-/// "module:Action" keys (for example <c>employees:View</c>) and is empty unless requested.
+/// "module:Action" keys (for example <c>employees:View</c>) and is empty unless requested. <see cref="RoleRowVersion"/> is the
+/// row version of the role row, which moves whenever the role's grants are saved (see <see cref="RoleGrantCache"/>).
 /// </summary>
 public sealed record AccountSnapshot(
     int Id,
@@ -17,7 +18,8 @@ public sealed record AccountSnapshot(
     string RoleName,
     bool RoleActive,
     bool EmployeeLeft,
-    IReadOnlyList<string> Permissions)
+    IReadOnlyList<string> Permissions,
+    byte[]? RoleRowVersion = null)
 {
     /// <summary>An account signs in only when it is Active, its role is active and its linked employee has no exit date.</summary>
     public bool CanSignIn => Status == AccountStatus.Active && RoleActive && !EmployeeLeft;

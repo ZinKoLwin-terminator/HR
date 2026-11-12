@@ -18,8 +18,9 @@ open a database connection.
 
 Sign-in (phase 1) is implemented: ASP.NET Core Identity with a same-site cookie, see "Authentication" below. Every
 endpoint requires a signed-in user except the four anonymous `/api/auth` endpoints. Per-permission checks (which role may
-do what) are real (phase 3): see "Permission check" below. Row-level scoping (own record, own team) does not exist yet, so
-do not store real data.
+do what) are real (phase 3): see "Permission check" below. Row-level scoping of leave and attendance (own records) is real
+too, see "Row-level scoping"; team scoping for managers and scoping of the other modules (payroll, recruitment, employees)
+does not exist yet, so do not store real data.
 Without a database you cannot sign in: create the first administrator with the `bootstrap-admin` command first.
 
 ## Configuration
@@ -32,6 +33,7 @@ Without a database you cannot sign in: create the first administrator with the `
 | `Cors:AllowedOrigins` | Origins the browser frontend may call from. |
 | `AllowedHosts` | `;`-separated exact host names. `*` is only accepted in Development; any other environment refuses to start with a missing or wildcard value. |
 | `Auth:DevelopmentCookieName` | Development only: session cookie name (default `hrms-dev`). Outside Development the name is always `__Host-hrms`. |
+| `Auth:RememberMeMaxDays` | Hard end of a "remember me" session in days, however active the user is (default 30, accepted 1 to 365; anything else falls back to 30). |
 | `Auth:RateLimit:PermitsPerMinute` | Sign-in, forgot-password and reset-password requests allowed per client IP per minute (default 10). |
 | `Auth:PasswordResetUrl` | Optional absolute URL of the frontend reset page; the reset mail links to `{url}?email=...&token=...`. Without it the mail shows the token. |
 | `Email:DevelopmentFolder` | Development only: folder for the mail files (default `App_Data/dev-mail` under the API project). |
@@ -98,7 +100,7 @@ Every error is `application/problem+json` (RFC 9457):
 | `NotFound` | 404 | No such record, or outside the caller's access scope. |
 | `Conflict` | 409 | Stale `rowVersion`, record still referenced, payroll finality, foreign key violation. |
 | `Unauthorized` | 401 | Not signed in (or the session ended), a failed sign-in, or an audited write with no signed-in user. Never a redirect. |
-| `Forbidden` | 403 | The caller's role does not hold the permission of the route (`module:Action` in `sec.RolePermission`), or the caller is not an HR Administrator on a settings endpoint. |
+| `Forbidden` | 403 | The caller's role does not hold the permission of the route (`module:Action` in `sec.RolePermission`), the caller is not an HR Administrator on a settings endpoint, or the caller acts for another employee without the module's Approve permission (see "Row-level scoping"). |
 | `Unknown` | 500 | Unexpected failure; the message is generic. Quote `traceId` to find it in the server log. |
 | `Unknown` | 503 | A needed service is not configured: password reset by email without email settings (`POST /api/users/{id}/password-reset`, `POST /api/auth/forgot-password`). The body has `code: "Unknown"`. |
 
@@ -112,7 +114,7 @@ Database errors that slip past the rules are translated by constraint name, neve
 | 547 FOREIGN KEY / REFERENCE | `409` Conflict |
 | `UQ_LeavePolicy_ActiveGroup` | `400` Validation on `leaveTypeId` |
 | `UQ_LeaveApplication_ApplicationNo`, `CK_LeaveApplication_NotOwnApprover` | `409` Conflict |
-| THROW 51001-51004 (paid payroll run is final) | `409` Conflict |
+| THROW 51001-51004 (an approved payroll run and its payslips are locked, a paid run is final) | `409` Conflict |
 
 `traceId` is `Activity.Current.Id` or the request trace identifier. The server log for an unexpected error has the
 exception type chain, the SQL error number and the stack trace, never the exception message.
@@ -254,8 +256,8 @@ needs `rowVersion` as described for the organization module.
 
 | Route | Policy | Notes |
 | --- | --- | --- |
-| `/api/shifts` (get all, `/query`, `/{id}`, POST, PUT, DELETE, `/{id}/activate`, `/{id}/deactivate`) | View, Create, Edit, Delete, Edit | Like an organization resource. Fields: `code, name, startTime, endTime, breakMinutes, graceMinutes, workDays (0 = Sunday ... 6), isNightShift, color, status`. Delete is refused (`409`) while employees are assigned or attendance records used the shift. |
-| `/api/holidays` (get all, `/query?dateFrom&dateTo&type`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | `{ date, name, type: Public\|Company }`. One holiday per date (`400` on `date`; the table has no unique index, so this is checked by the API only). |
+| `/api/shifts` (get all, `/query`, `/{id}`, POST, PUT, DELETE, `/{id}/activate`, `/{id}/deactivate`) | View, Edit (create), Edit, Delete, Edit | Like an organization resource, but create needs Edit (every employee holds Create to punch). Fields: `code, name, startTime, endTime, breakMinutes, graceMinutes, workDays (0 = Sunday ... 6), isNightShift, color, status`. Delete is refused (`409`) while employees are assigned or attendance records used the shift. |
+| `/api/holidays` (get all, `/query?dateFrom&dateTo&type`, `/{id}`, POST, PUT, DELETE) | View, Edit (create), Edit, Delete | `{ date, name, type: Public\|Company }` (create needs Edit). One holiday per date (`400` on `date`; the table has no unique index, so this is checked by the API only). |
 | `GET /api/attendance-records/query`, `GET /api/attendance-records/{id}` | View | Read only, list shape with names. Filters: `employeeId, departmentId, branchId, status, dateFrom, dateTo, lateOnly, earlyOnly, overtimeOnly`; `search` matches employee name or code; sort by `date, employeeId, checkIn, checkOut, workedMinutes, lateMinutes, earlyLeaveMinutes, overtimeMinutes, status`. |
 | `POST /api/attendance/punches` | Create | Body `{ employeeId, kind: "CheckIn"\|"CheckOut" }` and nothing else: the server sets the date and the time (business time zone). Returns the day record. A signed-in employee may punch only for themself (`403`); the built-in administrator may punch for anyone. |
 | `GET /api/attendance-adjustments/query`, `/{id}`; `POST`; `DELETE /{id}` (pending only) | View, Create, Delete | Body `{ employeeId, date, requestedCheckIn?, requestedCheckOut?, requestedStatus?, reason }`. |
@@ -282,6 +284,37 @@ Rules (the attendance rules are demonstrations, not statutory calculations):
 * **Not provided:** PUT of a pending adjustment or overtime request (delete it and file it again); `recordId` on adjustments.
 * **Overview:** built from the employees expected that day (employed, working weekday of their shift, not a holiday); without a
   record they are On Leave (approved whole-day leave) or Absent (for today: "not checked in yet"; a future day counts nothing).
+
+## HTTP contract (payroll module)
+
+**All payroll figures are DEMONSTRATION figures.** The calculation is ported from the frontend's sample rules; the tax and
+social security percentages are whatever an administrator configures on a salary component. Nothing here is a statutory tax,
+social security or labour-law calculation, and no jurisdiction has signed it off. Do not use it to pay real people.
+Salary amounts and payslips are personal data: every route needs a payroll permission, salaries and payslips are listed in
+pages only (no "get all"), and a payslip carries the masked bank account only (`•••• 7890`).
+
+Permissions are exactly the seeded payroll actions: View, Create, Edit, Approve (there is no payroll Delete: deleting a
+component, structure, salary assignment or draft period needs Edit). Rules and wording follow the frontend mock services; the
+database triggers lock an approved run (and its payslips, lines and warnings) and make a paid run final.
+
+| Route | Policy | Body / notes |
+| --- | --- | --- |
+| `GET/POST /api/salary-components`, `GET /query`, `GET/PUT/DELETE /{id}`, `POST /{id}/activate\|deactivate` | View / Create / Edit | `code, name, type (Earning\|Deduction), calculation (Fixed\|PercentOfBasic\|PercentOfGross), value, description, status`; a percentage is above 0 and at most 100 |
+| `/api/salary-structures` (same shape) | View / Create / Edit | `code, name, description, componentIds` (display order; at least one, at least one earning) |
+| `GET /api/salary-assignments/query?employeeId&structureId`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}` | View / Create / Edit | `employeeId, structureId, basicSalary, effectiveFrom, remarks`; basic inside the employee's job-grade band, not before the joining date, one per employee and date, employee cannot change, the last one of an employee cannot be deleted. History = query by `employeeId`, `sort=effectiveFrom:desc` |
+| `GET /api/payroll-runs`, `/query?status&year`, `/{id}`, `POST` (`year, month, payDate?`), `PUT /{id}`, `DELETE /{id}` | View / Create / Edit | Period not in the future, one per month; change and delete only in Draft |
+| `POST /api/payroll-runs/{id}/process` | Edit | `{rowVersion}`; Draft to Pending Approval; earlier periods must be Approved or Paid first |
+| `POST /api/payroll-runs/{id}/approve` | Approve | `{rowVersion}`; the user who processed the run cannot approve it (409) |
+| `POST /api/payroll-runs/{id}/mark-paid` | Approve | `{rowVersion}`; Approved to Paid, records only (no money moves) |
+| `POST /api/payroll-runs/{id}/return-to-draft` | Approve | `{rowVersion, reason?}` (reason at most 200 characters); payslips and warnings are deleted after the run is saved as Draft, in one transaction |
+| `GET /api/payslips/query?runId&employeeId&departmentId`, `GET /api/payslips/{id}` | View | Read only |
+
+Calculation per employee and period: part-month employment prorates basic and fixed components by calendar days; earnings are
+fixed amounts or a percentage of the prorated basic; approved overtime adds `basic / (working days x 8) x 1.5 x hours`; gross is
+basic plus earnings; deductions are fixed, a percentage of basic or of gross, plus unpaid leave `basic / working days` per day;
+net is gross minus deductions; every amount is rounded to 2 decimals (halves away from zero). Working days come from the
+configured weekend and the holidays. An employee without a salary assignment, or without a usable bank account (the payslip
+table requires a masked account), is skipped with a warning.
 
 ## HTTP contract (dashboard, activity and notifications)
 
@@ -496,7 +529,8 @@ password.
   (the sixth attempt with the right password is refused too); a successful sign-in resets the count; a successful password
   reset lifts the lock. Email is unique.
 * **Sessions:** `rememberMe: false` gives a browser-session cookie with a 30 minute sliding window and an 8 hour absolute
-  maximum; `rememberMe: true` a persistent cookie with a 7 day sliding window. On every request the session is also
+  maximum; `rememberMe: true` a persistent cookie with a 7 day sliding window and an absolute maximum of `Auth:RememberMeMaxDays`
+  (30 days by default): sliding renewal never extends it, so the user signs in again at the end. On every request the session is also
   checked against the database: it ends when the account stops being Active (or its role inactive) and when the
   password is reset (security stamp). Logout deletes the cookie in the browser; a copied cookie stays valid until it
   expires or one of those checks fails (cookie sessions have no server-side list to revoke from).
@@ -564,10 +598,15 @@ handled by `Authorization/PermissionHandler`, on every request:
 1. The account is read live from the database (`IAccountDirectory.FindByIdAsync`, by the `hrms:uid` claim, never by a claim
    about the role). It must be Active, have an active role, and its employee must have no exit date.
 2. The grants are the rows of `sec.RolePermission` for the role of that account, read through `IPermissionStore.GrantsAsync`
-   and cached per role in the singleton `RoleGrantCache` for 30 seconds at most. The account, its status and its role are
-   never cached, so a deactivated user, an inactive role or a leaver is refused at once; only the grant sets are cached.
-3. The cache is emptied for a role when its grants are saved (`PermissionMatrixHandler`) or the role is deactivated or deleted,
-   so the instance that handled the change sees it at once. A second API instance sees it after the 30 seconds.
+   and cached per role in the singleton `RoleGrantCache`. The account, its status and its role are never cached, so a
+   deactivated user, an inactive role or a leaver is refused at once; only the grant sets are cached.
+3. A cached grant set is valid only while the role's `RowVersion`, read in the account query that runs on every request, equals
+   the one it was loaded under. Saving the grants always updates the role row in the same transaction (`ReplaceGrantsAsync`), so
+   a change moves the row version and every API instance reloads at its next request: exact invalidation, no time window and
+   no check-then-store race (the version is read before the grants, so a stale load can only be stored under an old version,
+   which the next request replaces). The Settings handlers also drop the entry of the role they changed. `RoleGrantCache.Lifetime`
+   (5 minutes) is only a safety net for grants edited directly in the database, which do not move the row version.
+   The held grants are also handed to the request's `CallerPermissions`, which the row-level scopes read.
 4. A policy that is not a module and action of `PermissionModule.All` is refused, and HR Administrator has no special path:
    it passes because the seed gives that role every action. The Excel endpoints ask the same policies by name for the
    module of the file (and the sensitive export policies), so they are enforced too.
@@ -586,6 +625,26 @@ the user lacks using the `permissions` of `GET /api/auth/me`; the server stays t
 * A demotion, deactivation, delete or exit that could remove an HR Administrator takes the application lock
   `hrms:administrator-changes` (`sp_getapplock`, owned by the transaction) before it checks the last-administrator rule, so two
   concurrent requests cannot both pass it. A request that cannot get the lock within 15 seconds is a `409`.
+* Only administrators who can sign in count towards "one active HR Administrator": an account whose employee has an exit date does not.
+  Deactivating, deleting or demoting (and the automatic deactivation on exit) rotates the security stamp, so an open session ends at once
+  and cannot come back by reactivating the account.
+* Activating the account of a leaver is a `409` ("This user's employee has left the company, so the account cannot be activated.").
+* Recording an exit needs `employees:Edit`, but when the employee's account holds the HR Administrator role the caller must be an HR Administrator
+  too (`403`, "Only an HR Administrator can record the exit of an HR Administrator."), and nobody records their own exit (`409`,
+  "You cannot record your own exit.").
+* A transaction that joins one the caller already holds (the Excel import) creates a savepoint and rolls back to it when disposed without a commit;
+  the administrator application lock belongs to the outer transaction and is held until that ends.
+
+### Row-level scoping
+
+Leave and attendance hold per-employee data, so a caller who lacks the module's `Approve` permission (`leave:Approve`, `attendance:Approve`) sees and acts only for their own employee. HR Officers, managers and administrators hold Approve and keep the full view. **Team scoping for managers is not implemented**: an approver sees the whole module.
+
+* `Application/Security/SelfService` and the scopes in `OwnRecordScopes` (`IAccessScope<LeaveApplication>`, `<AttendanceRecord>`, `<AttendanceAdjustment>`, `<OvertimeRecord>`) apply `EmployeeId == caller's employee`; a caller with no linked employee and no Approve sees nothing. The caller's grants come from `ICallerPermissions`, filled per request by `PermissionHandler` from the same `RoleGrantCache`; before any permission check it is empty (own rows only, the safe side).
+* Another employee's record is `404` on get, update, delete and every command (cancel, submit ...), and absent from lists. Lists, the leave calendar, `/api/leave/balances?employeeId=` (`404` for a colleague), the attendance overview and the work schedule show only the caller's own rows; the dashboard's leave and attendance figures follow the same scope.
+* Creating or changing (leave PUT) a record for another employee is `403` Forbidden ("You can only act for your own employee record."), like punches: leave applications, attendance adjustments and overtime. Approvers may file for anyone.
+* Creating shifts and holidays needs `attendance:Edit` (not Create), because every employee holds `attendance:Create` to punch.
+* Excel import batches (history, detail, error report, execute) belong to their uploader and to HR Administrators (`404` otherwise); detail and error report also run the module's view policies (`employees:View` for employees). The module check runs after the batch lookup, so an unknown batch answers `404` before it.
+* Not scoped yet: payroll (`payroll:View` is held by HR Officer, Payroll Officer, Auditor and HR Administrator in the seed), recruitment, employees.
 
 ### Authorization seams
 
@@ -594,7 +653,7 @@ the user lacks using the `permissions` of `GET /api/auth/me`; the server stays t
   `organization:Delete` (DELETE). The policies are registered in `Authorization/AuthorizationSetup.cs`; they require a
   signed-in user and the permission (see "Permission check"). New modules must be added to `PermissionModule.All` and to the
   seed of the database project (`sec.PermissionModuleAction`), or nobody can be granted them.
-* `IAccessScope<TEntity>` returns a predicate from the `ICurrentUser`; it is applied inside the database query by get all,
+* `IAccessScope<TEntity>` (see "Row-level scoping") returns a predicate from the `ICurrentUser`; it is applied inside the database query by get all,
   query, get by id, update, delete and every command, so a record outside the scope is `404`. The default allows all.
   Register a closed `IAccessScope<Company>` etc. to narrow a resource.
 * `Api.Tests/AuthorizationCoverageTests` fails when an `/api` endpoint (outside `/api/auth`) is mapped without a policy,

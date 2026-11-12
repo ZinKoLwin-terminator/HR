@@ -17,6 +17,7 @@ using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Leave;
 using Apex.Hrms.Domain.Organization;
+using Apex.Hrms.Domain.Payroll;
 using Apex.Hrms.Domain.Recruitment;
 using Apex.Hrms.Domain.Security;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,6 +42,7 @@ internal sealed class TestHost : IDisposable
         services.AddSingleton<IClock>(Clock);
         services.AddSingleton<ICurrentUser>(User);
         services.AddSingleton<IUnitOfWork>(UnitOfWork);
+        services.AddSingleton<Apex.Hrms.Application.Security.ICallerPermissions>(Permissions);
         services.AddSingleton<IActivityRecorder>(ActivityLog);
         services.AddSingleton<IActivityLogStore>(ActivityLog);
         services.AddSingleton<INotificationStore>(Notifications);
@@ -66,6 +68,13 @@ internal sealed class TestHost : IDisposable
         AddCounter<JobApplication>(services);
         AddCounter<Interview>(services);
         AddCounter<AppAccount>(services);
+        AddCounter<SalaryAssignment>(services);
+        AddCounter<Payslip>(services);
+        services.AddSingleton<IRecordCounter<SalaryStructureComponent>>(sp => new StructureComponentCounter((InMemoryRepository<SalaryStructure>)sp.GetRequiredService<IRepository<SalaryStructure>>()));
+        services.AddSingleton<IPayrollRunOutput>(sp => new FakePayrollRunOutput(
+            sp.GetRequiredService<IUnitOfWork>(),
+            (InMemoryRepository<Payslip>)sp.GetRequiredService<IRepository<Payslip>>(),
+            (InMemoryRepository<PayrollRun>)sp.GetRequiredService<IRepository<PayrollRun>>()));
         services.AddSingleton<IEmployeeCodeSequence>(CodeSequence);
         services.AddSingleton<ILeaveApplicationNumberSequence>(LeaveNumbers);
         services.AddSingleton<IJobOpeningCodeSequence>(JobCodes);
@@ -91,6 +100,9 @@ internal sealed class TestHost : IDisposable
 
     public FakeCurrentUser User { get; } = new();
 
+    /// <summary>What the caller's role grants. Holds every permission (an approver) unless a test narrows it.</summary>
+    public FakeCallerPermissions Permissions { get; } = new();
+
     public FakeEmployees Employees { get; } = new();
 
     public FakeEmployeeCodeSequence CodeSequence { get; } = new();
@@ -103,7 +115,7 @@ internal sealed class TestHost : IDisposable
     public FakeBusinessWeek Week { get; } = new();
 
     public InMemoryRepository<TEntity> Repository<TEntity>()
-        where TEntity : AuditedEntity =>
+        where TEntity : Entity =>
         (InMemoryRepository<TEntity>)provider.GetRequiredService<IRepository<TEntity>>();
 
     public T Get<T>()
@@ -137,7 +149,7 @@ internal sealed class TestHost : IDisposable
         await Succeeded(Get<ICreateHandler<PositionCreateRequest, PositionDto>>().HandleAsync(Requests.Position(departmentId, jobGradeId, code, sectionId, reportsTo), default));
 
     private static void AddCounter<TEntity>(IServiceCollection services)
-        where TEntity : AuditedEntity =>
+        where TEntity : Entity =>
         services.AddSingleton<IRecordCounter<TEntity>>(sp => (InMemoryRepository<TEntity>)sp.GetRequiredService<IRepository<TEntity>>());
 
     private static async Task<T> Succeeded<T>(Task<Result<T>> pending)

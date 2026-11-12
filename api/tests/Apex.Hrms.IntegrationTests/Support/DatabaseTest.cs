@@ -47,6 +47,12 @@ public abstract class DatabaseTest : IAsyncLifetime
     /// <summary>The employee linked to the fake signed-in user of the handlers; null (the default) is the built-in administrator.</summary>
     protected int? CurrentEmployeeId { get; set; }
 
+    /// <summary>The account of the fake signed-in user of the handlers; null (the default) is the test administrator. Set it to act as somebody else, for example a second approver.</summary>
+    protected int? CurrentUserId { get; set; }
+
+    /// <summary>The display name of the fake signed-in user; null (the default) is the tag followed by "Test User". Keep it starting with the tag so the cleanup finds the activity entries.</summary>
+    protected string? CurrentUserName { get; set; }
+
     /// <summary>The clock the audit stamps use; advance it to see <c>ModifiedAtUtc</c> move.</summary>
     protected TestTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 9, 8, 0, 0, 123, TimeSpan.Zero));
 
@@ -265,7 +271,10 @@ public abstract class DatabaseTest : IAsyncLifetime
         services.AddApplication().AddInfrastructure(configuration);
 
         // No request here, so there is no cookie: a fake signed-in TST- user stands in (the audit rule rejects anonymous writes).
-        services.AddScoped<ICurrentUser>(_ => new TestCurrentUser(TestAdministrator.AccountId, $"{Tag} Test User", employeeId: CurrentEmployeeId));
+        services.AddScoped<ICurrentUser>(_ => new TestCurrentUser(CurrentUserId ?? TestAdministrator.AccountId, CurrentUserName ?? $"{Tag} Test User", employeeId: CurrentEmployeeId));
+
+        // The handlers are called without a request, so no permission check fills the caller's grants: the caller is an approver who sees every row.
+        services.AddScoped<Apex.Hrms.Application.Security.ICallerPermissions, AllGrantsCallerPermissions>();
         DecorateUnitOfWork(services);
         foreach (var change in customizations)
         {

@@ -47,6 +47,10 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
         { "POST", "/api/employees/1/exit", "employees:Edit" },
         { "POST", "/api/leave-applications/1/approve", "leave:Approve" },
         { "POST", "/api/attendance-adjustments/1/approve", "attendance:Approve" },
+        // Every employee holds attendance:Create to punch, so creating shifts and holidays needs Edit.
+        { "POST", "/api/shifts", "attendance:Edit" },
+        { "POST", "/api/holidays", "attendance:Edit" },
+        { "POST", "/api/attendance/punches", "attendance:Create" },
         { "GET", "/api/job-openings/query", "recruitment:View" },
         { "GET", "/api/dashboard/summary", "dashboard:View" },
         { "GET", "/api/activity/query", "activity:View" },
@@ -106,6 +110,21 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
         var response = await SendAsync(client, method, url);
 
         Assert.True(response.StatusCode == HttpStatusCode.NoContent, $"{method} {url} with {needs} answered {(int)response.StatusCode}.");
+    }
+
+    [Theory]
+    [InlineData("/api/shifts")]
+    [InlineData("/api/holidays")]
+    public async Task An_employee_role_with_only_view_and_create_cannot_create_shifts_or_holidays_but_can_punch(string createUrl)
+    {
+        string[] employeeRole = ["attendance:View", "attendance:Create", "leave:View", "leave:Create", "dashboard:View"];
+        using var client = ClientWith(employeeRole);
+
+        var create = await SendAsync(client, "POST", createUrl);
+        var punch = await SendAsync(client, "POST", "/api/attendance/punches");
+
+        Assert.Equal(HttpStatusCode.Forbidden, create.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, punch.StatusCode);
     }
 
     [Theory]

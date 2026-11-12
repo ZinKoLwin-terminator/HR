@@ -16,7 +16,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, ActivatedRouteSnapshot, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import {
@@ -27,6 +27,7 @@ import {
   UpdateModel,
 } from '../../../core/models/common.models';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
+import { PermissionService } from '../../../core/services/permission.service';
 import {
   UiNotificationService,
   errorMessage,
@@ -49,6 +50,17 @@ import { EntityDetailsDialogComponent } from './entity-details-dialog.component'
 import { EntityFormDialogComponent } from './entity-form-dialog.component';
 
 type Row = Entity & { status?: string };
+
+/** The module key of the nearest route that declares a permission (`module:Action`), if any. */
+function permissionModuleOf(snapshot: ActivatedRouteSnapshot | null): string | null {
+  for (let route = snapshot; route; route = route.parent) {
+    const permission = route.data['permission'];
+    if (typeof permission === 'string' && permission.includes(':')) {
+      return permission.split(':')[0];
+    }
+  }
+  return null;
+}
 
 /**
  * Generic list + create/edit/view/delete/activate screen driven by a
@@ -85,6 +97,11 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(UiNotificationService);
   private readonly excelExport = inject(ExcelExportService);
+  private readonly permissions = inject(PermissionService);
+  /** Permission module of the route this page sits under (`data.permission` = `module:Action`). */
+  private readonly module = permissionModuleOf(
+    inject(ActivatedRoute, { optional: true })?.snapshot ?? null,
+  );
 
   protected readonly pageSizeOptions = this.appConfig.pageSizeOptions;
   protected readonly query = new ListQuery<Record<string, unknown>>({
@@ -109,20 +126,42 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
     this.page.error() ? errorMessage(this.page.error()) : '',
   );
 
+  /**
+   * UX only: whether the signed-in user's role holds the permission for an action on this screen's
+   * module (`Create`, `Edit`, `Delete`, `Approve`, ...). The server enforces the same keys.
+   */
+  protected canDo(action: string): boolean {
+    const key =
+      this.config().permissionKeys?.[action] ?? (this.module && `${this.module}:${action}`);
+    return !key || this.permissions.can(key);
+  }
+
+  protected canExport(): boolean {
+    return this.permissions.can('excel:Export');
+  }
+
+  protected canImport(): boolean {
+    return this.permissions.can('excel:Import');
+  }
+
   protected readonly actions = computed<TableAction<T>[]>(() => {
     const cfg = this.config();
     const list: TableAction<T>[] = [
       { id: 'view', label: 'View details', icon: 'visibility' },
-      ...(cfg.extraActions ?? []).map((a) => ({
-        id: `extra:${a.id}`,
-        label: a.label,
-        icon: a.icon,
-        destructive: a.destructive,
-        visible: a.visible,
-      })),
-      { id: 'edit', label: 'Edit', icon: 'edit', visible: cfg.canEdit },
+      ...(cfg.extraActions ?? [])
+        .filter((a) => this.canDo(a.permission ?? 'Edit'))
+        .map((a) => ({
+          id: `extra:${a.id}`,
+          label: a.label,
+          icon: a.icon,
+          destructive: a.destructive,
+          visible: a.visible,
+        })),
     ];
-    if (this.config().hasStatus !== false) {
+    if (this.canDo('Edit')) {
+      list.push({ id: 'edit', label: 'Edit', icon: 'edit', visible: cfg.canEdit });
+    }
+    if (this.config().hasStatus !== false && this.canDo('Edit')) {
       list.push(
         {
           id: 'activate',
@@ -138,13 +177,15 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
         },
       );
     }
-    list.push({
-      id: 'delete',
-      label: 'Delete',
-      icon: 'delete',
-      destructive: true,
-      visible: cfg.canDelete,
-    });
+    if (this.canDo('Delete')) {
+      list.push({
+        id: 'delete',
+        label: 'Delete',
+        icon: 'delete',
+        destructive: true,
+        visible: cfg.canDelete,
+      });
+    }
     return list;
   });
 
@@ -327,6 +368,7 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
             fields: cfg.fields.filter((f) => !f.createOnly),
             row: row as unknown as FormValues,
             id: row.id,
+            readonly: !this.canDo('Edit'),
           },
           width: '640px',
           maxWidth: '96vw',

@@ -129,3 +129,14 @@ internal sealed class FakeJobCodeSequence : IJobOpeningCodeSequence
     /// <summary>Starts counting from 1 again, so the next codes are ones already in use.</summary>
     public void Reset() => last = 0;
 }
+
+/// <summary>The caller's grants: everything (an approver who sees every row) until a test calls <see cref="Only"/>.</summary>
+internal sealed class FakeCallerPermissions : Apex.Hrms.Application.Security.ICallerPermissions
+{
+    private HashSet<string>? only;
+
+    public bool Has(string moduleKey, string action) => only is null || only.Contains($"{moduleKey}:{action}");
+
+    /// <summary>Grants only these "module:Action" keys, like an ordinary employee.</summary>
+    public void Only(params string[] keys) => only = [.. keys];
+}

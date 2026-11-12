@@ -105,20 +105,26 @@
       </app-filter-field>
     </app-filter-popup>
   </ng-container>
-  <button pageTools mat-stroked-button type="button" (click)="openExport()">
-    <mat-icon>download</mat-icon>Export
-  </button>
-  <a
-    pageTools
-    mat-stroked-button
-    routerLink="/data-exchange/import"
-    [queryParams]="{ module: 'employees' }"
-  >
-    <mat-icon>upload_file</mat-icon>Import
-  </a>
-  <a pageActions mat-flat-button routerLink="/employees/new">
-    <mat-icon>person_add</mat-icon>Add employee
-  </a>
+  @if (permissions.can('excel:Export')) {
+    <button pageTools mat-stroked-button type="button" (click)="openExport()">
+      <mat-icon>download</mat-icon>Export
+    </button>
+  }
+  @if (permissions.can('excel:Import')) {
+    <a
+      pageTools
+      mat-stroked-button
+      routerLink="/data-exchange/import"
+      [queryParams]="{ module: 'employees' }"
+    >
+      <mat-icon>upload_file</mat-icon>Import
+    </a>
+  }
+  @if (permissions.can('employees:Create')) {
+    <a pageActions mat-flat-button routerLink="/employees/new">
+      <mat-icon>person_add</mat-icon>Add employee
+    </a>
+  }
 </app-page-header>
 
 @if (activeChips().length > 0) {
@@ -157,7 +163,7 @@
     [pageSizeOptions]="pageSizeOptions"
     [sort]="query.sort()"
     [loading]="page.isLoading()"
-    [actions]="actions"
+    [actions]="actions()"
     [rowLabel]="rowLabel"
     [clickableRows]="true"
     emptyTitle="No employees found"

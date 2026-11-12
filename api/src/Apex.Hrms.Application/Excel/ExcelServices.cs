@@ -72,6 +72,8 @@ internal sealed class ExcelImportService(
     IWorkbookWriter writer,
     IFileStorage storage,
     IImportBatchStore batches,
+    IRepository<Apex.Hrms.Domain.Security.AppAccount> accounts,
+    IRepository<Apex.Hrms.Domain.Security.AppRole> roles,
     IBatchTransactionFactory transactions,
     IActivityMute mute,
     IActivityRecorder activity,
@@ -381,7 +383,9 @@ internal sealed class ExcelImportService(
 
     public async Task<Result<PagedResult<ImportBatchSummaryDto>>> GetHistoryAsync(int pageIndex, int pageSize, CancellationToken cancellationToken)
     {
-        var page = await batches.QueryAsync(Math.Max(0, pageIndex), Paging.ClampPageSize(pageSize), cancellationToken);
+        // Only an HR Administrator sees the batches of other users.
+        int? onlyOwn = await IsAdministratorAsync(cancellationToken) ? null : user.UserId ?? -1;
+        var page = await batches.QueryAsync(Math.Max(0, pageIndex), Paging.ClampPageSize(pageSize), onlyOwn, cancellationToken);
         return Result.Success(page.Map(Summary));
     }
 
@@ -558,9 +562,21 @@ internal sealed class ExcelImportService(
     private bool OwnedByCaller(StoredFile file) =>
         file.Metadata.GetValueOrDefault("userId", string.Empty) == (user.UserId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
 
+    private async Task<bool> CanSeeAsync(ImportBatch batch, CancellationToken cancellationToken) =>
+        (user.UserId is { } own && batch.UploadedByUserId == own) || await IsAdministratorAsync(cancellationToken);
+
+    private Task<bool> IsAdministratorAsync(CancellationToken cancellationToken) =>
+        Apex.Hrms.Application.Settings.UserRules.IsAdministratorAsync(accounts, roles, user, cancellationToken);
+
     private async Task<Result<ImportBatch>> FindBatchAsync(string batchId, CancellationToken cancellationToken)
     {
         var batch = Guid.TryParse(batchId, out var id) ? await batches.FindAsync(id, cancellationToken) : null;
+        if (batch is not null && !await CanSeeAsync(batch, cancellationToken))
+        {
+            // Another user's batch is not visible: it looks like a batch that does not exist.
+            batch = null;
+        }
+
         return batch is null
             ? Result.Failure<ImportBatch>(AppError.NotFound("This import was not found."))
             : Result.Success(batch);

@@ -86,14 +86,18 @@ internal static class ExcelEndpoints
 
         group.MapGet(
             "/imports/{batchId}",
-            async (string batchId, IExcelImportService imports, CancellationToken cancellationToken) =>
-                (await imports.GetBatchAsync(batchId, cancellationToken)).ToOk())
+            async (string batchId, IExcelCatalogService catalog, IExcelImportService imports, IAuthorizationService auth, ClaimsPrincipal user, CancellationToken cancellationToken) =>
+                await GuardBatch(batchId, catalog, imports, auth, user, cancellationToken) is { } denied
+                    ? denied
+                    : (await imports.GetBatchAsync(batchId, cancellationToken)).ToOk())
             .RequireAuthorization(view);
 
         group.MapGet(
             "/imports/{batchId}/error-report",
-            async (string batchId, IExcelImportService imports, CancellationToken cancellationToken) =>
-                (await imports.GetErrorReportAsync(batchId, cancellationToken)).ToFile())
+            async (string batchId, IExcelCatalogService catalog, IExcelImportService imports, IAuthorizationService auth, ClaimsPrincipal user, CancellationToken cancellationToken) =>
+                await GuardBatch(batchId, catalog, imports, auth, user, cancellationToken) is { } denied
+                    ? denied
+                    : (await imports.GetErrorReportAsync(batchId, cancellationToken)).ToFile())
             .RequireAuthorization(view);
 
         group.MapPost(
@@ -108,6 +112,24 @@ internal static class ExcelEndpoints
             .RequireAuthorization(export);
 
         return app;
+    }
+
+    /// <summary>
+    /// Detail and error report of a batch: the batch must be visible to the caller (their own, or any for an HR Administrator;
+    /// otherwise 404) and the caller must hold the module's view (export) policies. A batch that does not exist answers 404 first.
+    /// </summary>
+    private static async Task<IResult?> GuardBatch(
+        string batchId,
+        IExcelCatalogService catalog,
+        IExcelImportService imports,
+        IAuthorizationService auth,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var module = await imports.ModuleOfBatchAsync(batchId, cancellationToken);
+        return module.IsFailure
+            ? Results.Problem(ApiProblems.From(module.Error))
+            : await Guard(auth, user, catalog.Find(module.Value), m => m.ExportPolicies);
     }
 
     /// <summary>Null when every policy of the module is satisfied; otherwise the response to send (404 for an unknown module, 403 when a policy fails).</summary>

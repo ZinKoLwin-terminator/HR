@@ -47,6 +47,7 @@ internal sealed class EfAccountDirectory(HrmsDbContext context, TimeProvider tim
                 EmployeeLeft = account.EmployeeId != null
                     && context.Set<Employee>().Any(employee => employee.Id == account.EmployeeId && employee.ExitDate != null),
                 RoleStatus = role.Status,
+                RoleRowVersion = role.RowVersion,
             }).SingleOrDefaultAsync(cancellationToken);
         if (row is null)
         {
@@ -74,6 +75,7 @@ internal sealed class EfAccountDirectory(HrmsDbContext context, TimeProvider tim
             row.RoleName,
             row.RoleStatus == RecordStatus.Active,
             row.EmployeeLeft,
-            permissions);
+            permissions,
+            row.RoleRowVersion);
     }
 }

@@ -11,7 +11,7 @@ namespace Apex.Hrms.IntegrationTests.Support;
 /// rule through their <em>email</em> (auth.User and sec.AppUser; removed before the employees they may link to) and
 /// test roles through their name (sec.Role).
 /// </summary>
-internal static class TestRows
+internal static partial class TestRows
 {
     /// <summary>The start of every tag; what the fixture looks for to find rows a test left behind.</summary>
     public const string TagFamily = "TST-";
@@ -51,6 +51,7 @@ internal static class TestRows
         await DeleteImportsAsync(connection, tag);
         await DeleteActivityAndNotificationsAsync(connection, tag, pattern);
         await DeleteAccountsAsync(connection, pattern);
+        await DeletePayrollAsync(connection, pattern);
         await DeleteLeaveAsync(connection, pattern);
         await DeleteAttendanceOfEmployeesAsync(connection, pattern);
         await DeleteRecruitmentAsync(connection, pattern);
@@ -78,6 +79,7 @@ internal static class TestRows
         await CountInto(counts, connection, "app.Notification", $"Title LIKE @pattern OR RecipientUserId IN ({TaggedAppUsers})", pattern);
         await CountInto(counts, connection, "app.ImportBatch", "FileName LIKE @pattern", pattern);
         await CountInto(counts, connection, "hr.Employee", "LOWER(WorkEmail) LIKE LOWER(@pattern)", pattern);
+        await CountPayrollInto(counts, connection, pattern);
         await CountInto(counts, connection, "lve.LeaveApplication", $"EmployeeId IN ({TaggedEmployees})", pattern);
         await CountInto(counts, connection, "lve.LeavePolicy", "Name LIKE @pattern", pattern);
         await CountInto(counts, connection, "lve.LeaveType", "Code LIKE @pattern", pattern);

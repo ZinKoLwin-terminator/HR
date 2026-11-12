@@ -1,5 +1,6 @@
 using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Activity;
+using Apex.Hrms.Application.Security;
 using Apex.Hrms.Application.Attendance.Approvals;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Attendance;
@@ -16,6 +17,7 @@ namespace Apex.Hrms.Application.Attendance.Adjustments;
 /// </summary>
 internal sealed class AdjustmentCreateHandler(
     IValidator<AdjustmentCreateRequest> validator,
+    SelfService self,
     IRepository<Employee> employees,
     IRepository<AttendanceAdjustment> adjustments,
     AttendanceLookup lookup,
@@ -33,6 +35,12 @@ internal sealed class AdjustmentCreateHandler(
         }
 
         var details = request.ToDetails();
+        var own = self.EnsureCanActFor("attendance", details.EmployeeId);
+        if (own.IsFailure)
+        {
+            return Result.Failure<AdjustmentDto>(own.Error);
+        }
+
         if (await employees.FindAsync(details.EmployeeId, cancellationToken) is null)
         {
             return Result.Failure<AdjustmentDto>(AppError.Validation(

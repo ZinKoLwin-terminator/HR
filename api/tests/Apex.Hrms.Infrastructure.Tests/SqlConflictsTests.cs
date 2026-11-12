@@ -47,10 +47,10 @@ public sealed class SqlConflictsTests
     }
 
     [Theory]
-    [InlineData(51001, "A paid payroll run is final and cannot be changed or deleted.")]
-    [InlineData(51002, "Payslips of a paid payroll run are final.")]
-    [InlineData(51003, "Payslip lines of a paid payroll run are final.")]
-    [InlineData(51004, "Warnings of a paid payroll run are final.")]
+    [InlineData(51001, "A paid payroll run is final, and an approved one can only be marked as paid or returned to draft.")]
+    [InlineData(51002, "Payslips of an approved or paid payroll run are locked.")]
+    [InlineData(51003, "Payslip lines of an approved or paid payroll run are locked.")]
+    [InlineData(51004, "Warnings of an approved or paid payroll run are locked.")]
     public void Payroll_finality_triggers_are_conflicts(int number, string message)
     {
         var error = SqlConflicts.Translate(number, "raw trigger text with PII")!;

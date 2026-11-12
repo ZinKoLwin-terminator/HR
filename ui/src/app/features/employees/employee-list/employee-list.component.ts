@@ -33,6 +33,7 @@ import {
 } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ExcelExportService } from '../../../shared/components/excel/excel-export.service';
+import { PermissionService } from '../../../core/services/permission.service';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import {
   FilterFieldComponent,
@@ -77,6 +78,7 @@ export class EmployeeListComponent {
   private readonly toast = inject(UiNotificationService);
   private readonly appConfig = inject(APP_CONFIG);
   private readonly excelExport = inject(ExcelExportService);
+  protected readonly permissions = inject(PermissionService);
 
   /** `?search=` query parameter (bound by the router; used by the header search box). */
   readonly search = input<string>();
@@ -166,11 +168,16 @@ export class EmployeeListComponent {
     { key: 'employmentStatus', header: 'Status', type: 'status', sortable: true },
   ];
 
-  protected readonly actions: TableAction<EmployeeListItem>[] = [
+  /** Edit and Delete only for roles that hold employees:Edit / employees:Delete (UX; the server enforces). */
+  protected readonly actions = computed<TableAction<EmployeeListItem>[]>(() => [
     { id: 'view', label: 'View profile', icon: 'badge' },
-    { id: 'edit', label: 'Edit', icon: 'edit' },
-    { id: 'delete', label: 'Delete', icon: 'delete', destructive: true },
-  ];
+    ...(this.permissions.can('employees:Edit')
+      ? [{ id: 'edit', label: 'Edit', icon: 'edit' }]
+      : []),
+    ...(this.permissions.can('employees:Delete')
+      ? [{ id: 'delete', label: 'Delete', icon: 'delete', destructive: true }]
+      : []),
+  ]);
 
   protected readonly rowLabel = (row: EmployeeListItem) => row.fullName;
 

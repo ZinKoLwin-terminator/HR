@@ -1,26 +1,60 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
+import { PermissionService } from '../../../core/services/permission.service';
 
 interface QuickLink {
   label: string;
   icon: string;
   route: string;
   tone: 'primary' | 'success' | 'warning' | 'danger' | 'neutral';
+  /** Server permission key needed to show the tile (UX only). */
+  permission: string;
 }
 
 const LINKS: readonly QuickLink[] = [
-  { label: 'Add employee', icon: 'person_add', route: '/employees/new', tone: 'primary' },
-  { label: 'Attendance', icon: 'monitoring', route: '/attendance/overview', tone: 'success' },
-  { label: 'Apply leave', icon: 'note_add', route: '/leave/applications', tone: 'warning' },
-  { label: 'Run payroll', icon: 'calculate', route: '/payroll/processing', tone: 'danger' },
+  {
+    label: 'Add employee',
+    icon: 'person_add',
+    route: '/employees/new',
+    tone: 'primary',
+    permission: 'employees:Create',
+  },
+  {
+    label: 'Attendance',
+    icon: 'monitoring',
+    route: '/attendance/overview',
+    tone: 'success',
+    permission: 'attendance:View',
+  },
+  {
+    label: 'Apply leave',
+    icon: 'note_add',
+    route: '/leave/applications',
+    tone: 'warning',
+    permission: 'leave:View',
+  },
+  {
+    label: 'Run payroll',
+    icon: 'calculate',
+    route: '/payroll/processing',
+    tone: 'danger',
+    permission: 'payroll:View',
+  },
   {
     label: 'Job openings',
     icon: 'work_outline',
     route: '/recruitment/job-openings',
     tone: 'primary',
+    permission: 'recruitment:View',
   },
-  { label: 'Import data', icon: 'upload_file', route: '/data-exchange/import', tone: 'neutral' },
+  {
+    label: 'Import data',
+    icon: 'upload_file',
+    route: '/data-exchange/import',
+    tone: 'neutral',
+    permission: 'excel:Import',
+  },
 ];
 
 /** Shortcut tiles to the most common HR tasks. */
@@ -36,7 +70,7 @@ const LINKS: readonly QuickLink[] = [
         </div>
       </div>
       <div class="tiles">
-        @for (l of links; track l.route) {
+        @for (l of links(); track l.route) {
           <a class="tile" [routerLink]="l.route" [attr.data-tone]="l.tone">
             <span class="tile__icon" aria-hidden="true"
               ><mat-icon>{{ l.icon }}</mat-icon></span
@@ -123,5 +157,8 @@ const LINKS: readonly QuickLink[] = [
   `,
 })
 export class QuickAccessCardComponent {
-  protected readonly links = LINKS;
+  private readonly permissions = inject(PermissionService);
+  protected readonly links = computed(() =>
+    LINKS.filter((l) => this.permissions.can(l.permission)),
+  );
 }
