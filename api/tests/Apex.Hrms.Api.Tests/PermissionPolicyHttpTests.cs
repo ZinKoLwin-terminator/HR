@@ -61,7 +61,9 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
 
     private HttpClient ClientWith(IEnumerable<string> grants, Action<IServiceCollection>? configure = null, bool markAuthorized = true)
     {
-        var host = SignedInHost.Customize(factory, AccessFakes.Account("HR Officer"), grants).WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        // The grants travel in a request header, so one host serves every grant set (starting a host is slow). A test with an
+        // extra service of its own gets a host of its own.
+        WebApplicationFactory<Program> Build() => SignedInHost.Customize(factory, AccessFakes.Account("HR Officer"), grantsFromHeader: true).WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
         {
             if (markAuthorized)
             {
@@ -70,7 +72,9 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
 
             configure?.Invoke(services);
         }));
-        return BrowserHandler.CreateClient(host.Server.CreateHandler(), out _);
+
+        var host = configure is null ? SignedInHost.Cached(factory, $"grants-header|{markAuthorized}", _ => Build()) : Build();
+        return SignedInHost.CreateClientWithGrants(host, grants);
     }
 
     private static Task<HttpResponseMessage> SendAsync(HttpClient client, string method, string url) =>

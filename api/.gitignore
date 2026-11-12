@@ -481,8 +481,5 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# Development mail files (hold reset tokens): never commit
-App_Data/
-
-# Local runtime data: Excel uploads and dev mail must never be committed.
+# Local runtime data: development mail files (hold reset tokens) and Excel uploads, never commit
 App_Data/

@@ -354,7 +354,13 @@ table requires a masked account), is skipped with a warning.
   business time zone. A bad filter is `400` with the field in `errors`.
 * Activity messages use the wording of the frontend mock services with ids and codes; an employee is named by code, never by
   name, and no national id, bank detail or salary is ever written.
-* `app.Notification` has one `IsRead` flag per row: reading a broadcast (no recipient) marks it read for everyone.
+* `app.Notification` has one `IsRead` flag per row: reading a broadcast (no recipient) marks it read for everyone. A user can
+  only reach their own rows and the broadcasts (every store query filters on the recipient, another user's id is `404`).
+  Proposal for per-user read state of broadcasts (needs a schema change, not applied): a table
+  `app.NotificationRead (NotificationId bigint NOT NULL, UserId int NOT NULL, ReadAtUtc datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+  PK (NotificationId, UserId), FK NotificationId -> app.Notification ON DELETE CASCADE, FK UserId -> sec.AppUser ON DELETE CASCADE)`
+  with an index on `UserId`. Broadcasts would then be read when a row exists for the caller; `IsRead`/`ReadAtUtc` would stay
+  for rows with a recipient. The API change is `EfNotificationStore` plus the two mark-read handlers; the response shape does not change.
 * The dashboard recruitment and payroll figures are read with plain SQL from `rec.*` and `pay.PayrollRun` (recruitment has its own
   API, see below; there is no payroll module yet); the payroll totals are demonstration figures.
 ## HTTP contract (recruitment module)
@@ -657,7 +663,10 @@ the user lacks using the `permissions` of `GET /api/auth/me`; the server stays t
   too (`403`, "Only an HR Administrator can record the exit of an HR Administrator."), and nobody records their own exit (`409`,
   "You cannot record your own exit.").
 * A transaction that joins one the caller already holds (the Excel import) creates a savepoint and rolls back to it when disposed without a commit;
-  the administrator application lock belongs to the outer transaction and is held until that ends.
+  the administrator application lock belongs to the outer transaction and is held until that ends. Verified by `JoinedTransactionTests`:
+  a joined scope that commits keeps the lock until the outer transaction ends; a joined scope disposed without a commit gives it
+  up, because SQL Server releases locks taken after a savepoint when it rolls back to it (nothing of that scope survives, so no
+  rule check is left unprotected). The savepoint name is at most 32 characters (SQL Server limit): `uow_` plus 28 hex digits.
 
 ### Row-level scoping
 

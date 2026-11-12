@@ -6,9 +6,11 @@ namespace Apex.Hrms.Application.Security;
 /// <summary>
 /// The "module:Action" grants of the signed-in caller's role for the current request. The host fills it when it checks a
 /// permission (the Api permission handler reads the grants of the role live and through <see cref="RoleGrantCache"/>), so the
-/// access scopes can tell an approver (sees everything of a module) from an ordinary employee (sees only their own rows)
-/// inside a database predicate. Nothing is filled until a permission was checked: then nobody holds anything, which is the
-/// safe side (own rows only).
+/// access scopes can tell the tiers apart inside a database predicate: HR and payroll staff (<c>Approve</c> with
+/// <c>employees:Edit</c>, or <c>payroll:View</c>/<c>payroll:Approve</c> for employees and salary data) see every row of
+/// their data; managers (<c>Approve</c> without <c>employees:Edit</c>) see their own rows and their direct reports'; any other
+/// employee sees only their own rows. <c>SelfService</c> holds the rules. Nothing is filled until a permission was checked:
+/// then nobody holds anything, which is the safe side (own rows only).
 /// </summary>
 public interface ICallerPermissions
 {
