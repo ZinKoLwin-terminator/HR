@@ -119,9 +119,25 @@ internal static class UserRules
     public const string OwnAccountMessage = "You cannot change your own role or deactivate your own account.";
     public const string OwnDeleteMessage = "You cannot delete your own account.";
     public const string LastAdministratorMessage = "There must always be one active HR Administrator.";
+    public const string LeaverActivationMessage = "This user's employee has left the company, so the account cannot be activated.";
 
     public static async Task<bool> IsLockedAsync(IAccountLogins logins, AppAccount account, CancellationToken cancellationToken) =>
         account.ExternalSubject is { } subject && (await logins.LockedOutAsync([subject], cancellationToken)).Contains(subject);
+
+    /// <summary>True when the signed-in caller has an account with the HR Administrator role (read live from the database; the permission check already refused an account that cannot sign in).</summary>
+    public static async Task<bool> IsAdministratorAsync(
+        IRepository<AppAccount> accounts,
+        IRepository<AppRole> roles,
+        ICurrentUser user,
+        CancellationToken cancellationToken)
+    {
+        if (user.UserId is not { } userId || await accounts.FindAsync(userId, cancellationToken) is not { } account)
+        {
+            return false;
+        }
+
+        return await roles.FindAsync(account.RoleId, cancellationToken) is { IsActive: true, Name: SecurityPolicy.AdministratorRoleName };
+    }
 
     public static Result EnsureNotSelf(AppAccount account, ICurrentUser user, string message) =>
         user.UserId is { } own && own == account.Id
@@ -147,6 +163,7 @@ internal static class UserRules
     public static async Task<Result> ChangeAdministratorAsync(
         IUnitOfWork unitOfWork,
         IRepository<AppAccount> accounts,
+        IRepository<Employee> employees,
         IRepository<AppRole> roles,
         AppAccount account,
         Action apply,
@@ -160,7 +177,7 @@ internal static class UserRules
         }
 
         await using var transaction = begun.Value;
-        var notLast = await EnsureNotLastAdministratorAsync(accounts, roles, account, cancellationToken);
+        var notLast = await EnsureNotLastAdministratorAsync(accounts, roles, employees, account, cancellationToken);
         if (notLast.IsFailure)
         {
             return notLast;
@@ -189,6 +206,7 @@ internal static class UserRules
     public static async Task<Result> EnsureNotLastAdministratorAsync(
         IRepository<AppAccount> accounts,
         IRepository<AppRole> roles,
+        IRepository<Employee> employees,
         AppAccount account,
         CancellationToken cancellationToken)
     {
@@ -205,12 +223,21 @@ internal static class UserRules
 
         var administratorRoleId = administrators[0].Id;
         var accountId = account.Id;
-        var another = await accounts.AnyAsync(
+        var candidates = await accounts.ListAsync(
             other => other.Id != accountId
                 && other.Status == AccountStatus.Active
                 && other.ExternalSubject != null
                 && other.RoleId == administratorRoleId,
             cancellationToken);
+
+        // Only administrators who can sign in count: an account whose employee has an exit date cannot.
+        var employeeIds = candidates.Where(other => other.EmployeeId != null).Select(other => other.EmployeeId!.Value).ToList();
+        var leftIds = employeeIds.Count == 0
+            ? []
+            : (await employees.ListAsync(employee => employeeIds.Contains(employee.Id) && employee.ExitDate != null, cancellationToken))
+                .Select(employee => employee.Id)
+                .ToHashSet();
+        var another = candidates.Any(other => other.EmployeeId is not { } employeeId || !leftIds.Contains(employeeId));
         return another ? Result.Success() : Result.Failure(AppError.Conflict(LastAdministratorMessage));
     }
 }
@@ -335,6 +362,7 @@ internal sealed class CreateUserHandler(
 internal sealed class UpdateUserHandler(
     IValidator<UserUpdateRequest> validator,
     EntityLoader<AppAccount> loader,
+    IRepository<Employee> employees,
     IRepository<AppAccount> accounts,
     IRepository<AppRole> roles,
     ICurrentUser currentUser,
@@ -376,6 +404,7 @@ internal sealed class UpdateUserHandler(
             var changed = await UserRules.ChangeAdministratorAsync(
                 unitOfWork,
                 accounts,
+                employees,
                 roles,
                 account,
                 () =>
@@ -400,6 +429,7 @@ internal sealed class UpdateUserHandler(
 /// <summary>Activate: a locked account must be unlocked first, and the role of the user must be active.</summary>
 internal sealed class ActivateUserHandler(
     EntityLoader<AppAccount> loader,
+    IRepository<Employee> employees,
     IRepository<AppRole> roles,
     IAccountLogins logins,
     IActivityRecorder activity,
@@ -417,6 +447,12 @@ internal sealed class ActivateUserHandler(
         var account = loaded.Value;
         if (account.Status != AccountStatus.Active)
         {
+            if (account.EmployeeId is { } employeeId
+                && await employees.AnyAsync(employee => employee.Id == employeeId && employee.ExitDate != null, cancellationToken))
+            {
+                return Result.Failure<UserDto>(AppError.Conflict(UserRules.LeaverActivationMessage));
+            }
+
             var role = await UserRules.FindActiveRoleAsync(roles, account.RoleId, cancellationToken);
             if (role.IsFailure)
             {
@@ -442,6 +478,7 @@ internal sealed class ActivateUserHandler(
 /// <summary>Deactivate: not your own account, and never the last active HR Administrator.</summary>
 internal sealed class DeactivateUserHandler(
     EntityLoader<AppAccount> loader,
+    IRepository<Employee> employees,
     IRepository<AppAccount> accounts,
     IRepository<AppRole> roles,
     ICurrentUser currentUser,
@@ -470,6 +507,7 @@ internal sealed class DeactivateUserHandler(
             var changed = await UserRules.ChangeAdministratorAsync(
                 unitOfWork,
                 accounts,
+                employees,
                 roles,
                 account,
                 () =>
@@ -477,7 +515,14 @@ internal sealed class DeactivateUserHandler(
                     account.Deactivate();
                     activity.Record(ActivityCategories.System, ActivityMessages.Updated(mapper.Label, mapper.Describe(account)));
                 },
-                afterSave: null,
+                afterSave: async () =>
+                {
+                    // Rotate the security stamp so an open session of the deactivated user ends at its next request.
+                    if (account.ExternalSubject is { } subject)
+                    {
+                        await logins.InvalidateSessionsAsync(subject, cancellationToken);
+                    }
+                },
                 cancellationToken);
             return changed.IsFailure
                 ? Result.Failure<UserDto>(changed.Error)
@@ -532,6 +577,7 @@ internal sealed class UnlockUserHandler(
 
 internal sealed class DeleteUserHandler(
     EntityLoader<AppAccount> loader,
+    IRepository<Employee> employees,
     IRepository<AppAccount> accounts,
     IRepository<AppRole> roles,
     ICurrentUser currentUser,
@@ -559,6 +605,7 @@ internal sealed class DeleteUserHandler(
         return await UserRules.ChangeAdministratorAsync(
             unitOfWork,
             accounts,
+            employees,
             roles,
             account,
             () =>
@@ -570,6 +617,7 @@ internal sealed class DeleteUserHandler(
             {
                 if (account.ExternalSubject is { } subject)
                 {
+                    await logins.InvalidateSessionsAsync(subject, cancellationToken);
                     await logins.DeleteAsync(subject, cancellationToken);
                 }
             },

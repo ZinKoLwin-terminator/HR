@@ -272,6 +272,9 @@ public abstract class DatabaseTest : IAsyncLifetime
 
         // No request here, so there is no cookie: a fake signed-in TST- user stands in (the audit rule rejects anonymous writes).
         services.AddScoped<ICurrentUser>(_ => new TestCurrentUser(CurrentUserId ?? TestAdministrator.AccountId, CurrentUserName ?? $"{Tag} Test User", employeeId: CurrentEmployeeId));
+
+        // The handlers are called without a request, so no permission check fills the caller's grants: the caller is an approver who sees every row.
+        services.AddScoped<Apex.Hrms.Application.Security.ICallerPermissions, AllGrantsCallerPermissions>();
         DecorateUnitOfWork(services);
         foreach (var change in customizations)
         {

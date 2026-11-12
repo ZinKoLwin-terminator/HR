@@ -369,7 +369,8 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("attendance:Approve", policies["POST /api/overtime-records/{id:int}/reject"]);
         Assert.Equal("attendance:Edit", policies["POST /api/shifts/{id:int}/activate"]);
         Assert.Equal("attendance:Delete", policies["DELETE /api/shifts/{id:int}"]);
-        Assert.Equal("attendance:Create", policies["POST /api/holidays/"]);
+        Assert.Equal("attendance:Edit", policies["POST /api/holidays/"]);
+        Assert.Equal("attendance:Edit", policies["POST /api/shifts/"]);
         Assert.Equal("attendance:Edit", policies["PUT /api/holidays/{id:int}"]);
     }
     private Dictionary<string, string?> ActivityPolicies() => ApiEndpoints().Where(IsActivityRoute)

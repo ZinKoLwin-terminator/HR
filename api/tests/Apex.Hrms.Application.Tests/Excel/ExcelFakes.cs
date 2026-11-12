@@ -67,9 +67,9 @@ internal sealed class FakeBatchStore : IImportBatchStore
     public Task<ImportBatch?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(Batches.FirstOrDefault(b => b.Id == id));
 
-    public Task<PagedResult<ImportBatch>> QueryAsync(int pageIndex, int pageSize, CancellationToken cancellationToken)
+    public Task<PagedResult<ImportBatch>> QueryAsync(int pageIndex, int pageSize, int? uploadedByUserId, CancellationToken cancellationToken)
     {
-        var all = Batches.OrderByDescending(b => b.UploadedAtUtc).ToList();
+        var all = Batches.Where(b => uploadedByUserId == null || b.UploadedByUserId == uploadedByUserId).OrderByDescending(b => b.UploadedAtUtc).ToList();
         return Task.FromResult(new PagedResult<ImportBatch>([.. all.Skip(pageIndex * pageSize).Take(pageSize)], all.Count, pageIndex, pageSize));
     }
 }

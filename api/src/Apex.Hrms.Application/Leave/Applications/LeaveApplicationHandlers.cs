@@ -1,5 +1,6 @@
 using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Activity;
+using Apex.Hrms.Application.Security;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Leave;
@@ -13,6 +14,7 @@ namespace Apex.Hrms.Application.Leave.Applications;
 
 internal sealed class LeaveApplicationCreateHandler(
     IValidator<LeaveApplicationCreateRequest> validator,
+    SelfService self,
     WorkingDayCalculator workingDays,
     LeaveApplicationRules rules,
     LeaveApplicationNumberGenerator numbers,
@@ -30,6 +32,12 @@ internal sealed class LeaveApplicationCreateHandler(
         if (valid.IsFailure)
         {
             return Result.Failure<LeaveApplicationDto>(valid.Error);
+        }
+
+        var own = self.EnsureCanActFor("leave", request.EmployeeId);
+        if (own.IsFailure)
+        {
+            return Result.Failure<LeaveApplicationDto>(own.Error);
         }
 
         var details = request.ToDetails();
@@ -69,6 +77,7 @@ internal sealed class LeaveApplicationCreateHandler(
 
 internal sealed class LeaveApplicationUpdateHandler(
     IValidator<LeaveApplicationUpdateRequest> validator,
+    SelfService self,
     EntityLoader<LeaveApplication> loader,
     WorkingDayCalculator workingDays,
     LeaveApplicationRules rules,
@@ -94,6 +103,12 @@ internal sealed class LeaveApplicationUpdateHandler(
         }
 
         var application = loaded.Value;
+        var own = self.EnsureCanActFor("leave", request.EmployeeId);
+        if (own.IsFailure)
+        {
+            return Result.Failure<LeaveApplicationDto>(own.Error);
+        }
+
         var editable = application.EnsureCanUpdate();
         if (editable.IsFailure)
         {

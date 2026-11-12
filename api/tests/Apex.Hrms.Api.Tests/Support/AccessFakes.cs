@@ -20,8 +20,9 @@ internal static class AccessFakes
         string roleName = "HR Administrator",
         AccountStatus status = AccountStatus.Active,
         bool roleActive = true,
-        bool employeeLeft = false) =>
-        new(AccountId, null, "TST- Test User", "tst@example.test", "tst-subject", status, RoleId, roleName, roleActive, employeeLeft, []);
+        bool employeeLeft = false,
+        byte[]? roleVersion = null) =>
+        new(AccountId, null, "TST- Test User", "tst@example.test", "tst-subject", status, RoleId, roleName, roleActive, employeeLeft, [], roleVersion);
 }
 
 internal sealed class FakeAccountDirectory(AccountSnapshot? account) : IAccountDirectory

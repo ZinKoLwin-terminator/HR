@@ -42,6 +42,7 @@ internal sealed class TestHost : IDisposable
         services.AddSingleton<IClock>(Clock);
         services.AddSingleton<ICurrentUser>(User);
         services.AddSingleton<IUnitOfWork>(UnitOfWork);
+        services.AddSingleton<Apex.Hrms.Application.Security.ICallerPermissions>(Permissions);
         services.AddSingleton<IActivityRecorder>(ActivityLog);
         services.AddSingleton<IActivityLogStore>(ActivityLog);
         services.AddSingleton<INotificationStore>(Notifications);
@@ -98,6 +99,9 @@ internal sealed class TestHost : IDisposable
     public FakeDashboardSource DashboardSource { get; } = new();
 
     public FakeCurrentUser User { get; } = new();
+
+    /// <summary>What the caller's role grants. Holds every permission (an approver) unless a test narrows it.</summary>
+    public FakeCallerPermissions Permissions { get; } = new();
 
     public FakeEmployees Employees { get; } = new();
 

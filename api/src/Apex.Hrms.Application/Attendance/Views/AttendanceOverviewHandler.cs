@@ -27,6 +27,7 @@ public interface IAttendanceOverviewHandler
 /// </summary>
 internal sealed class AttendanceOverviewHandler(
     IRepository<Employee> employees,
+    Apex.Hrms.Application.Security.SelfService self,
     IAccessScope<Employee> scope,
     ICurrentUser user,
     IRepository<Department> departments,
@@ -55,6 +56,7 @@ internal sealed class AttendanceOverviewHandler(
         var date = overviewDay;
         var from = date.AddDays(-(LookbackDays - 1));
         var predicate = scope.PredicateFor(user)
+            .And(self.Rows<Employee>("attendance", own => employee => employee.Id == own))
             .And(employee => employee.JoiningDate <= date && (employee.ExitDate == null || employee.ExitDate >= date));
         if (branchId is { } branch)
         {
