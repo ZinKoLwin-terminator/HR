@@ -30,6 +30,7 @@ internal static class EmployeeServiceCollectionExtensions
         services.AddScoped<IGetByIdHandler<EmployeePersonalDto>, GetByIdHandler<Employee, EmployeePersonalDto>>();
         services.AddScoped<IGetByIdHandler<BankAccountDto>, BankAccountGetHandler>();
         services.AddScoped<IEmployeeHistoryHandler, EmployeeHistoryHandler>();
+        services.AddScoped<IEmployeeLookupHandler, EmployeeLookupHandler>();
         services.AddScoped<INextEmployeeCodeHandler, NextEmployeeCodeHandler>();
 
         // Writes.

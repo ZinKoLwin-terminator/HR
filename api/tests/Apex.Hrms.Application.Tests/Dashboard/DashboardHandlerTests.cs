@@ -144,11 +144,68 @@ public sealed class DashboardHandlerTests : IDisposable
 
         var summary = ResultAssert.Succeeded(await SummaryAsync());
 
-        Assert.Equal(5, summary.Recruitment.OpenPositions);
+        Assert.Equal(5, summary.Recruitment!.OpenPositions);
         Assert.Equal(5, summary.Recruitment.ActiveCandidates);
         Assert.Equal(100m, summary.Payroll!.NetChangePercent);
         Assert.Equal(1800m, summary.Payroll.TotalNet);
         Assert.Equal([("Engineering", 1)], summary.DepartmentDistribution.Select(d => (d.Label, d.Count)));
+    }
+
+    private static readonly string[] EmployeeGrants = ["dashboard:View", "attendance:View", "attendance:Create", "leave:View", "leave:Create"];
+
+    private async Task SeedCompanyFiguresAsync()
+    {
+        var (org, employee) = await SeedWorkerAsync();
+        host.DashboardSource.Employees.Add(new EmployeeFigureRow(
+            employee.Id + 1, org.Department.Id, EmploymentStatus.Active, new DateOnly(2024, 3, 1), null, new DateOnly(1990, 11, 20), null, "Sana", "Okoye"));
+        host.DashboardSource.Recruitment = new RecruitmentRows(2, 5, new Dictionary<string, int> { ["Applied"] = 4 }, 3);
+        host.DashboardSource.PayrollRuns.Add(new PayrollRunRow("October 2026", "Paid", new DateOnly(2026, 10, 28), 1, 2000m, 200m, 1800m));
+        host.ActivityLog.Append("system", "Entry 1", null, "System", new DateTime(2026, 11, 1, 1, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public async Task An_employee_role_gets_no_payroll_recruitment_activity_or_birthdays()
+    {
+        await SeedCompanyFiguresAsync();
+        host.Permissions.Only(EmployeeGrants);
+
+        var summary = ResultAssert.Succeeded(await SummaryAsync());
+
+        Assert.Null(summary.Payroll);
+        Assert.Null(summary.Recruitment);
+        Assert.Empty(summary.RecentActivities);
+        Assert.DoesNotContain(summary.UpcomingEvents, e => e.Type == "Birthday");
+    }
+
+    [Fact]
+    public async Task An_hr_role_gets_every_part()
+    {
+        await SeedCompanyFiguresAsync();
+
+        var summary = ResultAssert.Succeeded(await SummaryAsync());
+
+        Assert.Equal(1800m, summary.Payroll!.TotalNet);
+        Assert.Equal(5, summary.Recruitment!.OpenPositions);
+        Assert.NotEmpty(summary.RecentActivities);
+        Assert.Contains(summary.UpcomingEvents, e => e is { Type: "Birthday", Title: "Sana Okoye" });
+    }
+
+    [Theory]
+    [InlineData("payroll:View")]
+    [InlineData("recruitment:View")]
+    [InlineData("activity:View")]
+    [InlineData("employees:ViewSensitive")]
+    public async Task Each_part_needs_only_its_own_permission(string grant)
+    {
+        await SeedCompanyFiguresAsync();
+        host.Permissions.Only([.. EmployeeGrants, "employees:Edit", grant]);
+
+        var summary = ResultAssert.Succeeded(await SummaryAsync());
+
+        Assert.Equal(grant == "payroll:View", summary.Payroll is not null);
+        Assert.Equal(grant == "recruitment:View", summary.Recruitment is not null);
+        Assert.Equal(grant == "activity:View", summary.RecentActivities.Count > 0);
+        Assert.Equal(grant == "employees:ViewSensitive", summary.UpcomingEvents.Any(e => e.Type == "Birthday"));
     }
 
     [Fact]

@@ -123,6 +123,58 @@ public sealed class PasswordResetEndpointTests : IClassFixture<WebApplicationFac
     }
 
     [Fact]
+    public async Task A_failure_after_the_mail_went_out_keeps_the_allowance_used()
+    {
+        var handler = new FakeResetHandler { Failure = AppError.Unavailable("Saving failed."), MailSent = true };
+        using var client = ClientFor("HR Administrator", handler);
+
+        var first = await client.PostAsync("/api/users/7/password-reset", content: null);
+        handler.Failure = null;
+        var second = await client.PostAsync("/api/users/7/password-reset", content: null);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, first.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, second.StatusCode);
+    }
+
+    [Fact]
+    public async Task One_caller_is_capped_across_many_users_with_429_and_Retry_After()
+    {
+        var handler = new FakeResetHandler();
+        using var client = ClientFor("HR Administrator", handler);
+
+        for (var user = 1; user <= PasswordResetThrottle.CallerLimit; user++)
+        {
+            Assert.Equal(HttpStatusCode.Accepted, (await client.PostAsync($"/api/users/{user}/password-reset", content: null)).StatusCode);
+        }
+
+        var over = await client.PostAsync("/api/users/999/password-reset", content: null);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, over.StatusCode);
+        Assert.True(over.Headers.RetryAfter?.Delta is { } delta && delta > TimeSpan.Zero && delta <= PasswordResetThrottle.CallerWindow);
+        Assert.DoesNotContain(999, handler.Calls);
+    }
+
+    [Fact]
+    public void The_caller_cap_counts_a_window_and_a_release_gives_one_back()
+    {
+        var clock = new ManualTime();
+        var throttle = new PasswordResetThrottle(clock);
+        for (var i = 0; i < PasswordResetThrottle.CallerLimit; i++)
+        {
+            Assert.True(throttle.TryAcquireForCaller(1, out _));
+        }
+
+        Assert.False(throttle.TryAcquireForCaller(1, out _));
+        Assert.True(throttle.TryAcquireForCaller(2, out _));
+        throttle.ReleaseForCaller(1);
+        Assert.True(throttle.TryAcquireForCaller(1, out _));
+        Assert.False(throttle.TryAcquireForCaller(1, out var wait));
+        Assert.Equal(PasswordResetThrottle.CallerWindow, wait);
+        clock.Advance(PasswordResetThrottle.CallerWindow);
+        Assert.True(throttle.TryAcquireForCaller(1, out _));
+    }
+
+    [Fact]
     public void The_throttle_frees_a_user_after_a_minute()
     {
         var clock = new ManualTime();
@@ -141,6 +193,8 @@ public sealed class PasswordResetEndpointTests : IClassFixture<WebApplicationFac
         public List<int> Calls { get; } = [];
 
         public AppError? Failure { get; set; }
+
+        public bool MailSent { get; set; }
 
         public Task<Result> HandleAsync(int id, CancellationToken cancellationToken)
         {

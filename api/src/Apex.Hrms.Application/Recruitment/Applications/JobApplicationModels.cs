@@ -18,7 +18,8 @@ public sealed record JobApplicationDto(
     DateOnly AppliedOn,
     string? RejectionReason,
     string? Notes,
-    byte[] RowVersion) : IIdentified;
+    byte[] RowVersion,
+    bool BlacklistMatch = false) : IIdentified;
 
 /// <summary>
 /// POST body. The application starts at Applied and is dated today by the server; it is only accepted while the
@@ -40,7 +41,7 @@ public sealed record JobApplicationFilter(int? JobOpeningId = null, int? Candida
 /// Moves an application along the pipeline (<c>Stage</c> is the text of the target stage). <c>Reason</c> is required
 /// when rejecting and ignored otherwise.
 /// </summary>
-public sealed record MoveApplicationStageCommand(int Id, string? RowVersion, string? Stage, string? Reason)
+public sealed record MoveApplicationStageCommand(int Id, string? RowVersion, string? Stage, string? Reason, string? BlacklistOverrideReason = null)
     : IEntityCommand;
 
 internal sealed class JobApplicationMapping :

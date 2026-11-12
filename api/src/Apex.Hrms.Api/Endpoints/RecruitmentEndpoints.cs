@@ -51,7 +51,7 @@ internal static class RecruitmentEndpoints
         .MapCommand<JobApplicationDto, StageBody, MoveApplicationStageCommand>(
             "stage",
             Module,
-            (id, body) => new MoveApplicationStageCommand(id, body?.RowVersion, body?.Stage, body?.Reason));
+            (id, body) => new MoveApplicationStageCommand(id, body?.RowVersion, body?.Stage, body?.Reason, body?.BlacklistOverrideReason));
 
     /// <summary>Recording an outcome and cancelling are edits of the interview: recruitment:Edit.</summary>
     private static void MapInterviews(IEndpointRouteBuilder app) => app
@@ -84,8 +84,8 @@ internal static class RecruitmentEndpoints
             .RequireAuthorization(view);
     }
 
-    /// <summary>Body of the stage move: <c>{ "rowVersion": "...", "stage": "Screening", "reason": "..." }</c>. The reason is required to reject.</summary>
-    private sealed record StageBody(string? RowVersion, string? Stage, string? Reason);
+    /// <summary>Body of the stage move: <c>{ "rowVersion": "...", "stage": "Screening", "reason": "...", "blacklistOverrideReason": "..." }</c>. The reason is required to reject; the override reason (HR Administrator only) approves selecting a candidate who matches the do-not-rehire list.</summary>
+    private sealed record StageBody(string? RowVersion, string? Stage, string? Reason, string? BlacklistOverrideReason);
 
     /// <summary>Body of the outcome command: <c>{ "rowVersion": "...", "score": 4, "recommendation": "Hire", "feedback": "..." }</c>.</summary>
     private sealed record OutcomeBody(string? RowVersion, int? Score, string? Recommendation, string? Feedback);

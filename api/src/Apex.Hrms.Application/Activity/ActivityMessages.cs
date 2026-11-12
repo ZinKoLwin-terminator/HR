@@ -46,4 +46,13 @@ public static class ActivityMessages
 
     /// <summary>An application moved to a stage: <c>Ada Test for Backend Engineer moved to Screening</c>.</summary>
     public static string StageMoved(string applicationLabel, string stage) => $"{applicationLabel} moved to {stage}";
+
+    /// <summary>Do-not-rehire list changes: the employee code only, never the reason.</summary>
+    public static string AddedToDoNotRehire(string employeeCode) => $"Employee {employeeCode} added to the do-not-rehire list";
+
+    public static string RemovedFromDoNotRehire(string employeeCode) => $"Employee {employeeCode} removed from the do-not-rehire list";
+
+    /// <summary>An administrator approved a hire although the candidate matches the list: the application, never the reason or the employee.</summary>
+    public static string HireApprovedDespiteMatch(string applicationNo) =>
+        $"Hire of {applicationNo} approved despite a do-not-rehire match";
 }

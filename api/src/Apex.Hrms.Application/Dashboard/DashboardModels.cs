@@ -37,7 +37,7 @@ public sealed record AttendanceTrendPointDto(DateOnly Date, int Present, int Lat
 /// <param name="Month">yyyy-MM.</param>
 public sealed record HeadcountGrowthPointDto(string Month, int Headcount, int Joiners, int Exits);
 
-/// <param name="Type">Holiday, Birthday, Work Anniversary, Leave or Probation.</param>
+/// <param name="Type">Holiday, Birthday (only for callers with employees:ViewSensitive), Work Anniversary, Leave or Probation.</param>
 public sealed record UpcomingEventDto(DateOnly Date, string Title, string Subtitle, string Type);
 
 public sealed record PendingLeaveItemDto(
@@ -64,7 +64,7 @@ public sealed record DashboardSummaryDto(
     int PendingLeaveApprovals,
     IReadOnlyList<PendingLeaveItemDto> PendingLeaves,
     PayrollSummaryDto? Payroll,
-    RecruitmentSummaryDto Recruitment,
+    RecruitmentSummaryDto? Recruitment,
     IReadOnlyList<CountByLabelDto> DepartmentDistribution,
     IReadOnlyList<AttendanceTrendPointDto> AttendanceTrend,
     IReadOnlyList<HeadcountGrowthPointDto> HeadcountGrowth,

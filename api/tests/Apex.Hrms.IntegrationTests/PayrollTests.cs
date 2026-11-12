@@ -107,7 +107,7 @@ public sealed class PayrollTests : PayrollTestBase
 
         Assert.Equal(1, processed.EmployeeCount);
         var warning = Assert.Single(processed.Warnings);
-        Assert.Equal($"{skipped.EmployeeCode} Mia Testwell has no salary assignment and was skipped.", warning);
+        Assert.Equal($"{skipped.EmployeeCode} has no salary assignment and was skipped.", warning);
         Assert.Equal(1, await ScalarAsync<int>("SELECT COUNT(*) FROM pay.PayrollRunWarning WHERE PayrollRunId = @id", ("@id", run.Id)));
         Assert.Equal(processed.Warnings, Succeeded(await Get<PayrollRunDto>(run.Id)).Warnings);
     }

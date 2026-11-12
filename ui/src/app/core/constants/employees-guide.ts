@@ -185,6 +185,36 @@ export const EMPLOYEES_GUIDE: readonly GuideBlock[] = [
     ],
   },
 
+  // ───────────── Print and letters ─────────────
+  {
+    type: 'heading',
+    text: { en: 'Printing and letters', my: 'ပရင့်ထုတ်ခြင်းနှင့် စာများ' },
+  },
+  {
+    type: 'paragraph',
+    text: {
+      en: 'Printing uses the browser: choose Print, then print on paper or save as PDF. Nothing is generated on a server.',
+      my: 'ပရင့်ထုတ်ရာတွင် Browser ကိုသုံးသည် — Print ကိုနှိပ်ပြီး စက္ကူပေါ်ထုတ်ပါ သို့မဟုတ် PDF အဖြစ်သိမ်းပါ။ Server ပေါ်တွင် ဖိုင်မထုတ်ပါ။',
+    },
+  },
+  {
+    type: 'list',
+    items: [
+      {
+        en: 'Print profile (on the profile) prints employment details. Personal and bank sections and the document list appear only if your role may see them; the account number is always masked.',
+        my: 'Print profile သည် အလုပ်အကိုင်အသေးစိတ်ကို ထုတ်ပေးသည်။ ကိုယ်ရေး၊ ဘဏ်နှင့် စာရွက်စာတမ်းစာရင်းကို သင့် Role မြင်ခွင့်ရှိမှသာ ပါသည်၊ ဘဏ်အကောင့်နံပါတ်ကို အမြဲဖုံးထားသည်။',
+      },
+      {
+        en: 'Every list has a Print button: the current view, or all matching rows (up to 1,000).',
+        my: 'စာရင်းတိုင်းတွင် Print ခလုတ်ရှိသည် — လက်ရှိမြင်ကွင်း သို့မဟုတ် ကိုက်ညီသည့် အတန်းအားလုံး (အများဆုံး ၁,၀၀၀)။',
+      },
+      {
+        en: 'Letters (on the profile) makes an employment certificate, an experience letter (only for an employee with an exit date) or a leave approval letter (for an Approved leave application; needs leave access). Type the reference number and signatory, then print.',
+        my: 'Letters (Profile တွင်) သည် အလုပ်အကိုင်လက်မှတ်၊ အတွေ့အကြုံစာ (ထွက်ရက်ရှိသူအတွက်သာ) သို့မဟုတ် ခွင့်ခွင့်ပြုစာ (Approved ခွင့်လျှောက်လွှာအတွက်၊ ခွင့်ကြည့်ခွင့်လို) ကို ဖန်တီးပေးသည်။ ရည်ညွှန်းနံပါတ်နှင့် လက်မှတ်ထိုးသူကို ရိုက်ထည့်ပြီး ပရင့်ထုတ်ပါ။',
+      },
+    ],
+  },
+
   // ───────────── Status ─────────────
   {
     type: 'heading',

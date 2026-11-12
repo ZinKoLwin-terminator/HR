@@ -74,6 +74,7 @@ internal static class PayrollServiceCollectionExtensions
         services.AddScoped<IDtoMapper<Payslip, PayslipDto>>(provider => provider.GetRequiredService<PayslipMapping>());
         services.AddScoped<IQuerySpecification<Payslip, PayslipFilter>, PayslipQuerySpecification>();
         services.AddScoped<IGetByIdHandler<PayslipDto>, PayslipGetHandler>();
+        services.AddScoped<IMyPayslipsHandler, MyPayslipsHandler>();
         services.AddScoped<IQueryHandler<PayslipDto, PayslipFilter>, QueryHandler<Payslip, PayslipDto, PayslipFilter>>();
         return services;
     }

@@ -651,6 +651,8 @@ internal sealed class UserPasswordResetHandler(
     public const string NotConfiguredMessage = "Password reset by email is not configured on this server. Ask an administrator to configure email.";
     public const string SendFailedMessage = "The password reset email could not be sent. Try again later.";
 
+    public bool MailSent { get; private set; }
+
     public async Task<Result> HandleAsync(int id, CancellationToken cancellationToken)
     {
         try
@@ -711,6 +713,7 @@ internal sealed class UserPasswordResetHandler(
         try
         {
             await logins.SendPasswordResetAsync(account.ExternalSubject, cancellationToken);
+            MailSent = true;
         }
         catch (EmailNotConfiguredException)
         {

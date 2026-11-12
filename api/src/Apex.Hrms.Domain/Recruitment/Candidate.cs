@@ -3,6 +3,7 @@ using Apex.Hrms.Domain.Common;
 namespace Apex.Hrms.Domain.Recruitment;
 
 /// <summary>The fields of a candidate. The email is stored in lower case.</summary>
+/// <param name="NationalId">Optional, trimmed; matched against the do-not-rehire list only.</param>
 public sealed record CandidateDetails(
     string FirstName,
     string LastName,
@@ -12,7 +13,8 @@ public sealed record CandidateDetails(
     string? CurrentEmployer,
     decimal ExperienceYears,
     string? ResumeName,
-    string? Notes)
+    string? Notes,
+    string? NationalId = null)
 {
     /// <summary>Trims text, lower-cases the email and turns blank optional text into null. Idempotent.</summary>
     public CandidateDetails Normalized() => this with
@@ -24,6 +26,7 @@ public sealed record CandidateDetails(
         CurrentEmployer = TextNormalization.CleanOptional(CurrentEmployer),
         ResumeName = TextNormalization.CleanOptional(ResumeName),
         Notes = TextNormalization.CleanOptional(Notes),
+        NationalId = TextNormalization.CleanOptional(NationalId),
     };
 }
 
@@ -57,6 +60,9 @@ public sealed class Candidate : AuditedEntity
     public string? ResumeName { get; private set; }
 
     public string? Notes { get; private set; }
+
+    /// <summary>Optional. Used only to match the do-not-rehire list; it is never returned by the API.</summary>
+    public string? NationalId { get; private set; }
 
     public string FullName => $"{FirstName} {LastName}";
 
@@ -102,6 +108,12 @@ public sealed class Candidate : AuditedEntity
         ExperienceYears = normalized.ExperienceYears;
         ResumeName = normalized.ResumeName;
         Notes = normalized.Notes;
+        // Omitted (null) keeps the stored value, since responses never return it; blank clears it.
+        if (details.NationalId is not null)
+        {
+            NationalId = normalized.NationalId;
+        }
+
         return Result.Success();
     }
 }

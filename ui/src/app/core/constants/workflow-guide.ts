@@ -588,8 +588,8 @@ export const WORKFLOWS: readonly Workflow[] = [
         module: 'Payroll',
         title: { en: 'Payslips and history', my: 'Payslip နှင့် History' },
         text: {
-          en: 'Payslips are snapshots that can be viewed and printed. History compares gross and net by month.',
-          my: 'Payslip သည် Snapshot ဖြစ်ပြီး ကြည့်/ပရင့်ထုတ်နိုင်သည်။ History တွင် လအလိုက် Gross/Net နှိုင်းယှဉ်နိုင်သည်။',
+          en: 'Payslips are snapshots that can be viewed and printed (one, or the whole period from Payroll Review). History compares gross and net by month.',
+          my: 'Payslip သည် Snapshot ဖြစ်ပြီး ကြည့်/ပရင့်ထုတ်နိုင်သည် (တစ်စောင်၊ သို့မဟုတ် Payroll Review မှ Period တစ်ခုလုံး)။ History တွင် လအလိုက် Gross/Net နှိုင်းယှဉ်နိုင်သည်။',
         },
         route: '/payroll/payslips',
       },

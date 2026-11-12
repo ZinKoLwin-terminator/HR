@@ -24,14 +24,18 @@ export function buildDashboardReportCsv(s: DashboardSummary): string {
     ['Attendance', 'Absent', a.absent],
     ['Attendance', 'Attendance rate (%)', a.attendanceRate],
     ['Leave', 'Pending approvals', s.pendingLeaveApprovals],
-    ['Recruitment', 'Open positions', s.recruitment.openPositions],
-    ['Recruitment', 'Active candidates', s.recruitment.activeCandidates],
-    ['Recruitment', 'Upcoming interviews', s.recruitment.upcomingInterviews],
-    ...s.recruitment.funnel.map((f): (string | number)[] => [
-      'Recruitment funnel',
-      f.label,
-      f.count,
-    ]),
+    ...(s.recruitment
+      ? [
+          ['Recruitment', 'Open positions', s.recruitment.openPositions],
+          ['Recruitment', 'Active candidates', s.recruitment.activeCandidates],
+          ['Recruitment', 'Upcoming interviews', s.recruitment.upcomingInterviews],
+          ...s.recruitment.funnel.map((f): (string | number)[] => [
+            'Recruitment funnel',
+            f.label,
+            f.count,
+          ]),
+        ]
+      : []),
     ...(s.payroll
       ? [
           ['Payroll', 'Period', s.payroll.periodName],

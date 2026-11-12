@@ -42,6 +42,8 @@ app.MapLeaveEndpoints();
 app.MapAttendanceEndpoints();
 app.MapPayrollEndpoints();
 app.MapEmployeeDocumentEndpoints();
+app.MapBlacklistEndpoints();
+app.MapSelfServiceEndpoints();
 app.MapActivityEndpoints();
 app.MapRecruitmentEndpoints();
 app.MapSettingsEndpoints();

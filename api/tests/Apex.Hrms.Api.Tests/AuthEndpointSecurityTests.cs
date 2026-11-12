@@ -20,16 +20,17 @@ namespace Apex.Hrms.Api.Tests;
 /// The security shape of the API that needs no database: which endpoints are anonymous, deny by default, the cookie
 /// settings, antiforgery on unsafe methods and the fail-closed reset flow. Nothing here opens a database connection.
 /// </summary>
-public sealed class AuthEndpointSecurityTests
+public sealed class AuthEndpointSecurityTests(WebApplicationFactory<Program> fixture) : IClassFixture<WebApplicationFactory<Program>>
 {
-    private static WebApplicationFactory<Program> Development(string? cookieName = null) =>
+    /// <summary>One Development host for the whole class (starting a host is the slow part); the tests only send independent requests through their own clients.</summary>
+    private WebApplicationFactory<Program> Development() =>
+        SignedInHost.Cached(fixture, "development", factory => factory.WithWebHostBuilder(builder => builder.UseEnvironment("Development")));
+
+    private static WebApplicationFactory<Program> DevelopmentWithCookie(string cookieName) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
-            if (cookieName is not null)
-            {
-                builder.UseSetting("Auth:DevelopmentCookieName", cookieName);
-            }
+            builder.UseSetting("Auth:DevelopmentCookieName", cookieName);
         });
 
     private static WebApplicationFactory<Program> Production() =>
@@ -47,7 +48,7 @@ public sealed class AuthEndpointSecurityTests
     [Fact]
     public void Only_the_four_auth_endpoints_and_the_openapi_document_allow_anonymous_callers()
     {
-        using var factory = Development();
+        var factory = Development();
         using var client = factory.CreateClient();
 
         var endpoints = factory.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>().ToList();
@@ -65,7 +66,7 @@ public sealed class AuthEndpointSecurityTests
     [Fact]
     public async Task Deny_by_default_is_a_fallback_policy_and_every_named_policy_requires_a_signed_in_user()
     {
-        using var factory = Development();
+        var factory = Development();
         using var client = factory.CreateClient();
         var provider = factory.Services.GetRequiredService<IAuthorizationPolicyProvider>();
 
@@ -93,7 +94,7 @@ public sealed class AuthEndpointSecurityTests
     [InlineData("/api/auth/me")]
     public async Task An_anonymous_read_is_a_401_problem_not_a_redirect(string path)
     {
-        using var factory = Development();
+        var factory = Development();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var response = await client.GetAsync(path);
@@ -106,7 +107,7 @@ public sealed class AuthEndpointSecurityTests
     [Fact]
     public async Task An_anonymous_write_with_a_valid_antiforgery_token_is_a_401()
     {
-        using var factory = Development();
+        var factory = Development();
         using var client = BrowserHandler.CreateClient(factory.Server.CreateHandler(), out _);
 
         var response = await client.PostAsJsonAsync("/api/companies", new { });
@@ -126,7 +127,7 @@ public sealed class AuthEndpointSecurityTests
     [InlineData("DELETE", "/api/companies/1")]
     public async Task An_unsafe_request_without_an_antiforgery_token_is_a_400(string method, string path)
     {
-        using var factory = Development();
+        var factory = Development();
         using var client = BrowserHandler.CreateClient(factory.Server.CreateHandler(), out _, sendXsrfHeader: false);
 
         using var request = new HttpRequestMessage(new HttpMethod(method), path) { Content = JsonContent.Create(new { }) };
@@ -141,7 +142,7 @@ public sealed class AuthEndpointSecurityTests
     [Fact]
     public async Task A_wrong_antiforgery_token_is_a_400()
     {
-        using var factory = Development();
+        var factory = Development();
         using var client = BrowserHandler.CreateClient(factory.Server.CreateHandler(), out _, sendXsrfHeader: false);
         (await client.GetAsync("/api/auth/antiforgery")).EnsureSuccessStatusCode();
 
@@ -155,7 +156,7 @@ public sealed class AuthEndpointSecurityTests
     [Fact]
     public async Task The_antiforgery_endpoint_is_anonymous_and_sets_a_readable_token_cookie_and_a_hidden_secret_cookie()
     {
-        using var factory = Development();
+        var factory = Development();
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/auth/antiforgery");
@@ -172,7 +173,7 @@ public sealed class AuthEndpointSecurityTests
     [Fact]
     public async Task In_development_the_cookie_name_is_configurable_and_has_no_host_prefix()
     {
-        using var factory = Development("custom-cookie");
+        using var factory = DevelopmentWithCookie("custom-cookie");
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/auth/antiforgery");
@@ -238,7 +239,7 @@ public sealed class AuthEndpointSecurityTests
     [Fact]
     public void The_appsettings_files_hold_no_smtp_credentials_and_no_secrets()
     {
-        using var factory = Development();
+        var factory = Development();
         using var client = factory.CreateClient();
         var configuration = factory.Services.GetRequiredService<IConfiguration>();
 

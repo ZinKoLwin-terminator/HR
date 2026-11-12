@@ -223,8 +223,8 @@ public sealed class PayrollRunHandlerTests : IDisposable
         Assert.Equal(1, processed.EmployeeCount);
         Assert.Equal(
             [
-                $"{noSalary.EmployeeCode} Mia Hartley has no salary assignment and was skipped.",
-                $"{noBank.EmployeeCode} Mia Hartley has no usable bank account and was skipped.",
+                $"{noSalary.EmployeeCode} has no salary assignment and was skipped.",
+                $"{noBank.EmployeeCode} has no usable bank account and was skipped.",
             ],
             processed.Warnings);
         Assert.Equal(processed.Warnings, ResultAssert.Succeeded(await host.GetRun(run.Id)).Warnings);

@@ -1,9 +1,12 @@
 using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Activity;
+using Apex.Hrms.Application.Employees.Blacklist;
 using Apex.Hrms.Application.References;
+using Apex.Hrms.Application.Settings;
 using Apex.Hrms.Application.UseCases;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Recruitment;
+using Apex.Hrms.Domain.Security;
 using FluentValidation;
 
 namespace Apex.Hrms.Application.Recruitment.Applications;
@@ -16,6 +19,8 @@ namespace Apex.Hrms.Application.Recruitment.Applications;
 internal sealed class JobApplicationCreateHandler(
     IValidator<JobApplicationCreateRequest> validator,
     IRepository<JobOpening> openings,
+    IAccessScope<JobOpening> openingScope,
+    ICurrentUser user,
     IRepository<Candidate> candidates,
     IRepository<JobApplication> applications,
     IClock clock,
@@ -32,7 +37,7 @@ internal sealed class JobApplicationCreateHandler(
             return Result.Failure<JobApplicationDto>(valid.Error);
         }
 
-        var opening = await openings.FindAsync(request.JobOpeningId, cancellationToken);
+        var opening = await openings.FindAsync(request.JobOpeningId, openingScope.PredicateFor(user), cancellationToken);
         if (opening is null)
         {
             return Result.Failure<JobApplicationDto>(AppError.Validation(
@@ -177,12 +182,19 @@ internal sealed class MoveApplicationStageHandler(
     EntityLoader<JobApplication> loader,
     IRepository<JobOpening> openings,
     IRepository<Interview> interviews,
+    IRepository<Candidate> candidates,
+    IRepository<AppAccount> accounts,
+    IRepository<AppRole> roles,
+    IBlacklistMatcher blacklist,
+    ICurrentUser user,
     RecruitmentLookup lookup,
     IActivityRecorder activity,
     IUnitOfWork unitOfWork,
     JobApplicationMapping mapper) : ICommandHandler<MoveApplicationStageCommand, JobApplicationDto>
 {
     public const string RejectedNote = "Cancelled: the application was rejected.";
+    public const string BlacklistMatchMessage = "This candidate matches the do-not-rehire list. An HR Administrator must approve the hire with a reason.";
+    public const string BlacklistAdministratorOnlyMessage = "Only an HR Administrator can approve the hire of a candidate who matches the do-not-rehire list.";
 
     public async Task<Result<JobApplicationDto>> HandleAsync(MoveApplicationStageCommand command, CancellationToken cancellationToken)
     {
@@ -220,6 +232,14 @@ internal sealed class MoveApplicationStageHandler(
             return Result.Failure<JobApplicationDto>(allowed.Error);
         }
 
+        var approvedOverride = stage == ApplicationStage.Selected
+            ? await CheckBlacklistAsync(application, command, cancellationToken)
+            : Result.Success<string?>(null);
+        if (approvedOverride.IsFailure)
+        {
+            return Result.Failure<JobApplicationDto>(approvedOverride.Error);
+        }
+
         var moved = application.MoveTo(stage, command.Reason);
         if (moved.IsFailure)
         {
@@ -246,14 +266,57 @@ internal sealed class MoveApplicationStageHandler(
             mapper.ActivityCategory,
             ActivityMessages.StageMoved(await lookup.ApplicationLabelAsync(application, cancellationToken), ApplicationStageText.ToText(stage)));
 
+        if (approvedOverride.Value is { } overrideReason && user.UserId is { } approverId)
+        {
+            application.RecordBlacklistOverride(overrideReason, approverId);
+            activity.Record(mapper.ActivityCategory, ActivityMessages.HireApprovedDespiteMatch(mapper.Describe(application)));
+        }
+
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         return saved.IsFailure
             ? Result.Failure<JobApplicationDto>(saved.Error)
             : Result.Success(mapper.ToDto(application));
     }
 
+    /// <summary>
+    /// Selecting a candidate is the hiring decision of this API (there is no later "hired" stage). A candidate who matches
+    /// an active do-not-rehire entry is refused (409) unless the command carries an override reason and the caller is an
+    /// HR Administrator (403 for anyone else who sends one). Returns the reason to store, or null when there was no match.
+    /// Neither the employee nor the entry's reason is ever revealed.
+    /// </summary>
+    private async Task<Result<string?>> CheckBlacklistAsync(
+        JobApplication application,
+        MoveApplicationStageCommand command,
+        CancellationToken cancellationToken)
+    {
+        var candidate = await candidates.FindAsync(application.CandidateId, cancellationToken);
+        if (candidate is null || !await blacklist.MatchesAsync(candidate, cancellationToken))
+        {
+            return Result.Success<string?>(null);
+        }
+
+        var reason = command.BlacklistOverrideReason?.Trim();
+        if (string.IsNullOrEmpty(reason))
+        {
+            return Result.Failure<string?>(AppError.Conflict(BlacklistMatchMessage));
+        }
+
+        return await UserRules.IsAdministratorAsync(accounts, roles, user, cancellationToken)
+            ? Result.Success<string?>(reason)
+            : Result.Failure<string?>(AppError.Forbidden(BlacklistAdministratorOnlyMessage));
+    }
+
     private static Result CheckShape(MoveApplicationStageCommand command, out ApplicationStage stage)
     {
+        if (command.BlacklistOverrideReason?.Trim().Length > JobApplication.OverrideReasonMaxLength)
+        {
+            stage = default;
+            return Result.Failure(AppError.Validation(
+                $"Override reason must be at most {JobApplication.OverrideReasonMaxLength} characters.",
+                "blacklistOverrideReason",
+                $"Override reason must be at most {JobApplication.OverrideReasonMaxLength} characters."));
+        }
+
         if (!ApplicationStageText.TryParse(command.Stage?.Trim(), out stage))
         {
             return Result.Failure(AppError.Validation(
