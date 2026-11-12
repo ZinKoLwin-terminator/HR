@@ -56,6 +56,13 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     private static async Task AssertNoTestRowsAsync(string problem)
     {
+        var disabledTriggers = await TestRows.DisabledPayTriggersAsync();
+        if (disabledTriggers != 0)
+        {
+            throw new InvalidOperationException(
+                $"{problem} {disabledTriggers} trigger(s) of the pay schema are disabled in {SqlServerEnvironment.DatabaseName}. The payroll cleanup disables them only while it deletes test rows; enable them again with ENABLE TRIGGER ALL ON each pay table (in that database only).");
+        }
+
         var leftovers = await TestRows.CountAsync(TestRows.TagFamily);
         if (leftovers.Count != 0)
         {

@@ -111,7 +111,7 @@ Database errors that slip past the rules are translated by constraint name, neve
 | 547 FOREIGN KEY / REFERENCE | `409` Conflict |
 | `UQ_LeavePolicy_ActiveGroup` | `400` Validation on `leaveTypeId` |
 | `UQ_LeaveApplication_ApplicationNo`, `CK_LeaveApplication_NotOwnApprover` | `409` Conflict |
-| THROW 51001-51004 (paid payroll run is final) | `409` Conflict |
+| THROW 51001-51004 (an approved payroll run and its payslips are locked, a paid run is final) | `409` Conflict |
 
 `traceId` is `Activity.Current.Id` or the request trace identifier. The server log for an unexpected error has the
 exception type chain, the SQL error number and the stack trace, never the exception message.
@@ -281,6 +281,37 @@ Rules (the attendance rules are demonstrations, not statutory calculations):
 * **Not provided:** PUT of a pending adjustment or overtime request (delete it and file it again); `recordId` on adjustments.
 * **Overview:** built from the employees expected that day (employed, working weekday of their shift, not a holiday); without a
   record they are On Leave (approved whole-day leave) or Absent (for today: "not checked in yet"; a future day counts nothing).
+
+## HTTP contract (payroll module)
+
+**All payroll figures are DEMONSTRATION figures.** The calculation is ported from the frontend's sample rules; the tax and
+social security percentages are whatever an administrator configures on a salary component. Nothing here is a statutory tax,
+social security or labour-law calculation, and no jurisdiction has signed it off. Do not use it to pay real people.
+Salary amounts and payslips are personal data: every route needs a payroll permission, salaries and payslips are listed in
+pages only (no "get all"), and a payslip carries the masked bank account only (`•••• 7890`).
+
+Permissions are exactly the seeded payroll actions: View, Create, Edit, Approve (there is no payroll Delete: deleting a
+component, structure, salary assignment or draft period needs Edit). Rules and wording follow the frontend mock services; the
+database triggers lock an approved run (and its payslips, lines and warnings) and make a paid run final.
+
+| Route | Policy | Body / notes |
+| --- | --- | --- |
+| `GET/POST /api/salary-components`, `GET /query`, `GET/PUT/DELETE /{id}`, `POST /{id}/activate\|deactivate` | View / Create / Edit | `code, name, type (Earning\|Deduction), calculation (Fixed\|PercentOfBasic\|PercentOfGross), value, description, status`; a percentage is above 0 and at most 100 |
+| `/api/salary-structures` (same shape) | View / Create / Edit | `code, name, description, componentIds` (display order; at least one, at least one earning) |
+| `GET /api/salary-assignments/query?employeeId&structureId`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}` | View / Create / Edit | `employeeId, structureId, basicSalary, effectiveFrom, remarks`; basic inside the employee's job-grade band, not before the joining date, one per employee and date, employee cannot change, the last one of an employee cannot be deleted. History = query by `employeeId`, `sort=effectiveFrom:desc` |
+| `GET /api/payroll-runs`, `/query?status&year`, `/{id}`, `POST` (`year, month, payDate?`), `PUT /{id}`, `DELETE /{id}` | View / Create / Edit | Period not in the future, one per month; change and delete only in Draft |
+| `POST /api/payroll-runs/{id}/process` | Edit | `{rowVersion}`; Draft to Pending Approval; earlier periods must be Approved or Paid first |
+| `POST /api/payroll-runs/{id}/approve` | Approve | `{rowVersion}`; the user who processed the run cannot approve it (409) |
+| `POST /api/payroll-runs/{id}/mark-paid` | Approve | `{rowVersion}`; Approved to Paid, records only (no money moves) |
+| `POST /api/payroll-runs/{id}/return-to-draft` | Approve | `{rowVersion, reason?}` (reason at most 200 characters); payslips and warnings are deleted after the run is saved as Draft, in one transaction |
+| `GET /api/payslips/query?runId&employeeId&departmentId`, `GET /api/payslips/{id}` | View | Read only |
+
+Calculation per employee and period: part-month employment prorates basic and fixed components by calendar days; earnings are
+fixed amounts or a percentage of the prorated basic; approved overtime adds `basic / (working days x 8) x 1.5 x hours`; gross is
+basic plus earnings; deductions are fixed, a percentage of basic or of gross, plus unpaid leave `basic / working days` per day;
+net is gross minus deductions; every amount is rounded to 2 decimals (halves away from zero). Working days come from the
+configured weekend and the holidays. An employee without a salary assignment, or without a usable bank account (the payslip
+table requires a masked account), is skipped with a warning.
 
 ## HTTP contract (dashboard, activity and notifications)
 

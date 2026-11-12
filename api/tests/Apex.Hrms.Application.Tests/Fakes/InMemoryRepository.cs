@@ -10,7 +10,7 @@ namespace Apex.Hrms.Application.Tests.Fakes;
 /// row version was checked by a change (ExpectRowVersion) gets a new version when the fake database saves.
 /// </summary>
 internal sealed class InMemoryRepository<TEntity> : IRepository<TEntity>, IRecordCounter<TEntity>, IVersionedStore
-    where TEntity : AuditedEntity
+    where TEntity : Entity
 {
     private static readonly System.Reflection.PropertyInfo IdProperty = typeof(Entity).GetProperty(nameof(Entity.Id))!;
     private static readonly System.Reflection.PropertyInfo RowVersionProperty = typeof(AuditedEntity).GetProperty(nameof(AuditedEntity.RowVersion))!;
@@ -63,7 +63,11 @@ internal sealed class InMemoryRepository<TEntity> : IRepository<TEntity>, IRecor
     public void Add(TEntity entity)
     {
         IdProperty.SetValue(entity, ++lastId);
-        RowVersionProperty.SetValue(entity, database.NextRowVersion());
+        if (entity is AuditedEntity)
+        {
+            RowVersionProperty.SetValue(entity, database.NextRowVersion());
+        }
+
         items.Add(entity);
     }
 

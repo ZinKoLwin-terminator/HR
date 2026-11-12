@@ -17,6 +17,7 @@ using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Leave;
 using Apex.Hrms.Domain.Organization;
+using Apex.Hrms.Domain.Payroll;
 using Apex.Hrms.Domain.Recruitment;
 using Apex.Hrms.Domain.Security;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,6 +66,13 @@ internal sealed class TestHost : IDisposable
         AddCounter<JobApplication>(services);
         AddCounter<Interview>(services);
         AddCounter<AppAccount>(services);
+        AddCounter<SalaryAssignment>(services);
+        AddCounter<Payslip>(services);
+        services.AddSingleton<IRecordCounter<SalaryStructureComponent>>(sp => new StructureComponentCounter((InMemoryRepository<SalaryStructure>)sp.GetRequiredService<IRepository<SalaryStructure>>()));
+        services.AddSingleton<IPayrollRunOutput>(sp => new FakePayrollRunOutput(
+            sp.GetRequiredService<IUnitOfWork>(),
+            (InMemoryRepository<Payslip>)sp.GetRequiredService<IRepository<Payslip>>(),
+            (InMemoryRepository<PayrollRun>)sp.GetRequiredService<IRepository<PayrollRun>>()));
         services.AddSingleton<IEmployeeCodeSequence>(CodeSequence);
         services.AddSingleton<ILeaveApplicationNumberSequence>(LeaveNumbers);
         services.AddSingleton<IJobOpeningCodeSequence>(JobCodes);
@@ -101,7 +109,7 @@ internal sealed class TestHost : IDisposable
     public FakeBusinessWeek Week { get; } = new();
 
     public InMemoryRepository<TEntity> Repository<TEntity>()
-        where TEntity : AuditedEntity =>
+        where TEntity : Entity =>
         (InMemoryRepository<TEntity>)provider.GetRequiredService<IRepository<TEntity>>();
 
     public T Get<T>()
@@ -135,7 +143,7 @@ internal sealed class TestHost : IDisposable
         await Succeeded(Get<ICreateHandler<PositionCreateRequest, PositionDto>>().HandleAsync(Requests.Position(departmentId, jobGradeId, code, sectionId, reportsTo), default));
 
     private static void AddCounter<TEntity>(IServiceCollection services)
-        where TEntity : AuditedEntity =>
+        where TEntity : Entity =>
         services.AddSingleton<IRecordCounter<TEntity>>(sp => (InMemoryRepository<TEntity>)sp.GetRequiredService<IRepository<TEntity>>());
 
     private static async Task<T> Succeeded<T>(Task<Result<T>> pending)

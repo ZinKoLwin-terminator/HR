@@ -64,6 +64,11 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         AttendancePrefixes
             .Any(prefix => endpoint.RoutePattern.RawText!.StartsWith(prefix, StringComparison.Ordinal));
 
+    private static readonly string[] PayrollPrefixes = ["/api/salary-components", "/api/salary-structures", "/api/salary-assignments", "/api/payroll-runs", "/api/payslips"];
+
+    private static bool IsPayrollRoute(RouteEndpoint endpoint) =>
+        PayrollPrefixes.Any(prefix => endpoint.RoutePattern.RawText!.StartsWith(prefix, StringComparison.Ordinal));
+
     private static bool IsExcelRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/excel", StringComparison.Ordinal);
 
@@ -126,7 +131,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void Six_organization_resources_map_eight_endpoints_each()
     {
         var endpoints = ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint))
             .ToList();
 
         Assert.Equal(48, endpoints.Count);
@@ -194,6 +199,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
                 "hr-administrator",
                 "leave:Approve", "leave:Create", "leave:Delete", "leave:Edit", "leave:View",
                 "organization:Create", "organization:Delete", "organization:Edit", "organization:View",
+                "payroll:Approve", "payroll:Create", "payroll:Edit", "payroll:View",
                 "recruitment:Create", "recruitment:Delete", "recruitment:Edit", "recruitment:View",
                 "settings:Create", "settings:Delete", "settings:Edit", "settings:View",
                 "signed-in",
@@ -205,7 +211,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
         foreach (var endpoint in ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint)))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);
@@ -228,6 +234,72 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         .ToDictionary(
             endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
             endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
+
+    private static readonly string[] SeededPayrollPolicies = ["payroll:View", "payroll:Create", "payroll:Edit", "payroll:Approve"];
+
+    private Dictionary<string, string?> PayrollPolicies() => ApiEndpoints().Where(IsPayrollRoute)
+        .ToDictionary(
+            endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+            endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
+
+    [Fact]
+    public void Payroll_maps_thirty_three_endpoints_and_no_unpaged_salary_or_payslip_list()
+    {
+        var policies = PayrollPolicies();
+
+        Assert.Equal(33, policies.Count);
+        Assert.DoesNotContain("GET /api/salary-assignments/", policies.Keys);
+        Assert.DoesNotContain("GET /api/payslips/", policies.Keys);
+        Assert.Contains("GET /api/salary-assignments/query", policies.Keys);
+        Assert.Contains("GET /api/payslips/query", policies.Keys);
+        Assert.Contains("GET /api/salary-components/", policies.Keys);
+        Assert.Contains("GET /api/salary-structures/", policies.Keys);
+    }
+
+    [Fact]
+    public void Payroll_uses_only_the_actions_the_database_seed_has_and_no_payslip_route_writes()
+    {
+        var policies = PayrollPolicies();
+
+        // The seed has no payroll Delete: View, Create, Edit and Approve only.
+        Assert.All(policies.Values, policy => Assert.Contains(policy, SeededPayrollPolicies));
+        Assert.DoesNotContain(PermissionModuleKeys("payroll"), key => key.EndsWith(":Delete", StringComparison.Ordinal));
+        Assert.DoesNotContain(policies.Keys, key => key.Contains("/api/payslips", StringComparison.Ordinal) && !key.StartsWith("GET ", StringComparison.Ordinal));
+        Assert.DoesNotContain(policies.Keys, key => key.Contains("/api/payslips", StringComparison.Ordinal) && key.Contains("{id:int}/", StringComparison.Ordinal));
+    }
+
+    private IEnumerable<string> PermissionModuleKeys(string module) =>
+        ApiEndpoints().SelectMany(endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>())
+            .Select(data => data.Policy!)
+            .Where(policy => policy.StartsWith(module + ":", StringComparison.Ordinal));
+
+    [Fact]
+    public void Payroll_endpoints_have_the_policy_of_who_may_use_them()
+    {
+        var policies = PayrollPolicies();
+
+        Assert.Equal("payroll:View", policies["GET /api/payroll-runs/query"]);
+        Assert.Equal("payroll:View", policies["GET /api/payroll-runs/{id:int}"]);
+        Assert.Equal("payroll:Create", policies["POST /api/payroll-runs/"]);
+        Assert.Equal("payroll:Edit", policies["PUT /api/payroll-runs/{id:int}"]);
+        Assert.Equal("payroll:Edit", policies["DELETE /api/payroll-runs/{id:int}"]);
+        Assert.Equal("payroll:Edit", policies["POST /api/payroll-runs/{id:int}/process"]);
+        Assert.Equal("payroll:Approve", policies["POST /api/payroll-runs/{id:int}/approve"]);
+        Assert.Equal("payroll:Approve", policies["POST /api/payroll-runs/{id:int}/mark-paid"]);
+        Assert.Equal("payroll:Approve", policies["POST /api/payroll-runs/{id:int}/return-to-draft"]);
+        Assert.Equal("payroll:View", policies["GET /api/payslips/query"]);
+        Assert.Equal("payroll:View", policies["GET /api/payslips/{id:int}"]);
+        Assert.Equal("payroll:View", policies["GET /api/salary-assignments/query"]);
+        Assert.Equal("payroll:View", policies["GET /api/salary-assignments/{id:int}"]);
+        Assert.Equal("payroll:Create", policies["POST /api/salary-assignments/"]);
+        Assert.Equal("payroll:Edit", policies["PUT /api/salary-assignments/{id:int}"]);
+        Assert.Equal("payroll:Edit", policies["DELETE /api/salary-assignments/{id:int}"]);
+        Assert.Equal("payroll:Create", policies["POST /api/salary-components/"]);
+        Assert.Equal("payroll:Edit", policies["DELETE /api/salary-components/{id:int}"]);
+        Assert.Equal("payroll:Edit", policies["POST /api/salary-components/{id:int}/activate"]);
+        Assert.Equal("payroll:Edit", policies["POST /api/salary-structures/{id:int}/deactivate"]);
+        Assert.Equal("payroll:Edit", policies["DELETE /api/salary-structures/{id:int}"]);
+    }
 
     [Fact]
     public void Leave_maps_twenty_seven_endpoints_and_no_unpaged_application_list()

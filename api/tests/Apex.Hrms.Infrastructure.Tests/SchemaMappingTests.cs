@@ -165,17 +165,24 @@ public sealed class SchemaMappingTests : IDisposable
     public void Foreign_keys_never_cascade_deletes_except_the_employee_children_the_database_cascades()
     {
         // ON DELETE CASCADE exists in the database only for the rows an employee owns, for the rows an identity user
-        // owns (claims, logins, tokens), for the grants of a role and for the issues of an import batch.
+        // owns (claims, logins, tokens), for the grants of a role, for the issues of an import batch and for the rows a payroll
+        // structure, run or payslip owns.
         var cascading = new[]
         {
             typeof(EmployeeBankAccount), typeof(EmployeeDocument), typeof(EmploymentHistoryEntry), typeof(Apex.Hrms.Domain.Attendance.ShiftWorkDay),
             typeof(IdentityUserClaim<string>), typeof(IdentityUserLogin<string>), typeof(IdentityUserToken<string>),
             typeof(RoleGrant), typeof(Apex.Hrms.Domain.Excel.ImportIssue),
+            typeof(Apex.Hrms.Domain.Payroll.SalaryStructureComponent), typeof(Apex.Hrms.Domain.Payroll.PayrollRunWarning), typeof(Apex.Hrms.Domain.Payroll.PayslipLine),
         };
         foreach (var type in context.Model.GetEntityTypes().Where(type => !type.IsOwned()))
         {
-            var expected = cascading.Contains(type.ClrType) ? DeleteBehavior.Cascade : DeleteBehavior.NoAction;
-            Assert.All(type.GetForeignKeys(), key => Assert.Equal(expected, key.DeleteBehavior));
+            // A structure component cascades from its structure but not from the component it names (that one blocks deleting the component).
+            Assert.All(type.GetForeignKeys(), key => Assert.Equal(
+                cascading.Contains(type.ClrType)
+                    && (type.ClrType != typeof(Apex.Hrms.Domain.Payroll.SalaryStructureComponent) || key.PrincipalEntityType.ClrType == typeof(Apex.Hrms.Domain.Payroll.SalaryStructure))
+                    ? DeleteBehavior.Cascade
+                    : DeleteBehavior.NoAction,
+                key.DeleteBehavior));
         }
     }
 

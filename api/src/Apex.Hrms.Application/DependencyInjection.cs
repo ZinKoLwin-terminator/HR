@@ -5,6 +5,7 @@ using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Excel;
 using Apex.Hrms.Application.Leave;
 using Apex.Hrms.Application.Organization;
+using Apex.Hrms.Application.Payroll;
 using Apex.Hrms.Application.Recruitment;
 using Apex.Hrms.Application.Security;
 using Apex.Hrms.Application.Settings;
@@ -26,6 +27,6 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.TryAddScoped(typeof(IAccessScope<>), typeof(AllowAllAccessScope<>));
         services.TryAddScoped<AdministratorBootstrap>();
-        return services.AddOrganization().AddEmployees().AddLeave().AddAttendance().AddRecruitment().AddSettings().AddActivityAndDashboard().AddExcel();
+        return services.AddOrganization().AddEmployees().AddLeave().AddPayroll().AddAttendance().AddRecruitment().AddSettings().AddActivityAndDashboard().AddExcel();
     }
 }
