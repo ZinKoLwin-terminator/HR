@@ -13,6 +13,9 @@ GRANT SELECT ON SCHEMA::[rec] TO [hrms_report];
 GO
 GRANT SELECT ON SCHEMA::[cfg] TO [hrms_report];
 GO
+-- KPI results for performance reports (includes the history tables, which hold earlier results).
+GRANT SELECT ON SCHEMA::[kpi] TO [hrms_report];
+GO
 
 -- hr is granted per object, not per schema: a schema grant would also expose the bank history table
 -- [hr].[EmployeeBankAccountHistory], which SQL Server creates and this project cannot reference.

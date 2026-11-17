@@ -9,7 +9,7 @@ CREATE TABLE [app].[ActivityLog]
     [ActorName]     nvarchar(130) NOT NULL,
     [OccurredAtUtc] datetime2(3)  NOT NULL CONSTRAINT [DF_ActivityLog_OccurredAtUtc] DEFAULT (SYSUTCDATETIME()),
     CONSTRAINT [PK_ActivityLog] PRIMARY KEY CLUSTERED ([Id]),
-    CONSTRAINT [CK_ActivityLog_Category] CHECK ([Category] IN ('employee', 'organization', 'attendance', 'leave', 'payroll', 'recruitment', 'system'))
+    CONSTRAINT [CK_ActivityLog_Category] CHECK ([Category] IN ('employee', 'organization', 'attendance', 'leave', 'payroll', 'recruitment', 'performance', 'system'))
 );
 GO
 

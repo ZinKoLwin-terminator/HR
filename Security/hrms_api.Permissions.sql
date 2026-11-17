@@ -20,6 +20,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[cfg] TO [hrms_api];
 GO
 GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[sec] TO [hrms_api];
 GO
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[kpi] TO [hrms_api];
+GO
 -- ASP.NET Core Identity store (credentials). Only the API reads or writes it.
 GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[auth] TO [hrms_api];
 GO
@@ -33,6 +35,10 @@ GO
 -- Rows still go with their employee through FK_EmploymentHistory_Employee (ON DELETE CASCADE); the
 -- API must not delete them itself.
 DENY UPDATE, DELETE ON OBJECT::[hr].[EmploymentHistory] TO [hrms_api];
+GO
+
+-- The KPI approval history cannot be rewritten or removed.
+DENY UPDATE, DELETE ON OBJECT::[kpi].[ReviewAction] TO [hrms_api];
 GO
 
 -- ---- Other app tables ---------------------------------------------------------------------------
@@ -75,6 +81,8 @@ GO
 DENY ALTER ON SCHEMA::[cfg] TO [hrms_api];
 GO
 DENY ALTER ON SCHEMA::[sec] TO [hrms_api];
+GO
+DENY ALTER ON SCHEMA::[kpi] TO [hrms_api];
 GO
 DENY ALTER ON SCHEMA::[app] TO [hrms_api];
 GO

@@ -5,6 +5,11 @@ SET XACT_ABORT ON;
 
 BEGIN TRANSACTION;
 
+-- Modules this deployment adds. Their starter grants (below) go to the existing roles too, once: a
+-- module that already exists is never re-granted, so an administrator's later changes are kept.
+-- (OUTPUT also lists updated rows, so the MERGE action is kept and only inserts count.)
+DECLARE @ModuleChange TABLE ([MergeAction] nvarchar(10) NOT NULL, [ModuleKey] varchar(30) NOT NULL);
+
 -- ---- Permission modules (PERMISSION_MODULES in settings.models.ts) -------------------------------
 MERGE [sec].[PermissionModule] WITH (HOLDLOCK) AS t
 USING (VALUES
@@ -17,13 +22,19 @@ USING (VALUES
     ('recruitment',  N'Recruitment',  7),
     ('settings',     N'Settings',     8),
     ('activity',     N'Activity',     9),
-    ('excel',        N'Excel',        10)
+    ('excel',        N'Excel',        10),
+    -- KPI master data (categories, templates, periods, rating bands) and assignments: HR.
+    ('kpi-setup',    N'KPI Setup',    11),
+    -- Scorecards: Create enters and submits your own results; Approve reviews them (the API scopes
+    -- managers to their direct reports and HR staff to everyone, like leave).
+    ('kpi',          N'Performance',  12)
 ) AS s ([ModuleKey], [Label], [SortOrder])
     ON t.[ModuleKey] = s.[ModuleKey]
 WHEN MATCHED AND (t.[Label] <> s.[Label] OR t.[SortOrder] <> s.[SortOrder]) THEN
     UPDATE SET t.[Label] = s.[Label], t.[SortOrder] = s.[SortOrder]
 WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([ModuleKey], [Label], [SortOrder]) VALUES (s.[ModuleKey], s.[Label], s.[SortOrder]);
+    INSERT ([ModuleKey], [Label], [SortOrder]) VALUES (s.[ModuleKey], s.[Label], s.[SortOrder])
+OUTPUT $action, inserted.[ModuleKey] INTO @ModuleChange ([MergeAction], [ModuleKey]);
 
 -- ---- Actions per module (SortOrder follows PERMISSION_ACTIONS) ------------------------------------
 -- organization and employees must match PermissionModule.All in the API (Authorization\PermissionModule.cs);
@@ -41,7 +52,9 @@ USING (VALUES
     ('recruitment',  'View',    1), ('recruitment',  'Create', 2), ('recruitment',  'Edit', 3), ('recruitment',  'Delete', 4),
     ('settings',     'View',    1), ('settings',     'Create', 2), ('settings',     'Edit', 3), ('settings',     'Delete', 4),
     ('activity',     'View',    1),
-    ('excel',        'View',    1), ('excel',        'Import', 10), ('excel',        'Export', 11)
+    ('excel',        'View',    1), ('excel',        'Import', 10), ('excel',        'Export', 11),
+    ('kpi-setup',    'View',    1), ('kpi-setup',    'Create', 2), ('kpi-setup',    'Edit', 3), ('kpi-setup',    'Delete', 4),
+    ('kpi',          'View',    1), ('kpi',          'Create', 2), ('kpi',          'Approve', 5)
 ) AS s ([ModuleKey], [Action], [SortOrder])
     ON t.[ModuleKey] = s.[ModuleKey] AND t.[Action] = s.[Action]
 WHEN MATCHED AND t.[SortOrder] <> s.[SortOrder] THEN
@@ -78,12 +91,11 @@ INSERT INTO @Grant ([RoleName], [ModuleKey], [Action])
 SELECT N'HR Administrator', a.[ModuleKey], a.[Action]
 FROM [sec].[PermissionModuleAction] AS a;
 
--- Starter grants of the other roles: first deployment only.
-IF @IsInitialRoleSeed = 1
-BEGIN
-    INSERT INTO @Grant ([RoleName], [ModuleKey], [Action])
-    SELECT g.[RoleName], g.[ModuleKey], TRIM(x.[value])
-    FROM (VALUES
+-- Starter grants of the other roles: on the first deployment, and for a module this deployment adds
+-- (only to roles that still exist). Otherwise grants are an administrator's decision.
+INSERT INTO @Grant ([RoleName], [ModuleKey], [Action])
+SELECT g.[RoleName], g.[ModuleKey], TRIM(x.[value])
+FROM (VALUES
         (N'HR Officer',         'dashboard',    'View'),
         (N'HR Officer',         'organization', 'View,Create,Edit'),
         (N'HR Officer',         'employees',    'View,Create,Edit'),
@@ -117,10 +129,21 @@ BEGIN
         (N'Auditor',            'leave',        'View'),
         (N'Auditor',            'payroll',      'View'),
         (N'Auditor',            'recruitment',  'View'),
-        (N'Auditor',            'settings',     'View')
-    ) AS g ([RoleName], [ModuleKey], [Actions])
-    CROSS APPLY STRING_SPLIT(g.[Actions], ',') AS x;
-END;
+        (N'Auditor',            'settings',     'View'),
+        -- KPI: HR Officer runs the KPI setup and, with employees:Edit, reviews every scorecard; a
+        -- Department Manager reviews direct reports; everyone enters and submits their own results.
+        (N'HR Officer',         'kpi-setup',    'View,Create,Edit,Delete'),
+        (N'HR Officer',         'kpi',          'View,Create,Approve'),
+        (N'Department Manager', 'kpi',          'View,Create,Approve'),
+        (N'Payroll Officer',    'kpi',          'View,Create'),
+        (N'Recruiter',          'kpi',          'View,Create'),
+        (N'Employee',           'kpi',          'View,Create'),
+        (N'Auditor',            'kpi-setup',    'View'),
+        (N'Auditor',            'kpi',          'View')
+) AS g ([RoleName], [ModuleKey], [Actions])
+CROSS APPLY STRING_SPLIT(g.[Actions], ',') AS x
+WHERE @IsInitialRoleSeed = 1
+   OR g.[ModuleKey] IN (SELECT [ModuleKey] FROM @ModuleChange WHERE [MergeAction] = N'INSERT');
 
 -- View grants first: FK_RolePermission_ViewGrant requires them before any other action.
 INSERT INTO [sec].[RolePermission] ([RoleId], [ModuleKey], [Action])
@@ -148,6 +171,19 @@ BEGIN
          [FiscalYearStartMonth], [EmailNotifications], [WeeklyDigest])
     VALUES
         (1, N'APEX Group', N'hr@apexhorizon.example', 'Asia/Yangon', 'yyyy-MM-dd', 'MMK', 1, 1, 0);
+END;
+
+-- ---- KPI rating bands (overall score -> label) ----------------------------------------------------
+-- Inserted into an empty table only; bands an administrator changed later are never overwritten.
+IF NOT EXISTS (SELECT 1 FROM [kpi].[RatingBand])
+BEGIN
+    INSERT INTO [kpi].[RatingBand] ([Label], [MinScore], [Description])
+    VALUES
+        (N'Outstanding',          90.00,N'Consistently exceeds every target.'),
+        (N'Exceeds Expectations', 75.00, N'Exceeds most targets.'),
+        (N'Meets Expectations',   60.00, N'Meets the agreed targets.'),
+        (N'Needs Improvement',    40.00, N'Misses several targets; a development plan is expected.'),
+        (N'Unsatisfactory',        0.00, N'Misses most targets.');
 END;
 
 COMMIT TRANSACTION;
