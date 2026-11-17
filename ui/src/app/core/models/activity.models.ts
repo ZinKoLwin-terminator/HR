@@ -1,7 +1,14 @@
 import { Entity } from './common.models';
 
 export type ActivityCategory =
-  'employee' | 'organization' | 'attendance' | 'leave' | 'payroll' | 'recruitment' | 'system';
+  | 'employee'
+  | 'organization'
+  | 'attendance'
+  | 'leave'
+  | 'payroll'
+  | 'recruitment'
+  | 'performance'
+  | 'system';
 
 export interface ActivityEntry extends Entity {
   category: ActivityCategory;

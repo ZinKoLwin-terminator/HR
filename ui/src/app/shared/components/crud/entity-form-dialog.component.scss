@@ -39,6 +39,22 @@ mat-dialog-actions {
   font: var(--mat-sys-body-medium);
 }
 
+.form-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: var(--app-radius-md);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-body-medium);
+
+  mat-icon {
+    flex: none;
+  }
+}
+
 button mat-spinner {
   display: inline-block;
   margin-right: 8px;

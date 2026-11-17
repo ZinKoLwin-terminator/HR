@@ -37,6 +37,13 @@ import {
   EmploymentHistoryDataService,
 } from '../core/services/data/employee-extras-data.services';
 import {
+  EvaluationPeriodDataService,
+  KpiCategoryDataService,
+  KpiTemplateDataService,
+  RatingBandDataService,
+  ScorecardDataService,
+} from '../core/services/data/kpi-data.services';
+import {
   LeaveApplicationDataService,
   LeaveBalanceDataService,
   LeaveCalendarDataService,
@@ -98,6 +105,13 @@ import { EmployeeLookupHttpService } from './employees/employee-lookup-http.serv
 import { EmployeeDocumentHttpService } from './employees/employee-document-http.service';
 import { EmployeeSalaryHttpService } from './employees/employee-salary-http.service';
 import { EmploymentHistoryHttpService } from './employees/employment-history-http.service';
+import {
+  EvaluationPeriodHttpService,
+  KpiCategoryHttpService,
+  KpiTemplateHttpService,
+  RatingBandHttpService,
+} from './kpi/kpi-setup-http.services';
+import { ScorecardHttpService } from './kpi/scorecard-http.service';
 import { LeaveApplicationHttpService } from './leave/leave-application-http.service';
 import { LeaveBalanceHttpService } from './leave/leave-balance-http.service';
 import { LeaveCalendarHttpService } from './leave/leave-calendar-http.service';
@@ -145,7 +159,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
 }
 
 /**
- * Binds ONLY the Organization, Employee (employees, history, documents, salary summary), Leave, Attendance, Recruitment, Settings, Excel, Dashboard, Activity, Notification and Payroll contracts to HTTP. Only the demo-data contract stays on its mock
+ * Binds ONLY the Organization, Employee (employees, history, documents, salary summary), Leave, Attendance, Recruitment, Settings, Excel, Dashboard, Activity, Notification, Payroll and KPI contracts to HTTP. Only the demo-data contract stays on its mock
  * (the adapter is per dependency cluster). Register it AFTER `provideMockDataServices()` so
  * these bindings win; `app.config.ts` does that and the switch defaults to off.
  */
@@ -181,6 +195,12 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(LeaveApplicationDataService, LeaveApplicationHttpService),
     bind(LeaveBalanceDataService, LeaveBalanceHttpService),
     bind(LeaveCalendarDataService, LeaveCalendarHttpService),
+    // KPI / performance: categories, templates, rating bands, periods (with their commands) and scorecards (assignment, plan, results, review, evidence).
+    bind(KpiCategoryDataService, KpiCategoryHttpService),
+    bind(KpiTemplateDataService, KpiTemplateHttpService),
+    bind(RatingBandDataService, RatingBandHttpService),
+    bind(EvaluationPeriodDataService, EvaluationPeriodHttpService),
+    bind(ScorecardDataService, ScorecardHttpService),
     // Attendance: shifts, holidays, read-only records with punches, adjustments, overtime, overview, schedule.
     bind(ShiftDataService, ShiftHttpService),
     bind(HolidayDataService, HolidayHttpService),

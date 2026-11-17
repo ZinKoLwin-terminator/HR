@@ -12,6 +12,13 @@ import { BUILT_IN_ADMIN_EMPLOYEE_ID } from '../core/models/settings.models';
 import { AuthDataService } from '../core/services/data/auth-data.service';
 import { DashboardDataService } from '../core/services/data/dashboard-data.service';
 import { EmployeeDataService } from '../core/services/data/employee-data.service';
+import {
+  EvaluationPeriodDataService,
+  KpiCategoryDataService,
+  KpiTemplateDataService,
+  RatingBandDataService,
+  ScorecardDataService,
+} from '../core/services/data/kpi-data.services';
 import { LeaveTypeDataService } from '../core/services/data/leave-data.services';
 import { CompanyDataService } from '../core/services/data/organization-data.services';
 import { PayrollRunDataService } from '../core/services/data/payroll-data.services';
@@ -19,6 +26,7 @@ import { JobOpeningDataService } from '../core/services/data/recruitment-data.se
 import { RoleDataService, UserDataService } from '../core/services/data/settings-data.services';
 import { todayIso } from '../shared/utilities/date.util';
 import { DEMO_PASSWORD } from './auth/auth-mock.service';
+import { ScorecardMockService } from './kpi/scorecard-mock.service';
 import { provideMockDataServices } from './provide-mock-data-services';
 
 describe('empty-data mode', () => {
@@ -49,6 +57,33 @@ describe('empty-data mode', () => {
     for (const list of lists) {
       expect(await firstValueFrom(list)).toEqual([]);
     }
+  });
+
+  it('starts the KPI module empty, except the default rating bands', async () => {
+    const lists: Observable<unknown[]>[] = [
+      TestBed.inject(KpiCategoryDataService).getAll(),
+      TestBed.inject(KpiTemplateDataService).getAll(),
+      TestBed.inject(EvaluationPeriodDataService).getAll(),
+      TestBed.inject(EvaluationPeriodDataService).options(),
+    ];
+    for (const list of lists) {
+      expect(await firstValueFrom(list)).toEqual([]);
+    }
+    // The store itself (a list query is scoped to the signed-in user, who is nobody here).
+    expect(TestBed.inject(ScorecardMockService).records()).toEqual([]);
+    const cards = await firstValueFrom(
+      TestBed.inject(ScorecardDataService).query({ pageIndex: 0, pageSize: 50 }),
+    );
+    expect(cards.total).toBe(0);
+    // The bands are configuration, like roles: the database seeds them too.
+    const bands = await firstValueFrom(TestBed.inject(RatingBandDataService).getAll());
+    expect(bands.map((b) => b.label)).toEqual([
+      'Outstanding',
+      'Exceeds Expectations',
+      'Meets Expectations',
+      'Needs Improvement',
+      'Unsatisfactory',
+    ]);
   });
 
   it('keeps roles and exactly one administrator so someone can sign in', async () => {

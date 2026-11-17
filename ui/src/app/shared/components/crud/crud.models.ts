@@ -77,6 +77,22 @@ export interface FieldConfig {
    * (e.g. leave days from the dates). Saved with the form.
    */
   derive?: (values: FormValues) => unknown;
+  /**
+   * The field is shown only while this returns true. A hidden field is disabled, cleared and not
+   * validated, so the saved record carries an empty value for it.
+   */
+  visibleWhen?: (values: FormValues) => boolean;
+  /** Read-only when editing a record that matches (judged on the record as it was opened). */
+  lockedWhen?: (row: FormValues) => boolean;
+  /**
+   * A value the rest of the form dictates. While this returns an object the field is disabled and
+   * holds `value`; when it returns null the field is editable again.
+   */
+  force?: (values: FormValues) => { value: unknown } | null;
+  /** Cross-field rule: the returned text is shown on this field as an error while it is not null. */
+  rule?: (values: FormValues) => string | null;
+  /** Hint that depends on the other values; used instead of `hint` while it returns text. */
+  hintFor?: (values: FormValues) => string | undefined;
 }
 
 export interface FilterConfig {
@@ -136,6 +152,8 @@ export interface CrudPageConfig<T extends Entity> {
    * true, except for an embedded list (a profile tab), which is printed with its host screen.
    */
   printable?: boolean;
+  /** Note shown at the top of the create/edit form (`null` for a new record); null hides it. */
+  formNotice?: (row: FormValues | null) => string | null;
   /** Shows Export (and Import) buttons for this list, backed by the Excel module with this code. */
   excel?: { moduleCode: string; import?: boolean };
 }
@@ -182,6 +200,8 @@ export interface EntityFormDialogData<T extends Entity = Entity> {
   value: FormValues;
   id: number | null;
   submitLabel: string;
+  /** Note shown above the fields (for example why some are read-only). */
+  notice?: string | null;
   save: (values: FormValues) => Observable<T>;
 }
 

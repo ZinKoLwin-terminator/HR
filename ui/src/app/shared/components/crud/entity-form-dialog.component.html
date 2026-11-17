@@ -9,8 +9,15 @@
       </div>
     }
 
+    @if (data.notice) {
+      <p class="form-notice" role="note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <span>{{ data.notice }}</span>
+      </p>
+    }
+
     <div class="form-grid">
-      @for (field of data.fields; track field.key) {
+      @for (field of viewFields(); track field.key) {
         <app-form-field
           [class.span-all]="field.fullWidth || field.type === 'textarea'"
           [field]="field"

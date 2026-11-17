@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,6 +11,7 @@ import {
   FieldFormGroup,
   buildFormGroup,
   normalizeValues,
+  wireAdaptiveFields,
   wireDependentFields,
 } from '../../forms/form-builder';
 import { FormFieldComponent } from '../form-field/form-field.component';
@@ -44,15 +45,25 @@ export class EntityFormDialogComponent {
 
   constructor() {
     const isEdit = this.data.id !== null;
+    const locked = new Set(
+      isEdit
+        ? this.data.fields
+            .filter((f) => f.lockedOnEdit || f.lockedWhen?.(this.data.value))
+            .map((f) => f.key)
+        : [],
+    );
     this.form = buildFormGroup(this.data.fields, this.data.value, {
-      disabledKeys: new Set(
-        isEdit ? this.data.fields.filter((f) => f.lockedOnEdit).map((f) => f.key) : [],
-      ),
+      disabledKeys: locked,
       validators: this.data.groupValidators,
     });
     this.values = toSignal(this.form.valueChanges.pipe(startWith(null)), { initialValue: null });
     wireDependentFields(this.data.fields, this.form, (field) => this.optionsFor(field));
     this.wireDerivedFields();
+    const fixed = new Set([
+      ...locked,
+      ...this.data.fields.filter((f) => f.derive).map((f) => f.key),
+    ]);
+    wireAdaptiveFields(this.data.fields, this.form, fixed);
     this.clearServerErrorsOnEdit();
   }
 
@@ -93,6 +104,15 @@ export class EntityFormDialogComponent {
     this.form.valueChanges.subscribe(recompute);
     recompute();
   }
+
+  /** The fields to show: those not hidden by their rule, with any value-dependent hint filled in. */
+  protected readonly viewFields = computed(() => {
+    this.values(); // re-evaluate when any value changes
+    const raw = this.form.getRawValue() as FormValues;
+    return this.data.fields
+      .filter((f) => !f.visibleWhen || f.visibleWhen(raw))
+      .map((f) => (f.hintFor ? { ...f, hint: f.hintFor(raw) ?? f.hint } : f));
+  });
 
   protected optionsFor(field: FieldConfig): FieldOption[] {
     this.values(); // re-evaluate when any value changes

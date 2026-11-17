@@ -3,6 +3,7 @@ import { EMPLOYEES_GUIDE } from './employees-guide';
 import { LEAVE_GUIDE } from './leave-guide';
 import { ORGANIZATION_GUIDE } from './organization-guide';
 import { PAYROLL_GUIDE } from './payroll-guide';
+import { PERFORMANCE_GUIDE } from './performance-guide';
 import { RECRUITMENT_GUIDE } from './recruitment-guide';
 
 /** A string in both supported guide languages. */
@@ -342,6 +343,104 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
       },
     ],
     article: LEAVE_GUIDE,
+  },
+  {
+    id: 'performance',
+    name: 'Performance (KPI)',
+    icon: 'trending_up',
+    summary: {
+      en: 'KPI categories, reusable KPI templates, evaluation periods, rating bands, each employee’s KPI plan (scorecard) for a period, the employee’s results and evidence, and the manager’s and HR’s review.',
+      my: 'KPI Category၊ ပြန်သုံးနိုင်သော KPI Template၊ Evaluation Period၊ Rating Band၊ Period တစ်ခုအတွက် ဝန်ထမ်းတစ်ဦးချင်းစီ၏ KPI Plan (Scorecard)၊ ဝန်ထမ်း၏ ရလဒ်နှင့် Evidence၊ Manager နှင့် HR ၏ Review။',
+    },
+    screens: [
+      {
+        label: 'My KPIs',
+        route: '/performance/my-kpis',
+        text: {
+          en: 'Your scorecards: enter results, attach evidence and submit them for review.',
+          my: 'သင့် Scorecard များ — ရလဒ်ထည့်၊ Evidence တွဲပြီး Review အတွက် Submit လုပ်ရန်။',
+        },
+      },
+      {
+        label: 'Reviews',
+        route: '/performance/reviews',
+        text: {
+          en: 'Scorecards waiting for your review: rate them, then approve, return or reject. HR gives the final review where the period asks for one.',
+          my: 'သင့် Review စောင့်နေသော Scorecard များ — Rating ပေးပြီး Approve၊ Return သို့ Reject လုပ်ရန်။ Period က လိုအပ်လျှင် HR က Final review ပေးသည်။',
+        },
+      },
+      {
+        label: 'Assignments',
+        route: '/performance/assignments',
+        text: {
+          en: 'Assign KPIs to one employee or in bulk, then open a plan to adjust and finalize it.',
+          my: 'KPI များကို ဝန်ထမ်းတစ်ဦးချင်း သို့ အစုလိုက် Assign လုပ်ပြီး Plan ကိုဖွင့်၍ ပြင်ဆင်ကာ Finalize လုပ်ရန်။',
+        },
+      },
+      {
+        label: 'Templates',
+        route: '/performance/templates',
+        text: {
+          en: 'Reusable KPI definitions: measurement, direction, scoring method, default target and weight.',
+          my: 'ပြန်သုံးနိုင်သော KPI သတ်မှတ်ချက်များ — Measurement၊ Direction၊ Scoring Method၊ ပုံသေ Target နှင့် Weight။',
+        },
+      },
+      {
+        label: 'Categories',
+        route: '/performance/categories',
+        text: {
+          en: 'Groups such as Productivity or Quality that templates belong to.',
+          my: 'Template များ ပါဝင်သော Productivity၊ Quality ကဲ့သို့ အုပ်စုများ။',
+        },
+      },
+      {
+        label: 'Evaluation Periods',
+        route: '/performance/periods',
+        text: {
+          en: 'The windows KPIs are planned and measured in: Draft, Active, Completed, Closed.',
+          my: 'KPI များကို စီစဉ်ပြီး တိုင်းတာသော ကာလများ — Draft၊ Active၊ Completed၊ Closed။',
+        },
+      },
+      {
+        label: 'Rating Bands',
+        route: '/performance/rating-bands',
+        text: {
+          en: 'The label an overall score earns, from each band’s minimum score.',
+          my: 'Band တစ်ခုစီ၏ အနည်းဆုံးရမှတ်အလိုက် စုစုပေါင်းရမှတ်က ရရှိသော Label။',
+        },
+      },
+    ],
+    rules: [
+      {
+        en: 'One scorecard per employee and period. It starts in Planning; HR finalizes the plan only when the KPI weights add up to exactly 100%.',
+        my: 'ဝန်ထမ်းတစ်ဦးနှင့် Period တစ်ခုလျှင် Scorecard တစ်ခုသာ။ Planning မှ စတင်ပြီး KPI Weight ပေါင်း ၁၀၀% အတိအကျ ဖြစ်မှသာ HR က Plan ကို Finalize လုပ်နိုင်သည်။',
+      },
+      {
+        en: 'Assigning copies the template into the scorecard, so a later template edit never changes an existing plan.',
+        my: 'Assign လုပ်လျှင် Template ကို Scorecard ထဲ ကူးထည့်သဖြင့် နောက်မှ Template ပြင်လည်း ရှိပြီးသား Plan မပြောင်းပါ။',
+      },
+      {
+        en: 'Finalizing sets the reviewer to the employee’s current manager. After Planning the plan is read-only.',
+        my: 'Finalize လုပ်လျှင် Reviewer ကို ဝန်ထမ်း၏ လက်ရှိ Manager အဖြစ် သတ်မှတ်သည်။ Planning ပြီးနောက် Plan သည် ဖတ်ရန်သာ ဖြစ်သည်။',
+      },
+      {
+        en: 'A Closed period is final. Periods of the same type cannot overlap in a company.',
+        my: 'Closed ဖြစ်သော Period ကို ပြောင်း၍မရတော့ပါ။ ကုမ္ပဏီတစ်ခုတွင် အမျိုးအစားတူ Period များ ရက်မထပ်ရ။',
+      },
+      {
+        en: 'Only the employee enters results and evidence, while the scorecard is Draft or Returned and the period is Active. Every KPI needs a result to submit.',
+        my: 'Scorecard သည် Draft သို့ Returned ဖြစ်ပြီး Period သည် Active ဖြစ်နေစဉ် ဝန်ထမ်းကိုယ်တိုင်သာ ရလဒ်နှင့် Evidence ထည့်နိုင်သည်။ Submit လုပ်ရန် KPI တိုင်းတွင် ရလဒ် လိုသည်။',
+      },
+      {
+        en: 'The reviewer (or HR) approves, returns or rejects; return and reject need a reason. Nobody reviews their own scorecard, and whoever approved it cannot also give the HR final review.',
+        my: 'Reviewer (သို့ HR) က Approve၊ Return သို့ Reject လုပ်သည် — Return နှင့် Reject တွင် အကြောင်းပြချက် လိုသည်။ ကိုယ့် Scorecard ကို ကိုယ်တိုင် Review မလုပ်ရ၊ Approve လုပ်ခဲ့သူက HR Final review ကိုပါ မပေးရ။',
+      },
+    ],
+    article: PERFORMANCE_GUIDE,
+    note: {
+      en: 'Scores in the demo come from a mock that repeats the API’s calculation; official scores come from the API. Evidence files in the demo live in memory and are lost on reload. Roles and permissions here are a simulation and enforce nothing; dashboards and reports come later.',
+      my: 'Demo ရှိ ရမှတ်များသည် API ၏ တွက်နည်းကို ပုံတူလုပ်ထားသော Mock မှ ဖြစ်ပြီး တရားဝင်ရမှတ်ကို API ကသာ တွက်ပေးသည်။ Demo တွင် Evidence ဖိုင်များသည် Memory ထဲတွင်သာ ရှိပြီး Reload လုပ်လျှင် ပျောက်သည်။ ဤနေရာရှိ Role နှင့် Permission များသည် Simulation သာဖြစ်ပြီး မည်သည့်ကန့်သတ်ချက်ကိုမျှ အမှန်တကယ် မစစ်ဆေးပါ။ Dashboard နှင့် Report များကို နောက်မှ ထည့်ပါမည်။',
+    },
   },
   {
     id: 'payroll',

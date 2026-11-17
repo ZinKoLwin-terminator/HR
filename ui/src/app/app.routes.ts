@@ -80,6 +80,16 @@ export const routes: Routes = [
           import('./features/payroll/payroll.routes').then((m) => m.PAYROLL_ROUTES),
       },
       {
+        // Each screen carries its own key: HR setup is `kpi-setup:*`, the employee and reviewer
+        // screens use `kpi:*` (see performance.routes.ts).
+        path: 'performance',
+        data: { breadcrumb: 'Performance' },
+        loadChildren: () =>
+          import('./features/performance-management/performance.routes').then(
+            (m) => m.PERFORMANCE_ROUTES,
+          ),
+      },
+      {
         path: 'recruitment',
         data: { breadcrumb: 'Recruitment', permission: 'recruitment:View' },
         canActivate: [permissionGuard],

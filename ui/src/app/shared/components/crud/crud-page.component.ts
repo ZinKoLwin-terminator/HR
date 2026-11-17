@@ -425,6 +425,7 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
       value: row ? (row as unknown as FormValues) : cfg.newItem(),
       id: row?.id ?? null,
       submitLabel: isEdit ? 'Save changes' : `Create ${cfg.entityLabel.toLowerCase()}`,
+      notice: cfg.formNotice?.(row ? (row as unknown as FormValues) : null) ?? null,
       save: (formValues) => {
         const values = { ...formValues, ...cfg.fixedValues };
         return row

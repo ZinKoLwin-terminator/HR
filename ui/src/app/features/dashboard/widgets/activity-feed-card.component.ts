@@ -10,6 +10,7 @@ const ICONS: Record<ActivityCategory, string> = {
   leave: 'beach_access',
   payroll: 'payments',
   recruitment: 'person_search',
+  performance: 'trending_up',
   system: 'settings',
 };
 

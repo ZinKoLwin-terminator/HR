@@ -41,6 +41,10 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
   { key: 'payroll', label: 'Payroll', actions: ['View', 'Create', 'Edit', 'Approve'] },
   { key: 'recruitment', label: 'Recruitment', actions: ['View', 'Create', 'Edit', 'Delete'] },
   { key: 'settings', label: 'Settings', actions: ['View', 'Create', 'Edit', 'Delete'] },
+  // KPI master data and assignments (HR). The API module keys are `kpi-setup` and `kpi`.
+  { key: 'kpi-setup', label: 'KPI Setup', actions: ['View', 'Create', 'Edit', 'Delete'] },
+  // Scorecards: Create enters and submits your own results; Approve reviews them.
+  { key: 'kpi', label: 'Performance', actions: ['View', 'Create', 'Approve'] },
 ];
 
 export const PERMISSION_ACTIONS: readonly PermissionAction[] = [

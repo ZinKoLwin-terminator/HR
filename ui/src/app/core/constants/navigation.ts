@@ -191,6 +191,50 @@ export const NAVIGATION: NavItem[] = [
       },
     ],
   },
+  // The employee and reviewer entries name their own `kpi:*` keys; the group's key is only the
+  // default of the HR setup and planning entries. A role with `kpi:View` alone sees My KPIs only.
+  {
+    label: 'Performance',
+    permission: 'kpi-setup:View',
+    icon: 'trending_up',
+    section: 'PEOPLE',
+    children: [
+      {
+        label: 'My KPIs',
+        icon: 'insights',
+        route: '/performance/my-kpis',
+        permission: 'kpi:View',
+        group: 'Operations',
+      },
+      {
+        label: 'Reviews',
+        icon: 'rate_review',
+        route: '/performance/reviews',
+        permission: 'kpi:Approve',
+        group: 'Operations',
+      },
+      {
+        label: 'Assignments',
+        icon: 'assignment_turned_in',
+        route: '/performance/assignments',
+        group: 'Operations',
+      },
+      { label: 'Templates', icon: 'fact_check', route: '/performance/templates', group: 'Setup' },
+      { label: 'Categories', icon: 'category', route: '/performance/categories', group: 'Setup' },
+      {
+        label: 'Evaluation Periods',
+        icon: 'date_range',
+        route: '/performance/periods',
+        group: 'Setup',
+      },
+      {
+        label: 'Rating Bands',
+        icon: 'military_tech',
+        route: '/performance/rating-bands',
+        group: 'Setup',
+      },
+    ],
+  },
   {
     label: 'Payroll',
     permission: 'payroll:View',

@@ -26,6 +26,13 @@ import {
   EmploymentHistoryDataService,
 } from '../core/services/data/employee-extras-data.services';
 import {
+  EvaluationPeriodDataService,
+  KpiCategoryDataService,
+  KpiTemplateDataService,
+  RatingBandDataService,
+  ScorecardDataService,
+} from '../core/services/data/kpi-data.services';
+import {
   LeaveApplicationDataService,
   LeaveBalanceDataService,
   LeaveCalendarDataService,
@@ -112,6 +119,13 @@ import {
   EmploymentHistoryMockService,
 } from './employees/employee-extras-mock.services';
 import {
+  EvaluationPeriodMockService,
+  KpiCategoryMockService,
+  KpiTemplateMockService,
+  RatingBandMockService,
+} from './kpi/kpi-setup-mock.services';
+import { ScorecardMockService } from './kpi/scorecard-mock.service';
+import {
   LeaveApplicationMockService,
   LeaveBalanceMockService,
   LeaveCalendarMockService,
@@ -187,6 +201,11 @@ export function provideMockDataServices(options: MockDataOptions = {}): Environm
     bind(LeavePolicyDataService, LeavePolicyMockService),
     bind(LeaveBalanceDataService, LeaveBalanceMockService),
     bind(LeaveCalendarDataService, LeaveCalendarMockService),
+    bind(KpiCategoryDataService, KpiCategoryMockService),
+    bind(KpiTemplateDataService, KpiTemplateMockService),
+    bind(RatingBandDataService, RatingBandMockService),
+    bind(EvaluationPeriodDataService, EvaluationPeriodMockService),
+    bind(ScorecardDataService, ScorecardMockService),
     bind(PayrollRunDataService, PayrollRunMockService),
     bind(PayslipDataService, PayslipMockService),
     bind(MyPayslipDataService, MyPayslipMockService),

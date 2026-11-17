@@ -51,10 +51,12 @@ const merge = (...sets: PermissionGrants[]): PermissionGrants => {
   return result;
 };
 const all = PERMISSION_MODULES.map((m) => m.key);
+/** The modules that existed before the KPI module: starter grants of KPI are listed per role below. */
+const beforeKpi = all.filter((key) => key !== 'kpi-setup' && key !== 'kpi');
 
 const GRANT_SEED: PermissionGrants[] = [
   everything(),
-  merge(viewOnly(all), {
+  merge(viewOnly(beforeKpi), {
     employees: ['View', 'Create', 'Edit'],
     attendance: ['View', 'Create', 'Edit', 'Approve'],
     leave: ['View', 'Create', 'Edit', 'Approve'],
@@ -62,16 +64,26 @@ const GRANT_SEED: PermissionGrants[] = [
     recruitment: ['View', 'Create', 'Edit'],
     settings: [],
     payroll: ['View', 'Approve'],
+    'kpi-setup': ['View', 'Create', 'Edit', 'Delete'],
+    kpi: ['View', 'Create', 'Approve'],
   }),
   merge(viewOnly(['dashboard', 'employees', 'organization', 'recruitment']), {
     attendance: ['View', 'Approve'],
     leave: ['View', 'Approve'],
+    kpi: ['View', 'Create', 'Approve'],
   }),
-  merge(viewOnly(['dashboard', 'employees']), { payroll: ['View', 'Create', 'Edit', 'Approve'] }),
-  merge(viewOnly(['dashboard']), { recruitment: ['View', 'Create', 'Edit', 'Delete'] }),
+  merge(viewOnly(['dashboard', 'employees']), {
+    payroll: ['View', 'Create', 'Edit', 'Approve'],
+    kpi: ['View', 'Create'],
+  }),
+  merge(viewOnly(['dashboard']), {
+    recruitment: ['View', 'Create', 'Edit', 'Delete'],
+    kpi: ['View', 'Create'],
+  }),
   merge(viewOnly(['dashboard', 'attendance']), {
     leave: ['View', 'Create'],
     attendance: ['View', 'Create'],
+    kpi: ['View', 'Create'],
   }),
   viewOnly(all),
 ];

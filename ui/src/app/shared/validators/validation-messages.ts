@@ -31,6 +31,7 @@ const MESSAGES: Record<string, MessageFactory> = {
   matDatepickerMin: (label) => `${label} is earlier than allowed.`,
   matDatepickerMax: (label) => `${label} is later than allowed.`,
   server: (_, e) => String(e),
+  rule: (_, e) => String(e),
 };
 
 /** First human-readable message for a control's errors. */

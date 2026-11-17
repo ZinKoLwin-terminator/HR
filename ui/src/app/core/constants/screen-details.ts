@@ -361,6 +361,109 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     ),
   ],
 
+  '/performance/my-kpis': [
+    b(
+      'Your scorecards, newest period first: status, number of KPIs, the overall score and rating once the server has scored it, and the submission date. A Late chip marks a submission after the period’s due date. Without a linked employee record the page says so.',
+      'သင့် Scorecard များ (နောက်ဆုံး Period အရင်) — Status၊ KPI အရေအတွက်၊ Server က တွက်ပြီးနောက် စုစုပေါင်းရမှတ်နှင့် Rating၊ Submit လုပ်သည့်ရက်။ Period ၏ Due date ကျော်ပြီး Submit လုပ်လျှင် Late ဟု ပြသည်။ ဝန်ထမ်းမှတ်တမ်းနှင့် မချိတ်ထားလျှင် ထိုသို့ ပြောပြသည်။',
+    ),
+    b(
+      'Open a scorecard to work on it: each KPI shows its target, weight and scoring. Enter the actual (Yes/No for a yes-or-no KPI, a rating on its scale, otherwise a number) and a comment, then Save draft. The achievement and weighted score shown are the server’s; the line under an input while typing is only a preview.',
+      'Scorecard ကိုဖွင့်ပြီး လုပ်ဆောင်ပါ — KPI တစ်ခုစီတွင် Target၊ Weight နှင့် တွက်နည်း ပြသည်။ Actual ကို ထည့်ပါ (Yes/No KPI အတွက် Yes/No၊ Rating KPI အတွက် ၎င်း၏ Scale အတွင်း Rating၊ ကျန်သည် ဂဏန်း) နှင့် Comment ရေးပြီး Save draft လုပ်ပါ။ ပြသော Achievement နှင့် Weighted score သည် Server ၏ ရလဒ်ဖြစ်ပြီး ရိုက်နေစဉ် Input အောက်ရှိ စာကြောင်းသည် Preview သာ ဖြစ်သည်။',
+    ),
+    b(
+      'Evidence: add up to 5 files per KPI (PDF, PNG, JPEG, Word .docx or Excel .xlsx, up to 10 MB each), download or remove them. Files are always downloaded, never opened in the page.',
+      'Evidence — KPI တစ်ခုလျှင် ဖိုင် ၅ ခုအထိ (PDF၊ PNG၊ JPEG၊ Word .docx သို့ Excel .xlsx၊ တစ်ခုလျှင် 10 MB အထိ) ထည့်၊ Download သို့ ဖယ်ရှားနိုင်သည်။ ဖိုင်များကို အမြဲ Download လုပ်ပြီး စာမျက်နှာထဲတွင် မဖွင့်ပါ။',
+    ),
+    b(
+      'Submit when every KPI has a result (a missing one is pointed out on its KPI). After submitting the results are read-only. A returned scorecard shows the reviewer’s reason at the top; correct it and submit again. Once finalized or rejected the page shows the reviewer’s and HR’s feedback.',
+      'KPI အားလုံးတွင် ရလဒ်ရှိမှ Submit လုပ်ပါ (မထည့်ရသေးသော KPI ကို ၎င်းနေရာတွင် ပြသည်)။ Submit ပြီးနောက် ရလဒ်များ ဖတ်ရန်သာ ဖြစ်သည်။ ပြန်ပို့ခံရသော Scorecard တွင် Reviewer ၏ အကြောင်းပြချက်ကို အပေါ်ဆုံးတွင် ပြသည် — ပြင်ပြီး ထပ် Submit လုပ်ပါ။ Finalized သို့ Rejected ဖြစ်ပြီးနောက် Reviewer နှင့် HR ၏ Feedback ကို ပြသည်။',
+    ),
+  ],
+  '/performance/reviews': [
+    b(
+      'Scorecards waiting for you, oldest submission first: as a manager the ones that name you reviewer; as HR every manager-stage scorecard and the Approved ones waiting for the final review (not those you approved). Never your own. Filter by period, department and status, and search by employee.',
+      'သင့်ကို စောင့်နေသော Scorecard များ (အစောဆုံး Submit အရင်) — Manager အဖြစ် သင့်ကို Reviewer အဖြစ် သတ်မှတ်ထားသည်များ၊ HR အဖြစ် Manager အဆင့်ရှိ Scorecard အားလုံးနှင့် Final review စောင့်နေသော Approved များ (ကိုယ်တိုင် Approve လုပ်ထားသည်များ မပါ)။ ကိုယ့် Scorecard ကို ဘယ်တော့မှ မပြ။ Period၊ ဌာန၊ Status ဖြင့် စစ်ထုတ်ပြီး ဝန်ထမ်းဖြင့် ရှာနိုင်သည်။',
+    ),
+    b(
+      'Open one to review it: the employee’s results, comments and evidence are read-only. Start review, rate each KPI and the whole scorecard from 1 to 5 with feedback, and Save review notes (no status change).',
+      'ဖွင့်ပြီး Review လုပ်ပါ — ဝန်ထမ်း၏ ရလဒ်၊ Comment နှင့် Evidence များ ဖတ်ရန်သာ။ Start review လုပ်၊ KPI တစ်ခုချင်းနှင့် Scorecard တစ်ခုလုံးကို 1 မှ 5 အထိ Rating နှင့် Feedback ပေးပြီး Save review notes လုပ်ပါ (Status မပြောင်း)။',
+    ),
+    b(
+      'Approve (the confirmation says whether it finalizes at once or goes to HR), Return for revision or Reject; return and reject need a reason. In the HR final review HR can Finalize, Return or Reject, but not the person who approved it. Nobody reviews their own scorecard.',
+      'Approve (အတည်ပြုချက်တွင် ချက်ချင်း Finalize ဖြစ်မလား HR ထံ သွားမလား ပြောပြသည်)၊ Return for revision သို့ Reject — Return နှင့် Reject တွင် အကြောင်းပြချက် လိုသည်။ HR Final review တွင် HR က Finalize၊ Return သို့ Reject လုပ်နိုင်သော်လည်း Approve လုပ်ခဲ့သူ မလုပ်ရ။ ကိုယ့် Scorecard ကို ကိုယ်တိုင် Review မလုပ်ရ။',
+    ),
+    b(
+      'If someone else changed the scorecard meanwhile, you see the server’s message and a Reload button. The buttons are a convenience: the server decides who may act.',
+      'အခြားသူက ကြားထဲတွင် ပြောင်းထားလျှင် Server ၏ စာနှင့် Reload ခလုတ်ကို ပြသည်။ ခလုတ်များသည် အဆင်ပြေစေရန်သာ ဖြစ်ပြီး မည်သူ လုပ်ဆောင်ခွင့်ရှိသည်ကို Server က ဆုံးဖြတ်သည်။',
+    ),
+  ],
+  '/performance/assignments': [
+    b(
+      'Every scorecard with its period, department, status, number of KPIs, total weight, overall score and reviewer. Filter by period, department or status and search by employee code or name. A total weight that is not 100% is highlighted.',
+      'Period၊ ဌာန၊ Status၊ KPI အရေအတွက်၊ Weight စုစုပေါင်း၊ စုစုပေါင်းရမှတ်နှင့် Reviewer ပါသော Scorecard စာရင်း။ Period၊ ဌာန သို့ Status ဖြင့် စစ်ထုတ်ပြီး ဝန်ထမ်း Code သို့ အမည်ဖြင့် ရှာနိုင်သည်။ Weight စုစုပေါင်း ၁၀၀% မဟုတ်လျှင် အရောင်ဖြင့် ပြထားသည်။',
+    ),
+    b(
+      'Assign KPIs: choose a Draft or Active period and an employee, add KPIs from the active templates (department-specific ones only for that department) and adjust each target and weight. The running total cannot exceed 100%. The message says whether a scorecard was created or KPIs were added to the one in Planning.',
+      'Assign KPIs — Draft သို့ Active Period နှင့် ဝန်ထမ်းကိုရွေးပြီး Active Template များမှ KPI ထည့်ကာ Target နှင့် Weight ကို တစ်ခုချင်းပြင်နိုင်သည် (ဌာနအလိုက် Template များသည် ထိုဌာနအတွက်သာ)။ Weight စုစုပေါင်း ၁၀၀% မကျော်ရ။ Scorecard အသစ် ဖန်တီးသလား၊ Planning ရှိ Scorecard ထဲ KPI ထပ်ထည့်သလား စာက ပြောပြသည်။',
+    ),
+    b(
+      'Bulk assign: the same KPIs for a whole department, branch, position or job grade, or for hand-picked employees. The result lists who was assigned (with the number of KPIs) and who was skipped, with the reason.',
+      'Bulk assign — ဌာန၊ Branch၊ Position၊ Job Grade တစ်ခုလုံး သို့ ရွေးထားသော ဝန်ထမ်းများကို KPI တူများ ပေးသည်။ ရလဒ်တွင် Assign ပြီးသူများ (KPI အရေအတွက်နှင့်) နှင့် ကျော်သွားသူများကို အကြောင်းပြချက်နှင့်တကွ ပြသည်။',
+    ),
+    b(
+      'Open a row to see the plan: edit or remove a KPI, add more, delete the scorecard or Finalize plan (enabled only at exactly 100%; the confirmation names the reviewer, the current manager). Past Planning the plan is read-only. If someone else changed it meanwhile, you see the server’s message and a Reload button.',
+      'အတန်းတစ်ခုကိုဖွင့်ပြီး Plan ကိုကြည့်ပါ — KPI ပြင်/ဖယ်ရှား၊ ထပ်ထည့်၊ Scorecard ဖျက် သို့ Finalize plan (၁၀၀% အတိအကျတွင်သာ နှိပ်နိုင်ပြီး အတည်ပြုချက်တွင် Reviewer ဖြစ်မည့် လက်ရှိ Manager အမည်ပါသည်)။ Planning ကျော်လျှင် Plan သည် ဖတ်ရန်သာ။ အခြားသူက ကြားထဲတွင် ပြောင်းထားလျှင် Server ၏ စာနှင့် Reload ခလုတ်ကို ပြသည်။',
+    ),
+  ],
+  '/performance/templates': [
+    b(
+      'Define a reusable KPI: code, name, category, an optional department, scoring method, measurement type, direction, unit, frequency, default target and weight.',
+      'ပြန်သုံးနိုင်သော KPI ကို သတ်မှတ်သည် — Code၊ အမည်၊ Category၊ ရွေးချယ်နိုင်သော ဌာန၊ Scoring Method၊ Measurement type၊ Direction၊ ယူနစ်၊ Frequency၊ ပုံသေ Target နှင့် Weight။',
+    ),
+    b(
+      'The form adapts: Rating Based asks for the maximum rating and fixes the type to Rating; Boolean fixes the type to Boolean and the target to 1; Range Based asks for the range and fixes the direction; Capped Percentage asks for the maximum achievement; Lower Is Better needs one too, because a result of 0 scores the cap.',
+      'Form သည် ရွေးချယ်မှုအလိုက် ပြောင်းသည် — Rating Based တွင် Maximum rating တောင်းပြီး Type ကို Rating သတ်မှတ်၊ Boolean တွင် Type ကို Boolean နှင့် Target ကို 1 သတ်မှတ်၊ Range Based တွင် Range တောင်းပြီး Direction ကို သတ်မှတ်၊ Capped Percentage တွင် Maximum achievement တောင်းသည်။ Lower Is Better တွင်လည်း လိုသည် — ရလဒ် 0 သည် Cap ရမှတ်ကို ရသောကြောင့်။',
+    ),
+    b(
+      'The rules are checked as you type; the server has the final say. A template with assigned KPIs cannot be deleted: deactivate it instead. Editing a template never changes KPIs already assigned.',
+      'ရိုက်နေစဉ် စည်းကမ်းများကို စစ်ပေးပြီး နောက်ဆုံးဆုံးဖြတ်သူမှာ Server ဖြစ်သည်။ Assign ပြီးသော KPI ရှိသည့် Template ကို ဖျက်၍မရ — Deactivate လုပ်ပါ။ Template ကိုပြင်လည်း Assign ပြီးသော KPI များ မပြောင်းပါ။',
+    ),
+  ],
+  '/performance/categories': [
+    b(
+      'Add, edit, activate and deactivate KPI categories. The code and the name must be unique.',
+      'KPI Category များကို ထည့်/ပြင်/Activate/Deactivate လုပ်သည်။ Code နှင့် အမည် မထပ်ရ။',
+    ),
+    b(
+      'A category that templates use cannot be deleted; the message says how many use it. Deactivate it instead.',
+      'Template များ သုံးနေသော Category ကို ဖျက်၍မရ — ဘယ်နှခု သုံးနေသည်ကို စာက ပြောပြသည်။ Deactivate လုပ်ပါ။',
+    ),
+  ],
+  '/performance/periods': [
+    b(
+      'Create an evaluation period for a company: name, type, start and end date, an optional submission due date, and whether HR gives a final review.',
+      'ကုမ္ပဏီတစ်ခုအတွက် Evaluation Period ဖန်တီးသည် — အမည်၊ အမျိုးအစား၊ စတင်/ပြီးဆုံးရက်၊ ရွေးချယ်နိုင်သော Submission due date နှင့် HR final review လို/မလို။',
+    ),
+    b(
+      'A period moves Draft → Active → Completed → Closed, one confirmed step at a time. Closing makes it final. Draft: every field can change and it can be deleted. Active: only the name and due date. Completed and Closed: read-only.',
+      'Period သည် Draft → Active → Completed → Closed အဆင့်ဆင့် ပြောင်းပြီး တစ်ဆင့်ချင်း အတည်ပြုရသည်။ Close လုပ်လျှင် အပြီးသတ်ဖြစ်သည်။ Draft — အကွက်အားလုံးပြင်နိုင်ပြီး ဖျက်နိုင်သည်။ Active — အမည်နှင့် Due date သာ။ Completed နှင့် Closed — ဖတ်ရန်သာ။',
+    ),
+    b(
+      'Periods of the same type cannot overlap in a company; the message names the clashing period. Different types (a Monthly period inside a Quarterly one) are allowed.',
+      'ကုမ္ပဏီတစ်ခုတွင် အမျိုးအစားတူ Period များ ရက်မထပ်ရ — ထပ်နေသော Period ကို စာတွင် ဖော်ပြသည်။ အမျိုးအစားမတူလျှင် (Quarterly အတွင်း Monthly) ရသည်။',
+    ),
+  ],
+  '/performance/rating-bands': [
+    b(
+      'Bands turn an overall score into a label: a score gets the band with the highest minimum score it reaches. Labels and minimum scores must be unique.',
+      'Band များသည် စုစုပေါင်းရမှတ်ကို Label အဖြစ် ပြောင်းပေးသည် — ရမှတ်သည် ၎င်းရောက်သော အနည်းဆုံးရမှတ် အမြင့်ဆုံး Band ကို ရသည်။ Label နှင့် အနည်းဆုံးရမှတ် မထပ်ရ။',
+    ),
+    b(
+      'The list is sorted by minimum score, highest first. Deactivate a band to stop using it.',
+      'စာရင်းကို အနည်းဆုံးရမှတ် မြင့်ရာမှ နိမ့်ရာသို့ စီထားသည်။ မသုံးလိုတော့သော Band ကို Deactivate လုပ်ပါ။',
+    ),
+  ],
+
   '/payroll/salary-components': [
     b(
       'Define earnings (housing, transport…) and deductions (tax, social…). Each has a unique code and a method: fixed amount, % of basic or % of gross.',

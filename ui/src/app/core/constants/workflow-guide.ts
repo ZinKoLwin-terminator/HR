@@ -595,4 +595,98 @@ export const WORKFLOWS: readonly Workflow[] = [
       },
     ],
   },
+  {
+    id: 'kpi-plan',
+    title: { en: '5. A KPI plan and its review', my: '၅။ KPI Plan နှင့် ၎င်း၏ Review' },
+    summary: {
+      en: 'How HR prepares each employee’s KPIs for an evaluation period, the employee submits results, the manager reviews them and HR gives the final review.',
+      my: 'Evaluation Period တစ်ခုအတွက် ဝန်ထမ်းတစ်ဦးချင်းစီ၏ KPI များကို HR ပြင်ဆင်ပုံ၊ ဝန်ထမ်းက ရလဒ် Submit လုပ်ပုံ၊ Manager က Review လုပ်ပုံနှင့် HR က Final review ပေးပုံ။',
+    },
+    steps: [
+      {
+        module: 'Performance',
+        title: { en: 'Set up the KPIs', my: 'KPI များကို Setup လုပ်ပါ' },
+        text: {
+          en: 'Categories, then reusable templates with their scoring method, default target and weight.',
+          my: 'Category များ၊ ထို့နောက် Scoring Method၊ ပုံသေ Target နှင့် Weight ပါသော ပြန်သုံးနိုင်သည့် Template များ။',
+        },
+        route: '/performance/templates',
+      },
+      {
+        module: 'Performance',
+        title: { en: 'Create the period', my: 'Period ဖန်တီးပါ' },
+        text: {
+          en: 'One company, one type, dates that do not overlap another period of that type. It starts as Draft.',
+          my: 'ကုမ္ပဏီတစ်ခု၊ အမျိုးအစားတစ်ခု၊ အမျိုးအစားတူ အခြား Period နှင့် ရက်မထပ်ရ။ Draft အဖြစ် စတင်သည်။',
+        },
+        route: '/performance/periods',
+      },
+      {
+        module: 'Performance',
+        title: { en: 'Assign KPIs', my: 'KPI များ Assign လုပ်ပါ' },
+        text: {
+          en: 'To one employee or in bulk. The template is copied into the scorecard, which starts in Planning.',
+          my: 'ဝန်ထမ်းတစ်ဦးချင်း သို့ အစုလိုက်။ Template ကို Scorecard ထဲ ကူးထည့်ပြီး Scorecard သည် Planning ဖြင့် စတင်သည်။',
+        },
+        route: '/performance/assignments',
+      },
+      {
+        module: 'Performance',
+        title: { en: 'Finalize the plan', my: 'Plan ကို Finalize လုပ်ပါ' },
+        text: {
+          en: 'Only at exactly 100% weight. The employee’s current manager becomes the reviewer and the scorecard moves to Draft.',
+          my: 'Weight ၁၀၀% အတိအကျတွင်သာ။ ဝန်ထမ်း၏ လက်ရှိ Manager က Reviewer ဖြစ်လာပြီး Scorecard သည် Draft သို့ ရောက်သည်။',
+        },
+        route: '/performance/assignments',
+      },
+      {
+        module: 'Performance',
+        title: { en: 'Activate the period', my: 'Period ကို Activate လုပ်ပါ' },
+        text: {
+          en: 'Employees can then enter and submit results.',
+          my: 'ထို့နောက် ဝန်ထမ်းများ ရလဒ်ထည့်ပြီး Submit လုပ်နိုင်သည်။',
+        },
+        route: '/performance/periods',
+      },
+      {
+        module: 'Performance',
+        title: { en: 'The employee submits', my: 'ဝန်ထမ်းက Submit လုပ်သည်' },
+        text: {
+          en: 'In My KPIs: an actual and a comment per KPI, evidence files if any, Save draft, then Submit once every KPI has a result. The server calculates the score. After the due date the submission is marked Late.',
+          my: 'My KPIs တွင် — KPI တစ်ခုစီအတွက် Actual နှင့် Comment၊ ရှိလျှင် Evidence ဖိုင်များ၊ Save draft၊ KPI တိုင်းတွင် ရလဒ်ရှိမှ Submit။ Server က ရမှတ်ကို တွက်သည်။ Due date ကျော်လျှင် Late ဟု မှတ်သည်။',
+        },
+        route: '/performance/my-kpis',
+      },
+      {
+        module: 'Performance',
+        title: { en: 'The manager reviews', my: 'Manager က Review လုပ်သည်' },
+        text: {
+          en: 'In Reviews: start the review, rate each KPI 1 to 5 with feedback, then Approve, Return for revision (with a reason; the employee corrects and resubmits) or Reject (with a reason; final). Nobody reviews their own scorecard.',
+          my: 'Reviews တွင် — Review စတင်၊ KPI တစ်ခုချင်းကို 1 မှ 5 Rating နှင့် Feedback ပေးပြီး Approve၊ Return for revision (အကြောင်းပြချက်ဖြင့် — ဝန်ထမ်းက ပြင်ပြီး ထပ် Submit) သို့ Reject (အကြောင်းပြချက်ဖြင့် — အပြီးသတ်)။ ကိုယ့် Scorecard ကို ကိုယ်တိုင် Review မလုပ်ရ။',
+        },
+        route: '/performance/reviews',
+      },
+      {
+        module: 'Performance',
+        title: { en: 'HR gives the final review', my: 'HR က Final review ပေးသည်' },
+        text: {
+          en: 'Only when the period asks for it: the Approved scorecard waits in HR’s Reviews, where another HR person than the approver finalizes, returns or rejects it. Otherwise approval finalizes at once.',
+          my: 'Period က လိုအပ်မှသာ — Approved Scorecard သည် HR ၏ Reviews တွင် စောင့်ပြီး Approve လုပ်ခဲ့သူမဟုတ်သော HR က Finalize၊ Return သို့ Reject လုပ်သည်။ မဟုတ်လျှင် Approve လုပ်သည်နှင့် ချက်ချင်း Finalize ဖြစ်သည်။',
+        },
+        route: '/performance/reviews',
+      },
+      {
+        module: 'Performance',
+        title: {
+          en: 'Complete and close the period',
+          my: 'Period ကို Complete နှင့် Close လုပ်ပါ',
+        },
+        text: {
+          en: 'Complete it when results are in (reviews can still finish), and Close it when everything is final.',
+          my: 'ရလဒ်များ ရောက်ပြီးလျှင် Complete လုပ်ပါ (Review များ ဆက်ပြီးနိုင်သည်)၊ အားလုံးပြီးဆုံးလျှင် Close လုပ်ပါ။',
+        },
+        route: '/performance/periods',
+      },
+    ],
+  },
 ];
