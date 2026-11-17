@@ -107,6 +107,9 @@ internal static class AuthenticationSetup
                     QueueLimit = 0,
                 }));
 
+            // Per signed-in account (the rate limiter runs after authentication for this).
+            EvidenceUploadRateLimit.Add(options, configuration);
+
             options.OnRejected = async (context, cancellationToken) =>
             {
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
@@ -114,11 +117,14 @@ internal static class AuthenticationSetup
                     context.HttpContext.Response.Headers.RetryAfter = ((int)retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);
                 }
 
+                var policy = context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
                 var problem = new ProblemDetails
                 {
                     Status = StatusCodes.Status429TooManyRequests,
                     Title = "Too many requests",
-                    Detail = "Too many attempts. Wait a minute and try again.",
+                    Detail = policy == EvidenceUploadRateLimit.Policy
+                        ? EvidenceUploadRateLimit.RejectedMessage
+                        : "Too many attempts. Wait a minute and try again.",
                 };
                 problem.Extensions[ApiProblems.CodeKey] = ErrorType.Unknown.ToString();
                 context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;

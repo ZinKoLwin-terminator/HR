@@ -214,9 +214,17 @@ public static class EvidenceFiles
     private static Result<EvidenceFileInfo> Refuse(string message) =>
         Result.Failure<EvidenceFileInfo>(AppError.Validation(message, "file", message));
 
+    /// <summary>
+    /// Opens the ZIP only when its end records are plausible for a single Office document (<see cref="HasPlausibleDirectory"/>), and treats
+    /// whatever <see cref="ZipArchive"/> throws on corrupt input as "not an Office package": <see cref="InvalidDataException"/> (bad records),
+    /// <see cref="IOException"/> including <see cref="EndOfStreamException"/> (a seek before the start or a read past the end of the content),
+    /// <see cref="ArgumentException"/> including <see cref="ArgumentOutOfRangeException"/> (an offset or size outside the stream),
+    /// <see cref="NotSupportedException"/> (an unsupported feature, such as a spanned archive) and <see cref="OverflowException"/> (a size
+    /// that does not fit). Not a bare catch: anything else (for example running out of memory) is a real failure, not a verdict on the file.
+    /// </summary>
     private static EvidenceKind? DetectOfficePackage(byte[] content)
     {
-        if (!HasPlausibleEntryCount(content))
+        if (!HasPlausibleDirectory(content))
         {
             return null;
         }
@@ -236,14 +244,84 @@ public static class EvidenceFiles
 
             return archive.GetEntry("xl/workbook.xml") is not null ? EvidenceKind.Xlsx : null;
         }
-        catch (InvalidDataException)
+        catch (Exception exception) when (exception is InvalidDataException or IOException or ArgumentException or NotSupportedException or OverflowException)
         {
             return null;
         }
     }
 
-    /// <summary>Reads the entry count from the end-of-central-directory record before the archive is opened, so a package full of entries is never loaded.</summary>
-    private static bool HasPlausibleEntryCount(byte[] content)
+    /// <summary>
+    /// Reads the end-of-central-directory record (and, when it points to one, the ZIP64 record) before the archive is opened: a single
+    /// archive on one disk (an Office document is never spanned), with as many entries on the disk as in total, between 1 and
+    /// <see cref="MaxZipEntries"/>, and a central directory that ends exactly where the end records begin (its offset plus its size; the
+    /// ZIP readers do not check this, so a directory size that lies would otherwise pass). So a package claiming a huge number of entries is
+    /// never loaded, and a ZIP64 record cannot raise the count past the cap.
+    /// </summary>
+    private static bool HasPlausibleDirectory(byte[] content)
+    {
+        var end = FindEndOfCentralDirectory(content);
+        if (end < 0)
+        {
+            return false;
+        }
+
+        var record = content.AsSpan(end);
+        var disk = BinaryPrimitives.ReadUInt16LittleEndian(record[4..]);
+        var directoryDisk = BinaryPrimitives.ReadUInt16LittleEndian(record[6..]);
+        var onDisk = BinaryPrimitives.ReadUInt16LittleEndian(record[8..]);
+        var total = BinaryPrimitives.ReadUInt16LittleEndian(record[10..]);
+        var size = BinaryPrimitives.ReadUInt32LittleEndian(record[12..]);
+        var offset = BinaryPrimitives.ReadUInt32LittleEndian(record[16..]);
+        if (disk == ushort.MaxValue || directoryDisk == ushort.MaxValue || onDisk == ushort.MaxValue || total == ushort.MaxValue
+            || size == uint.MaxValue || offset == uint.MaxValue)
+        {
+            return HasPlausibleZip64Directory(content, end);
+        }
+
+        return disk == 0 && directoryDisk == 0 && onDisk == total && total is > 0 and <= MaxZipEntries && (ulong)offset + size == (ulong)end;
+    }
+
+    /// <summary>
+    /// The ZIP64 locator right before the classic record, and the ZIP64 record it points to, describe one disk, a plausible entry count and a
+    /// central directory that ends where the ZIP64 record begins.
+    /// </summary>
+    private static bool HasPlausibleZip64Directory(byte[] content, int end)
+    {
+        const int locatorLength = 20;
+        const int recordLength = 56;
+        var locatorAt = end - locatorLength;
+        if (locatorAt < 0 || BinaryPrimitives.ReadUInt32LittleEndian(content.AsSpan(locatorAt)) != 0x07064B50)
+        {
+            return false;
+        }
+
+        var locator = content.AsSpan(locatorAt, locatorLength);
+        var recordDisk = BinaryPrimitives.ReadUInt32LittleEndian(locator[4..]);
+        var recordAt = BinaryPrimitives.ReadUInt64LittleEndian(locator[8..]);
+        var disks = BinaryPrimitives.ReadUInt32LittleEndian(locator[16..]);
+        if (locatorAt < recordLength || recordDisk != 0 || disks > 1 || recordAt > (ulong)(locatorAt - recordLength))
+        {
+            return false;
+        }
+
+        var record = content.AsSpan((int)recordAt, recordLength);
+        if (BinaryPrimitives.ReadUInt32LittleEndian(record) != 0x06064B50)
+        {
+            return false;
+        }
+
+        var disk = BinaryPrimitives.ReadUInt32LittleEndian(record[16..]);
+        var directoryDisk = BinaryPrimitives.ReadUInt32LittleEndian(record[20..]);
+        var onDisk = BinaryPrimitives.ReadUInt64LittleEndian(record[24..]);
+        var total = BinaryPrimitives.ReadUInt64LittleEndian(record[32..]);
+        var size = BinaryPrimitives.ReadUInt64LittleEndian(record[40..]);
+        var offset = BinaryPrimitives.ReadUInt64LittleEndian(record[48..]);
+        return disk == 0 && directoryDisk == 0 && onDisk == total && total is > 0 and <= MaxZipEntries
+            && size <= recordAt && offset == recordAt - size;
+    }
+
+    /// <summary>The position of the end-of-central-directory record (searched backwards over the longest possible comment), or -1.</summary>
+    private static int FindEndOfCentralDirectory(byte[] content)
     {
         const int endRecordLength = 22;
         var searchFrom = content.Length - endRecordLength;
@@ -252,11 +330,10 @@ public static class EvidenceFiles
         {
             if (content[position] == 0x50 && content[position + 1] == 0x4B && content[position + 2] == 0x05 && content[position + 3] == 0x06)
             {
-                var entries = BinaryPrimitives.ReadUInt16LittleEndian(content.AsSpan(position + 10, 2));
-                return entries is > 0 and <= MaxZipEntries;
+                return position;
             }
         }
 
-        return false;
+        return -1;
     }
 }

@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 using Apex.Hrms.Application.Performance.Scorecards;
 using Apex.Hrms.Domain.Common;
@@ -121,22 +122,33 @@ internal static class EvidenceUploadReader
             : Result.Success(new EvidenceUploadRequest(rowVersion, fileName, content));
     }
 
-    /// <summary>The file bytes, or null when it is larger than the limit (reading stops one byte past it).</summary>
+    /// <summary>
+    /// The file bytes, or null when it is larger than the limit (reading stops one byte past it). The section is read straight into one
+    /// pooled working buffer of the limit plus one byte (no growing stream, no intermediate chunks), then copied once into an array of the
+    /// exact size, which the handler keeps; the working buffer is cleared before it goes back to the pool, because it held an employee's
+    /// file. So an upload costs one exact-size array, and repeated uploads reuse the working buffer instead of allocating 16 MB of
+    /// growing streams each time.
+    /// </summary>
     private static async Task<byte[]?> ReadFileAsync(Stream body, CancellationToken cancellationToken)
     {
-        using var buffer = new MemoryStream();
-        var chunk = new byte[81920];
-        int read;
-        while ((read = await body.ReadAsync(chunk, cancellationToken)) > 0)
+        const int limit = (int)EvidenceFiles.MaxBytes + 1;
+        var buffer = ArrayPool<byte>.Shared.Rent(limit);
+        var filled = 0;
+        try
         {
-            buffer.Write(chunk, 0, read);
-            if (buffer.Length > EvidenceFiles.MaxBytes)
+            int read;
+            while (filled < limit && (read = await body.ReadAsync(buffer.AsMemory(filled, limit - filled), cancellationToken)) > 0)
             {
-                return null;
+                filled += read;
             }
-        }
 
-        return buffer.ToArray();
+            return filled > EvidenceFiles.MaxBytes ? null : buffer.AsSpan(0, filled).ToArray();
+        }
+        finally
+        {
+            buffer.AsSpan(0, filled).Clear();
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     /// <summary>A short text field; anything longer is cut (a row version is 12 characters, so a longer one is invalid anyway).</summary>

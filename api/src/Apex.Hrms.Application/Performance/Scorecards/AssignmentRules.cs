@@ -42,6 +42,19 @@ internal sealed record EmployeePlan(AssignmentEmployee Employee, ExistingScoreca
 /// </summary>
 internal static class AssignmentRules
 {
+    /// <summary>The refusal of a plan write on the caller's own scorecard (409), and the skip reason of the bulk assignment.</summary>
+    public const string OwnPlanMessage = "You cannot plan your own scorecard.";
+
+    /// <summary>
+    /// Separation of duties: HR does not plan (assign, change, remove, delete or finalize) the KPIs of their own scorecard. Refused (409)
+    /// when the caller's linked employee is <paramref name="employeeId"/>; a caller with no linked employee (the built-in administrator)
+    /// is never refused for this.
+    /// </summary>
+    public static Result EnsureNotOwnPlan(int? callerEmployeeId, int employeeId) =>
+        callerEmployeeId is { } caller && caller == employeeId
+            ? Result.Failure(AppError.Conflict(OwnPlanMessage))
+            : Result.Success();
+
     /// <summary>KPIs are assigned in a period that is Draft or Active (409 otherwise).</summary>
     public static Result EnsureOpen(EvaluationPeriod period) =>
         period.Status is EvaluationPeriodStatus.Draft or EvaluationPeriodStatus.Active
@@ -156,8 +169,8 @@ internal static class AssignmentRules
 
     /// <summary>
     /// The checks that depend on the employee's scorecard: a department-specific template must be the employee's department's (400
-    /// on <c>items[i].templateId</c>), the scorecard must still be in Planning and not already hold a requested KPI (409, naming
-    /// the codes), and the weights together must stay within 100% (400 on <c>items</c>).
+    /// on <c>items[i].templateId</c>), the scorecard must still be in Planning (409, without naming its current status) and not already
+    /// hold a requested KPI (409, naming the codes), and the weights together must stay within 100% (400 on <c>items</c>).
     /// </summary>
     public static Result CheckPlacement(AssignmentEmployee employee, ExistingScorecard? existing, IReadOnlyList<PreparedItem> prepared)
     {
@@ -179,8 +192,9 @@ internal static class AssignmentRules
 
         if (existing.Status != ScorecardStatus.Planning)
         {
+            // Never the current status: the caller needs kpi-setup only, which does not let them read the scorecard's progress.
             return Result.Failure(AppError.Conflict(
-                $"The scorecard of {employee.EmployeeCode} is {ScorecardStatusText.ToText(existing.Status)}; KPIs can only be assigned while it is in Planning."));
+                $"Employee {employee.EmployeeCode} already has a scorecard for this period that is past planning; KPIs can only be assigned while it is in Planning."));
         }
 
         var assigned = existing.Items.Select(item => item.TemplateId).ToHashSet();

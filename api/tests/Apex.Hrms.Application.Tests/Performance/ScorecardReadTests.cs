@@ -35,6 +35,49 @@ public sealed class ScorecardReadTests : IDisposable
     private async Task<int[]> VisibleEmployeesAsync() =>
         [.. ResultAssert.Succeeded(await host.QueryScorecards()).Items.Select(card => card.EmployeeId).Order()];
 
+    /// <summary>Finalizes the plan of an employee's scorecard (Planning to Draft) as the default caller (the administrator).</summary>
+    private async Task FinalizeAsync(Team team, int employeeId) =>
+        team.Cards[employeeId] = ResultAssert.Succeeded(await host.FinalizePlan(team.Cards[employeeId]));
+
+    [Fact]
+    public async Task An_employee_never_sees_their_own_scorecard_in_planning_while_their_manager_and_hr_do()
+    {
+        var team = await SeedTeamAsync();
+        var planning = team.Cards[team.Ben];
+        Assert.Equal("Planning", planning.Status);
+
+        host.User.EmployeeId = team.Ben;
+        host.Permissions.Only("kpi:View", "kpi:Create");
+        host.Team.Set([]);
+        var ownList = ResultAssert.Succeeded(await host.QueryScorecards());
+        var ownFiltered = ResultAssert.Succeeded(await host.QueryScorecards(new ScorecardFilter(Status: "Planning")));
+        var ownGet = ResultAssert.Failed(await host.GetScorecard(planning.Id), ErrorType.NotFound);
+
+        host.User.EmployeeId = team.Anna;
+        host.Permissions.Only("kpi:View", "kpi:Approve");
+        host.Team.Set([team.Ben, team.Cara]);
+        var managerGet = await host.GetScorecard(planning.Id);
+        var managerList = await VisibleEmployeesAsync();
+
+        host.User.EmployeeId = team.Dan;
+        host.Permissions.Only("kpi:View", "kpi:Approve", "employees:Edit");
+        host.Team.Set([]);
+        var hrGet = await host.GetScorecard(planning.Id);
+
+        Assert.Equal((0, 0), (ownList.Total, ownFiltered.Total));
+        Assert.Equal($"Scorecard #{planning.Id} was not found.", ownGet.Message);
+        Assert.True(managerGet.IsSuccess);
+        Assert.Equal([team.Anna, team.Ben, team.Cara], managerList);
+        Assert.True(hrGet.IsSuccess);
+
+        host.Permissions.Only("kpi:View", "kpi:Create", "kpi:Approve", "employees:Edit", "kpi-setup:Edit");
+        host.User.EmployeeId = null;
+        await FinalizeAsync(team, team.Ben);
+        host.User.EmployeeId = team.Ben;
+        host.Permissions.Only("kpi:View", "kpi:Create");
+        Assert.Equal("Draft", ResultAssert.Succeeded(await host.GetScorecard(planning.Id)).Status);
+    }
+
     // ---- Scope ----
 
     [Fact]
@@ -74,6 +117,7 @@ public sealed class ScorecardReadTests : IDisposable
     public async Task An_employee_sees_only_their_own_scorecard_and_another_employees_is_a_404()
     {
         var team = await SeedTeamAsync();
+        await FinalizeAsync(team, team.Ben);
         host.User.EmployeeId = team.Ben;
         host.Permissions.Only("kpi:View", "kpi:Create");
         host.Team.Set([]);
@@ -114,6 +158,7 @@ public sealed class ScorecardReadTests : IDisposable
     public async Task The_scope_applies_to_filters_search_and_totals_too()
     {
         var team = await SeedTeamAsync();
+        await FinalizeAsync(team, team.Ben);
         host.User.EmployeeId = team.Ben;
         host.Permissions.Only("kpi:View");
 

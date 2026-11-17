@@ -263,6 +263,124 @@ public sealed class ScorecardWorkflowHttpTests : DatabaseTest, IDisposable
         Assert.Equal("Finalized", (await ReadAsync(other)).GetProperty("status").GetString());
     }
 
+    // ---- What the employee reads of the review ----
+
+    private static (JsonValueKind Rating, string? Comment, string? Hr) ReviewOf(JsonElement card) =>
+        (card.GetProperty("managerRating").ValueKind, card.GetProperty("managerComment").GetString(), card.GetProperty("hrComment").GetString());
+
+    private static string? CommentOf(JsonElement card, string action) =>
+        card.GetProperty("history").EnumerateArray().Last(step => step.GetProperty("action").GetString() == action).GetProperty("comment").GetString();
+
+    private static JsonElement ItemOf(JsonElement card, int id) =>
+        card.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("id").GetInt32() == id);
+
+    [IntegrationFact]
+    public async Task The_employee_reads_the_review_only_once_it_is_final_while_the_reviewer_and_hr_read_it_all_along()
+    {
+        var setup = await SetupAsync(hrReview: true);
+        var ben = await SignedInAsync("Ben", setup.Ben.Id, EmployeeGrants);
+        var anna = await SignedInAsync("Anna", setup.Anna.Id, ManagerGrants);
+        var hrOne = await SignedInAsync("HrOne", null, HrGrants);
+        var url = $"/api/kpi/scorecards/{setup.Card.Id}";
+        var submitted = await SubmittedAsync(ben, setup);
+        var draft = await OkAsync(await Send(anna, HttpMethod.Put, $"{url}/review", new
+        {
+            rowVersion = Version(submitted),
+            managerRating = 4.5m,
+            managerComment = "Solid quarter",
+            items = new[] { new { id = setup.FirstItem, managerRating = (decimal?)5m, managerComment = "Great" } },
+        }));
+
+        var benDraft = await ReadAsync(await ben.GetAsync(url));
+        var annaDraft = await ReadAsync(await anna.GetAsync(url));
+        Assert.Equal((JsonValueKind.Null, null, null), ReviewOf(benDraft));
+        Assert.Equal(JsonValueKind.Null, ItemOf(benDraft, setup.FirstItem).GetProperty("managerRating").ValueKind);
+        Assert.Equal(JsonValueKind.Null, ItemOf(benDraft, setup.FirstItem).GetProperty("managerComment").ValueKind);
+        Assert.Equal((4.5m, "Solid quarter"), (annaDraft.GetProperty("managerRating").GetDecimal(), annaDraft.GetProperty("managerComment").GetString()));
+        Assert.Equal("Great", ItemOf(annaDraft, setup.FirstItem).GetProperty("managerComment").GetString());
+
+        var approved = await OkAsync(await Step(anna, setup.Card.Id, "approve", draft, "Well done"));
+        var benApproved = await ReadAsync(await ben.GetAsync(url));
+        var hrApproved = await ReadAsync(await hrOne.GetAsync(url));
+        var benDashboard = await ReadAsync(await ben.GetAsync("/api/kpi/dashboard/employee"));
+        Assert.Equal("Approved", benApproved.GetProperty("status").GetString());
+        Assert.Equal((JsonValueKind.Null, null, null), ReviewOf(benApproved));
+        Assert.Null(CommentOf(benApproved, "Approve"));
+        Assert.Equal("Well done", CommentOf(hrApproved, "Approve"));
+        Assert.Equal(4.5m, hrApproved.GetProperty("managerRating").GetDecimal());
+        Assert.Equal(JsonValueKind.Null, benDashboard.GetProperty("feedback").GetProperty("managerRating").ValueKind);
+        Assert.Equal(JsonValueKind.Null, benDashboard.GetProperty("feedback").GetProperty("managerComment").ValueKind);
+
+        await OkAsync(await Step(hrOne, setup.Card.Id, "finalize", approved, "Calibrated"));
+        var benFinal = await ReadAsync(await ben.GetAsync(url));
+        var benFinalDashboard = await ReadAsync(await ben.GetAsync("/api/kpi/dashboard/employee"));
+        Assert.Equal((4.5m, "Solid quarter", "Calibrated"), (benFinal.GetProperty("managerRating").GetDecimal(), benFinal.GetProperty("managerComment").GetString(), benFinal.GetProperty("hrComment").GetString()));
+        Assert.Equal("Great", ItemOf(benFinal, setup.FirstItem).GetProperty("managerComment").GetString());
+        Assert.Equal(("Well done", "Calibrated"), (CommentOf(benFinal, "Approve"), CommentOf(benFinal, "Finalize")));
+        Assert.Equal((4.5m, "Solid quarter"), (benFinalDashboard.GetProperty("feedback").GetProperty("managerRating").GetDecimal(), benFinalDashboard.GetProperty("feedback").GetProperty("managerComment").GetString()));
+    }
+
+    [IntegrationFact]
+    public async Task A_return_keeps_no_review_draft_the_employee_reads_the_reason_and_their_own_writes_answer_redacted()
+    {
+        var setup = await SetupAsync(hrReview: true);
+        var ben = await SignedInAsync("Ben", setup.Ben.Id, EmployeeGrants);
+        var anna = await SignedInAsync("Anna", setup.Anna.Id, ManagerGrants);
+        var hrOne = await SignedInAsync("HrOne", null, HrGrants);
+        var url = $"/api/kpi/scorecards/{setup.Card.Id}";
+        var submitted = await SubmittedAsync(ben, setup);
+        object Draft(JsonElement card, string note) => new
+        {
+            rowVersion = Version(card),
+            managerRating = 2m,
+            managerComment = note,
+            items = new[] { new { id = setup.SecondItem, managerRating = (decimal?)1m, managerComment = note } },
+        };
+        var draft = await OkAsync(await Send(anna, HttpMethod.Put, $"{url}/review", Draft(submitted, "Not convinced")));
+        var approved = await OkAsync(await Step(anna, setup.Card.Id, "approve", draft, "Fine by me"));
+
+        var returned = await OkAsync(await Step(hrOne, setup.Card.Id, "return", approved, "Quality score needs proof"));
+        Assert.Equal(1, await Sql.ScalarAsync<int>(
+            "SELECT COUNT(*) FROM kpi.Scorecard WHERE Id = @id AND Status = 'Returned' AND ManagerRating IS NULL AND ManagerComment IS NULL AND HrComment IS NULL",
+            ("@id", setup.Card.Id)));
+        Assert.Equal(0, await Sql.ScalarAsync<int>(
+            "SELECT COUNT(*) FROM kpi.ScorecardItem WHERE ScorecardId = @id AND (ManagerRating IS NOT NULL OR ManagerComment IS NOT NULL)", ("@id", setup.Card.Id)));
+        Assert.Equal("Fine by me", CommentOf(returned, "Approve"));
+
+        var benReturned = await ReadAsync(await ben.GetAsync(url));
+        Assert.Equal("Quality score needs proof", CommentOf(benReturned, "Return"));
+        Assert.Null(CommentOf(benReturned, "Approve"));
+        var saved = await OkAsync(await Send(ben, HttpMethod.Put, $"{url}/results", Result(Version(benReturned), setup.SecondItem, 90m, "Re-measured")));
+        var resubmitted = await OkAsync(await Step(ben, setup.Card.Id, "submit", saved));
+        foreach (var answer in new[] { saved, resubmitted })
+        {
+            Assert.Equal((JsonValueKind.Null, null, null), ReviewOf(answer));
+            Assert.Null(CommentOf(answer, "Approve"));
+            Assert.Equal("Quality score needs proof", CommentOf(answer, "Return"));
+        }
+
+        await OkAsync(await Send(anna, HttpMethod.Put, $"{url}/review", Draft(resubmitted, "Second look")));
+        var benAgain = await ReadAsync(await ben.GetAsync(url));
+        Assert.Equal((JsonValueKind.Null, null, null), ReviewOf(benAgain));
+        Assert.Equal(JsonValueKind.Null, ItemOf(benAgain, setup.SecondItem).GetProperty("managerComment").ValueKind);
+        Assert.Equal("Second look", (await ReadAsync(await anna.GetAsync(url))).GetProperty("managerComment").GetString());
+
+        var rejected = await OkAsync(await Step(anna, setup.Card.Id, "reject", await ReadAsync(await anna.GetAsync(url)), "Evidence is missing"));
+        var benRejected = await ReadAsync(await ben.GetAsync(url));
+        Assert.Equal("Rejected", rejected.GetProperty("status").GetString());
+        Assert.Equal((2m, "Second look"), (benRejected.GetProperty("managerRating").GetDecimal(), benRejected.GetProperty("managerComment").GetString()));
+        Assert.Equal(("Evidence is missing", "Fine by me"), (CommentOf(benRejected, "Reject"), CommentOf(benRejected, "Approve")));
+        Assert.Equal(JsonValueKind.Null, benRejected.GetProperty("hrComment").ValueKind);
+
+        var activity = await Sql.ScalarAsync<int>(
+            "SELECT COUNT(*) FROM app.ActivityLog WHERE Category = 'performance' AND Message LIKE @code AND (Message LIKE '%approved%' OR Message LIKE '%returned%' OR Message LIKE '%rejected%' OR Message LIKE '%resubmitted%')",
+            ("@code", $"%{setup.Ben.EmployeeCode}%"));
+        Assert.Equal(0, activity);
+        Assert.Equal(3, await Sql.ScalarAsync<int>(
+            "SELECT COUNT(*) FROM app.ActivityLog WHERE Category = 'performance' AND Message LIKE @code AND Message LIKE '%was reviewed'",
+            ("@code", $"%{setup.Ben.EmployeeCode}%")));
+    }
+
     // ---- Who may act ----
 
     [IntegrationFact]

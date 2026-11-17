@@ -212,10 +212,13 @@ internal sealed class KpiEmployeeReportHandler(KpiReportSource source, SelfServi
 
 /// <summary>
 /// The scorecards whose copied department is the route's, for one period: <c>periodId</c>, or the most recent Active period among the
-/// visible scorecards of the department, else the most recent. An unknown department is 404; a department with nothing visible is an
-/// empty report. Sort: <c>employeeCode</c> (default), <c>employeeName</c>, <c>overallScore</c>, <c>ratingLabel</c>, <c>status</c>.
+/// visible scorecards of the department, else the most recent. An unknown department is 404, and so is (with the same message) a
+/// department the caller has no business reading about, so the route does not reveal department names: the caller must hold
+/// <c>organization:View</c>, be of the HR tier, or see at least one scorecard of that department (any period, any filter). Otherwise a
+/// department with nothing matching is an empty report. Sort: <c>employeeCode</c> (default), <c>employeeName</c>, <c>overallScore</c>,
+/// <c>ratingLabel</c>, <c>status</c>.
 /// </summary>
-internal sealed class KpiDepartmentReportHandler(KpiReportSource source) : IKpiDepartmentReportHandler
+internal sealed class KpiDepartmentReportHandler(KpiReportSource source, SelfService self, ICallerPermissions permissions) : IKpiDepartmentReportHandler
 {
     private static readonly IReadOnlyDictionary<string, Expression<Func<KpiScorecardRow, object>>> SortKeys =
         new Dictionary<string, Expression<Func<KpiScorecardRow, object>>>(StringComparer.OrdinalIgnoreCase)
@@ -239,7 +242,7 @@ internal sealed class KpiDepartmentReportHandler(KpiReportSource source) : IKpiD
         var name = await read.FirstOrDefaultAsync(
             read.Query<Department>().Where(department => department.Id == departmentId).Select(department => department.Name),
             cancellationToken);
-        if (name is null)
+        if (name is null || !await MayReadAsync(departmentId, cancellationToken))
         {
             return Result.Failure<KpiDepartmentReportDto>(AppError.NotFound($"Department #{departmentId} was not found."));
         }
@@ -278,6 +281,12 @@ internal sealed class KpiDepartmentReportHandler(KpiReportSource source) : IKpiD
             KpiDashboardQueries.FinalizedAverage(groups),
             new PagedResult<KpiReportScorecardRowDto>([.. page.Rows.Select(row => row.ToReportRow())], page.Total, page.PageIndex, page.PageSize)));
     }
+
+    /// <summary>True when the caller may learn about the department: <c>organization:View</c>, the HR tier, or a visible scorecard of it.</summary>
+    private async Task<bool> MayReadAsync(int departmentId, CancellationToken cancellationToken) =>
+        permissions.Has("organization", "View")
+        || self.TierOf("kpi") == AccessTier.All
+        || await source.Read.CountAsync(source.Visible().Where(scorecard => scorecard.DepartmentId == departmentId), cancellationToken) > 0;
 }
 
 /// <summary>

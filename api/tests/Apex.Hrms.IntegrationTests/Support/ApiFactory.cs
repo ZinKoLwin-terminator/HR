@@ -13,7 +13,7 @@ namespace Apex.Hrms.IntegrationTests.Support;
 /// developer database <c>HR</c>, so the override is set three ways (environment, host setting, in-memory source) and
 /// the host refuses to start when the resulting setting is anything but the test database.
 /// The host runs in Development; its mail goes to a private temporary folder (never <c>App_Data</c>) and its sign-in
-/// rate limit is raised so the many sign-ins of the tests do not trip it.
+/// rate limit and its evidence upload limit are raised so the many sign-ins and uploads of the tests do not trip them.
 /// </summary>
 internal sealed class ApiFactory : WebApplicationFactory<Program>
 {
@@ -21,9 +21,12 @@ internal sealed class ApiFactory : WebApplicationFactory<Program>
 
     private readonly int loginPermitsPerMinute;
 
-    public ApiFactory(int loginPermitsPerMinute = 10000)
+    private readonly int evidenceUploadsPerMinute;
+
+    public ApiFactory(int loginPermitsPerMinute = 10000, int evidenceUploadsPerMinute = 10000)
     {
         this.loginPermitsPerMinute = loginPermitsPerMinute;
+        this.evidenceUploadsPerMinute = evidenceUploadsPerMinute;
         Environment.SetEnvironmentVariable(Key.Replace(":", "__", StringComparison.Ordinal), SqlServerEnvironment.ConnectionString);
     }
 
@@ -43,6 +46,7 @@ internal sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Email:DevelopmentFolder", MailFolder);
         builder.UseSetting("Kpi:EvidenceFolder", EvidenceFolder);
         builder.UseSetting("Auth:RateLimit:PermitsPerMinute", loginPermitsPerMinute.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        builder.UseSetting("Kpi:EvidenceUploadsPerMinute", evidenceUploadsPerMinute.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.UseSetting("Auth:PasswordResetUrl", "https://app.example.test/reset-password");
         builder.ConfigureAppConfiguration((_, configuration) =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?> { [Key] = SqlServerEnvironment.ConnectionString }));

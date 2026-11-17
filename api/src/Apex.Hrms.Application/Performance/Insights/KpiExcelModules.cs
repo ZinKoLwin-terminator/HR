@@ -50,9 +50,10 @@ internal abstract class KpiExportModule(KpiReportSource source) : IExcelModule
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// The visible scorecards of the request: Filtered applies the filters, the search and the date range; All applies none; Selected
-    /// takes the given scorecard ids (an id outside the caller's scope is silently left out, as in the other exports). Also returns
-    /// the category filter, which the item export applies to the KPIs themselves.
+    /// The visible scorecards of the request: Filtered applies the filters, the search and the date range; All applies the filters but
+    /// not the search or the date range; Selected takes the given scorecard ids and nothing else (an id outside the caller's scope is
+    /// silently left out, as in the other exports). Every scope starts from the caller's visible scorecards. Also returns the category
+    /// filter (not for Selected), which the item export applies to the KPIs themselves.
     /// </summary>
     protected Result<(IQueryable<Scorecard> Scorecards, int? CategoryId)> Select(ExportRequest request)
     {

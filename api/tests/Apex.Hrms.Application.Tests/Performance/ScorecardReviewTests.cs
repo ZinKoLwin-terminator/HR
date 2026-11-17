@@ -268,7 +268,7 @@ public sealed class ScorecardReviewTests : ScorecardWorkflowTestBase
         Assert.Equal(KpiCalculator.CalculationVersion, stored.CalculationVersion);
         var entry = Assert.Single(HistoryOf(world.Card.Id), action => action.Action == ReviewActionType.Approve);
         Assert.Equal((ReviewStep.Manager, ScorecardStatus.Submitted, ScorecardStatus.Finalized, "Well done", 80m, 21), (entry.Step, entry.FromStatus, entry.ToStatus, entry.Comment, entry.OverallScore, entry.ActorUserId));
-        Assert.Equal("Scorecard of EMP-0002 for \"2026 Q4\" approved and finalized", host.ActivityLog.LastMessage);
+        Assert.Equal("Scorecard of EMP-0002 for \"2026 Q4\" was reviewed", host.ActivityLog.LastMessage);
         Assert.DoesNotContain(host.ActivityLog.Messages, message => message.Contains("Well done", StringComparison.Ordinal));
     }
 
@@ -284,7 +284,7 @@ public sealed class ScorecardReviewTests : ScorecardWorkflowTestBase
         Assert.Equal(("Approved", null, 80m), (approved.Status, approved.FinalizedOn, approved.OverallScore));
         Assert.Null(Stored(world.Card.Id).FinalizedByUserId);
         Assert.Equal(new DateOnly(2026, 11, 9), approved.ReviewedOn);
-        Assert.Equal("Scorecard of EMP-0002 for \"2026 Q4\" approved, waiting for the HR review", host.ActivityLog.LastMessage);
+        Assert.Equal("Scorecard of EMP-0002 for \"2026 Q4\" was reviewed", host.ActivityLog.LastMessage);
     }
 
     [Fact]
@@ -332,7 +332,7 @@ public sealed class ScorecardReviewTests : ScorecardWorkflowTestBase
         var result = await host.Approve(submitted);
 
         ResultAssert.Failed(result, ErrorType.Conflict);
-        Assert.DoesNotContain(host.ActivityLog.Messages, message => message.Contains("approved", StringComparison.Ordinal));
+        Assert.DoesNotContain(host.ActivityLog.Messages, message => message.Contains("was reviewed", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -381,7 +381,7 @@ public sealed class ScorecardReviewTests : ScorecardWorkflowTestBase
         Assert.Equal(("Returned", null, null), (returned.Status, returned.OverallScore, returned.RatingLabel));
         var entry = Assert.Single(HistoryOf(world.Card.Id), action => action.Action == ReviewActionType.Return);
         Assert.Equal((ReviewStep.Manager, "A-2 looks low", 80m), (entry.Step, entry.Comment, entry.OverallScore));
-        Assert.Equal("Scorecard of EMP-0002 for \"2026 Q4\" returned to the employee", host.ActivityLog.LastMessage);
+        Assert.Equal("Scorecard of EMP-0002 for \"2026 Q4\" was reviewed", host.ActivityLog.LastMessage);
         Assert.DoesNotContain(host.ActivityLog.Messages, message => message.Contains("looks low", StringComparison.Ordinal));
     }
 
@@ -449,7 +449,7 @@ public sealed class ScorecardReviewTests : ScorecardWorkflowTestBase
         Assert.Equal(22, Stored(world.Card.Id).FinalizedByUserId);
         var entry = Assert.Single(HistoryOf(world.Card.Id), action => action.Action == ReviewActionType.Finalize);
         Assert.Equal((ReviewStep.HR, ScorecardStatus.Approved, ScorecardStatus.Finalized, "Calibrated", 22), (entry.Step, entry.FromStatus, entry.ToStatus, entry.Comment, entry.ActorUserId));
-        Assert.Equal("Scorecard of EMP-0002 for \"2026 Q4\" finalized by HR", host.ActivityLog.LastMessage);
+        Assert.Equal("Scorecard of EMP-0002 for \"2026 Q4\" was reviewed", host.ActivityLog.LastMessage);
     }
 
     [Fact]

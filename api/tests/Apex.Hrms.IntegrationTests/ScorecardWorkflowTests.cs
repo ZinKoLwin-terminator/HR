@@ -175,7 +175,7 @@ public sealed class ScorecardWorkflowTests : DatabaseTest
             ("@user", setup.ManagerUser),
             ("@employee", setup.Manager.Id),
             ("@name", $"{Tag} Anna")));
-        Assert.Equal(1, await Scalar<int>("SELECT COUNT(*) FROM app.ActivityLog WHERE Category = 'performance' AND Message LIKE '%approved and finalized%' AND Message LIKE @code", ("@code", $"%{setup.Employee.EmployeeCode}%")));
+        Assert.Equal(1, await Scalar<int>("SELECT COUNT(*) FROM app.ActivityLog WHERE Category = 'performance' AND Message LIKE '%was reviewed' AND Message LIKE @code", ("@code", $"%{setup.Employee.EmployeeCode}%")));
     }
 
     private static ScorecardItemDto ItemOf(ScorecardDetailDto card, string suffix) => card.Items.Single(item => item.KpiCode.EndsWith(suffix, StringComparison.Ordinal));

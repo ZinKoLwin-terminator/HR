@@ -201,14 +201,15 @@ internal sealed class AssignmentWriter(
 
 /// <summary>
 /// Assigns KPIs to one employee: creates the employee's scorecard for the period (status Planning, with the employee's placement
-/// copied now) or adds the KPIs to the one in Planning. The check order is: request shape, period, employee, templates, then the
-/// scorecard.
+/// copied now) or adds the KPIs to the one in Planning. The check order is: request shape, period, employee (and not the caller's own
+/// employee: 409), templates, then the scorecard.
 /// </summary>
 internal sealed class AssignKpiHandler(
     IValidator<AssignKpiRequest> validator,
     AssignmentLoader loader,
     AssignmentWriter writer,
     ScorecardReader reader,
+    ICurrentUser user,
     IActivityRecorder activity,
     IUnitOfWork unitOfWork) : IAssignKpiHandler
 {
@@ -251,6 +252,12 @@ internal sealed class AssignKpiHandler(
                     "Choose an existing employee."));
             }
 
+            var notOwn = AssignmentRules.EnsureNotOwnPlan(user.EmployeeId, employee.Id);
+            if (notOwn.IsFailure)
+            {
+                return Result.Failure<AssignmentResult>(notOwn.Error);
+            }
+
             var eligible = AssignmentRules.CheckEmployee(employee, period.Value);
             if (eligible.IsFailure)
             {
@@ -291,13 +298,15 @@ internal sealed class AssignKpiHandler(
 
 /// <summary>
 /// Assigns the same KPIs to many employees. What is wrong with the request, the period or a template fails the whole call before
-/// anything is written; what is wrong with one employee only skips that employee, with the reason. One transaction writes
-/// every scorecard and item, and one activity entry summarises the run. Running the same request again assigns nothing twice.
+/// anything is written; what is wrong with one employee only skips that employee, with the reason (the caller's own employee is always
+/// skipped: nobody plans their own scorecard). One transaction writes every scorecard and item, and one activity entry summarises the
+/// run. Running the same request again assigns nothing twice.
 /// </summary>
 internal sealed class BulkAssignKpiHandler(
     IValidator<BulkAssignKpiRequest> validator,
     AssignmentLoader loader,
     AssignmentWriter writer,
+    ICurrentUser user,
     IActivityRecorder activity,
     IUnitOfWork unitOfWork) : IBulkAssignKpiHandler
 {
@@ -345,7 +354,12 @@ internal sealed class BulkAssignKpiHandler(
         var plans = new List<EmployeePlan>();
         foreach (var employee in employees.Value)
         {
-            var refusal = AssignmentRules.CheckEmployee(employee, period.Value);
+            var refusal = AssignmentRules.EnsureNotOwnPlan(user.EmployeeId, employee.Id);
+            if (refusal.IsSuccess)
+            {
+                refusal = AssignmentRules.CheckEmployee(employee, period.Value);
+            }
+
             if (refusal.IsSuccess)
             {
                 refusal = AssignmentRules.CheckPlacement(employee, existing.GetValueOrDefault(employee.Id), prepared.Value);

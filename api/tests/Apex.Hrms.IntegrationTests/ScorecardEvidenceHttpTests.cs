@@ -314,6 +314,61 @@ public sealed class ScorecardEvidenceHttpTests : DatabaseTest, IDisposable
         Assert.Equal(0, await Sql.ScalarAsync<int>("SELECT COUNT(*) FROM kpi.Attachment WHERE ScorecardItemId = @id", ("@id", setup.FirstItem)));
     }
 
+    [IntegrationFact]
+    public async Task An_item_or_attachment_outside_the_scope_answers_the_same_404_as_a_missing_one_naming_only_the_route_resource()
+    {
+        var setup = await SetupAsync();
+        var ben = await SignedInAsync("Ben", setup.Ben.Id, EmployeeGrants);
+        var zed = await SignedInAsync("Zed", setup.Zed.Id, EmployeeGrants);
+        var created = await UploadedAsync(await UploadAsync(ben, setup.FirstItem, EvidenceSamples.Pdf(), "a.pdf", Requests.Version(setup.Card.RowVersion)));
+        var id = created.GetProperty("attachment").GetProperty("id").GetInt32();
+        var version = created.GetProperty("scorecardRowVersion").GetString()!;
+
+        var answers = new (HttpResponseMessage Response, string Expected)[]
+        {
+            (await UploadAsync(zed, setup.FirstItem, EvidenceSamples.Pdf(), "x.pdf", version), $"KPI item #{setup.FirstItem} was not found."),
+            (await UploadAsync(zed, 2_000_000_000, EvidenceSamples.Pdf(), "x.pdf", version), "KPI item #2000000000 was not found."),
+            (await RemoveAsync(zed, id, version), $"Attachment #{id} was not found."),
+            (await RemoveAsync(zed, 2_000_000_000, version), "Attachment #2000000000 was not found."),
+            (await zed.GetAsync($"/api/kpi/attachments/{id}"), $"Attachment #{id} was not found."),
+        };
+
+        foreach (var (response, expected) in answers)
+        {
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal(expected, (await ReadAsync(response)).GetProperty("detail").GetString());
+        }
+    }
+
+    [IntegrationFact]
+    public async Task Uploads_are_limited_per_account_with_a_429_problem_and_another_account_keeps_its_own_allowance()
+    {
+        using var limited = new ApiFactory(evidenceUploadsPerMinute: 2);
+        limited.EnsurePointsAtTestDatabase();
+        using var adminClient = limited.CreateBrowserClient(out _);
+        await adminClient.SignInAsync(TestAdministrator.Account);
+        var setup = await SetupAsync();
+        var benAccount = await TestAccounts.CreateAsync(TestAccounts.EmailFor(Tag, "ben-limit"), roleName: await RoleWithAsync("BenLimit", EmployeeGrants), employeeId: setup.Ben.Id);
+        var annaAccount = await TestAccounts.CreateAsync(TestAccounts.EmailFor(Tag, "anna-limit"), roleName: await RoleWithAsync("AnnaLimit", ManagerGrants), employeeId: setup.Anna.Id);
+        using var ben = limited.CreateBrowserClient(out _);
+        await ben.SignInAsync(benAccount);
+        using var anna = limited.CreateBrowserClient(out _);
+        await anna.SignInAsync(annaAccount);
+
+        var first = await UploadedAsync(await UploadAsync(ben, setup.FirstItem, EvidenceSamples.Pdf(), "one.pdf", Requests.Version(setup.Card.RowVersion)));
+        var second = await UploadedAsync(await UploadAsync(ben, setup.FirstItem, EvidenceSamples.Pdf(), "two.pdf", first.GetProperty("scorecardRowVersion").GetString()));
+        var third = await UploadAsync(ben, setup.FirstItem, EvidenceSamples.Pdf(), "three.pdf", second.GetProperty("scorecardRowVersion").GetString());
+        var otherAccount = await UploadAsync(anna, setup.FirstItem, EvidenceSamples.Pdf(), "x.pdf", second.GetProperty("scorecardRowVersion").GetString());
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+        Assert.Equal("application/problem+json", third.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("Too many evidence uploads. Wait a minute and try again.", (await ReadAsync(third)).GetProperty("detail").GetString());
+        Assert.True(third.Headers.Contains("Retry-After"));
+        Assert.Equal(HttpStatusCode.Forbidden, otherAccount.StatusCode);
+        Assert.Equal(2, await Sql.ScalarAsync<int>("SELECT COUNT(*) FROM kpi.Attachment WHERE ScorecardItemId = @id", ("@id", setup.FirstItem)));
+        Assert.Equal(HttpStatusCode.OK, (await ben.GetAsync($"/api/kpi/scorecards/{setup.Card.Id}")).StatusCode);
+    }
+
     private async Task<string> RoleWithAsync(string suffix, string[] grants)
     {
         var role = $"{Tag}-{suffix}";

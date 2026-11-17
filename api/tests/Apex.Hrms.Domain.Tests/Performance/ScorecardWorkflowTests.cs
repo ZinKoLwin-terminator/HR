@@ -50,11 +50,11 @@ public sealed class ScorecardWorkflowTests
                 break;
             case ScorecardStatus.Returned:
                 Submit(scorecard);
-                Assert.True(scorecard.Return(Manager, "Please check sales", Now).IsSuccess);
+                Assert.True(scorecard.Return(Manager, "Please check sales", [], Now).IsSuccess);
                 break;
             case ScorecardStatus.Resubmitted:
                 Submit(scorecard);
-                Assert.True(scorecard.Return(Manager, "Please check sales", Now).IsSuccess);
+                Assert.True(scorecard.Return(Manager, "Please check sales", [], Now).IsSuccess);
                 Submit(scorecard);
                 break;
             case ScorecardStatus.Approved:
@@ -340,7 +340,7 @@ public sealed class ScorecardWorkflowTests
     {
         var scorecard = In(from);
 
-        var entry = scorecard.Return(Manager, "  Evidence missing ", Now);
+        var entry = scorecard.Return(Manager, "  Evidence missing ", [], Now);
 
         Assert.True(entry.IsSuccess);
         Assert.Equal(ScorecardStatus.Returned, scorecard.Status);
@@ -349,6 +349,50 @@ public sealed class ScorecardWorkflowTests
         Assert.Null(scorecard.RatingLabel);
         Assert.Null(scorecard.CalculationVersion);
         Assert.Null(scorecard.ReviewedOn);
+    }
+
+    /// <summary>An item of the scorecard built by <see cref="In"/> (its id is 0 until it is saved).</summary>
+    private static ScorecardItem ItemOf(Scorecard scorecard, string code) => ScorecardItem.Create(new ScorecardItemDetails(
+        scorecard.Id, 2, 3, code, "Monthly sales", KpiMeasurementType.Number, null, KpiDirection.HigherIsBetter, KpiScoringMethod.DirectPercentage,
+        100m, null, null, null, 50m, null, Today, Today.AddDays(30), 1, 9, Today)).Value;
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Returning_clears_the_review_draft_of_the_scorecard_and_of_every_item_so_it_is_never_kept(bool fromApproved)
+    {
+        var scorecard = In(ScorecardStatus.UnderReview);
+        ScorecardItem[] items = [ItemOf(scorecard, "A-1"), ItemOf(scorecard, "A-2")];
+        Assert.True(scorecard.SaveReview(4m, "Draft opinion").IsSuccess);
+        Assert.True(items[0].RecordReview(5m, "Strong").IsSuccess);
+        Assert.True(items[1].RecordReview(2m, "Weak").IsSuccess);
+        if (fromApproved)
+        {
+            Assert.True(scorecard.Approve(true, Today, Score, "Exceeds", "Looks fine", Manager, Now).IsSuccess);
+        }
+
+        var entry = scorecard.Return(fromApproved ? Hr : Manager, "Recheck A-2", items, Now);
+
+        Assert.True(entry.IsSuccess);
+        Assert.Equal("Recheck A-2", entry.Value.Comment);
+        Assert.Equal((null, null, null), (scorecard.ManagerRating, scorecard.ManagerComment, scorecard.HrComment));
+        Assert.All(items, item => Assert.Equal((null, null), (item.ManagerRating, item.ManagerComment)));
+    }
+
+    [Fact]
+    public void A_refused_return_keeps_the_review_draft_and_an_item_of_another_scorecard_is_a_programming_error()
+    {
+        var scorecard = In(ScorecardStatus.UnderReview);
+        var item = ItemOf(scorecard, "A-1");
+        Assert.True(scorecard.SaveReview(4m, "Draft opinion").IsSuccess);
+        Assert.True(item.RecordReview(5m, "Strong").IsSuccess);
+
+        Refused(scorecard.Return(Manager, "  ", [item], Now));
+
+        Assert.Equal((4m, "Draft opinion"), (scorecard.ManagerRating, scorecard.ManagerComment));
+        Assert.Equal((5m, "Strong"), (item.ManagerRating, item.ManagerComment));
+        Assert.Throws<ArgumentException>(() => scorecard.Return(Manager, "reason", [NewItem()], Now));
+        Assert.Equal(ScorecardStatus.UnderReview, scorecard.Status);
     }
 
     [Theory]
@@ -377,7 +421,7 @@ public sealed class ScorecardWorkflowTests
         var returned = In(ScorecardStatus.UnderReview);
         var rejected = In(ScorecardStatus.UnderReview);
 
-        var returnResult = returned.Return(Manager, reason, Now);
+        var returnResult = returned.Return(Manager, reason, [], Now);
         var rejectResult = rejected.Reject(Manager, reason, Now);
 
         foreach (var error in new[] { Refused(returnResult), Refused(rejectResult) })
@@ -399,7 +443,7 @@ public sealed class ScorecardWorkflowTests
         var toReturn = In(status);
         var toReject = In(status);
 
-        var returned = toReturn.Return(Manager, "reason", Now);
+        var returned = toReturn.Return(Manager, "reason", [], Now);
         var rejected = toReject.Reject(Manager, "reason", Now);
 
         Assert.Equal(allowed, returned.IsSuccess);
@@ -422,7 +466,7 @@ public sealed class ScorecardWorkflowTests
         AssertConflictNaming(Refused(scorecard.Submit(Today, Score, null, Employee, Now)), ScorecardStatus.Rejected);
         AssertConflictNaming(Refused(scorecard.StartReview(Manager, Now)), ScorecardStatus.Rejected);
         AssertConflictNaming(Refused(scorecard.Approve(true, Today, Score, null, null, Manager, Now)), ScorecardStatus.Rejected);
-        AssertConflictNaming(Refused(scorecard.Return(Manager, "r", Now)), ScorecardStatus.Rejected);
+        AssertConflictNaming(Refused(scorecard.Return(Manager, "r", [], Now)), ScorecardStatus.Rejected);
         AssertConflictNaming(Refused(scorecard.Reject(Manager, "r", Now)), ScorecardStatus.Rejected);
         AssertConflictNaming(Refused(scorecard.FinalizeByHr(Today, null, Hr, Now)), ScorecardStatus.Rejected);
         Assert.Equal(ScorecardStatus.Rejected, scorecard.Status);
@@ -469,7 +513,7 @@ public sealed class ScorecardWorkflowTests
         AssertConflictNaming(scorecard.SaveResults("x").Error, ScorecardStatus.Finalized);
         AssertConflictNaming(Refused(scorecard.Submit(Today, Score, null, Employee, Now)), ScorecardStatus.Finalized);
         AssertConflictNaming(Refused(scorecard.Approve(true, Today, Score, null, null, Manager, Now)), ScorecardStatus.Finalized);
-        AssertConflictNaming(Refused(scorecard.Return(Manager, "r", Now)), ScorecardStatus.Finalized);
+        AssertConflictNaming(Refused(scorecard.Return(Manager, "r", [], Now)), ScorecardStatus.Finalized);
         AssertConflictNaming(Refused(scorecard.FinalizeByHr(Today, null, Hr, Now)), ScorecardStatus.Finalized);
     }
 

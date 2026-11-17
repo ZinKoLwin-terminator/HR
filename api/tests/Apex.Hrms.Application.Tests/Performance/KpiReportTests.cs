@@ -171,6 +171,46 @@ public sealed class KpiReportTests : IDisposable
         ResultAssert.Failed(await handler.HandleAsync(9999, Page(), default), ErrorType.NotFound);
     }
 
+    [Fact]
+    public async Task A_department_the_caller_sees_no_scorecard_of_is_the_same_404_as_an_unknown_one_unless_they_may_read_departments()
+    {
+        var world = await host.SeedInsightsAsync();
+        host.AsHr(world);
+        var empty = await host.CreateDepartmentAsync(world.Org.Company.Id, world.Org.Branch.Id, "FIN");
+        var handler = host.Get<IKpiDepartmentReportHandler>();
+        var opsMessage = $"Department #{world.Ops.Id} was not found.";
+
+        var hrEmpty = await handler.HandleAsync(empty.Id, Page(), default);
+
+        host.AsEmployee(world, "Ben");
+        var benEng = await handler.HandleAsync(world.Org.Department.Id, Page(), default);
+        var benOps = ResultAssert.Failed(await handler.HandleAsync(world.Ops.Id, Page(), default), ErrorType.NotFound);
+        var benUnknown = ResultAssert.Failed(await handler.HandleAsync(9999, Page(), default), ErrorType.NotFound);
+
+        // Hana's only scorecard (in OPS) is still in Planning, which an employee does not see.
+        host.AsEmployee(world, "Hana");
+        var hanaOps = ResultAssert.Failed(await handler.HandleAsync(world.Ops.Id, Page(), default), ErrorType.NotFound);
+
+        // Anna reviews Gail's OPS scorecard.
+        host.AsManager(world, "Anna", "Ben", "Cara", "Dan");
+        var annaOps = await handler.HandleAsync(world.Ops.Id, Page(), default);
+        var annaEmpty = ResultAssert.Failed(await handler.HandleAsync(empty.Id, Page(), default), ErrorType.NotFound);
+
+        host.AsEmployee(world, "Ben");
+        host.Permissions.Only("kpi:View", "kpi:Create", "organization:View");
+        var benWithOrganization = ResultAssert.Succeeded(await handler.HandleAsync(world.Ops.Id, Page(), default));
+
+        Assert.True(hrEmpty.IsSuccess);
+        Assert.True(benEng.IsSuccess);
+        Assert.Equal(opsMessage, benOps.Message);
+        Assert.Equal("Department #9999 was not found.", benUnknown.Message);
+        Assert.Equal(opsMessage, hanaOps.Message);
+        Assert.True(annaOps.IsSuccess);
+        Assert.Equal(["EMP-0007"], annaOps.Value.Rows.Items.Select(row => row.EmployeeCode));
+        Assert.Equal($"Department #{empty.Id} was not found.", annaEmpty.Message);
+        Assert.Equal((world.Ops.Id, 0), (benWithOrganization.DepartmentId, benWithOrganization.Rows.Total));
+    }
+
     // ---- Employee ----
 
     [Fact]

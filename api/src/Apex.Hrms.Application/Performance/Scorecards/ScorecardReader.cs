@@ -21,12 +21,22 @@ internal sealed class ScorecardReader(IReadModel read, IAccessScope<Scorecard> s
     /// <summary>Every scorecard, for the HR writes that answer with the scorecard they just changed.</summary>
     public IQueryable<Scorecard> Unscoped() => read.Query<Scorecard>();
 
+    /// <summary>The scorecard if the caller may see it (untracked), or null.</summary>
+    public Task<Scorecard?> FirstVisibleAsync(int id, CancellationToken cancellationToken) =>
+        read.FirstOrDefaultAsync(Scoped().Where(scorecard => scorecard.Id == id), cancellationToken);
+
     /// <summary>The row version of a scorecard as the database holds it, or null.</summary>
     public Task<byte[]?> RowVersionAsync(int id, CancellationToken cancellationToken) =>
         read.FirstOrDefaultAsync(
             read.Query<Scorecard>().Where(scorecard => scorecard.Id == id).Select(scorecard => scorecard.RowVersion),
             cancellationToken);
 
+    /// <summary>
+    /// One scorecard with its items, attachments and history, from <paramref name="source"/> (404 when it is not there). Every detail
+    /// the API answers with is built here, by the reads and by every write that answers with the scorecard, so the review fields always
+    /// pass <see cref="ReviewVisibility"/> for the signed-in caller: the scorecard's own employee does not read the manager's review
+    /// draft, the HR comment or the decision comments before the decision is final.
+    /// </summary>
     public async Task<Result<ScorecardDetailDto>> DetailAsync(IQueryable<Scorecard> source, int id, CancellationToken cancellationToken)
     {
         var row = await read.FirstOrDefaultAsync(Rows(source.Where(scorecard => scorecard.Id == id)), cancellationToken);
@@ -73,11 +83,13 @@ internal sealed class ScorecardReader(IReadModel read, IAccessScope<Scorecard> s
             },
             cancellationToken);
 
+        var visibility = ReviewVisibility.For(row.Status, row.EmployeeId, user.EmployeeId);
         return Result.Success(ScorecardMapping.ToDetail(
             ScorecardMapping.ToDto(row, names),
-            [.. items.Select(item => ScorecardMapping.ToItemDto(item, categories.GetValueOrDefault(item.CategoryId, string.Empty), files.GetValueOrDefault(item.Id)))],
-            [.. history.Select(ScorecardMapping.ToDto)],
-            extras ?? new ScorecardExtras()));
+            [.. items.Select(item => ScorecardMapping.ToItemDto(item, categories.GetValueOrDefault(item.CategoryId, string.Empty), visibility, files.GetValueOrDefault(item.Id)))],
+            [.. history.Select(action => ScorecardMapping.ToDto(action, visibility))],
+            extras ?? new ScorecardExtras(),
+            visibility));
     }
 
     /// <summary>

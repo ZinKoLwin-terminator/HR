@@ -171,7 +171,8 @@ public sealed class ScorecardAssignmentTests : IDisposable
 
         var error = ResultAssert.Failed(await host.Assign(employee.Id, plan.Period.Id, Item(second.Id, weight: 10m)), ErrorType.Conflict);
 
-        Assert.Contains("Draft", error.Message, StringComparison.Ordinal);
+        Assert.Equal("Employee EMP-0001 already has a scorecard for this period that is past planning; KPIs can only be assigned while it is in Planning.", error.Message);
+        Assert.DoesNotContain("Draft", error.Message, StringComparison.Ordinal);
     }
 
     // ---- Eligibility ----

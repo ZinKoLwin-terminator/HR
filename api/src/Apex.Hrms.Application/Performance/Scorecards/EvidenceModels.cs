@@ -27,6 +27,13 @@ public sealed record EvidenceDownload(string FileName, string ContentType, Strea
 /// <summary>Adds an evidence file to a KPI of the caller's own scorecard (<c>POST /api/kpi/scorecard-items/{itemId}/attachments</c>).</summary>
 public interface IUploadEvidenceHandler
 {
+    /// <summary>
+    /// The checks that need only the route's item id, run before the request body is read: the item exists and its scorecard is in the
+    /// caller's scope (404 "KPI item #id was not found." either way), the caller is its employee (403), the scorecard is Draft or Returned
+    /// and its period Active (409). Read-only; <see cref="HandleAsync"/> checks everything again.
+    /// </summary>
+    Task<Result> PrecheckAsync(int itemId, CancellationToken cancellationToken);
+
     Task<Result<EvidenceUploadResult>> HandleAsync(int itemId, EvidenceUploadRequest request, CancellationToken cancellationToken);
 }
 

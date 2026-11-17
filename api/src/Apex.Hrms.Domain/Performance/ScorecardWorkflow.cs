@@ -188,10 +188,19 @@ public sealed partial class Scorecard
     /// <summary>
     /// Sends the scorecard back to the employee (Returned) with a reason, from the manager stage (step Manager) or from Approved
     /// (the HR step). The employee edits the results and submits again. The score stored so far is cleared, because the results
-    /// will change; the history entry keeps it.
+    /// will change; the history entry keeps it. The review draft is cleared too (the overall and per-KPI manager rating and comment,
+    /// and the HR comment): it was never a decision, the employee must not read it, and the reviewer starts again on the resubmitted
+    /// results. The reason the employee needs is the comment of the history entry. <paramref name="items"/> are every item of this
+    /// scorecard (an item of another scorecard is a programming error).
     /// </summary>
-    public Result<ReviewAction> Return(ReviewActor actor, string? reason, DateTime occurredAtUtc)
+    public Result<ReviewAction> Return(ReviewActor actor, string? reason, IReadOnlyCollection<ScorecardItem> items, DateTime occurredAtUtc)
     {
+        ArgumentNullException.ThrowIfNull(items);
+        if (items.Any(item => item.ScorecardId != Id))
+        {
+            throw new ArgumentException("Every item must belong to the scorecard being returned.", nameof(items));
+        }
+
         var entry = Turn(ReviewActionType.Return, ScorecardStatus.Returned, "returned", actor, reason, occurredAtUtc);
         if (entry.IsSuccess)
         {
@@ -199,6 +208,13 @@ public sealed partial class Scorecard
             RatingLabel = null;
             CalculationVersion = null;
             ReviewedOn = null;
+            ManagerRating = null;
+            ManagerComment = null;
+            HrComment = null;
+            foreach (var item in items)
+            {
+                item.ClearReview();
+            }
         }
 
         return entry;

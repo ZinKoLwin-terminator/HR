@@ -94,7 +94,9 @@ public sealed class BulkAssignmentTests : IDisposable
 
         Assert.Equal([fresh.Id], result.Assigned.Select(entry => entry.EmployeeId));
         Assert.Contains("110.00%", result.Skipped.Single(entry => entry.EmployeeId == heavy.Id).Reason, StringComparison.Ordinal);
-        Assert.Contains("Draft", result.Skipped.Single(entry => entry.EmployeeId == final.Id).Reason, StringComparison.Ordinal);
+        var reason = result.Skipped.Single(entry => entry.EmployeeId == final.Id).Reason;
+        Assert.Contains("already has a scorecard for this period that is past planning", reason, StringComparison.Ordinal);
+        Assert.DoesNotContain("Draft", reason, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Abstractions;
+using Apex.Hrms.Application.Performance.Scorecards;
 using Apex.Hrms.Application.Security;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Employees;
@@ -174,7 +175,7 @@ internal sealed class KpiEmployeeDashboardHandler(KpiReportSource source, ICurre
                     current.FinalizedOn),
             items,
             new KpiPendingSubmissionDto(pending, period.SubmissionDueDate, overdue),
-            current is null ? null : new KpiManagerFeedbackDto(current.ManagerRating, current.ManagerComment),
+            current is null ? null : Feedback(current),
             [.. earlier.Select(row => new KpiHistoryEntryDto(
                 row.ScorecardId,
                 row.PeriodId,
@@ -185,6 +186,13 @@ internal sealed class KpiEmployeeDashboardHandler(KpiReportSource source, ICurre
                 ScorecardStatusText.ToText(row.Status),
                 row.OverallScore,
                 row.RatingLabel))]));
+    }
+
+    /// <summary>The manager's feedback as the scorecard's own employee may read it (<see cref="ReviewVisibility"/>): null fields until the decision is final.</summary>
+    private static KpiManagerFeedbackDto Feedback(CurrentRow current)
+    {
+        var visibility = ReviewVisibility.ForOwner(current.Status);
+        return new KpiManagerFeedbackDto(visibility.Rating(current.ManagerRating), visibility.ManagerText(current.ManagerComment));
     }
 
     private static KpiEmployeeDashboardDto Empty(KpiPeriodRefDto? period) =>

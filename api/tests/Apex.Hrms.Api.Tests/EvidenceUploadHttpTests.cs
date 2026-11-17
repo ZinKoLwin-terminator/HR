@@ -8,6 +8,7 @@ using Apex.Hrms.Application.Performance.Scorecards;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Domain.Performance;
 using Apex.Hrms.TestSupport;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -151,6 +152,62 @@ public sealed class EvidenceUploadHttpTests : IClassFixture<WebApplicationFactor
         Assert.Null(Assert.Single(handler.Calls).Request.RowVersion);
     }
 
+    [Fact]
+    public async Task An_item_the_precheck_refuses_is_answered_at_once_without_reading_the_body()
+    {
+        handler.Refusal = AppError.NotFound("KPI item #5 was not found.");
+        using var client = BrowserHandler.CreateClient(host.Server.CreateHandler(), out _);
+        var content = new UnknownLengthContent((int)EvidenceUploadReader.MaxRequestBytes + 4096);
+        content.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data; boundary=\"limit-test\"");
+
+        var response = await client.PostAsync(Url, content);
+
+        // Had the body been read, the oversized stream would have been a 413.
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("KPI item #5 was not found.", (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString());
+        Assert.Equal([5], handler.Prechecks);
+        Assert.Empty(handler.Calls);
+    }
+
+    [Fact]
+    public async Task The_eleventh_upload_of_one_account_within_a_minute_is_a_429_problem_with_retry_after()
+    {
+        using var client = BrowserHandler.CreateClient(host.Server.CreateHandler(), out _);
+
+        var statuses = new List<HttpStatusCode>();
+        for (var attempt = 0; attempt < EvidenceUploadRateLimit.DefaultPermitsPerMinute; attempt++)
+        {
+            statuses.Add((await client.PostAsync(Url, Form(SmallPdf, "a.pdf", "AAAAAAAAAAE="))).StatusCode);
+        }
+
+        var refused = await client.PostAsync(Url, Form(SmallPdf, "a.pdf", "AAAAAAAAAAE="));
+
+        Assert.All(statuses, status => Assert.Equal(HttpStatusCode.Created, status));
+        Assert.Equal(HttpStatusCode.TooManyRequests, refused.StatusCode);
+        Assert.Equal("application/problem+json", refused.Content.Headers.ContentType?.MediaType);
+        var problem = await refused.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(429, problem.GetProperty("status").GetInt32());
+        Assert.Equal(EvidenceUploadRateLimit.RejectedMessage, problem.GetProperty("detail").GetString());
+        Assert.True(refused.Headers.Contains("Retry-After"));
+        Assert.Equal(EvidenceUploadRateLimit.DefaultPermitsPerMinute, handler.Calls.Count);
+        Assert.Equal(EvidenceUploadRateLimit.DefaultPermitsPerMinute, handler.Prechecks.Count);
+    }
+
+    [Fact]
+    public async Task The_upload_limit_is_configurable_and_counts_refused_attempts_too()
+    {
+        using var limited = host.WithWebHostBuilder(builder => builder.UseSetting(EvidenceUploadRateLimit.PermitsPerMinuteKey, "2"));
+        using var client = BrowserHandler.CreateClient(limited.Server.CreateHandler(), out _);
+
+        var notMultipart = await client.PostAsJsonAsync(Url, new { rowVersion = "AAAAAAAAAAE=" });
+        var accepted = await client.PostAsync(Url, Form(SmallPdf, "a.pdf", "AAAAAAAAAAE="));
+        var refused = await client.PostAsync(Url, Form(SmallPdf, "a.pdf", "AAAAAAAAAAE="));
+
+        Assert.Equal(
+            [HttpStatusCode.BadRequest, HttpStatusCode.Created, HttpStatusCode.TooManyRequests],
+            new[] { notMultipart.StatusCode, accepted.StatusCode, refused.StatusCode });
+    }
+
     private static MultipartFormDataContent Form(byte[] file, string fileName, string rowVersion) => new()
     {
         { new StringContent(rowVersion), "rowVersion" },
@@ -183,6 +240,17 @@ public sealed class EvidenceUploadHttpTests : IClassFixture<WebApplicationFactor
     private sealed class RecordingUploadHandler : IUploadEvidenceHandler
     {
         public List<(int ItemId, EvidenceUploadRequest Request)> Calls { get; } = [];
+
+        public List<int> Prechecks { get; } = [];
+
+        /// <summary>The answer of the pre-check; success unless a test refuses the item.</summary>
+        public AppError? Refusal { get; set; }
+
+        public Task<Result> PrecheckAsync(int itemId, CancellationToken cancellationToken)
+        {
+            Prechecks.Add(itemId);
+            return Task.FromResult(Refusal is { } refusal ? Result.Failure(refusal) : Result.Success());
+        }
 
         public Task<Result<EvidenceUploadResult>> HandleAsync(int itemId, EvidenceUploadRequest request, CancellationToken cancellationToken)
         {

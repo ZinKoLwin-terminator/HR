@@ -69,7 +69,17 @@ internal sealed class ScorecardSteps(
     /// the caller allowed to take the step (403, or 409 for a reviewer's own scorecard and for the same approver) and the row
     /// version current (409). The repository checks the row version again in the database when saving.
     /// </summary>
-    public async Task<Result<Scorecard>> OpenAsync(int id, string? rowVersion, StepRole role, string? ownerMessage, CancellationToken cancellationToken)
+    /// <param name="notFound">
+    /// The 404 when the scorecard is missing or outside the scope. Routes whose id is not the scorecard's (an evidence item or
+    /// attachment) pass their own resource's message, so the answer never reveals the scorecard id behind it.
+    /// </param>
+    public async Task<Result<Scorecard>> OpenAsync(
+        int id,
+        string? rowVersion,
+        StepRole role,
+        string? ownerMessage,
+        CancellationToken cancellationToken,
+        AppError? notFound = null)
     {
         var expected = RowVersionToken.Decode(rowVersion);
         if (expected.IsFailure)
@@ -80,7 +90,7 @@ internal sealed class ScorecardSteps(
         var scorecard = await scorecards.FindAsync(id, scope.PredicateFor(user), cancellationToken);
         if (scorecard is null)
         {
-            return Result.Failure<Scorecard>(NotFoundError.For("Scorecard", id));
+            return Result.Failure<Scorecard>(notFound ?? NotFoundError.For("Scorecard", id));
         }
 
         var allowed = await AuthorizeAsync(scorecard, role, ownerMessage, cancellationToken);
@@ -220,31 +230,61 @@ internal sealed class ScorecardSteps(
     public const string NotOwnerOfEvidence = "You can only add or remove evidence on your own scorecard.";
 
     /// <summary>
-    /// Opens the scorecard for adding or removing evidence: only its own employee (404 outside the scope, 403 for someone else), a current
-    /// row version (409), the scorecard in Draft or Returned and its period Active (409).
+    /// Opens the scorecard for adding or removing evidence: only its own employee (404 outside the scope, with <paramref name="notFound"/>,
+    /// the message of the route's own resource; 403 for someone else), a current row version (409), the scorecard in Draft or Returned and
+    /// its period Active (409).
     /// </summary>
     public async Task<Result<(Scorecard Scorecard, EvaluationPeriod Period)>> OpenForEvidenceAsync(
         int scorecardId,
         string? rowVersion,
+        AppError notFound,
         CancellationToken cancellationToken)
     {
-        var opened = await OpenAsync(scorecardId, rowVersion, StepRole.Owner, NotOwnerOfEvidence, cancellationToken);
+        var opened = await OpenAsync(scorecardId, rowVersion, StepRole.Owner, NotOwnerOfEvidence, cancellationToken, notFound);
         if (opened.IsFailure)
         {
             return Result.Failure<(Scorecard, EvaluationPeriod)>(opened.Error);
         }
 
-        var editable = opened.Value.EnsureEvidenceEditable();
-        if (editable.IsFailure)
+        var accepts = await AcceptsEvidenceAsync(opened.Value, cancellationToken);
+        return accepts.IsFailure
+            ? Result.Failure<(Scorecard, EvaluationPeriod)>(accepts.Error)
+            : Result.Success((opened.Value, accepts.Value));
+    }
+
+    /// <summary>
+    /// The checks of <see cref="OpenForEvidenceAsync"/> that need no row version (scope 404 with <paramref name="notFound"/>, owner 403,
+    /// status and period 409), read-only: the upload route runs them before it reads the file, so a refused upload never buffers a body.
+    /// The upload itself runs every check again.
+    /// </summary>
+    public async Task<Result> PrecheckEvidenceAsync(int scorecardId, AppError notFound, CancellationToken cancellationToken)
+    {
+        var scorecard = await reader.FirstVisibleAsync(scorecardId, cancellationToken);
+        if (scorecard is null)
         {
-            return Result.Failure<(Scorecard, EvaluationPeriod)>(editable.Error);
+            return Result.Failure(notFound);
         }
 
-        var period = await PeriodOfAsync(opened.Value, cancellationToken);
+        if (user.EmployeeId is not { } own || own != scorecard.EmployeeId)
+        {
+            return Result.Failure(AppError.Forbidden(NotOwnerOfEvidence));
+        }
+
+        var accepts = await AcceptsEvidenceAsync(scorecard, cancellationToken);
+        return accepts.IsFailure ? Result.Failure(accepts.Error) : Result.Success();
+    }
+
+    private async Task<Result<EvaluationPeriod>> AcceptsEvidenceAsync(Scorecard scorecard, CancellationToken cancellationToken)
+    {
+        var editable = scorecard.EnsureEvidenceEditable();
+        if (editable.IsFailure)
+        {
+            return Result.Failure<EvaluationPeriod>(editable.Error);
+        }
+
+        var period = await PeriodOfAsync(scorecard, cancellationToken);
         var open = period.EnsureAcceptsEvidence();
-        return open.IsFailure
-            ? Result.Failure<(Scorecard, EvaluationPeriod)>(open.Error)
-            : Result.Success((opened.Value, period));
+        return open.IsFailure ? Result.Failure<EvaluationPeriod>(open.Error) : Result.Success(period);
     }
 
     /// <summary>

@@ -8,8 +8,9 @@ internal static class ApiApplicationExtensions
 {
     /// <summary>
     /// The request pipeline in order: forwarded headers (only when enabled), response headers, error handling, transport security (outside Development),
-    /// CORS, rate limiting, authentication (the session cookie), antiforgery validation of unsafe methods (it needs the
-    /// signed-in user), authorization.
+    /// CORS, authentication (the session cookie), rate limiting (after authentication, so the evidence upload can be limited per account;
+    /// the sign-in limit is per client IP and does not depend on it), antiforgery validation of unsafe methods (it needs the signed-in
+    /// user), authorization.
     /// </summary>
     public static WebApplication UseApiPipeline(this WebApplication app)
     {
@@ -25,8 +26,8 @@ internal static class ApiApplicationExtensions
         }
 
         app.UseCors(ApiServiceCollectionExtensions.CorsPolicyName);
-        app.UseRateLimiter();
         app.UseAuthentication();
+        app.UseRateLimiter();
         app.UseMiddleware<AntiforgeryMiddleware>();
         app.UseAuthorization();
         return app;

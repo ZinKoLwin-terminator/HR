@@ -52,7 +52,7 @@ public sealed class KpiDashboardTests : IDisposable
         Assert.Equal([64m, 16m], dashboard.Items.Select(item => item.WeightedScore));
 
         Assert.False(dashboard.Pending.IsPending);
-        Assert.NotNull(dashboard.Feedback);
+        Assert.Equal(new KpiManagerFeedbackDto(KpiInsightFixtures.ManagerRating, KpiInsightFixtures.ManagerNote), dashboard.Feedback);
         var history = Assert.Single(dashboard.History);
         Assert.Equal((world.Q3.Id, "Finalized", 70m, "Meets Expectations"), (history.PeriodId, history.Status, history.OverallScore, history.RatingLabel));
     }
@@ -83,6 +83,31 @@ public sealed class KpiDashboardTests : IDisposable
         Assert.Equal(new KpiPendingSubmissionDto(true, new DateOnly(2027, 1, 10), false), before.Pending);
         Assert.Equal(new KpiPendingSubmissionDto(true, new DateOnly(2027, 1, 10), true), after.Pending);
         Assert.Null(Assert.Single(before.Items).ActualValue);
+    }
+
+    /// <summary>Every one of these scorecards stored a manager's review draft (a return clears it); the employee reads it only once the decision is final.</summary>
+    [Theory]
+    [InlineData("Finn", "Draft", false)]
+    [InlineData("Dan", "Submitted", false)]
+    [InlineData("Jon", "Approved", false)]
+    [InlineData("Ivy", "Returned", false)]
+    [InlineData("Eve", "Rejected", true)]
+    [InlineData("Ben", "Finalized", true)]
+    public async Task The_feedback_is_the_managers_review_only_once_the_decision_is_final(string who, string status, bool shown)
+    {
+        var world = await host.SeedInsightsAsync();
+        host.AsEmployee(world, who);
+
+        var dashboard = ResultAssert.Succeeded(await Employee(world.Q4.Id));
+
+        Assert.Equal(status, dashboard.Scorecard!.Status);
+        Assert.Equal(
+            shown ? new KpiManagerFeedbackDto(KpiInsightFixtures.ManagerRating, KpiInsightFixtures.ManagerNote) : new KpiManagerFeedbackDto(null, null),
+            dashboard.Feedback);
+        if (status is "Submitted" or "Approved")
+        {
+            Assert.Equal(KpiInsightFixtures.ManagerRating, world.Card(who, world.Q4).ManagerRating);
+        }
     }
 
     [Fact]

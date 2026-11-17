@@ -71,18 +71,23 @@ internal sealed class SalaryAssignmentScope(SelfService self) : IAccessScope<Sal
 /// employee's manager still sees and reviews it, while the new manager sees it (a direct report) but cannot review it; only
 /// scorecards finalized after the change name the new manager. Applied by the scorecard reads and by every submission and review action. The HR writes of the plan
 /// (<c>kpi-setup</c>) are not scoped: HR plans every employee's scorecard. Items have no scope of their own: they are read through
-/// their scorecard.
+/// their scorecard. A caller of the Own tier never sees a scorecard in Planning (HR's targets are still in progress): it does not
+/// exist for them (404) until the plan is finalized. The Team and All tiers see Planning rows, their own included (a manager may
+/// follow a report's plan; HR's assignment screens and company-wide figures need every row). Seeing one's own planned targets early
+/// is accepted for those tiers: changing one's own plan is refused separately (AssignmentRules.EnsureNotOwnPlan).
 /// </summary>
 internal sealed class ScorecardScope(SelfService self) : IAccessScope<Scorecard>
 {
     public Expression<Func<Scorecard, bool>> PredicateFor(ICurrentUser user)
     {
-        if (self.TierOf("kpi") == AccessTier.Team && user.EmployeeId is { } own)
+        var tier = self.TierOf("kpi");
+        if (tier == AccessTier.Team && user.EmployeeId is { } own)
         {
             return self.Rows<Scorecard>("kpi", ids => scorecard => ids.Contains(scorecard.EmployeeId) || scorecard.ReviewerEmployeeId == own);
         }
 
-        return self.Rows<Scorecard>("kpi", ids => scorecard => ids.Contains(scorecard.EmployeeId));
+        var rows = self.Rows<Scorecard>("kpi", ids => scorecard => ids.Contains(scorecard.EmployeeId));
+        return tier == AccessTier.Own ? rows.And(scorecard => scorecard.Status != ScorecardStatus.Planning) : rows;
     }
 }
 

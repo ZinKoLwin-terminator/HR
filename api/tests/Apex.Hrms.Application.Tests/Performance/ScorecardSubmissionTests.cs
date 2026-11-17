@@ -379,11 +379,17 @@ public sealed class ScorecardSubmissionTests : ScorecardWorkflowTestBase
         var ben = await host.CreateStaffAsync(org, "EMP-0002");
         var template = (await host.CreateTemplateAsync(category.Id, "A-1")).Id;
         var planning = await host.AssignedAsync(ben.Id, period.Id, Item(template, weight: 100m));
-        AsEmployee(ben, 20);
 
+        // An employee of the Own tier does not see a scorecard in Planning at all; a manager (Team tier) sees their own and gets the 409.
+        AsEmployee(ben, 20);
+        var hiddenSubmit = ResultAssert.Failed(await host.Submit(planning), ErrorType.NotFound);
+        var hiddenSave = ResultAssert.Failed(await host.SaveResults(planning, Actual(planning.Items[0], 5m)), ErrorType.NotFound);
+        AsManager(ben, 20);
         var submit = ResultAssert.Failed(await host.Submit(planning), ErrorType.Conflict);
         var save = ResultAssert.Failed(await host.SaveResults(planning, Actual(planning.Items[0], 5m)), ErrorType.Conflict);
 
+        Assert.Equal($"Scorecard #{planning.Id} was not found.", hiddenSubmit.Message);
+        Assert.Equal($"Scorecard #{planning.Id} was not found.", hiddenSave.Message);
         Assert.Contains("Planning", submit.Message, StringComparison.Ordinal);
         Assert.Contains("Planning", save.Message, StringComparison.Ordinal);
     }
@@ -418,7 +424,7 @@ public sealed class ScorecardSubmissionTests : ScorecardWorkflowTestBase
         Assert.Equal(
             [ReviewActionType.FinalizePlan, ReviewActionType.Submit, ReviewActionType.Return, ReviewActionType.Resubmit],
             HistoryOf(world.Card.Id).Select(action => action.Action).ToArray());
-        Assert.Equal("Scorecard of EMP-0002 for \"2026 Q4\" resubmitted", host.ActivityLog.LastMessage);
+        Assert.Equal("Scorecard of EMP-0002 for \"2026 Q4\" submitted", host.ActivityLog.LastMessage);
     }
 
     // ---- My scorecards ----

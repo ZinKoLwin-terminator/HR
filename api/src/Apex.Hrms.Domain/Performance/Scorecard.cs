@@ -465,6 +465,13 @@ public sealed class ScorecardItem : AuditedEntity
         ManagerComment = TextNormalization.CleanOptional(comment);
         return Result.Success();
     }
+
+    /// <summary>Removes the manager's rating and comment of this KPI (a returned scorecard keeps no review draft; see <see cref="Scorecard.Return"/>).</summary>
+    internal void ClearReview()
+    {
+        ManagerRating = null;
+        ManagerComment = null;
+    }
 }
 
 /// <summary>

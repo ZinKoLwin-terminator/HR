@@ -253,6 +253,53 @@ public sealed class KpiInsightHttpTests : DatabaseTest, IDisposable
     }
 
     [IntegrationFact]
+    public async Task A_department_without_a_visible_scorecard_is_the_same_404_as_an_unknown_one_unless_the_caller_may_read_departments()
+    {
+        var world = await SeedAsync();
+        var empty = await SeedDepartmentAsync(world.Org.Company.Id, world.Org.Branch.Id, "B-FIN", "Finance");
+        var ben = await SignedInAsync("Ben", world.Id("Ben"), EmployeeGrants);
+        var finnWithOrganization = await SignedInAsync("FinnOrg", world.Id("Finn"), [.. EmployeeGrants, "organization:View"]);
+
+        var own = await ben.GetAsync($"/api/kpi/reports/department/{world.Org.Department.Id}");
+        var hidden = await ben.GetAsync($"/api/kpi/reports/department/{empty.Id}");
+        var unknown = await ben.GetAsync("/api/kpi/reports/department/2147483000");
+        var allowed = await finnWithOrganization.GetAsync($"/api/kpi/reports/department/{empty.Id}");
+        var hr = await admin.GetAsync($"/api/kpi/reports/department/{empty.Id}");
+
+        Assert.Equal(HttpStatusCode.OK, own.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+        Assert.Equal($"Department #{empty.Id} was not found.", (await hidden.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString());
+        Assert.DoesNotContain("Finance", await hidden.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+        Assert.Equal("Department #2147483000 was not found.", (await unknown.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString());
+        Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, hr.StatusCode);
+    }
+
+    [IntegrationFact]
+    public async Task The_employee_dashboard_shows_the_stored_manager_feedback_only_on_a_final_scorecard()
+    {
+        var world = await SeedAsync();
+        await Sql.ExecuteAsync(
+            "UPDATE kpi.Scorecard SET ManagerRating = 4, ManagerComment = N'Kept for the manager' WHERE Id IN (@ben, @dan, @eve);",
+            ("@ben", world.Q4Cards["Ben"]),
+            ("@dan", world.Q4Cards["Dan"]),
+            ("@eve", world.Q4Cards["Eve"]));
+        var ben = await SignedInAsync("Ben", world.Id("Ben"), EmployeeGrants);
+        var dan = await SignedInAsync("Dan", world.Id("Dan"), EmployeeGrants);
+        var eve = await SignedInAsync("Eve", world.Id("Eve"), EmployeeGrants);
+
+        var finalized = (await OkAsync(ben.GetAsync("/api/kpi/dashboard/employee"))).GetProperty("feedback");
+        var submitted = (await OkAsync(dan.GetAsync("/api/kpi/dashboard/employee"))).GetProperty("feedback");
+        var rejected = (await OkAsync(eve.GetAsync("/api/kpi/dashboard/employee"))).GetProperty("feedback");
+
+        Assert.Equal((4m, "Kept for the manager"), (Dec(finalized, "managerRating"), Str(finalized, "managerComment")));
+        Assert.Equal((4m, "Kept for the manager"), (Dec(rejected, "managerRating"), Str(rejected, "managerComment")));
+        Assert.Equal(JsonValueKind.Null, submitted.GetProperty("managerRating").ValueKind);
+        Assert.Equal(JsonValueKind.Null, submitted.GetProperty("managerComment").ValueKind);
+    }
+
+    [IntegrationFact]
     public async Task The_summary_achievement_target_vs_actual_and_employee_reports_run_on_the_server()
     {
         var world = await SeedAsync();

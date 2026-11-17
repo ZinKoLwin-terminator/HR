@@ -96,11 +96,13 @@ internal static class ScorecardMapping
         row.SubmissionDueDate,
         row.RowVersion);
 
+    /// <summary>The detail with the review fields <paramref name="visibility"/> allows (the items and history are mapped with the same visibility by the caller).</summary>
     public static ScorecardDetailDto ToDetail(
         ScorecardDto list,
         IReadOnlyList<ScorecardItemDto> items,
         IReadOnlyList<ReviewActionDto> history,
-        ScorecardExtras extras) => new(
+        ScorecardExtras extras,
+        ReviewVisibility visibility) => new(
         list.Id,
         list.EmployeeId,
         list.EmployeeCode,
@@ -124,9 +126,9 @@ internal static class ScorecardMapping
         extras.SubmissionDueDate,
         extras.RequiresHrReview,
         extras.EmployeeComment,
-        extras.ManagerRating,
-        extras.ManagerComment,
-        extras.HrComment,
+        visibility.Rating(extras.ManagerRating),
+        visibility.ManagerText(extras.ManagerComment),
+        visibility.HrText(extras.HrComment),
         list.RowVersion,
         items,
         history);
@@ -138,7 +140,8 @@ internal static class ScorecardMapping
         attachment.SizeBytes,
         attachment.UploadedOn);
 
-    public static ScorecardItemDto ToItemDto(ScorecardItem item, string categoryName, IReadOnlyList<AttachmentDto>? attachments = null) => new(
+    /// <summary>One KPI with the review fields <paramref name="visibility"/> allows.</summary>
+    public static ScorecardItemDto ToItemDto(ScorecardItem item, string categoryName, ReviewVisibility visibility, IReadOnlyList<AttachmentDto>? attachments = null) => new(
         item.Id,
         item.TemplateId,
         item.CategoryId,
@@ -162,19 +165,20 @@ internal static class ScorecardMapping
         item.EmployeeComment,
         item.AchievementPct,
         item.WeightedScore,
-        item.ManagerRating,
-        item.ManagerComment,
+        visibility.Rating(item.ManagerRating),
+        visibility.ManagerText(item.ManagerComment),
         item.RowVersion,
         attachments ?? []);
 
-    public static ReviewActionDto ToDto(ReviewAction action) => new(
+    /// <summary>One history entry; its comment only when <paramref name="visibility"/> allows it for this action.</summary>
+    public static ReviewActionDto ToDto(ReviewAction action, ReviewVisibility visibility) => new(
         ReviewStepText.ToText(action.Step),
         ReviewActionTypeText.ToText(action.Action),
         ScorecardStatusText.ToText(action.FromStatus),
         ScorecardStatusText.ToText(action.ToStatus),
         action.ActorUserId,
         action.ActorName,
-        action.Comment,
+        visibility.ShowsComment(action.Action) ? action.Comment : null,
         action.OverallScore,
         DateTime.SpecifyKind(action.OccurredAtUtc, DateTimeKind.Utc));
 }

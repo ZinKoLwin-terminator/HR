@@ -120,7 +120,9 @@ internal static class KpiEndpoints
     /// (the application layer decides: 404 outside the caller's scope, 403 for someone else) with the scorecard's row version, while it is
     /// Draft or Returned and its period Active. Download needs <c>kpi:View</c> and follows the scorecard's visibility. The upload's request
     /// size is capped just above the 10 MB file limit; the file type is decided by its content. Antiforgery is checked for every unsafe
-    /// method by the middleware (header <c>X-XSRF-TOKEN</c>), as everywhere else.
+    /// method by the middleware (header <c>X-XSRF-TOKEN</c>), as everywhere else. Uploads are rate limited per signed-in user
+    /// (<see cref="EvidenceUploadRateLimit"/>, 429), and the item, the owner, the status and the period are checked from the route's item id
+    /// before a byte of the body is read, so a refused upload is never buffered.
     /// </summary>
     private static void MapEvidence(IEndpointRouteBuilder app)
     {
@@ -128,6 +130,12 @@ internal static class KpiEndpoints
             "/api/kpi/scorecard-items/{itemId:int}/attachments",
             async (int itemId, HttpRequest request, IUploadEvidenceHandler handler, CancellationToken cancellationToken) =>
             {
+                var allowed = await handler.PrecheckAsync(itemId, cancellationToken);
+                if (allowed.IsFailure)
+                {
+                    return Results.Problem(ApiProblems.From(allowed.Error));
+                }
+
                 var upload = await EvidenceUploadReader.ReadAsync(request, cancellationToken);
                 return upload.IsFailure
                     ? Results.Problem(ApiProblems.From(upload.Error))
@@ -135,7 +143,8 @@ internal static class KpiEndpoints
                         .ToCreated(created => $"/api/kpi/attachments/{created.Attachment.Id}");
             })
             .WithTags(Tag)
-            .RequireAuthorization(PermissionModule.Kpi.PolicyName(Permission.Create));
+            .RequireAuthorization(PermissionModule.Kpi.PolicyName(Permission.Create))
+            .RequireRateLimiting(EvidenceUploadRateLimit.Policy);
 
         var attachments = app.MapGroup("/api/kpi/attachments").WithTags(Tag);
 

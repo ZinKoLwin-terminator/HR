@@ -152,13 +152,7 @@ internal sealed class ApproveScorecardHandler(
         }
 
         ScorecardSteps.ApplyScores(ordered, scored.Value.Score);
-        var finalized = scorecard.Status == ScorecardStatus.Finalized;
-        return await steps.SaveAsync(
-            scorecard,
-            period,
-            entry.Value,
-            (code, periodName) => ScorecardActivity.Approved(code, periodName, finalized),
-            cancellationToken);
+        return await steps.SaveAsync(scorecard, period, entry.Value, ScorecardActivity.Reviewed, cancellationToken);
     }
 }
 
@@ -193,10 +187,11 @@ internal sealed class ReturnScorecardHandler(
             return Result.Failure<ScorecardDetailDto>(open.Error);
         }
 
-        var entry = scorecard.Return(steps.Actor, command.Comment, steps.UtcNow);
+        var items = await steps.ItemsOfAsync(command.Id, cancellationToken);
+        var entry = scorecard.Return(steps.Actor, command.Comment, items, steps.UtcNow);
         return entry.IsFailure
             ? Result.Failure<ScorecardDetailDto>(entry.Error)
-            : await steps.SaveAsync(scorecard, period, entry.Value, ScorecardActivity.Returned, cancellationToken);
+            : await steps.SaveAsync(scorecard, period, entry.Value, ScorecardActivity.Reviewed, cancellationToken);
     }
 }
 
@@ -230,7 +225,7 @@ internal sealed class RejectScorecardHandler(
         var entry = scorecard.Reject(steps.Actor, command.Comment, steps.UtcNow);
         return entry.IsFailure
             ? Result.Failure<ScorecardDetailDto>(entry.Error)
-            : await steps.SaveAsync(scorecard, period, entry.Value, ScorecardActivity.Rejected, cancellationToken);
+            : await steps.SaveAsync(scorecard, period, entry.Value, ScorecardActivity.Reviewed, cancellationToken);
     }
 }
 
@@ -267,6 +262,6 @@ internal sealed class FinalizeScorecardHandler(
         var entry = scorecard.FinalizeByHr(steps.Today, command.Comment, steps.Actor, steps.UtcNow);
         return entry.IsFailure
             ? Result.Failure<ScorecardDetailDto>(entry.Error)
-            : await steps.SaveAsync(scorecard, period, entry.Value, ScorecardActivity.Finalized, cancellationToken);
+            : await steps.SaveAsync(scorecard, period, entry.Value, ScorecardActivity.Reviewed, cancellationToken);
     }
 }

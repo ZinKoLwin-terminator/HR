@@ -117,7 +117,6 @@ internal sealed class SubmitScorecardHandler(ScorecardSteps steps) : ICommandHan
             return Result.Failure<ScorecardDetailDto>(scored.Error);
         }
 
-        var again = scorecard.Status == Domain.Performance.ScorecardStatus.Returned;
         var entry = scorecard.Submit(steps.Today, scored.Value.Score, scored.Value.Label, steps.Actor, steps.UtcNow);
         if (entry.IsFailure)
         {
@@ -125,11 +124,6 @@ internal sealed class SubmitScorecardHandler(ScorecardSteps steps) : ICommandHan
         }
 
         ScorecardSteps.ApplyScores(ordered, scored.Value.Score);
-        return await steps.SaveAsync(
-            scorecard,
-            period,
-            entry.Value,
-            (code, periodName) => ScorecardActivity.Submitted(code, periodName, again),
-            cancellationToken);
+        return await steps.SaveAsync(scorecard, period, entry.Value, ScorecardActivity.Submitted, cancellationToken);
     }
 }

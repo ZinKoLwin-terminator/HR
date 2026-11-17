@@ -42,6 +42,11 @@ internal sealed record InsightWorld(
 
 internal static class KpiInsightFixtures
 {
+    /// <summary>The manager's review draft every scorecard past submission carries (a return clears it).</summary>
+    public const decimal ManagerRating = 4m;
+
+    public const string ManagerNote = "Manager note that must never be exported.";
+
     private static readonly ReviewActor Admin = new(1, null, "Administrator");
 
     public static async Task<InsightWorld> SeedInsightsAsync(this TestHost host)
@@ -142,6 +147,9 @@ internal static class KpiInsightFixtures
 
         var scored = new ScorecardScore([], score ?? 50m);
         Step(card.Submit(today, scored, label, Admin, now));
+
+        // Every scorecard that reached the manager stage carries a review draft, so the dashboards can show whether it is visible.
+        Assert.True(card.SaveReview(ManagerRating, ManagerNote).IsSuccess);
         switch (status)
         {
             case ScorecardStatus.Submitted:
@@ -150,7 +158,7 @@ internal static class KpiInsightFixtures
                 Step(card.StartReview(Admin, now));
                 break;
             case ScorecardStatus.Returned:
-                Step(card.Return(Admin, "More detail please.", now));
+                Step(card.Return(Admin, "More detail please.", [], now));
                 break;
             case ScorecardStatus.Rejected:
                 Step(card.Reject(Admin, "Not acceptable.", now));

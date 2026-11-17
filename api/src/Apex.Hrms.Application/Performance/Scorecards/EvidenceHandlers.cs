@@ -23,6 +23,19 @@ internal sealed partial class UploadEvidenceHandler(
 {
     public const string TooMany = "A KPI can have at most 5 evidence files. Remove one before adding another.";
 
+    /// <summary>The one 404 of the upload route, whether the item does not exist or its scorecard is outside the caller's scope.</summary>
+    public static AppError ItemNotFound(int itemId) => NotFoundError.For("KPI item", itemId);
+
+    public async Task<Result> PrecheckAsync(int itemId, CancellationToken cancellationToken)
+    {
+        var scorecardId = await read.FirstOrDefaultAsync(
+            read.Query<ScorecardItem>().Where(item => item.Id == itemId).Select(item => (int?)item.ScorecardId),
+            cancellationToken);
+        return scorecardId is { } id
+            ? await steps.PrecheckEvidenceAsync(id, ItemNotFound(itemId), cancellationToken)
+            : Result.Failure(ItemNotFound(itemId));
+    }
+
     public async Task<Result<EvidenceUploadResult>> HandleAsync(int itemId, EvidenceUploadRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -35,10 +48,10 @@ internal sealed partial class UploadEvidenceHandler(
         var item = await items.FindAsync(itemId, cancellationToken);
         if (item is null)
         {
-            return Result.Failure<EvidenceUploadResult>(NotFoundError.For("Scorecard item", itemId));
+            return Result.Failure<EvidenceUploadResult>(ItemNotFound(itemId));
         }
 
-        var opened = await steps.OpenForEvidenceAsync(item.ScorecardId, request.RowVersion, cancellationToken);
+        var opened = await steps.OpenForEvidenceAsync(item.ScorecardId, request.RowVersion, ItemNotFound(itemId), cancellationToken);
         if (opened.IsFailure)
         {
             return Result.Failure<EvidenceUploadResult>(opened.Error);
@@ -114,14 +127,15 @@ internal sealed partial class RemoveEvidenceHandler(
 {
     public async Task<Result<EvidenceRemovalResult>> HandleAsync(int id, string? rowVersion, CancellationToken cancellationToken)
     {
+        var notFound = NotFoundError.For("Attachment", id);
         var attachment = await attachments.FindAsync(id, cancellationToken);
         var item = attachment is null ? null : await items.FindAsync(attachment.ScorecardItemId, cancellationToken);
         if (attachment is null || item is null)
         {
-            return Result.Failure<EvidenceRemovalResult>(NotFoundError.For("Attachment", id));
+            return Result.Failure<EvidenceRemovalResult>(notFound);
         }
 
-        var opened = await steps.OpenForEvidenceAsync(item.ScorecardId, rowVersion, cancellationToken);
+        var opened = await steps.OpenForEvidenceAsync(item.ScorecardId, rowVersion, notFound, cancellationToken);
         if (opened.IsFailure)
         {
             return Result.Failure<EvidenceRemovalResult>(opened.Error);

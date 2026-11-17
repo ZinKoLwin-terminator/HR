@@ -11,15 +11,19 @@ namespace Apex.Hrms.Application.Performance.Scorecards;
 /// Loads the scorecard or item an HR plan write works on. The write endpoints are guarded by the <c>kpi-setup</c> permission and
 /// are not row-scoped (HR plans every employee's scorecard), so they do not use the scope of the read endpoints. A change still
 /// needs the row version the client last saw (400 when missing, 404 when the record is gone, 409 when it is stale), and the
-/// repository checks it again in the database when saving.
+/// repository checks it again in the database when saving. Separation of duties: nobody plans their own scorecard, so a scorecard
+/// of the caller's linked employee is refused (409, <see cref="AssignmentRules.OwnPlanMessage"/>); the built-in administrator, who
+/// has no employee, is never refused for this.
 /// </summary>
 internal sealed class PlanLoader(
     IRepository<Scorecard> scorecards,
     IRepository<ScorecardItem> items,
     IRepository<EvaluationPeriod> periods,
     IRepository<KpiCategory> categories,
-    IReadModel read)
+    IReadModel read,
+    ICurrentUser user)
 {
+    /// <summary>The scorecard a plan write changes: the row version (400), the scorecard (404), not the caller's own (409), current (409).</summary>
     public async Task<Result<Scorecard>> ScorecardForChangeAsync(int id, string? rowVersion, CancellationToken cancellationToken)
     {
         var expected = RowVersionToken.Decode(rowVersion);
@@ -32,6 +36,12 @@ internal sealed class PlanLoader(
         if (scorecard is null)
         {
             return Result.Failure<Scorecard>(NotFoundError.For("Scorecard", id));
+        }
+
+        var notOwn = AssignmentRules.EnsureNotOwnPlan(user.EmployeeId, scorecard.EmployeeId);
+        if (notOwn.IsFailure)
+        {
+            return Result.Failure<Scorecard>(notOwn.Error);
         }
 
         if (!scorecard.RowVersion.AsSpan().SequenceEqual(expected.Value))
@@ -66,13 +76,21 @@ internal sealed class PlanLoader(
         return Result.Success(item);
     }
 
+    /// <summary>The scorecard of an item a plan write changes; the caller's own scorecard is refused (409).</summary>
     public async Task<Result<Scorecard>> ScorecardOfAsync(ScorecardItem item, CancellationToken cancellationToken)
     {
         var scorecard = await scorecards.FindAsync(item.ScorecardId, cancellationToken);
-        return scorecard is null
-            ? Result.Failure<Scorecard>(NotFoundError.For("Scorecard", item.ScorecardId))
-            : Result.Success(scorecard);
+        if (scorecard is null)
+        {
+            return Result.Failure<Scorecard>(NotFoundError.For("Scorecard", item.ScorecardId));
+        }
+
+        var notOwn = AssignmentRules.EnsureNotOwnPlan(user.EmployeeId, scorecard.EmployeeId);
+        return notOwn.IsFailure ? Result.Failure<Scorecard>(notOwn.Error) : Result.Success(scorecard);
     }
+
+    /// <summary>What the caller may read of the review fields of <paramref name="scorecard"/> (<see cref="ReviewVisibility"/>).</summary>
+    public ReviewVisibility VisibilityOf(Scorecard scorecard) => ReviewVisibility.For(scorecard.Status, scorecard.EmployeeId, user.EmployeeId);
 
     public async Task<EvaluationPeriod> PeriodOfAsync(Scorecard scorecard, CancellationToken cancellationToken) =>
         await periods.FindAsync(scorecard.PeriodId, cancellationToken)
@@ -183,7 +201,7 @@ internal sealed class ScorecardItemUpdateHandler(
         }
 
         await transaction.CommitAsync(cancellationToken);
-        return Result.Success(ScorecardMapping.ToItemDto(item, await loader.CategoryNameAsync(item.CategoryId, cancellationToken)));
+        return Result.Success(ScorecardMapping.ToItemDto(item, await loader.CategoryNameAsync(item.CategoryId, cancellationToken), loader.VisibilityOf(scorecard.Value)));
     }
 
     private static string Format(DateOnly date) => date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);

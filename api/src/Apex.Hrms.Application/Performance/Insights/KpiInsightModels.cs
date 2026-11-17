@@ -73,7 +73,10 @@ public sealed record KpiDashboardItemDto(
 /// </summary>
 public sealed record KpiPendingSubmissionDto(bool IsPending, DateOnly? DueDate, bool IsOverdue);
 
-/// <summary>The manager's overall rating (1 to 5) and comment on the current scorecard, as stored.</summary>
+/// <summary>
+/// The manager's overall rating (1 to 5) and comment on the current scorecard. The dashboard is the employee's own, so both are null
+/// until the decision is final (Finalized or Rejected), whatever is stored; see the review visibility rule in the API README.
+/// </summary>
 public sealed record KpiManagerFeedbackDto(decimal? ManagerRating, string? ManagerComment);
 
 /// <summary>A scorecard of an earlier period (the period starts before the current one), newest first, at most 12.</summary>

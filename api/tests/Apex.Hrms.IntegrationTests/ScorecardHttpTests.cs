@@ -280,7 +280,8 @@ public sealed class ScorecardHttpTests : DatabaseTest, IDisposable
         var cards = new Dictionary<int, int>();
         foreach (var employee in new[] { maya, ria, rex, nora })
         {
-            cards[employee.Id] = (await SeedScorecardAsync(employee.Id, seed.Period.Id, ItemOf(seed.First, weight: 100m))).Id;
+            // Finalized, because an employee does not see their own scorecard while it is in Planning (a test of its own below).
+            cards[employee.Id] = Succeeded(await FinalizePlan(await SeedScorecardAsync(employee.Id, seed.Period.Id, ItemOf(seed.First, weight: 100m)))).Id;
         }
 
         var manager = await SignedInAsRoleAsync("Manager", maya.Id, ManagerGrants);
@@ -311,6 +312,71 @@ public sealed class ScorecardHttpTests : DatabaseTest, IDisposable
 
     private static async Task<List<int>> EmployeeIdsAsync(HttpClient http, string url) =>
         [.. (await ReadAsync(await http.GetAsync(url))).GetProperty("items").EnumerateArray().Select(item => item.GetProperty("employeeId").GetInt32())];
+
+    [IntegrationFact]
+    public async Task An_employee_does_not_see_their_own_scorecard_while_it_is_in_planning_but_their_manager_and_hr_do()
+    {
+        var seed = await SeedAsync();
+        var maya = await SeedEmployeeAsync(seed.Org, "1", "maya");
+        var ria = Succeeded(await Create(
+            Requests.Employee(seed.Company.Id, seed.Org.Branch.Id, seed.DepartmentId, seed.Org.Position.Id, seed.Org.Grade.Id, "2", "ria") with { ManagerId = maya.Id }));
+        var planning = await SeedScorecardAsync(ria.Id, seed.Period.Id, ItemOf(seed.First, weight: 100m));
+        var manager = await SignedInAsRoleAsync("Manager", maya.Id, ManagerGrants);
+        var staff = await SignedInAsRoleAsync("Employee", ria.Id, EmployeeGrants);
+        var url = $"/api/kpi/scorecards/{planning.Id}";
+
+        var hidden = await staff.GetAsync(url);
+        var ownList = await ReadAsync(await staff.GetAsync($"/api/kpi/scorecards/query?status=Planning&pageSize=200"));
+        var dashboard = await ReadAsync(await staff.GetAsync("/api/kpi/dashboard/employee"));
+
+        Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+        Assert.Equal($"Scorecard #{planning.Id} was not found.", (await ReadAsync(hidden)).GetProperty("detail").GetString());
+        Assert.Equal(0, ownList.GetProperty("total").GetInt32());
+        Assert.Equal(JsonValueKind.Null, dashboard.GetProperty("scorecard").ValueKind);
+        Assert.Equal(HttpStatusCode.OK, (await manager.GetAsync(url)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(url)).StatusCode);
+
+        Succeeded(await FinalizePlan(Succeeded(await Get<ScorecardDetailDto>(planning.Id))));
+        Assert.Equal("Draft", (await ReadAsync(await staff.GetAsync(url))).GetProperty("status").GetString());
+    }
+
+    [IntegrationFact]
+    public async Task Hr_never_plans_their_own_scorecard_and_the_built_in_administrator_still_does()
+    {
+        var seed = await SeedAsync();
+        var hana = await SeedEmployeeAsync(seed.Org, "1", "hana");
+        var other = await SeedEmployeeAsync(seed.Org, "2", "omar");
+        var own = await ReadAsync(await client.PostAsJsonAsync("/api/kpi/assignments", new { employeeId = hana.Id, periodId = seed.Period.Id, items = Items((seed.First, 60m), (seed.Second, 40m)) }));
+        var ownId = own.GetProperty("id").GetInt32();
+        var item = own.GetProperty("items")[0];
+        string[] hrGrants = [.. SetupOnlyGrants, "kpi:View", "kpi:Approve", "employees:View", "employees:Edit"];
+        var hr = await SignedInAsRoleAsync("Hr", hana.Id, hrGrants);
+        const string OwnPlan = "You cannot plan your own scorecard.";
+
+        var assign = await hr.PostAsJsonAsync("/api/kpi/assignments", new { employeeId = hana.Id, periodId = seed.Period.Id, items = Items((seed.First, 10m)) });
+        var update = await hr.PutAsJsonAsync($"/api/kpi/scorecard-items/{item.GetProperty("id").GetInt32()}", new { target = 250m, weight = 60m, startDate = "2026-10-01", endDate = "2026-12-31", rowVersion = item.GetProperty("rowVersion").GetString() });
+        var removeItem = await Send(hr, HttpMethod.Delete, $"/api/kpi/scorecard-items/{item.GetProperty("id").GetInt32()}", new { rowVersion = item.GetProperty("rowVersion").GetString() });
+        var deleteCard = await Send(hr, HttpMethod.Delete, $"/api/kpi/scorecards/{ownId}", new { rowVersion = own.GetProperty("rowVersion").GetString() });
+        var finalize = await hr.PostAsJsonAsync($"/api/kpi/scorecards/{ownId}/finalize-plan", new { rowVersion = own.GetProperty("rowVersion").GetString() });
+        var bulk = await ReadAsync(await hr.PostAsJsonAsync("/api/kpi/assignments/bulk", new { periodId = seed.Period.Id, employeeIds = new[] { hana.Id, other.Id }, items = Items((seed.First, 100m)) }));
+        var otherAssigned = bulk.GetProperty("assigned").EnumerateArray().Select(entry => entry.GetProperty("employeeId").GetInt32()).ToList();
+        var skipped = bulk.GetProperty("skipped").EnumerateArray().Single();
+
+        foreach (var refused in new[] { assign, update, removeItem, deleteCard, finalize })
+        {
+            Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+            Assert.Equal(OwnPlan, (await ReadAsync(refused)).GetProperty("detail").GetString());
+        }
+
+        Assert.Equal([other.Id], otherAssigned);
+        Assert.Equal((hana.Id, OwnPlan), (skipped.GetProperty("employeeId").GetInt32(), skipped.GetProperty("reason").GetString()));
+        Assert.Equal(2, await Sql.ScalarAsync<int>("SELECT COUNT(*) FROM kpi.ScorecardItem WHERE ScorecardId = @id AND Weight IN (60, 40)", ("@id", ownId)));
+        Assert.Equal(HttpStatusCode.OK, (await hr.GetAsync($"/api/kpi/scorecards/{ownId}")).StatusCode);
+
+        var byAdministrator = await client.PostAsJsonAsync($"/api/kpi/scorecards/{ownId}/finalize-plan", new { rowVersion = own.GetProperty("rowVersion").GetString() });
+        Assert.Equal(HttpStatusCode.OK, byAdministrator.StatusCode);
+        Assert.Equal("Draft", (await ReadAsync(byAdministrator)).GetProperty("status").GetString());
+    }
 
     [IntegrationFact]
     public async Task The_list_query_has_the_paging_shape_the_sort_whitelist_and_a_search_over_http()

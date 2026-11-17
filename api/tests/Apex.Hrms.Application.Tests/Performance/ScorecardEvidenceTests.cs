@@ -120,6 +120,75 @@ public sealed class ScorecardEvidenceTests : ScorecardWorkflowTestBase
     }
 
     [Fact]
+    public async Task An_item_or_attachment_outside_the_scope_is_the_same_404_as_a_missing_one_and_never_names_the_scorecard()
+    {
+        var world = await SeedAsync();
+        var item = Of(world.Card, "A-1");
+        AsEmployee(world.Ben, 20);
+        var added = ResultAssert.Succeeded(await host.UploadEvidence(item, Report, "a.pdf", host.VersionOf(world.Card)));
+        var version = Requests.Version(added.ScorecardRowVersion);
+        var attachment = added.Attachment.Id;
+
+        AsEmployee(world.Dan, 30);
+        var upload = ResultAssert.Failed(await host.UploadEvidence(item, Report, "b.pdf", version), ErrorType.NotFound);
+        var missingItem = ResultAssert.Failed(
+            await host.Get<IUploadEvidenceHandler>().HandleAsync(9999, new EvidenceUploadRequest(version, "b.pdf", Report), default), ErrorType.NotFound);
+        var precheck = ResultAssert.Failed(await host.Get<IUploadEvidenceHandler>().PrecheckAsync(item.Id, default), ErrorType.NotFound);
+        var missingPrecheck = ResultAssert.Failed(await host.Get<IUploadEvidenceHandler>().PrecheckAsync(9999, default), ErrorType.NotFound);
+        var remove = ResultAssert.Failed(await host.RemoveEvidence(attachment, version), ErrorType.NotFound);
+        var missingRemove = ResultAssert.Failed(await host.RemoveEvidence(9999, version), ErrorType.NotFound);
+        var download = ResultAssert.Failed(await host.DownloadEvidence(attachment), ErrorType.NotFound);
+
+        Assert.Equal($"KPI item #{item.Id} was not found.", upload.Message);
+        Assert.Equal("KPI item #9999 was not found.", missingItem.Message);
+        Assert.Equal($"KPI item #{item.Id} was not found.", precheck.Message);
+        Assert.Equal("KPI item #9999 was not found.", missingPrecheck.Message);
+        Assert.Equal($"Attachment #{attachment} was not found.", remove.Message);
+        Assert.Equal("Attachment #9999 was not found.", missingRemove.Message);
+        Assert.Equal($"Attachment #{attachment} was not found.", download.Message);
+        Assert.All(
+            new[] { upload, missingItem, precheck, missingPrecheck, remove, missingRemove, download },
+            error => Assert.DoesNotContain("Scorecard", error.Message, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task The_upload_precheck_refuses_from_the_item_alone_what_the_upload_would_and_changes_nothing()
+    {
+        var world = await SeedAsync();
+        var item = Of(world.Card, "A-1");
+        var precheck = host.Get<IUploadEvidenceHandler>();
+        var before = Stored(world.Card.Id).RowVersion;
+
+        AsEmployee(world.Ben, 20);
+        var owner = await precheck.PrecheckAsync(item.Id, default);
+        AsManager(world.Anna, 21, world.Ben.Id);
+        var reviewer = await precheck.PrecheckAsync(item.Id, default);
+        AsHr(world.Hr, 30);
+        var hr = await precheck.PrecheckAsync(item.Id, default);
+
+        Assert.True(owner.IsSuccess);
+        ResultAssert.Failed(reviewer, ErrorType.Forbidden, "You can only add or remove evidence on your own scorecard.");
+        ResultAssert.Failed(hr, ErrorType.Forbidden, "You can only add or remove evidence on your own scorecard.");
+        Assert.Equal(before, Stored(world.Card.Id).RowVersion);
+        Assert.Empty(host.Repository<KpiAttachment>().Items);
+
+        await SubmittedAsync(world);
+        var afterSubmit = await precheck.PrecheckAsync(item.Id, default);
+        Assert.Contains("Draft or Returned", ResultAssert.Failed(afterSubmit, ErrorType.Conflict).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_upload_precheck_refuses_a_period_that_is_no_longer_active()
+    {
+        var world = await SeedAsync();
+        var item = Of(world.Card, "A-1");
+        await MovePeriodAsync(world, close: false);
+        AsEmployee(world.Ben, 20);
+
+        ResultAssert.Failed(await host.Get<IUploadEvidenceHandler>().PrecheckAsync(item.Id, default), ErrorType.Conflict);
+    }
+
+    [Fact]
     public async Task The_row_version_is_required_and_a_stale_one_is_a_409_that_stores_nothing()
     {
         var world = await SeedAsync();
