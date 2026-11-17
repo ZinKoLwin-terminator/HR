@@ -79,11 +79,11 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         endpoint.RoutePattern.RawText!.StartsWith("/api/kpi", StringComparison.Ordinal);
 
     [Fact]
-    public void Kpi_maps_fifty_five_endpoints_and_every_one_uses_a_kpi_permission()
+    public void Kpi_maps_sixty_four_endpoints_and_every_one_uses_a_kpi_permission()
     {
         var policies = PoliciesOf(IsKpiRoute);
 
-        Assert.Equal(55, policies.Count);
+        Assert.Equal(64, policies.Count);
         Assert.All(policies.Values, policy => Assert.True(policy.StartsWith("kpi-setup:", StringComparison.Ordinal) || policy.StartsWith("kpi:", StringComparison.Ordinal), policy));
     }
 
@@ -154,6 +154,42 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("kpi:Create", policies["POST /api/kpi/scorecard-items/{itemId:int}/attachments"]);
         Assert.Equal("kpi:View", policies["GET /api/kpi/attachments/{id:int}"]);
         Assert.Equal("kpi:Create", policies["DELETE /api/kpi/attachments/{id:int}"]);
+    }
+
+    [Fact]
+    public void The_dashboards_need_kpi_view_or_kpi_approve_and_every_report_needs_kpi_view()
+    {
+        var policies = PoliciesOf(IsKpiRoute);
+
+        Assert.Equal("kpi:View", policies["GET /api/kpi/dashboard/employee"]);
+        Assert.Equal("kpi:Approve", policies["GET /api/kpi/dashboard/manager"]);
+        Assert.Equal("kpi:Approve", policies["GET /api/kpi/dashboard/hr"]);
+        Assert.Equal("kpi:View", policies["GET /api/kpi/reports/summary"]);
+        Assert.Equal("kpi:View", policies["GET /api/kpi/reports/employee/{employeeId:int}"]);
+        Assert.Equal("kpi:View", policies["GET /api/kpi/reports/department/{departmentId:int}"]);
+        Assert.Equal("kpi:View", policies["GET /api/kpi/reports/ranking"]);
+        Assert.Equal("kpi:View", policies["GET /api/kpi/reports/kpi-achievement"]);
+        Assert.Equal("kpi:View", policies["GET /api/kpi/reports/target-vs-actual"]);
+    }
+
+    [Fact]
+    public void The_kpi_excel_modules_are_registered_export_only_with_the_kpi_view_policy()
+    {
+        using var client = factory.CreateClient();
+        using var scope = factory.Services.CreateScope();
+        var modules = scope.ServiceProvider.GetServices<Apex.Hrms.Application.Excel.IExcelModule>()
+            .Where(module => module.Info.Code.StartsWith("kpi-", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.Equal(["kpi-ranking", "kpi-scorecards", "kpi-target-vs-actual"], modules.Select(module => module.Info.Code).Order(StringComparer.Ordinal));
+        Assert.All(modules, module =>
+        {
+            Assert.True(module.Info.CanExport, module.Info.Code);
+            Assert.False(module.Info.CanImport, module.Info.Code);
+            Assert.Equal(["kpi:View"], module.ExportPolicies);
+            Assert.Empty(module.ImportPolicies);
+            Assert.Empty(module.SensitiveExportPolicies);
+        });
     }
 
     private static bool IsLeaveRoute(RouteEndpoint endpoint) =>

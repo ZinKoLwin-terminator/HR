@@ -169,6 +169,7 @@ internal sealed class ScorecardReader(IReadModel read, IAccessScope<Scorecard> s
                    PlanFinalizedOn = scorecard.PlanFinalizedOn,
                    SubmittedOn = scorecard.SubmittedOn,
                    FinalizedOn = scorecard.FinalizedOn,
+                   SubmissionDueDate = period.SubmissionDueDate,
                    ModifiedAtUtc = scorecard.ModifiedAtUtc,
                    RowVersion = scorecard.RowVersion,
                };

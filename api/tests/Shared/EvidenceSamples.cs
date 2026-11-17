@@ -18,15 +18,22 @@ internal static class EvidenceSamples
     /// <summary>A zip with the parts of an Excel workbook.</summary>
     public static byte[] Xlsx() => Zip("[Content_Types].xml", "xl/workbook.xml");
 
-    /// <summary>A zip with the given entries (each holding a few bytes of fictional text).</summary>
+    /// <summary>
+    /// A zip with the given entries (each holding a few bytes of fictional text). The entry time is fixed: by default a zip
+    /// entry is stamped with the current time, so two calls straddling a 2-second boundary would give different bytes and a
+    /// byte-for-byte comparison of "the same" sample would fail at random.
+    /// </summary>
     public static byte[] Zip(params string[] entries)
     {
+        var fixedTime = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
         using var stream = new MemoryStream();
         using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
         {
             foreach (var name in entries)
             {
-                using var writer = new StreamWriter(archive.CreateEntry(name).Open(), Encoding.UTF8);
+                var entry = archive.CreateEntry(name);
+                entry.LastWriteTime = fixedTime;
+                using var writer = new StreamWriter(entry.Open(), Encoding.UTF8);
                 writer.Write("<fictional/>");
             }
         }

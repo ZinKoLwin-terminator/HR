@@ -1,6 +1,7 @@
 using Apex.Hrms.Api.Authorization;
 using Apex.Hrms.Api.Http;
 using Apex.Hrms.Application.Performance.Categories;
+using Apex.Hrms.Application.Performance.Insights;
 using Apex.Hrms.Application.Performance.Periods;
 using Apex.Hrms.Application;
 using Apex.Hrms.Application.Performance.RatingBands;
@@ -14,7 +15,7 @@ namespace Apex.Hrms.Api.Endpoints;
 /// <summary>
 /// KPI master data under <c>/api/kpi</c>: categories, templates, evaluation periods and rating bands. All of it needs
 /// <c>kpi-setup</c> permissions (HR), except the period picker, which employees and managers use and which needs
-/// <c>kpi:View</c> only. Scorecards (reads, assignment and the plan) follow below.
+/// <c>kpi:View</c> only. Scorecards (reads, assignment, the plan, the workflow, evidence), the dashboards and the reports follow below.
 /// </summary>
 internal static class KpiEndpoints
 {
@@ -35,7 +36,83 @@ internal static class KpiEndpoints
         MapScorecards(app);
         MapAssignments(app);
         MapEvidence(app);
+        MapDashboards(app);
+        MapReports(app);
         return app;
+    }
+
+    /// <summary>
+    /// The read-only dashboards. The employee dashboard needs <c>kpi:View</c> and shows the caller's own scorecards only; the manager and
+    /// HR dashboards need <c>kpi:Approve</c>. The HR dashboard also needs the HR tier (<c>employees:Edit</c>), which the application layer
+    /// checks: anyone else gets 403. <c>periodId</c> is optional everywhere (an unknown one is 404).
+    /// </summary>
+    private static void MapDashboards(IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/kpi/dashboard").WithTags(Tag);
+
+        group.MapGet(
+            "/employee",
+            async ([FromQuery] int? periodId, IKpiEmployeeDashboardHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(periodId, cancellationToken)).ToOk())
+            .RequireAuthorization(PermissionModule.Kpi.PolicyName(Permission.View));
+
+        group.MapGet(
+            "/manager",
+            async ([FromQuery] int? periodId, IKpiManagerDashboardHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(periodId, cancellationToken)).ToOk())
+            .RequireAuthorization(PermissionModule.Kpi.PolicyName(Permission.Approve));
+
+        group.MapGet(
+            "/hr",
+            async ([FromQuery] int? periodId, [FromQuery] int? companyId, IKpiHrDashboardHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(periodId, companyId, cancellationToken)).ToOk())
+            .RequireAuthorization(PermissionModule.Kpi.PolicyName(Permission.Approve));
+    }
+
+    /// <summary>
+    /// The reports need <c>kpi:View</c> and read only the scorecards in the caller's scope (own, team or all). The filters
+    /// (<see cref="KpiReportFilter"/>), the search, the sort whitelist and the paging are those of the query string.
+    /// </summary>
+    private static void MapReports(IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/kpi/reports").WithTags(Tag);
+        var view = PermissionModule.Kpi.PolicyName(Permission.View);
+
+        group.MapGet(
+            "/summary",
+            async ([AsParameters] PageQuery page, [AsParameters] KpiReportFilter filter, IKpiSummaryReportHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(page.ToRequest(filter), cancellationToken)).ToOk())
+            .RequireAuthorization(view);
+
+        group.MapGet(
+            "/employee/{employeeId:int}",
+            async (int employeeId, [AsParameters] PageQuery page, [AsParameters] KpiReportFilter filter, IKpiEmployeeReportHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(employeeId, page.ToRequest(filter), cancellationToken)).ToOk())
+            .RequireAuthorization(view);
+
+        group.MapGet(
+            "/department/{departmentId:int}",
+            async (int departmentId, [AsParameters] PageQuery page, [AsParameters] KpiReportFilter filter, IKpiDepartmentReportHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(departmentId, page.ToRequest(filter), cancellationToken)).ToOk())
+            .RequireAuthorization(view);
+
+        group.MapGet(
+            "/ranking",
+            async ([AsParameters] PageQuery page, [AsParameters] KpiReportFilter filter, IKpiRankingReportHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(page.ToRequest(filter), cancellationToken)).ToOk())
+            .RequireAuthorization(view);
+
+        group.MapGet(
+            "/kpi-achievement",
+            async ([AsParameters] PageQuery page, [AsParameters] KpiReportFilter filter, IKpiAchievementReportHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(page.ToRequest(filter), cancellationToken)).ToOk())
+            .RequireAuthorization(view);
+
+        group.MapGet(
+            "/target-vs-actual",
+            async ([AsParameters] PageQuery page, [AsParameters] KpiReportFilter filter, IKpiTargetVsActualReportHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(page.ToRequest(filter), cancellationToken)).ToOk())
+            .RequireAuthorization(view);
     }
 
     /// <summary>

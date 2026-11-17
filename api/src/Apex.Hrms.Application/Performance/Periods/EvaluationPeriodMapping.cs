@@ -35,7 +35,8 @@ internal sealed class EvaluationPeriodMapping :
         entity.StartDate,
         entity.EndDate,
         EvaluationPeriodStatusText.ToText(entity.Status),
-        entity.RequiresHrReview);
+        entity.RequiresHrReview,
+        entity.SubmissionDueDate);
 
     public Result Validate(EvaluationPeriodDetails details, EvaluationPeriod? existing) => EvaluationPeriod.Validate(details);
 

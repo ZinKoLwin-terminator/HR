@@ -364,8 +364,8 @@ table requires a masked account), is skipped with a warning.
 ## HTTP contract (KPI master data)
 
 Four resources under `/api/kpi`: categories, templates, evaluation periods and rating bands. Assigning KPIs and the scorecard
-plan are in "HTTP contract (KPI assignments)" below; submission, review, attachments, dashboards and reports are not part of this
-phase (`kpi.Attachment` is mapped but has no endpoint yet). Activity entries use the category `performance`. The KPI scoring
+plan are in "HTTP contract (KPI assignments)" below; submission and review, evidence attachments, and the dashboards, reports and
+Excel exports have sections of their own further down. Activity entries use the category `performance`. The KPI scoring
 itself (`KpiRule`, `KpiCalculator`, calculation version 1) lives in the domain and is not exposed here.
 
 Policies (checked against the role's grants, see "Permission check"): setup is the module `kpi-setup` with
@@ -434,8 +434,8 @@ are those of the organization module. Dates are `yyyy-MM-dd`; decimals travel as
     (`Evaluation period "X" activated|completed|closed`).
   * **Delete:** only a Draft period, and only when no scorecard uses it (`409` with the status or the scorecard count). A
     company with periods cannot be deleted (`409`).
-* `EvaluationPeriodOptionDto` (the picker): `id, name, companyId, periodType, startDate, endDate, status, requiresHrReview`; no
-  `rowVersion`. Only Active, Completed and Closed periods are listed; `companyId` narrows the list; unfiltered, every company.
+* `EvaluationPeriodOptionDto` (the picker): `id, name, companyId, periodType, startDate, endDate, status, requiresHrReview,
+  submissionDueDate` (null when the period has none; added in G1); no `rowVersion`. Only Active, Completed and Closed periods are listed; `companyId` narrows the list; unfiltered, every company.
 * **Other delete protection:** a category used by templates or assigned KPIs, and a department used by templates, cannot be
   deleted (`409`, with the counts; the category and template wording ends in "Deactivate it instead.").
 * **Database errors** that slip past the rules: `UQ_Category_Code|Name`, `UQ_Template_Code`, `UQ_RatingBand_Label|MinScore` and
@@ -466,7 +466,9 @@ name, never a comment.
 
 * `ScorecardDto` (list): `id, employeeId, employeeCode, employeeName, periodId, periodName, departmentId, departmentName, status,
   itemCount, totalWeight, overallScore, ratingLabel, reviewerEmployeeId, reviewerName, planFinalizedOn, submittedOn, finalizedOn,
-  rowVersion`. Only the employee code and name identify a person. `status` is `Planning|Draft|Submitted|Under
+  submissionDueDate, rowVersion`. `submissionDueDate` (added in G1) is the period's, or null when the period has none, so a list can show
+  a "Late" flag (`submittedOn` after it, or still Draft or Returned after it) without reading each scorecard; the same field is on
+  `/api/kpi/my-scorecards` and `/api/kpi/reviews/pending`. Only the employee code and name identify a person. `status` is `Planning|Draft|Submitted|Under
   Review|Returned|Resubmitted|Approved|Rejected|Finalized`. Sort (`sort=field:asc|desc`, an unknown field is `400` on `sort`):
   `id, employeeCode, employeeName, periodName, departmentName, status, overallScore, planFinalizedOn, modifiedAt`; `search`
   (at most 100 characters) matches the employee code or name; an unknown `status` filter matches nothing. Every read is untracked and
@@ -475,7 +477,10 @@ name, never a comment.
   templateId, categoryId, categoryName, kpiCode, kpiName, measurementType, unit, direction, scoringMethod, target, rangeMin,
   rangeMax, maxRating, weight, maxAchievementPct, startDate, endDate, sortOrder, actualValue, employeeComment, achievementPct,
   weightedScore, managerRating, managerComment, rowVersion` (texts as in the template). `ReviewActionDto`: `step`
-  (`Employee|Manager|HR`), `action` (`Finalize Plan`...), `fromStatus, toStatus, actorName, comment, overallScore, occurredAtUtc`.
+  (`Employee|Manager|HR`), `action` (`Finalize Plan`...), `fromStatus, toStatus, actorUserId, actorName, comment, overallScore,
+  occurredAtUtc`. `actorUserId` (added in G1) is the account that recorded the step (null if none was recorded): compare it with the
+  signed-in user's id, not the display name, for example to hide the HR final-review buttons from the user who recorded the manager-stage
+  Approve. This is a convenience for the screen only; the server enforces that separation of duties by id itself (`409`).
 * **Scoping of reads.** The module `kpi` follows the leave tiers (`SelfService.TierOf("kpi")`): `kpi:Approve` **and** `employees:Edit`
   (HR) sees every scorecard; `kpi:Approve` alone (a manager) sees their own and their direct reports' scorecards; anyone else
   (an employee) only their own. The predicate is applied inside the query (`IAccessScope<Scorecard>`), so a scorecard outside it is
@@ -646,6 +651,137 @@ folder or an object store with private buckets, the removal of macros and active
 which the allowed list already excludes), an agreed retention and deletion policy for evidence of employees who leave, and a reverse proxy
 request-size limit equal to the one above. Treat the downloads as untrusted content on the user's machine.
 
+## HTTP contract (KPI dashboards, reports and export)
+
+Read-only figures over the scorecards (phase G1). Nothing here writes. Every query starts from the caller's **scorecard scope**
+(`ScorecardScope`: Own; Team = own + direct reports + the scorecards naming the caller as reviewer; All = HR tier, `kpi:Approve` with
+`employees:Edit`), so a figure can never include a scorecard the caller could not open. Aggregates (counts, sums, minimums, maximums,
+groupings) run in SQL Server on untracked projections. Each dashboard is a fixed number of queries, whatever the number of scorecards
+(employee at most 4, manager 3, HR 10). Only the employee code and name identify a person. The one exception to "no comments" is the
+employee's own manager feedback on their dashboard. PDF output is the browser's print of the screen: the API has no PDF library.
+
+| Route | Policy | Query | Returns |
+| --- | --- | --- | --- |
+| `GET /api/kpi/dashboard/employee` | `kpi:View` | `periodId?` | `KpiEmployeeDashboardDto` |
+| `GET /api/kpi/dashboard/manager` | `kpi:Approve` | `periodId?` | `KpiManagerDashboardDto` |
+| `GET /api/kpi/dashboard/hr` | `kpi:Approve` + HR tier (else `403` "The HR dashboard needs HR rights.") | `periodId?, companyId?` | `KpiHrDashboardDto` |
+| `GET /api/kpi/reports/summary` | `kpi:View` | report filters, `search`, `sort`, paging | `PagedResult<KpiPeriodSummaryDto>` |
+| `GET /api/kpi/reports/employee/{employeeId}` | `kpi:View`; outside the scope `404` | report filters, `sort`, paging | `KpiEmployeeReportDto` |
+| `GET /api/kpi/reports/department/{departmentId}` | `kpi:View`; unknown department `404` | report filters, `search`, `sort`, paging | `KpiDepartmentReportDto` |
+| `GET /api/kpi/reports/ranking` | `kpi:View` | report filters, `search`, paging (`sort` only `rank:asc`) | `PagedResult<KpiRankingRowDto>` |
+| `GET /api/kpi/reports/kpi-achievement` | `kpi:View` | report filters, `search`, `sort`, paging | `PagedResult<KpiAchievementRowDto>` |
+| `GET /api/kpi/reports/target-vs-actual` | `kpi:View` | report filters, `search`, `sort`, paging | `PagedResult<KpiTargetVsActualRowDto>` |
+
+**Report filters** (query string, all optional, combined with AND): `companyId, branchId, departmentId, positionId, employeeId` (the
+placement **copied onto the scorecard**), `periodId`, `status` (a scorecard status text; unknown is `400` on `status`), `periodType`
+(`Monthly|Quarterly|Half-Yearly|Yearly|Custom`, and `Annual` as another name for `Yearly`; unknown is `400` on `periodType`), `year` (the
+year the period starts in, 1900 to 9998, else `400` on `year`), `categoryId` (scorecards with at least one KPI of the category; the item
+reports also show only those KPIs). The Monthly, Quarterly and Annual reports are the same report with `periodType` (and `year`).
+`search` (at most 100 characters, else `400` on `search`) matches the employee code or name. `sort=field:asc|desc` takes only the fields
+listed per report (anything else is `400` on `sort`); the id always breaks ties. Paging is `pageIndex` and `pageSize` (1 to 200) as
+everywhere. A route id (`employeeId`, `departmentId`) replaces the matching filter.
+
+**Metric definitions** (one definition each, in `KpiFigures`):
+
+* **Average score**: the mean `overallScore` of the **Finalized** scorecards of the set. Rejected scorecards, scorecards still in the
+  workflow (Submitted, Approved and so on) and unscored ones never count. The database returns the sum and the count; the API divides and
+  rounds to 2 decimals, away from zero. `null` when there is no Finalized scorecard (never 0). Minimum and maximum: of the same scores.
+* **Completion rate** (`completionRatePct`): Finalized ÷ (every scorecard of the set that is past Planning) × 100, 2 decimals, away from
+  zero. `0` when nothing is past Planning (no division by zero).
+* **Ranking**: Finalized scorecards with a score, highest first. **Standard competition ranking**: equal scores share a rank and the next
+  rank skips (90, 90, 80 is 1, 1, 3). Ties are listed by employee code, then scorecard id. A page that starts inside a tie keeps the shared
+  rank (the first rank of a page is 1 + the number of higher scores in the whole set). Ranks are over the filtered set, so pass `periodId`
+  for a ranking within one period.
+* **Attention threshold** (HR dashboard): the `minScore` of the **lowest Active rating band whose `minScore` is at least 60** (taken as
+  the "Meets Expectations" band), or **60** when there is no such band. A Finalized scorecard scoring **below** it requires attention.
+  The threshold used is returned (`attentionThreshold`).
+* **Default period** (when `periodId` is left out): the most recent **Active** period among the candidates (latest `startDate`, then
+  the highest id), else the most recent candidate whatever its status, else none (an empty dashboard, `period: null`). Candidates:
+  employee dashboard, the periods of the caller's own scorecards except Planning; manager dashboard, the periods of the manager's set;
+  HR dashboard, every period that is not Draft (of `companyId` when given); department report, the periods of the visible scorecards of
+  that department. An explicit `periodId` that does not exist is `404`.
+
+**Employee dashboard** (`KpiEmployeeDashboardDto`): only the caller's own scorecards (their linked employee inside the scope); Planning
+scorecards are not shown, as in My scorecards. A caller with no linked employee, or with no scorecard, gets an empty dashboard (`200`).
+
+* `period`: `{ id, name, periodType, startDate, endDate, status, submissionDueDate }` or null.
+* `scorecard`: `{ id, status, overallScore, ratingLabel, reviewerEmployeeId, reviewerName, submittedOn, finalizedOn }` or null.
+* `items[]`: `{ id, kpiCode, kpiName, unit, target, actualValue, achievementPct, weight, weightedScore }` by sort order.
+* `pending`: `{ isPending, dueDate, isOverdue }`. `isPending` is true when the scorecard is Draft or Returned and its period Active;
+  `dueDate` is the period's `submissionDueDate`; `isOverdue` is pending and today (business time zone) after the due date.
+* `feedback`: `{ managerRating, managerComment }` (as stored on the scorecard) or null when there is no scorecard.
+* `history[]`: scorecards of periods that start before the current one, newest first, at most 12: `{ scorecardId, periodId,
+  periodName, periodType, startDate, endDate, status, overallScore, ratingLabel }`.
+
+**Manager dashboard** (`KpiManagerDashboardDto`): the scorecards of the period of the caller's **direct reports** and those naming the
+caller as **reviewer**, never the caller's own (even an HR-tier caller sees only this set here). No linked employee: an empty set.
+
+* `teamSize`: the scorecards of the set in the period (one per employee and period, so the employees with a scorecard).
+* `byStatus[]`: `{ status, count }` for all nine statuses in workflow order, zeros included.
+* `pendingReviews`: Submitted, Resubmitted or Under Review and naming the caller as reviewer.
+* `approvedOrFinalized`: Approved plus Finalized. `averageScore`: Finalized only (above).
+* `employees[]`: `{ scorecardId, employeeId, employeeCode, employeeName, departmentId, departmentName, status, overallScore,
+  ratingLabel }`, highest score first, unscored last, then employee code.
+
+**HR dashboard** (`KpiHrDashboardDto`): every scorecard of the period (of `companyId` when given). `period`, `companyId`, then:
+
+* `employeesWithKpis`: scorecards with at least one KPI (one per employee). `totalAssignments`: the KPIs (scorecard items) of the period.
+* `completedEvaluations`: Finalized. `pendingSubmissions`: Draft or Returned. `pendingApprovals`: Submitted, Resubmitted, Under Review
+  or Approved.
+* `averageScore`, `completionRatePct`: above. `byStatus[]`: as on the manager dashboard.
+* `departments[]`: `{ departmentId, departmentName, scorecards, finalized, averageScore }` per department copied onto the scorecards,
+  by name.
+* `topPerformers[]`: Finalized, the 5 highest scores, ties by employee code (`KpiEmployeeScoreDto` as above).
+* `attentionThreshold`, `requiringAttentionCount` (all of them) and `requiringAttention[]` (lowest score first, at most 50).
+* `ratingDistribution[]`: `{ ratingLabel, count }` over the Finalized scorecards, by the band's `minScore` (highest first), labels of
+  no current band after them; `ratingLabel` is null for a score below every band.
+
+**Reports.**
+
+* `summary`: one row per period that has a matching scorecard, `{ periodId, periodName, periodType, startDate, endDate, periodStatus,
+  scorecards (all, Planning included), inPlanning, finalized, rejected, averageScore, minScore, maxScore, completionRatePct }`. Sort:
+  `periodStart` (default, newest first), `periodName`, `periodType`. Three queries per page (the count, the periods, their figures).
+* `employee/{employeeId}`: `{ employeeId, employeeCode, employeeName, finalized, averageScore, scorecards: PagedResult }` where each
+  scorecard is `{ scorecardId, periodId, periodName, periodType, startDate, endDate, departmentId, departmentName, status, overallScore,
+  ratingLabel, items[] }` and each item `{ id, kpiCode, kpiName, categoryName, unit, target, actualValue, achievementPct, weight,
+  weightedScore }`. `finalized` and `averageScore` cover every matching scorecard, not just the page. The employee must be in the
+  caller's scope: themselves, a direct report or anyone by tier, or the employee of a scorecard the caller reviews; anyone else, and an
+  unknown id, is `404`. Sort: `periodStart` (default, newest first), `periodName`, `overallScore`, `status`.
+* `department/{departmentId}`: `{ departmentId, departmentName, period, scorecards, finalized, averageScore, rows: PagedResult }` with
+  rows `{ scorecardId, employeeId, employeeCode, employeeName, departmentId, departmentName, periodId, periodName, status, overallScore,
+  ratingLabel }`. It uses the department **copied onto the scorecard** when it was created, so an employee who moved later still counts
+  in the department they were in during the period. One period: `periodId` or the default period. Sort: `employeeCode` (default),
+  `employeeName`, `overallScore`, `ratingLabel`, `status`.
+* `ranking`: rows `{ rank, scorecardId, employeeId, employeeCode, employeeName, departmentId, departmentName, periodId, periodName,
+  overallScore, ratingLabel }`. The order is fixed (rank, then employee code); `sort` other than `rank:asc` is `400` on `sort`.
+* `kpi-achievement`: one row per KPI template with an assigned KPI in the matching scorecards, `{ templateId, kpiCode, kpiName,
+  categoryId, categoryName, assigned, counted, averageAchievementPct, minAchievementPct, maxAchievementPct }`. `assigned` counts every
+  assigned KPI; `counted` and the figures cover the KPIs of Finalized scorecards that have an achievement. Code and name are the
+  template's current ones. Sort: `kpiCode` (default), `kpiName`, `categoryName`, `assigned`, `counted`, `averageAchievement`.
+* `target-vs-actual`: one row per KPI, every status (shown), `{ itemId, scorecardId, employeeId, employeeCode, employeeName,
+  departmentId, departmentName, periodId, periodName, status, kpiCode, kpiName, categoryName, unit, target, actualValue, achievementPct,
+  weight, weightedScore }`. Default order: newest period, then employee code, then KPI order. Sort: `periodStart`, `periodName`,
+  `employeeCode`, `employeeName`, `departmentName`, `kpiCode`, `kpiName`, `categoryName`, `achievementPct`, `weightedScore`, `status`.
+
+Rejected scorecards never move an average, a minimum, a maximum or a rank, but they appear in the row reports (`department`,
+`employee`, `target-vs-actual`, the scorecard export) with their status.
+
+**Excel export** (see "HTTP contract (Excel import and export)"): `POST /api/excel/exports/{module}` with `excel:Export` (the route)
+**and** `kpi:View` (checked by name, as for every module); export only (`canImport` false, no template). The modules read the same
+scope with the same filters as the reports (`filters` takes the report filter names; `search`; `dateFrom`/`dateTo` keep periods that
+overlap the range; `scope: "selected"` takes scorecard ids, and ids outside the scope are left out). The usual row limit applies
+(`Excel:MaxExportRows`, 50,000: a larger export is `400`). No module writes a comment, a manager rating or an evidence file.
+
+| Module | Columns |
+| --- | --- |
+| `kpi-scorecards` | Employee Code, Employee Name, Department, Period, Status, KPIs, Total Weight, Overall Score, Rating, Reviewer, Plan Finalized On, Submitted On, Submission Due, Finalized On (newest period first, then employee code) |
+| `kpi-ranking` | Rank, Employee Code, Employee Name, Department, Period, Overall Score, Rating (Finalized only; ranks over the exported rows, so for `selected` among the selected scorecards) |
+| `kpi-target-vs-actual` | Employee Code, Employee Name, Department, Period, Status, KPI Code, KPI, Category, Unit, Target, Actual, Achievement %, Weight, Weighted Score |
+
+**Indexes.** The queries are served by the indexes the SSDT project already has (`IX_Scorecard_PeriodId_Status` with its included
+`EmployeeId, DepartmentId, OverallScore`; `IX_Scorecard_DepartmentId_PeriodId`; `IX_Scorecard_ReviewerEmployeeId_Status`;
+`UQ_Scorecard_EmployeeId_PeriodId`; `UQ_ScorecardItem_ScorecardId_TemplateId`; `IX_ScorecardItem_CategoryId`). No index was added.
+
 ## HTTP contract (dashboard, activity and notifications)
 
 | Route | Policy | Purpose |
@@ -812,6 +948,7 @@ policies), and the module's own policies on top, checked by name (employees impo
 | `attendance-records` | no | yes | none / `attendance:View` | export only: records come from punches and approved adjustments |
 | `shift-assignments` | yes | yes | `attendance:Edit` + `Approve` + `employees:Edit` / `attendance:View` | `employeeCode`; a row sets `shiftCode` through the employee update handler; an employee who has a shift counts as an existing assignment |
 | `salary-assignments` | yes | yes | `payroll:View` + `Create` + `Edit` + `Approve` / `payroll:View` + `Approve` | `employeeCode` + `effectiveFrom`; `structureCode`, `basicSalary` (masked in previews and stored issues), `remarks` |
+| `kpi-scorecards`, `kpi-ranking`, `kpi-target-vs-actual` | no | yes | none / `kpi:View` | export only: scorecards change only through the planning and review workflow. Same scope, filters and search as the KPI reports (see "HTTP contract (KPI dashboards, reports and export)"); never a comment, a manager rating or an evidence file |
 
 * **Catalog.** `GET /api/excel/modules` lists every module; `canImport` and `canExport` are true only when the caller holds
   all of that module's policies above. Employees follow the same rule.

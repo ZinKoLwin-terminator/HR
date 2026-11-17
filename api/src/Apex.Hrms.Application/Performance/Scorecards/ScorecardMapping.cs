@@ -43,6 +43,8 @@ internal sealed class ScorecardRow
 
     public DateOnly? FinalizedOn { get; init; }
 
+    public DateOnly? SubmissionDueDate { get; init; }
+
     public DateTime ModifiedAtUtc { get; init; }
 
     public byte[] RowVersion { get; init; } = [];
@@ -91,6 +93,7 @@ internal static class ScorecardMapping
         row.PlanFinalizedOn,
         row.SubmittedOn,
         row.FinalizedOn,
+        row.SubmissionDueDate,
         row.RowVersion);
 
     public static ScorecardDetailDto ToDetail(
@@ -169,6 +172,7 @@ internal static class ScorecardMapping
         ReviewActionTypeText.ToText(action.Action),
         ScorecardStatusText.ToText(action.FromStatus),
         ScorecardStatusText.ToText(action.ToStatus),
+        action.ActorUserId,
         action.ActorName,
         action.Comment,
         action.OverallScore,

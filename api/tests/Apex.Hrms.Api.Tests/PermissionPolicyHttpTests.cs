@@ -95,6 +95,16 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
         { "POST", "/api/kpi/scorecards/1/return", "kpi:Approve" },
         { "POST", "/api/kpi/scorecards/1/reject", "kpi:Approve" },
         { "POST", "/api/kpi/scorecards/1/finalize", "kpi:Approve" },
+        // Dashboards and reports (G1): the HR dashboard also needs the HR tier, which the application layer checks (403).
+        { "GET", "/api/kpi/dashboard/employee", "kpi:View" },
+        { "GET", "/api/kpi/dashboard/manager", "kpi:Approve" },
+        { "GET", "/api/kpi/dashboard/hr", "kpi:Approve" },
+        { "GET", "/api/kpi/reports/summary", "kpi:View" },
+        { "GET", "/api/kpi/reports/employee/1", "kpi:View" },
+        { "GET", "/api/kpi/reports/department/1", "kpi:View" },
+        { "GET", "/api/kpi/reports/ranking", "kpi:View" },
+        { "GET", "/api/kpi/reports/kpi-achievement", "kpi:View" },
+        { "GET", "/api/kpi/reports/target-vs-actual", "kpi:View" },
     };
 
     private HttpClient ClientWith(IEnumerable<string> grants, Action<IServiceCollection>? configure = null, bool markAuthorized = true)
@@ -340,6 +350,10 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
     [InlineData("companies", "organization:View", "organization:View")]
     [InlineData("leave-balances", "leave:View", "leave:View")]
     [InlineData("attendance-records", "attendance:View", "attendance:View")]
+    [InlineData("kpi-scorecards", "kpi:View", "kpi:View")]
+    [InlineData("kpi-ranking", "kpi:View", "kpi:View")]
+    [InlineData("kpi-target-vs-actual", "kpi:View", "kpi:View")]
+    [InlineData("kpi-ranking", "excel:Export", "kpi:View")]
     [InlineData("salary-assignments", "payroll:Approve", "payroll:View payroll:Approve")]
     public async Task An_export_needs_every_policy_of_its_module_on_top_of_excel_export(string module, string missing, string policies)
     {
@@ -354,6 +368,9 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
     [Theory]
     [InlineData("leave-applications", "leave:View")]
     [InlineData("salary-assignments", "payroll:View payroll:Approve")]
+    [InlineData("kpi-scorecards", "kpi:View")]
+    [InlineData("kpi-ranking", "kpi:View")]
+    [InlineData("kpi-target-vs-actual", "kpi:View")]
     public async Task An_export_reaches_the_service_when_every_grant_of_the_module_is_held(string module, string policies)
     {
         using var client = ClientWith(["excel:Export", .. policies.Split(' ')], services => services.AddScoped<IExcelExportService, NotFoundExport>(), markAuthorized: false);

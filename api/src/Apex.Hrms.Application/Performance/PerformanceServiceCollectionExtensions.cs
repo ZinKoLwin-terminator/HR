@@ -1,4 +1,5 @@
 using Apex.Hrms.Application.Performance.Categories;
+using Apex.Hrms.Application.Performance.Insights;
 using Apex.Hrms.Application.Performance.Periods;
 using Apex.Hrms.Application.Performance.RatingBands;
 using Apex.Hrms.Application.Performance.Scorecards;
@@ -20,6 +21,7 @@ internal static class PerformanceServiceCollectionExtensions
         .AddEvaluationPeriods()
         .AddRatingBands()
         .AddScorecards()
+        .AddKpiInsights()
         .AddPerformanceReferences();
 
     private static IServiceCollection AddKpiCategories(this IServiceCollection services) => services
@@ -97,6 +99,22 @@ internal static class PerformanceServiceCollectionExtensions
         services.AddScoped<IPendingReviewsHandler, PendingReviewsHandler>();
         return services;
     }
+
+    /// <summary>
+    /// The read-only dashboards and reports. They read through <see cref="KpiReportSource"/>, which starts from the scorecard scope of
+    /// the caller; the Excel exports of the same data are registered with the other Excel modules (<c>AddKpiExcel</c>).
+    /// </summary>
+    private static IServiceCollection AddKpiInsights(this IServiceCollection services) => services
+        .AddScoped<KpiReportSource>()
+        .AddScoped<IKpiEmployeeDashboardHandler, KpiEmployeeDashboardHandler>()
+        .AddScoped<IKpiManagerDashboardHandler, KpiManagerDashboardHandler>()
+        .AddScoped<IKpiHrDashboardHandler, KpiHrDashboardHandler>()
+        .AddScoped<IKpiSummaryReportHandler, KpiSummaryReportHandler>()
+        .AddScoped<IKpiEmployeeReportHandler, KpiEmployeeReportHandler>()
+        .AddScoped<IKpiDepartmentReportHandler, KpiDepartmentReportHandler>()
+        .AddScoped<IKpiRankingReportHandler, KpiRankingReportHandler>()
+        .AddScoped<IKpiAchievementReportHandler, KpiAchievementReportHandler>()
+        .AddScoped<IKpiTargetVsActualReportHandler, KpiTargetVsActualReportHandler>();
 
     /// <summary>
     /// What KPI records block. A category with templates (or assigned KPIs), a template with assigned KPIs, a period with

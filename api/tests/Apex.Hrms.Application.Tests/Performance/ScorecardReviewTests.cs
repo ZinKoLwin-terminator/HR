@@ -35,6 +35,9 @@ public sealed class ScorecardReviewTests : ScorecardWorkflowTestBase
         Assert.Equal("Under Review", started.Status);
         var entry = Assert.Single(HistoryOf(world.Card.Id), action => action.Action == ReviewActionType.StartReview);
         Assert.Equal((ReviewStep.Manager, ScorecardStatus.Submitted, ScorecardStatus.UnderReview, 21, world.Anna.Id, "Anna Lead"), (entry.Step, entry.FromStatus, entry.ToStatus, entry.ActorUserId, entry.ActorEmployeeId, entry.ActorName));
+        var shown = started.History.Single(step => step.Action == "Start Review");
+        Assert.Equal((21, "Anna Lead"), (shown.ActorUserId.GetValueOrDefault(), shown.ActorName));
+        Assert.Equal(20, started.History.Single(step => step.Action == "Submit").ActorUserId);
         Assert.Equal("Review of the scorecard of EMP-0002 for \"2026 Q4\" started", host.ActivityLog.LastMessage);
     }
 
@@ -640,6 +643,7 @@ public sealed class ScorecardReviewTests : ScorecardWorkflowTestBase
         var page = ResultAssert.Succeeded(await host.PendingReviews());
 
         Assert.Equal(new[] { queue.Ben.Id, queue.Cara.Id }.Order().ToArray(), Ids(page));
+        Assert.All(page.Items, card => Assert.Equal(new DateOnly(2027, 1, 10), card.SubmissionDueDate));
         Assert.DoesNotContain(page.Items, card => card.EmployeeId == queue.World.Anna.Id);
     }
 

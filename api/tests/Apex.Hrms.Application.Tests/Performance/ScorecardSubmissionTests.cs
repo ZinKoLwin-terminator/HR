@@ -441,6 +441,7 @@ public sealed class ScorecardSubmissionTests : ScorecardWorkflowTestBase
         var page = ResultAssert.Succeeded(await host.MyScorecards());
 
         Assert.Equal(["2026 Q4", "2026 Q3"], page.Items.Select(card => card.PeriodName).ToArray());
+        Assert.Equal([new DateOnly(2027, 1, 10), null], page.Items.Select(card => card.SubmissionDueDate).ToArray());
         Assert.All(page.Items, card => Assert.Equal(world.Ben.Id, card.EmployeeId));
         Assert.Equal(2, page.Total);
     }

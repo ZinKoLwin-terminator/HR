@@ -440,5 +440,7 @@ public sealed class EvaluationPeriodHandlerTests : IDisposable
         Assert.Equal(new DateOnly(2026, 10, 1), option.StartDate);
         Assert.Equal(new DateOnly(2026, 12, 31), option.EndDate);
         Assert.True(firstOnly[1].RequiresHrReview);
+        Assert.Equal(new DateOnly(2027, 1, 10), option.SubmissionDueDate);
+        Assert.Null(firstOnly[1].SubmissionDueDate);
     }
 }

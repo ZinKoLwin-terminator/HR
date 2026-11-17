@@ -3,6 +3,7 @@ using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Leave;
 using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Application.Payroll;
+using Apex.Hrms.Application.Performance.Insights;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -20,6 +21,7 @@ internal static class ExcelServiceCollectionExtensions
         services.AddLeaveExcel();
         services.AddAttendanceExcel();
         services.AddPayrollExcel();
+        services.AddKpiExcel();
         services.AddScoped<IExcelCatalogService, ExcelCatalogService>();
         services.AddScoped<IExcelImportService, ExcelImportService>();
         services.AddScoped<IExcelExportService, ExcelExportService>();

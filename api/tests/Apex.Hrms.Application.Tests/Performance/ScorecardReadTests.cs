@@ -148,6 +148,7 @@ public sealed class ScorecardReadTests : IDisposable
         Assert.Null(row.RatingLabel);
         Assert.Null(row.SubmittedOn);
         Assert.Null(row.FinalizedOn);
+        Assert.Equal(new DateOnly(2027, 1, 10), row.SubmissionDueDate);
         Assert.Equal(plan.Org.Department.Id, row.DepartmentId);
         Assert.NotEmpty(row.DepartmentName);
         Assert.NotEmpty(row.RowVersion);

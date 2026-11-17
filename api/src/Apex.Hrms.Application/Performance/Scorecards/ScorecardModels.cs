@@ -7,7 +7,8 @@ namespace Apex.Hrms.Application.Performance.Scorecards;
 /// One scorecard in a list (<c>GET /api/kpi/scorecards/query</c>): the employee's KPI plan and result for one evaluation period.
 /// Only the employee code and name identify the person. <c>status</c> is Planning, Draft, Submitted, Under Review, Returned,
 /// Resubmitted, Approved, Rejected or Finalized; <c>totalWeight</c> and <c>itemCount</c> describe the assigned KPIs;
-/// <c>overallScore</c> and <c>ratingLabel</c> are set by the API once a scorecard is scored.
+/// <c>overallScore</c> and <c>ratingLabel</c> are set by the API once a scorecard is scored. <c>submissionDueDate</c> is the period's
+/// (null when the period has none), so a list can flag a late submission without reading each scorecard.
 /// </summary>
 public sealed record ScorecardDto(
     int Id,
@@ -28,6 +29,7 @@ public sealed record ScorecardDto(
     DateOnly? PlanFinalizedOn,
     DateOnly? SubmittedOn,
     DateOnly? FinalizedOn,
+    DateOnly? SubmissionDueDate,
     byte[] RowVersion) : IIdentified;
 
 /// <summary>
@@ -100,12 +102,17 @@ public sealed record ScorecardItemDto(
     byte[] RowVersion,
     IReadOnlyList<AttachmentDto> Attachments) : IIdentified;
 
-/// <summary>One step of the approval history. <c>step</c> is Employee, Manager or HR; <c>action</c> is the name of the step ("Finalize Plan").</summary>
+/// <summary>
+/// One step of the approval history. <c>step</c> is Employee, Manager or HR; <c>action</c> is the name of the step ("Finalize Plan").
+/// <c>actorUserId</c> is the account that acted (null when the step was recorded without one), so a screen can recognise the
+/// caller's own steps by id rather than by display name. The server enforces the separation of duties by id itself.
+/// </summary>
 public sealed record ReviewActionDto(
     string Step,
     string Action,
     string FromStatus,
     string ToStatus,
+    int? ActorUserId,
     string ActorName,
     string? Comment,
     decimal? OverallScore,

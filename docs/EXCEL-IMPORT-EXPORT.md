@@ -103,6 +103,29 @@ Resigned/Terminated), and a consistent organization assignment (company → bran
 existing and matching; inactive units refused when newly assigned; manager and shift must exist).
 History entries (Joined, Promotion, Transfer…) are recorded for every way of saving.
 
+## KPI export modules (API)
+
+The .NET API (`api/`, branch `feature/api-kpi`) adds three **export-only** modules for the KPI and performance data. They are
+in the catalog that `GET /api/excel/modules` returns (`canImport` false, so there is no template and no import): scorecards change
+only through the planning and review workflow, never by upload. The exact contract is in `api/README.md`, sections "HTTP contract
+(KPI dashboards, reports and export)" and "HTTP contract (Excel import and export)".
+
+| Module code            | Sheet / label        | Columns                                                                                                                                               |
+| ---------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kpi-scorecards`       | KPI scorecards       | Employee Code, Employee Name, Department, Period, Status, KPIs, Total Weight, Overall Score, Rating, Reviewer, Plan Finalized On, Submitted On, Submission Due, Finalized On |
+| `kpi-ranking`          | KPI ranking          | Rank, Employee Code, Employee Name, Department, Period, Overall Score, Rating (Finalized scorecards only; equal scores share a rank: 1, 1, 3)          |
+| `kpi-target-vs-actual` | KPI target vs actual | Employee Code, Employee Name, Department, Period, Status, KPI Code, KPI, Category, Unit, Target, Actual, Achievement %, Weight, Weighted Score         |
+
+- **Permissions:** the export route needs `excel:Export`, and each module needs `kpi:View` on top, checked by name like every other module.
+- **Rows:** the same rows as the KPI reports for the caller: their own scorecards, their team's (direct reports and the scorecards they
+  review), or everyone's for HR (`kpi:Approve` with `employees:Edit`).
+- **Filters:** `filters` takes the report filter names (`companyId`, `branchId`, `departmentId`, `positionId`, `employeeId`, `categoryId`,
+  `periodId`, `status`, `periodType`, `year`); `search` matches the employee code or name; `dateFrom`/`dateTo` keep the periods that
+  overlap the range; `selected` exports take scorecard ids.
+- **Limits:** the usual export row limit applies (50,000 rows; a larger export is refused with a message to narrow the filters).
+- **Privacy:** never a comment (employee, manager or HR), a manager rating or an evidence file. Only the employee code and name identify a person.
+- PDF stays the browser's print of the report screens.
+
 ## Not done yet / limitations
 
 - Organization, Attendance, Leave and Payroll import/export (planned phases 4–7). **Payroll import scope is still to be agreed.**

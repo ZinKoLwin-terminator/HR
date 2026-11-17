@@ -22,7 +22,7 @@ public sealed record EvaluationPeriodDto(
 
 /// <summary>
 /// One entry of the period picker (<c>GET /api/kpi/periods/options</c>): what an employee or manager needs to choose a
-/// period, without the setup permission. Draft periods are never listed.
+/// period, without the setup permission. Draft periods are never listed. <c>submissionDueDate</c> is null when the period has none.
 /// </summary>
 public sealed record EvaluationPeriodOptionDto(
     int Id,
@@ -32,7 +32,8 @@ public sealed record EvaluationPeriodOptionDto(
     DateOnly StartDate,
     DateOnly EndDate,
     string Status,
-    bool RequiresHrReview);
+    bool RequiresHrReview,
+    DateOnly? SubmissionDueDate);
 
 /// <summary>The fields an evaluation period has on create and update.</summary>
 internal interface IEvaluationPeriodFields
