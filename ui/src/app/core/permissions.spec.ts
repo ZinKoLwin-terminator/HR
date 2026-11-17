@@ -128,6 +128,24 @@ describe('permissionGuard', () => {
     const result = run('dashboard:View', '/dashboard') as UrlTree;
     expect(TestBed.inject(Router).serializeUrl(result)).toBe('/leave/types');
   });
+
+  it('lands on a child entry whose own key the user holds, without the group key', () => {
+    withUser(signal(user(['kpi:View'])));
+    const result = run('dashboard:View', '/') as UrlTree;
+    expect(TestBed.inject(Router).serializeUrl(result)).toBe('/performance/my-kpis');
+  });
+
+  it('skips a child entry whose own key the user lacks, though the group key is held', () => {
+    withUser(signal(user(['employees:View'])));
+    const result = run('dashboard:View', '/dashboard') as UrlTree;
+    expect(TestBed.inject(Router).serializeUrl(result)).toBe('/employees/list');
+  });
+
+  it('falls back to the first entry without a key when no module is held', () => {
+    withUser(signal(user([])));
+    const result = run('dashboard:View', '/') as UrlTree;
+    expect(TestBed.inject(Router).serializeUrl(result)).toBe('/my/payslips');
+  });
 });
 
 describe('navigation', () => {

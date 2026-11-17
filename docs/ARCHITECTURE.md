@@ -55,6 +55,7 @@ Screens with editable state use the `unsavedChangesGuard`.
   time, email, tel, file, toggle…, with dependent selects and derived fields);
 - `extraActions` (row actions with optional confirm or prompt, e.g. "Process payroll", "Reject…");
 - `canEdit` / `canDelete` / `canCreate`, `lockedFilters` and `fixedValues` for embedding in tabs.
+  `canEdit(row)` applies to both the row menu and the Edit button of the details dialog.
 
 Server-side validation errors (`AppError.fieldErrors`) are mapped back onto the form fields.
 Screens with unique needs (payroll review, pipeline board, permission matrix, payslip) are written

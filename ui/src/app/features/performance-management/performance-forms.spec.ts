@@ -1,6 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
+import { provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
+import { APP_CONFIG, DEFAULT_APP_CONFIG } from '../../core/configuration/app-config';
 import { AppError, Entity } from '../../core/models/common.models';
 import { EvaluationPeriod, KpiCategory } from '../../core/models/kpi.models';
 import { Company, Department } from '../../core/models/organization.models';
@@ -13,6 +20,7 @@ import {
   EntityFormDialogData,
   FormValues,
 } from '../../shared/components/crud/crud.models';
+import { CrudPageComponent } from '../../shared/components/crud/crud-page.component';
 import { EntityFormDialogComponent } from '../../shared/components/crud/entity-form-dialog.component';
 import { FieldFormGroup } from '../../shared/forms/form-builder';
 import { buildEvaluationPeriodsConfig } from './periods/evaluation-periods.config';
@@ -285,15 +293,6 @@ describe('Evaluation period form: edit restrictions', () => {
     });
   });
 
-  it('keeps Completed and Closed periods read-only', async () => {
-    for (const status of ['Completed', 'Closed'] as const) {
-      const h = await editing(status);
-      expect(Object.values(h.form.controls).every((c) => c.disabled)).toBe(true);
-      expect(note(h)).toContain('read-only');
-      TestBed.resetTestingModule();
-    }
-  });
-
   it('refuses an end date that is not after the start date', async () => {
     const h = await editing('Draft');
     await change(h, 'endDate', '2027-01-01');
@@ -313,5 +312,60 @@ describe('Evaluation period form: edit restrictions', () => {
     const h = await editing('Draft', () => throwError(() => error));
     h.submit();
     expect(h.el.querySelector('[role="alert"]')?.textContent).toContain('overlap period "2027 Q1"');
+  });
+});
+
+describe('Evaluation periods page: Completed and Closed periods are read-only', () => {
+  const period = (status: EvaluationPeriod['status']): EvaluationPeriod =>
+    ({
+      id: 9,
+      companyId: 1,
+      name: '2027 Q1',
+      periodType: 'Quarterly',
+      startDate: '2027-01-01',
+      endDate: '2027-03-31',
+      submissionDueDate: null,
+      requiresHrReview: false,
+      status,
+      rowVersion: '1',
+    }) as EvaluationPeriod;
+
+  /** Opens the period's details dialog on the CRUD page and says whether it offers Edit. */
+  async function detailsOffersEdit(status: EvaluationPeriod['status']): Promise<boolean> {
+    const row = period(status);
+    const service = {
+      query: () => of({ items: [row], total: 1, pageIndex: 0, pageSize: 10 }),
+    } as unknown as EvaluationPeriodDataService;
+    const companies = [{ id: 1, name: 'APEX Technologies', status: 'Active' }] as Company[];
+    TestBed.configureTestingModule({
+      imports: [MatDialogModule],
+      providers: [
+        provideRouter([]),
+        { provide: APP_CONFIG, useValue: { ...DEFAULT_APP_CONFIG, mockLatencyMs: 0 } },
+      ],
+    });
+    const fixture = TestBed.createComponent(CrudPageComponent<EvaluationPeriod>);
+    fixture.componentRef.setInput('config', buildEvaluationPeriodsConfig({ service, companies }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    (
+      fixture.componentInstance as unknown as { openDetails(r: EvaluationPeriod): void }
+    ).openDetails(row);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const buttons = [...document.querySelectorAll('mat-dialog-actions button')];
+    const offered = buttons.some((b) => b.textContent?.includes('Edit'));
+    TestBed.inject(MatDialog).closeAll();
+    fixture.destroy();
+    TestBed.resetTestingModule();
+    return offered;
+  }
+
+  it('offers Edit in the details dialog for Draft and Active periods only', async () => {
+    const offered: boolean[] = [];
+    for (const status of ['Draft', 'Active', 'Completed', 'Closed'] as const) {
+      offered.push(await detailsOffersEdit(status));
+    }
+    expect(offered).toEqual([true, true, false, false]);
   });
 });

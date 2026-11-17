@@ -177,8 +177,10 @@ Priority: **P1** = before real use, **P2** = next features, **P3** = nice to hav
 
 ## 5. Technical debt
 
-- [ ] **P3** Initial bundle is ~1.18 MB against a 1.00 MB budget (warning in `npm run build`). Lazy-load more.
-      Unchanged by this merge.
+- [ ] **P3** Initial bundle is ~1.21 MB against a 1.00 MB budget (warning in `npm run build`). Lazy-load more.
+      The module help articles now load with the lazy help feature (the header imports only
+      `module-guide-menu.ts`), which took it down from ~1.33 MB. What remains is mostly Angular,
+      Material and CDK plus the eagerly provided mock services.
 - [x] **P3** Mixed CRLF/LF line endings: `.gitattributes` added.
 - [ ] **P3** Renormalize the existing files to the new line-ending rules, in its own commit.
 - [x] **P3** Stale doc comment in `api/src/Apex.Hrms.Application/Security/CallerPermissions.cs` ("an approver"): no longer present.

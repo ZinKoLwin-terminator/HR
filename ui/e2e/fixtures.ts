@@ -16,6 +16,26 @@ export async function searchEmployeesInApp(page: Page, term: string) {
   await page.getByRole('searchbox', { name: /Search by employee code/ }).fill(term);
 }
 
+/**
+ * Waits until the newest Material dialog has taken its initial focus. MatDialog moves focus into a
+ * dialog only after its open animation (a 150 ms timer plus a render, longer on a loaded machine).
+ * Typing before that races with the move: `fill` focuses its field and then sends the text, so a
+ * focus move in between sends the text to the dialog's first field instead. Call it after opening
+ * a dialog and before typing into it.
+ */
+export async function dialogFocused(page: Page) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const dialogs = document.querySelectorAll('mat-dialog-container');
+          return dialogs[dialogs.length - 1]?.matches(':focus-within') ?? false;
+        }),
+      { message: 'the dialog takes its initial focus' },
+    )
+    .toBe(true);
+}
+
 /** Mirrors AuthService's stored session (frontend-only demo auth). */
 export const ADMIN_SESSION = {
   id: 1,

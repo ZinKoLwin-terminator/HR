@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { RedirectFunction, Routes } from '@angular/router';
-import { NAVIGATION, visibleNavigation } from '../../core/constants/navigation';
+import { NAVIGATION, firstVisibleRoute } from '../../core/constants/navigation';
 import { permissionGuard } from '../../core/guards/permission.guard';
 import { PermissionService } from '../../core/services/permission.service';
 
@@ -17,8 +17,7 @@ const REVIEWER = { permission: 'kpi:Approve' } as const;
 export const performanceLanding: RedirectFunction = () => {
   const permissions = inject(PermissionService);
   const group = NAVIGATION.filter((item) => item.label === 'Performance');
-  const [visible] = visibleNavigation(group, (key) => permissions.can(key));
-  return visible?.children?.[0]?.route ?? '/performance/my-kpis';
+  return firstVisibleRoute(group, (key) => permissions.can(key)) ?? '/performance/my-kpis';
 };
 
 /** Setup and planning (HR) need `kpi-setup:View`; the actions inside use Create, Edit and Delete. */

@@ -33,6 +33,18 @@ export function visibleNavigation(
   });
 }
 
+/** Route of the first entry the user may see, in sidebar order (see {@link visibleNavigation}). */
+export function firstVisibleRoute(
+  items: NavItem[],
+  can: (permission: string) => boolean,
+): string | null {
+  for (const item of visibleNavigation(items, can)) {
+    const route = item.route ?? item.children?.find((child) => child.route)?.route;
+    if (route) return route;
+  }
+  return null;
+}
+
 /** Single source of truth for the sidebar. Routes must exist in the route config. */
 export const NAVIGATION: NavItem[] = [
   {

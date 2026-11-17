@@ -355,7 +355,7 @@ describe('Evaluation periods config', () => {
     expect(STATUSES.map((s) => config.canDelete?.(period(s)))).toEqual([true, false, false, false]);
   });
 
-  it('locks all but the name and due date while Active, and everything once Completed', () => {
+  it('locks all but the name and due date while Active', () => {
     const lockedFor = (status: string) =>
       config.fields.filter((f) => f.lockedWhen?.({ status })).map((f) => f.key);
     expect(lockedFor('Draft')).toEqual([]);
@@ -366,17 +366,13 @@ describe('Evaluation periods config', () => {
       'endDate',
       'requiresHrReview',
     ]);
-    const all = config.fields.filter((f) => !f.detailsOnly).map((f) => f.key);
-    expect(lockedFor('Completed')).toEqual(all);
-    expect(lockedFor('Closed')).toEqual(all);
+    // Completed and Closed periods never reach the form: canEdit is false for them.
   });
 
   it('explains the edit rule of the period’s status above the form', () => {
     expect(periodFormNotice({ status: 'Active' })).toContain(
       'only its name and submission due date',
     );
-    expect(periodFormNotice({ status: 'Completed' })).toContain('read-only');
-    expect(periodFormNotice({ status: 'Closed' })).toContain('read-only');
     expect(periodFormNotice({ status: 'Draft' })).toBeNull();
     expect(periodFormNotice(null)).toBeNull();
   });

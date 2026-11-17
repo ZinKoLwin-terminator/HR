@@ -157,6 +157,11 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
     return !key || this.permissions.can(key);
   }
 
+  /** Whether this row can be edited: the same rule as the row menu's Edit action. */
+  private canEditRow(row: T): boolean {
+    return this.canDo('Edit') && (this.config().canEdit?.(row) ?? true);
+  }
+
   protected readonly actions = computed<TableAction<T>[]>(() => {
     const cfg = this.config();
     const list: TableAction<T>[] = [
@@ -463,7 +468,7 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
             fields: cfg.fields.filter((f) => !f.createOnly && !f.formOnly),
             row: row as unknown as FormValues,
             id: row.id,
-            readonly: !this.canDo('Edit'),
+            readonly: !this.canEditRow(row),
           },
           width: '640px',
           maxWidth: '96vw',

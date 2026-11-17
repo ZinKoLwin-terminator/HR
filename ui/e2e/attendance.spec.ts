@@ -1,5 +1,5 @@
 import { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { dialogFocused, expect, test } from './fixtures';
 import { clearAllFilters, closeFilters, openFilters } from './filters';
 
 const rows = (page: Page) => page.locator('tr.mat-mdc-row');
@@ -17,6 +17,7 @@ async function choose(page: Page, name: string, option: string | RegExp, exact =
 /** Same, but for a dropdown inside the open dialog (page filters can share the label). */
 async function chooseInDialog(page: Page, name: string, option: string | RegExp, exact = true) {
   await expect(dialog(page)).toBeVisible();
+  await dialogFocused(page);
   await dialog(page).getByRole('combobox', { name }).click();
   await page.getByRole('option', { name: option, exact }).click();
 }
@@ -223,6 +224,8 @@ test.describe('shift management', () => {
     await expect(rows(page).filter({ hasText: 'General Shift' })).toContainText('Mon–Fri');
 
     await page.getByRole('button', { name: 'Add shift' }).click();
+    // Type only once the dialog has moved focus to its first field (see dialogFocused).
+    await dialogFocused(page);
     await dialog(page).getByLabel('Shift code').fill('EVE');
     await dialog(page).getByLabel('Shift name').fill('Evening Support');
     await dialog(page).getByLabel('Start time').fill('18:00');
@@ -264,6 +267,7 @@ test.describe('shift management', () => {
 
     // Duplicate code is refused by the data rules
     await page.getByRole('button', { name: 'Add shift' }).click();
+    await dialogFocused(page);
     await dialog(page).getByLabel('Shift code').fill('GEN');
     await dialog(page).getByLabel('Shift name').fill('Copy');
     await dialog(page).getByRole('button', { name: 'Create shift' }).click();
@@ -483,6 +487,7 @@ test.describe('attendance adjustments', () => {
 
     // Edit then delete the pending request
     await rowMenu(page, /./, 'Edit');
+    await dialogFocused(page);
     await dialog(page).getByLabel('Reason').fill('Forgot to punch (edited)');
     await dialog(page).getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText(/updated successfully/)).toBeVisible();

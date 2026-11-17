@@ -19,29 +19,23 @@ export interface EvaluationPeriodConfigOptions {
   companies: Company[];
 }
 
-/** Completed and Closed periods are read-only. */
-const isFinished = (status: unknown): boolean => status === 'Completed' || status === 'Closed';
-
 /** Company, type, dates and the HR review setting: editable only while the period is a Draft. */
 const LOCKED_AFTER_DRAFT = (row: FormValues): boolean =>
   row['status'] !== undefined && row['status'] !== 'Draft';
 
-/** Name and due date: editable in Draft and Active, read-only once the period is Completed. */
-const LOCKED_WHEN_FINISHED = (row: FormValues): boolean => isFinished(row['status']);
-
 /** The edit rule in words, for the form note. Null when everything is editable. */
 export function periodFormNotice(row: FormValues | null): string | null {
-  const status = row?.['status'];
-  if (status === 'Active') {
+  if (row?.['status'] === 'Active') {
     return 'This period is Active: only its name and submission due date can be changed. Company, type, dates and the HR review setting are fixed.';
-  }
-  if (isFinished(status)) {
-    return `This period is ${String(status)}, so it is read-only: nothing in it can be changed.`;
   }
   return null;
 }
 
-/** Whether a period can still be edited (Draft: every field; Active: name and due date). */
+/**
+ * Whether a period can still be edited (Draft: every field; Active: name and due date). Completed
+ * and Closed periods are read-only: the CRUD page offers no Edit for them, in the row menu or the
+ * details dialog.
+ */
 export const canEditPeriod = (p: EvaluationPeriod): boolean =>
   p.status === 'Draft' || p.status === 'Active';
 
@@ -192,7 +186,6 @@ export function buildEvaluationPeriodsConfig(
         type: 'text',
         required: true,
         maxLength: 100,
-        lockedWhen: LOCKED_WHEN_FINISHED,
         hint: 'e.g. 2027 Q1; unique within the company',
       },
       {
@@ -228,7 +221,6 @@ export function buildEvaluationPeriodsConfig(
         key: 'submissionDueDate',
         label: 'Submission due date',
         type: 'date',
-        lockedWhen: LOCKED_WHEN_FINISHED,
         hint: 'Optional; a later submission is still accepted',
         rule: (v) =>
           v['startDate'] &&
