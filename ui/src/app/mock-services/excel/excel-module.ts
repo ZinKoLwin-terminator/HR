@@ -66,3 +66,32 @@ export interface ExcelModuleRegistration {
 export const EXCEL_MODULES = new InjectionToken<readonly ExcelModuleRegistration[]>(
   'EXCEL_MODULES',
 );
+
+/** Loads registrations from a lazy chunk (created in the injection context of the provider). */
+export type ExcelModuleLoader = () => Promise<readonly ExcelModuleRegistration[]>;
+
+/**
+ * Multi-provider token for modules that live in a lazy chunk, so their definitions stay out of the
+ * initial bundle: the catalog and the export load them on first use. Export-only modules only (the
+ * import wizard lists the eager ones).
+ */
+export const LAZY_EXCEL_MODULES = new InjectionToken<readonly ExcelModuleLoader[]>(
+  'LAZY_EXCEL_MODULES',
+);
+
+/** Loads every lazy registration once (a failed load is tried again next time). */
+export function lazyExcelModules(
+  loaders: readonly ExcelModuleLoader[],
+): () => Promise<readonly ExcelModuleRegistration[]> {
+  let loaded: Promise<readonly ExcelModuleRegistration[]> | null = null;
+  return () => {
+    loaded ??= Promise.all(loaders.map((load) => load())).then(
+      (sets) => sets.flat(),
+      (error: unknown) => {
+        loaded = null;
+        throw error;
+      },
+    );
+    return loaded;
+  };
+}

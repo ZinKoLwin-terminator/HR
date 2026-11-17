@@ -212,6 +212,13 @@ export const NAVIGATION: NavItem[] = [
     section: 'PEOPLE',
     children: [
       {
+        label: 'Dashboard',
+        icon: 'monitoring',
+        route: '/performance/dashboard',
+        permission: 'kpi:View',
+        group: 'Operations',
+      },
+      {
         label: 'My KPIs',
         icon: 'insights',
         route: '/performance/my-kpis',
@@ -223,6 +230,13 @@ export const NAVIGATION: NavItem[] = [
         icon: 'rate_review',
         route: '/performance/reviews',
         permission: 'kpi:Approve',
+        group: 'Operations',
+      },
+      {
+        label: 'Reports',
+        icon: 'query_stats',
+        route: '/performance/reports',
+        permission: 'kpi:View',
         group: 'Operations',
       },
       {

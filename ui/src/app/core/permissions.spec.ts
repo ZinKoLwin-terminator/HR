@@ -132,7 +132,7 @@ describe('permissionGuard', () => {
   it('lands on a child entry whose own key the user holds, without the group key', () => {
     withUser(signal(user(['kpi:View'])));
     const result = run('dashboard:View', '/') as UrlTree;
-    expect(TestBed.inject(Router).serializeUrl(result)).toBe('/performance/my-kpis');
+    expect(TestBed.inject(Router).serializeUrl(result)).toBe('/performance/dashboard');
   });
 
   it('skips a child entry whose own key the user lacks, though the group key is held', () => {

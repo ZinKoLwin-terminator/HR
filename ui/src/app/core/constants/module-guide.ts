@@ -349,10 +349,18 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
     name: 'Performance (KPI)',
     icon: 'trending_up',
     summary: {
-      en: 'KPI categories, reusable KPI templates, evaluation periods, rating bands, each employee’s KPI plan (scorecard) for a period, the employee’s results and evidence, and the manager’s and HR’s review.',
-      my: 'KPI Category၊ ပြန်သုံးနိုင်သော KPI Template၊ Evaluation Period၊ Rating Band၊ Period တစ်ခုအတွက် ဝန်ထမ်းတစ်ဦးချင်းစီ၏ KPI Plan (Scorecard)၊ ဝန်ထမ်း၏ ရလဒ်နှင့် Evidence၊ Manager နှင့် HR ၏ Review။',
+      en: 'KPI categories, reusable KPI templates, evaluation periods, rating bands, each employee’s KPI plan (scorecard) for a period, the employee’s results and evidence, the manager’s and HR’s review, and the dashboards and reports over the scorecards.',
+      my: 'KPI Category၊ ပြန်သုံးနိုင်သော KPI Template၊ Evaluation Period၊ Rating Band၊ Period တစ်ခုအတွက် ဝန်ထမ်းတစ်ဦးချင်းစီ၏ KPI Plan (Scorecard)၊ ဝန်ထမ်း၏ ရလဒ်နှင့် Evidence၊ Manager နှင့် HR ၏ Review နှင့် Scorecard များအပေါ် Dashboard နှင့် Report များ။',
     },
     screens: [
+      {
+        label: 'Dashboard',
+        route: '/performance/dashboard',
+        text: {
+          en: 'KPI dashboards for a period: your own performance, your team’s (reviewers) and the HR overview, with charts and tables.',
+          my: 'Period တစ်ခုအတွက် KPI Dashboard များ — ကိုယ့်စွမ်းဆောင်ရည်၊ အဖွဲ့၏စွမ်းဆောင်ရည် (Reviewer များ) နှင့် HR overview ကို Chart နှင့် Table ဖြင့် ပြသည်။',
+        },
+      },
       {
         label: 'My KPIs',
         route: '/performance/my-kpis',
@@ -367,6 +375,14 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         text: {
           en: 'Scorecards waiting for your review: rate them, then approve, return or reject. HR gives the final review where the period asks for one.',
           my: 'သင့် Review စောင့်နေသော Scorecard များ — Rating ပေးပြီး Approve၊ Return သို့ Reject လုပ်ရန်။ Period က လိုအပ်လျှင် HR က Final review ပေးသည်။',
+        },
+      },
+      {
+        label: 'Reports',
+        route: '/performance/reports',
+        text: {
+          en: 'Summary by period (monthly, quarterly, annual), employee history, department performance, ranking, KPI achievement and target vs actual, with filters, Excel export and print.',
+          my: 'Period အလိုက် Summary (လစဉ်၊ သုံးလပတ်၊ နှစ်စဉ်)၊ ဝန်ထမ်းမှတ်တမ်း၊ ဌာနစွမ်းဆောင်ရည်၊ Ranking၊ KPI achievement နှင့် Target vs actual ကို Filter၊ Excel export နှင့် Print ဖြင့်။',
         },
       },
       {

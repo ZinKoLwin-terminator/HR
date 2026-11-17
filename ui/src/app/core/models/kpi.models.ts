@@ -165,6 +165,8 @@ export interface EvaluationPeriodOption {
   endDate: string;
   status: EvaluationPeriodStatus;
   requiresHrReview: boolean;
+  /** Null when the period has none. */
+  submissionDueDate: string | null;
 }
 
 export interface KpiCategoryFilter {
@@ -212,6 +214,11 @@ export interface Scorecard extends Entity {
   planFinalizedOn: string | null;
   submittedOn: string | null;
   finalizedOn: string | null;
+  /**
+   * The period's submission due date, or null when it has none, so a list can show a Late flag
+   * without reading each scorecard.
+   */
+  submissionDueDate: string | null;
   rowVersion: string;
 }
 
@@ -264,6 +271,11 @@ export interface ReviewAction {
   action: ReviewActionName;
   fromStatus: ScorecardStatus;
   toStatus: ScorecardStatus;
+  /**
+   * The user account that recorded the step (null when none was recorded). Compare it with the
+   * signed-in user's id, never with the display name.
+   */
+  actorUserId: number | null;
   actorName: string;
   comment: string | null;
   overallScore: number | null;
@@ -274,7 +286,6 @@ export interface ReviewAction {
 export interface ScorecardDetail extends Scorecard {
   reviewedOn: string | null;
   periodStatus: EvaluationPeriodStatus;
-  submissionDueDate: string | null;
   requiresHrReview: boolean;
   employeeComment: string | null;
   managerRating: number | null;

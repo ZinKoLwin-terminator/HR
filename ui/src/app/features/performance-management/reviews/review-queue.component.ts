@@ -30,7 +30,7 @@ import { ListQuery } from '../../../shared/utilities/list-query';
 import { options } from '../../organization/organization-lookups';
 import { textOptions } from '../shared/kpi-options';
 import { LateChipComponent } from '../shared/late-chip.component';
-import { loadDueDates, rowIsLate } from '../shared/period-due-dates';
+import { rowIsLate } from '../shared/period-due-dates';
 import { REVIEW_QUEUE_STATUSES, overallText, stageLabel } from '../shared/scorecard-rules';
 
 /** The queue's columns. The server's order (oldest submission first) is kept: nothing sorts here. */
@@ -196,12 +196,6 @@ export class ReviewQueueComponent {
     this.page.error() ? errorMessage(this.page.error()) : '',
   );
 
-  /** Due dates of the periods on this page (the list answer has none), for the Late chip. */
-  private readonly dueDates = rxResource({
-    params: () => this.result()?.items,
-    stream: ({ params }) => loadDueDates(this.scorecards, params),
-  });
-
   /**
    * The period picker needs no setup permission. A reviewer who cannot list departments still
    * gets the queue, without that filter's options.
@@ -236,7 +230,7 @@ export class ReviewQueueComponent {
   }
 
   protected isLate(row: Scorecard): boolean {
-    return rowIsLate(row, this.dueDates.value());
+    return rowIsLate(row);
   }
 
   protected open(row: Scorecard): void {

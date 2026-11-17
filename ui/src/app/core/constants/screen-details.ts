@@ -361,6 +361,42 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     ),
   ],
 
+  '/performance/dashboard': [
+    b(
+      'Choose an evaluation period; the dashboard opens on the default one (the most recent Active period, else the most recent). The tabs are the views your role may open: My performance, My team (reviewers) and HR overview (HR). With one view there are no tabs.',
+      'Evaluation Period ကိုရွေးပါ — Dashboard သည် ပုံသေ Period (နောက်ဆုံး Active Period၊ မရှိလျှင် နောက်ဆုံး Period) ဖြင့် ဖွင့်သည်။ Tab များသည် သင့် Role ကြည့်ခွင့်ရှိသော မြင်ကွင်းများ ဖြစ်သည် — My performance၊ My team (Reviewer များ) နှင့် HR overview (HR)။ မြင်ကွင်း တစ်ခုတည်းဆိုလျှင် Tab မပြပါ။',
+    ),
+    b(
+      'My performance: a banner while your results are still to be submitted (Overdue after the due date), your overall score and rating, your KPIs with target, actual, achievement and weight, your manager’s feedback, and your earlier periods as a chart and a list.',
+      'My performance — ရလဒ် Submit မလုပ်ရသေးလျှင် သတိပေးစာ (Due date ကျော်လျှင် Overdue)၊ သင့်စုစုပေါင်းရမှတ်နှင့် Rating၊ Target၊ Actual၊ Achievement၊ Weight ပါသော KPI များ၊ Manager ၏ Feedback နှင့် ယခင် Period များကို Chart နှင့် စာရင်းအဖြစ် ပြသည်။',
+    ),
+    b(
+      'My team: team size, reviews waiting for you, approved or finalized scorecards, the team average, the status breakdown and a comparison of your team’s scores. HR overview: employees with KPIs, assignments, completed evaluations, pending submissions and approvals, the average score, the completion rate, department performance, top performers, employees requiring attention (with the threshold used) and the rating distribution.',
+      'My team — အဖွဲ့အရွယ်အစား၊ သင့်ကိုစောင့်နေသော Review များ၊ Approved သို့ Finalized Scorecard များ၊ အဖွဲ့ပျမ်းမျှ၊ Status အလိုက်ခွဲခြမ်းမှုနှင့် အဖွဲ့ဝင်ရမှတ် နှိုင်းယှဉ်ချက်။ HR overview — KPI ရှိသော ဝန်ထမ်း၊ Assignment၊ ပြီးဆုံးသော Evaluation၊ Submit/Approve စောင့်ဆိုင်းမှု၊ ပျမ်းမျှရမှတ်၊ Completion rate၊ ဌာနအလိုက်စွမ်းဆောင်ရည်၊ ထိပ်တန်းဝန်ထမ်း၊ အာရုံစိုက်ရန်လိုသော ဝန်ထမ်း (သုံးထားသော Threshold နှင့်) နှင့် Rating ဖြန့်ဝေမှု။',
+    ),
+    b(
+      'Every chart has a Table view with the exact values. All figures come from the server and count only the scorecards you may see; averages count Finalized scorecards only.',
+      'Chart တိုင်းတွင် တန်ဖိုးအတိအကျပါသော Table view ရှိသည်။ ကိန်းဂဏန်းအားလုံး Server မှလာပြီး သင်ကြည့်ခွင့်ရှိသော Scorecard များကိုသာ ရေတွက်သည် — ပျမ်းမျှများသည် Finalized Scorecard များကိုသာ ရေတွက်သည်။',
+    ),
+  ],
+  '/performance/reports': [
+    b(
+      'Choose a report: Summary by period (also Monthly, Quarterly and Annual), Employee performance history, Department performance, Ranking, KPI achievement or Target vs actual. You see your own rows, your team’s, or everyone’s for HR.',
+      'Report ကိုရွေးပါ — Summary by period (Monthly၊ Quarterly နှင့် Annual လည်းပါ)၊ Employee performance history၊ Department performance၊ Ranking၊ KPI achievement သို့ Target vs actual။ ကိုယ့်အတန်း၊ အဖွဲ့၏အတန်း သို့ HR ဆိုလျှင် အားလုံးကို မြင်ရသည်။',
+    ),
+    b(
+      'Filter by company, branch, department, position, employee, category, period, status, period type and year where the report uses them; search by employee code or name; page and sort on the server. The ranking keeps its fixed order: equal scores share a rank (1, 1, 3).',
+      'Report က သုံးသည့်နေရာတွင် Company၊ Branch၊ ဌာန၊ Position၊ ဝန်ထမ်း၊ Category၊ Period၊ Status၊ Period type နှင့် နှစ်ဖြင့် စစ်ထုတ်ပါ — ဝန်ထမ်း Code သို့ အမည်ဖြင့် ရှာပြီး Server တွင် Page ခွဲ၍ စီပါ။ Ranking သည် ပုံသေအစီအစဉ်ဖြစ်ပြီး ရမှတ်တူလျှင် အဆင့်တူရသည် (1, 1, 3)။',
+    ),
+    b(
+      'Export to Excel (Ranking, Target vs actual, and the scorecard list from the summary, employee and department reports) writes the rows of the current filters; it needs the Excel export permission. Comments and evidence files are never exported.',
+      'Export to Excel (Ranking၊ Target vs actual နှင့် Summary၊ Employee၊ Department Report များမှ Scorecard စာရင်း) သည် လက်ရှိ Filter ၏ အတန်းများကို ရေးသည် — Excel export ခွင့်လိုသည်။ Comment နှင့် Evidence ဖိုင်များကို ဘယ်တော့မှ Export မလုပ်ပါ။',
+    ),
+    b(
+      'Print lays out the page shown for paper; choose “Save as PDF” in the browser’s print dialog for a PDF.',
+      'Print သည် ပြထားသော စာမျက်နှာကို စက္ကူအတွက် စီစဉ်ပေးသည် — PDF လိုလျှင် Browser ၏ Print dialog တွင် “Save as PDF” ကို ရွေးပါ။',
+    ),
+  ],
   '/performance/my-kpis': [
     b(
       'Your scorecards, newest period first: status, number of KPIs, the overall score and rating once the server has scored it, and the submission date. A Late chip marks a submission after the period’s due date. Without a linked employee record the page says so.',

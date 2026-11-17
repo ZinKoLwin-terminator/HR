@@ -35,8 +35,8 @@ export const REVIEW_QUEUE_STATUSES: readonly ScorecardStatus[] = [...MANAGER_STA
 export interface ScorecardViewer {
   /** The signed-in user's employee, or null for an account without one. */
   employeeId: number | null;
-  /** The display name the server writes as `actorName` in the review history. */
-  displayName: string;
+  /** The signed-in user's account id: what the review history records as `actorUserId`. */
+  userId: number;
   /** Holds `kpi:Create` (enter results, submit, evidence). */
   canCreate: boolean;
   /** Holds `kpi:Approve` (review). */
@@ -128,11 +128,14 @@ export function stageLabel(status: ScorecardStatus): string {
   return stage === 'HR' ? 'HR final review' : stage === 'Manager' ? 'Manager review' : '—';
 }
 
-/** Name of whoever recorded the latest manager-stage approval (the history keeps names, not ids). */
-export function managerApproverName(history: readonly ReviewAction[]): string | null {
+/**
+ * The account that recorded the latest manager-stage approval (`actorUserId`), or null when there is
+ * none or no account was recorded. Display names are never compared: two people may share one.
+ */
+export function managerApproverUserId(history: readonly ReviewAction[]): number | null {
   for (let i = history.length - 1; i >= 0; i--) {
     const entry = history[i];
-    if (entry.action === 'Approve' && entry.step === 'Manager') return entry.actorName;
+    if (entry.action === 'Approve' && entry.step === 'Manager') return entry.actorUserId ?? null;
   }
   return null;
 }
@@ -174,7 +177,8 @@ export const NO_REVIEW_ACTIONS: ReviewActions = {
  * - never on the viewer's own scorecard, and only while the period is Active or Completed;
  * - manager stage (Submitted, Resubmitted, Under Review): the scorecard's reviewer or the HR tier.
  *   Start review only from Submitted or Resubmitted;
- * - HR stage (Approved): the HR tier, except the person who recorded the manager-stage approval.
+ * - HR stage (Approved): the HR tier, except the account that recorded the manager-stage approval
+ *   (its `actorUserId` against the signed-in user's id; the server refuses it with a 409 anyway).
  */
 export function reviewActions(
   card: Pick<
@@ -206,8 +210,8 @@ export function reviewActions(
     };
   }
   if (stage === 'HR') {
-    const approver = managerApproverName(card.history);
-    if (!viewer.hrTier || (approver !== null && approver === viewer.displayName)) {
+    const approver = managerApproverUserId(card.history);
+    if (!viewer.hrTier || (approver !== null && approver === viewer.userId)) {
       return NO_REVIEW_ACTIONS;
     }
     return { ...NO_REVIEW_ACTIONS, finalize: true, returnForRevision: true, reject: true };

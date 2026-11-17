@@ -1,4 +1,11 @@
-import { EnvironmentProviders, Provider, Type, makeEnvironmentProviders } from '@angular/core';
+import {
+  EnvironmentProviders,
+  Injector,
+  Provider,
+  Type,
+  inject,
+  makeEnvironmentProviders,
+} from '@angular/core';
 import {
   ActivityDataService,
   NotificationDataService,
@@ -27,11 +34,14 @@ import {
 } from '../core/services/data/employee-extras-data.services';
 import {
   EvaluationPeriodDataService,
+  KPI_INSIGHT_METHODS,
   KpiCategoryDataService,
+  KpiInsightDataService,
   KpiTemplateDataService,
   RatingBandDataService,
   ScorecardDataService,
 } from '../core/services/data/kpi-data.services';
+import { lazyDataService } from '../core/services/data/lazy-data-service';
 import {
   LeaveApplicationDataService,
   LeaveBalanceDataService,
@@ -86,7 +96,7 @@ import {
 } from '../core/services/data/excel-data.services';
 import { ExcelCatalogMockService, ExcelExportMockService } from './excel/excel-export.mock.service';
 import { ExcelImportMockService } from './excel/excel-import.mock.service';
-import { EXCEL_MODULES } from './excel/excel-module';
+import { EXCEL_MODULES, ExcelModuleLoader, LAZY_EXCEL_MODULES } from './excel/excel-module';
 import { employeeExcelRegistration } from './excel/modules/employee-excel.module';
 import { ORGANIZATION_EXCEL_REGISTRATIONS } from './excel/modules/organization-excel.modules';
 import { OPERATIONS_EXCEL_REGISTRATIONS } from './excel/modules/operations-excel.modules';
@@ -206,6 +216,14 @@ export function provideMockDataServices(options: MockDataOptions = {}): Environm
     bind(RatingBandDataService, RatingBandMockService),
     bind(EvaluationPeriodDataService, EvaluationPeriodMockService),
     bind(ScorecardDataService, ScorecardMockService),
+    // Dashboards and reports: loaded on first use, so they stay out of the initial bundle.
+    {
+      provide: KpiInsightDataService,
+      useFactory: lazyDataService(
+        () => import('./kpi/kpi-insight-mock.service').then((m) => m.KpiInsightMockService),
+        KPI_INSIGHT_METHODS,
+      ),
+    },
     bind(PayrollRunDataService, PayrollRunMockService),
     bind(PayslipDataService, PayslipMockService),
     bind(MyPayslipDataService, MyPayslipMockService),
@@ -229,6 +247,18 @@ export function provideMockDataServices(options: MockDataOptions = {}): Environm
         useFactory,
       }),
     ),
+    // The KPI exports (export only) load with their data on first use.
+    {
+      provide: LAZY_EXCEL_MODULES,
+      multi: true,
+      useFactory: (): ExcelModuleLoader => {
+        const injector = inject(Injector);
+        return () =>
+          import('./excel/modules/kpi-excel.modules').then((m) =>
+            m.kpiExcelRegistrations(injector),
+          );
+      },
+    },
     bind(ExcelModuleCatalogDataService, ExcelCatalogMockService),
     bind(ExcelImportDataService, ExcelImportMockService),
     bind(ExcelExportDataService, ExcelExportMockService),

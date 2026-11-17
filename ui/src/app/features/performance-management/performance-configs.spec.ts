@@ -483,24 +483,29 @@ describe('Performance routes and navigation', () => {
     const group = NAVIGATION.find((i) => i.label === 'Performance')!;
     expect(group.permission).toBe('kpi-setup:View');
     expect(group.children?.map((c) => c.label)).toEqual([
+      'Dashboard',
       'My KPIs',
       'Reviews',
+      'Reports',
       'Assignments',
       'Templates',
       'Categories',
       'Evaluation Periods',
       'Rating Bands',
     ]);
-    expect(group.children?.slice(2).map((c) => c.route)).toEqual(
+    expect(group.children?.slice(4).map((c) => c.route)).toEqual(
       setupScreens.map((s) => `/performance/${s}`),
     );
     expect(labels(['kpi-setup:View'])).toContain('Performance');
     expect(labels(['kpi-setup:View'])).toContain('Evaluation Periods');
     expect(labels(['kpi-setup:View'])).not.toContain('My KPIs');
+    expect(labels(['kpi-setup:View'])).not.toContain('Reports');
     // The starter Employee role (kpi:View and kpi:Create): the group with My KPIs only.
     const employee = labels(['kpi:View', 'kpi:Create', 'dashboard:View']);
     expect(employee).toContain('Performance');
+    expect(employee).toContain('Dashboard');
     expect(employee).toContain('My KPIs');
+    expect(employee).toContain('Reports');
     expect(employee).not.toContain('Reviews');
     expect(employee).not.toContain('Assignments');
     expect(employee).not.toContain('Evaluation Periods');

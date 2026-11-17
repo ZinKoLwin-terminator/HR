@@ -563,6 +563,7 @@ export class EvaluationPeriodMockService
             endDate: p.endDate,
             status: p.status,
             requiresHrReview: p.requiresHrReview,
+            submissionDueDate: p.submissionDueDate,
           })),
       this.latency,
     );

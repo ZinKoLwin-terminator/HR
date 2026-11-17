@@ -15,7 +15,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 import { ListQuery } from '../../../shared/utilities/list-query';
 import { LateChipComponent } from '../shared/late-chip.component';
-import { loadDueDates, rowIsLate } from '../shared/period-due-dates';
+import { rowIsLate } from '../shared/period-due-dates';
 import { overallText } from '../shared/scorecard-rules';
 import { injectScorecardViewer } from '../shared/scorecard-viewer';
 
@@ -149,14 +149,8 @@ export class MyKpisComponent {
     this.page.error() ? errorMessage(this.page.error()) : '',
   );
 
-  /** Due dates of the periods on this page (the list answer has none), for the Late chip. */
-  private readonly dueDates = rxResource({
-    params: () => this.result()?.items,
-    stream: ({ params }) => loadDueDates(this.scorecards, params),
-  });
-
   protected isLate(row: Scorecard): boolean {
-    return rowIsLate(row, this.dueDates.value());
+    return rowIsLate(row);
   }
 
   protected open(row: Scorecard): void {

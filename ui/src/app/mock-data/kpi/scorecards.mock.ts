@@ -287,7 +287,7 @@ function buildCard(seed: CardSeed, index: number): ScorecardRecord {
     action: ReviewActionName,
     fromStatus: ScorecardStatus,
     toStatus: ScorecardStatus,
-    actorName: string,
+    actorEmployeeId: number,
     date: string,
     comment: string | null,
     score: number | null,
@@ -297,14 +297,16 @@ function buildCard(seed: CardSeed, index: number): ScorecardRecord {
       action,
       fromStatus,
       toStatus,
-      actorName,
+      // The account of the sample user linked to the actor (null when the person has none).
+      actorUserId: userIdOf(actorEmployeeId),
+      actorName: employeeName(actorEmployeeId),
       comment,
       overallScore: score,
       occurredAtUtc: at(date),
     });
   };
-  const hrName = employeeName(hrActorFor(reviewerEmployeeId));
-  const reviewerName = reviewerEmployeeId === null ? hrName : employeeName(reviewerEmployeeId);
+  const hrActor = hrActorFor(reviewerEmployeeId);
+  const reviewerActor = reviewerEmployeeId ?? hrActor;
   const afterPlan: ScorecardStatus[] = [
     'Draft',
     'Submitted',
@@ -315,7 +317,7 @@ function buildCard(seed: CardSeed, index: number): ScorecardRecord {
     'Finalized',
   ];
   if (afterPlan.includes(seed.status)) {
-    log('HR', 'Finalize Plan', 'Planning', 'Draft', hrName, planDate, null, null);
+    log('HR', 'Finalize Plan', 'Planning', 'Draft', hrActor, planDate, null, null);
   }
   const submitted: ScorecardStatus[] = [
     'Submitted',
@@ -330,7 +332,7 @@ function buildCard(seed: CardSeed, index: number): ScorecardRecord {
       'Submit',
       'Draft',
       'Submitted',
-      employeeName(seed.employeeId),
+      seed.employeeId,
       submitDate,
       null,
       overallScore,
@@ -342,7 +344,7 @@ function buildCard(seed: CardSeed, index: number): ScorecardRecord {
       'Start Review',
       'Submitted',
       'Under Review',
-      reviewerName,
+      reviewerActor,
       decideDate,
       null,
       overallScore,
@@ -354,12 +356,12 @@ function buildCard(seed: CardSeed, index: number): ScorecardRecord {
       'Approve',
       'Under Review',
       'Approved',
-      reviewerName,
+      reviewerActor,
       decideDate,
       null,
       overallScore,
     );
-    log('HR', 'Finalize', 'Approved', 'Finalized', hrName, finalDate, null, overallScore);
+    log('HR', 'Finalize', 'Approved', 'Finalized', hrActor, finalDate, null, overallScore);
   }
   if (seed.status === 'Returned') {
     log(
@@ -367,7 +369,7 @@ function buildCard(seed: CardSeed, index: number): ScorecardRecord {
       'Return',
       'Submitted',
       'Returned',
-      reviewerName,
+      reviewerActor,
       decideDate,
       seed.reason ?? null,
       null,
@@ -379,7 +381,7 @@ function buildCard(seed: CardSeed, index: number): ScorecardRecord {
       'Reject',
       'Submitted',
       'Rejected',
-      reviewerName,
+      reviewerActor,
       decideDate,
       seed.reason ?? null,
       overallScore,

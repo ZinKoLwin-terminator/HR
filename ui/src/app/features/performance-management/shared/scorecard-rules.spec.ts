@@ -19,44 +19,45 @@ import {
   fileSize,
   isLateSubmission,
   latestDecision,
-  managerApproverName,
+  managerApproverUserId,
   noActionReason,
   reviewActions,
   rowErrors,
   stageLabel,
 } from './scorecard-rules';
-import { loadDueDates, rowIsLate } from './period-due-dates';
-import { of, firstValueFrom, throwError } from 'rxjs';
-import { Scorecard } from '../../../core/models/kpi.models';
-import { ScorecardDataService } from '../../../core/services/data/kpi-data.services';
+import { rowIsLate } from './period-due-dates';
 
 // The scorecard: employee 46, reviewer 5. The viewers of the button matrix.
 const viewer = (over: Partial<ScorecardViewer>): ScorecardViewer => ({
   employeeId: null,
-  displayName: '',
+  userId: 0,
   canCreate: true,
   canApprove: false,
   hrTier: false,
   ...over,
 });
-const OWNER = viewer({ employeeId: 46, displayName: 'Hein Thant Zin' });
-const REVIEWER = viewer({ employeeId: 5, displayName: 'Daniel Carter', canApprove: true });
-const OTHER_MANAGER = viewer({ employeeId: 9, displayName: 'Ye Yint Naing', canApprove: true });
-const HR = viewer({ employeeId: 2, displayName: 'Su Myat Noe', canApprove: true, hrTier: true });
+// User ids as in the sample data: 41 Hein Thant Zin, 11 Daniel Carter, 6 Ye Yint Naing, 1 Su Myat
+// Noe, 2 Thura Aung.
+const OWNER = viewer({ employeeId: 46, userId: 41 });
+const REVIEWER = viewer({ employeeId: 5, userId: 11, canApprove: true });
+const OTHER_MANAGER = viewer({ employeeId: 9, userId: 6, canApprove: true });
+const HR = viewer({ employeeId: 2, userId: 1, canApprove: true, hrTier: true });
 const HR_WHO_APPROVED = viewer({
   employeeId: 1,
-  displayName: 'Thura Aung',
+  userId: 2,
   canApprove: true,
   hrTier: true,
 });
 /** The HR person reviewing their own scorecard (the owner has every grant). */
 const HR_OWNER = viewer({ ...HR, employeeId: 46 });
 
-const approvedBy = (name: string): ReviewAction => ({
+/** A manager-stage approval recorded by the account `userId` (the name is only shown, never compared). */
+const approvedBy = (userId: number | null, name = `User ${userId}`): ReviewAction => ({
   step: 'Manager',
   action: 'Approve',
   fromStatus: 'Under Review',
   toStatus: 'Approved',
+  actorUserId: userId,
   actorName: name,
   comment: null,
   overallScore: 80,
@@ -94,27 +95,16 @@ describe('scorecard rules: Late chip', () => {
     expect(isLateSubmission('2027-01-15', null)).toBe(false);
   });
 
-  it('reads one detail per period of the submitted rows for the list chip', async () => {
-    const rows = [
-      { id: 1, periodId: 2, submittedOn: '2027-01-20' },
-      { id: 4, periodId: 2, submittedOn: '2026-12-01' },
-      { id: 6, periodId: 2, submittedOn: null },
-      { id: 8, periodId: 1, submittedOn: '2026-10-03' },
-      { id: 9, periodId: 3, submittedOn: null },
-    ] as Scorecard[];
-    const getById = vi.fn((id: number) =>
-      id === 8
-        ? throwError(() => new Error('gone'))
-        : of({ submissionDueDate: '2027-01-14' } as ScorecardDetail),
-    );
-    const dates = await firstValueFrom(
-      loadDueDates({ getById } as unknown as ScorecardDataService, rows),
-    );
-    expect(getById.mock.calls.map(([id]) => id)).toEqual([1, 8]); // one per period, submitted only
-    expect(rowIsLate(rows[0], dates)).toBe(true);
-    expect(rowIsLate(rows[1], dates)).toBe(false);
-    expect(rowIsLate(rows[3], dates)).toBe(false); // a failed read: no chip
-    expect(await firstValueFrom(loadDueDates({ getById } as never, [rows[2]]))).toEqual(new Map());
+  it('flags a list row from the due date the list answer carries', () => {
+    const row = (submittedOn: string | null, submissionDueDate: string | null) => ({
+      submittedOn,
+      submissionDueDate,
+    });
+    expect(rowIsLate(row('2027-01-20', '2027-01-14'))).toBe(true);
+    expect(rowIsLate(row('2027-01-14', '2027-01-14'))).toBe(false);
+    expect(rowIsLate(row('2026-12-01', '2027-01-14'))).toBe(false);
+    expect(rowIsLate(row(null, '2027-01-14'))).toBe(false); // not submitted yet
+    expect(rowIsLate(row('2027-01-20', null))).toBe(false); // the period has no due date
   });
 });
 
@@ -157,7 +147,7 @@ describe('scorecard rules: the employee works on their own scorecard only', () =
 describe('scorecard rules: reviewer buttons for every status and viewer', () => {
   const MANAGER_BUTTONS = ['approve', 'reject', 'returnForRevision', 'saveReview'];
   const HR_BUTTONS = ['finalize', 'reject', 'returnForRevision'];
-  const approvedHistory = [approvedBy('Thura Aung')];
+  const approvedHistory = [approvedBy(2, 'Thura Aung')];
 
   // status → [owner, reviewer, other manager, HR, HR who approved]
   const matrix: [ScorecardStatus, string[][]][] = [
@@ -205,12 +195,24 @@ describe('scorecard rules: reviewer buttons for every status and viewer', () => 
   });
 
   it('offers HR the final review when nobody HR approved it (the reviewer did)', () => {
-    const byReviewer = card('Approved', 'Active', [approvedBy('Daniel Carter')]);
+    const byReviewer = card('Approved', 'Active', [approvedBy(11, 'Daniel Carter')]);
     expect(on(reviewActions(byReviewer, HR_WHO_APPROVED))).toEqual(HR_BUTTONS);
     expect(on(reviewActions(byReviewer, REVIEWER))).toEqual([]);
     expect(noActionReason(byReviewer, REVIEWER)).toContain('waits for the HR final review');
-    const byHr = card('Approved', 'Active', [approvedBy('Thura Aung')]);
+    const byHr = card('Approved', 'Active', [approvedBy(2, 'Thura Aung')]);
     expect(noActionReason(byHr, HR_WHO_APPROVED)).toContain('another HR person');
+  });
+
+  it('compares the approval’s actorUserId with the session user id, never the display name', () => {
+    // Another account with the same display name approved it: the HR person still gets the buttons.
+    const sameName = card('Approved', 'Active', [approvedBy(99, 'Thura Aung')]);
+    expect(on(reviewActions(sameName, HR_WHO_APPROVED))).toEqual(HR_BUTTONS);
+    // Their own account approved it under another display name: no HR buttons.
+    const renamed = card('Approved', 'Active', [approvedBy(2, 'T. Aung')]);
+    expect(reviewActions(renamed, HR_WHO_APPROVED)).toEqual(NO_REVIEW_ACTIONS);
+    // No account recorded: nothing to compare, the server decides (409 if it was them).
+    const unknown = card('Approved', 'Active', [approvedBy(null, 'Thura Aung')]);
+    expect(on(reviewActions(unknown, HR_WHO_APPROVED))).toEqual(HR_BUTTONS);
   });
 
   it('closes the review outside an Active or Completed period', () => {
@@ -233,18 +235,15 @@ describe('scorecard rules: reviewer buttons for every status and viewer', () => 
     expect(stageLabel('Approved')).toBe('HR final review');
     expect(stageLabel('Finalized')).toBe('—');
     const returned: ReviewAction = {
-      ...approvedBy('Daniel Carter'),
+      ...approvedBy(11, 'Daniel Carter'),
       action: 'Return',
       toStatus: 'Returned',
       comment: 'First reason',
     };
-    const history = [
-      approvedBy('A'),
-      returned,
-      approvedBy('B'),
-      { ...returned, comment: 'Second' },
-    ];
-    expect(managerApproverName(history)).toBe('B');
+    const history = [approvedBy(7), returned, approvedBy(8), { ...returned, comment: 'Second' }];
+    expect(managerApproverUserId(history)).toBe(8);
+    expect(managerApproverUserId([approvedBy(null)])).toBeNull();
+    expect(managerApproverUserId([])).toBeNull();
     expect(latestDecision(history, 'Return')?.comment).toBe('Second');
     expect(latestDecision(history, 'Reject')).toBeNull();
   });

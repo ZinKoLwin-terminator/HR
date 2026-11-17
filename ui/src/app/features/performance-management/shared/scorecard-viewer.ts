@@ -4,8 +4,9 @@ import { PermissionService } from '../../../core/services/permission.service';
 import { ScorecardViewer } from './scorecard-rules';
 
 /**
- * The signed-in user as the KPI screens see them: their employee, their name (the review history
- * names actors by display name) and the grants that decide which buttons to show. HR tier is
+ * The signed-in user as the KPI screens see them: their employee, their account id (the review
+ * history records each step's account as `actorUserId`) and the grants that decide which buttons
+ * to show. HR tier is
  * `kpi:Approve` with `employees:Edit`, as on the server. UX only: the server enforces.
  * Call in an injection context (a field initializer of a component).
  */
@@ -17,7 +18,7 @@ export function injectScorecardViewer(): Signal<ScorecardViewer> {
     const canApprove = permissions.can('kpi:Approve');
     return {
       employeeId: current.employeeId !== null && current.employeeId > 0 ? current.employeeId : null,
-      displayName: current.displayName,
+      userId: current.id,
       canCreate: permissions.can('kpi:Create'),
       canApprove,
       hrTier: canApprove && permissions.can('employees:Edit'),

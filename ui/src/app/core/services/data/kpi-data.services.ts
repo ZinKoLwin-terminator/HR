@@ -26,6 +26,18 @@ import {
   ScorecardItem,
   ScorecardItemUpdate,
 } from '../../models/kpi.models';
+import {
+  KpiAchievementRow,
+  KpiDepartmentReport,
+  KpiEmployeeDashboard,
+  KpiEmployeeReport,
+  KpiHrDashboard,
+  KpiManagerDashboard,
+  KpiPeriodSummary,
+  KpiRankingRow,
+  KpiReportFilter,
+  KpiTargetVsActualRow,
+} from '../../models/kpi-insight.models';
 import { CrudDataService } from './crud-data.service';
 
 // Contracts of the KPI / performance module. Screens inject these abstract classes only.
@@ -124,3 +136,58 @@ export abstract class ScorecardDataService {
     rowVersion: string,
   ): Observable<EvidenceRemovalResult>;
 }
+
+/**
+ * KPI dashboards and reports (read only). Every figure is the server's, over the scorecards the
+ * caller may see (own, team, or everyone for the HR tier); screens display it and never compute an
+ * official figure. `periodId` left out means the default period (see `kpi-insight.models.ts`).
+ * Paging is `pageIndex` and `pageSize` (1 to 200); `sort` takes only the fields of
+ * `KPI_REPORT_SORT_KEYS` (the ranking none: its order is fixed).
+ */
+export abstract class KpiInsightDataService {
+  abstract employeeDashboard(periodId?: number | null): Observable<KpiEmployeeDashboard>;
+  /** Needs `kpi:Approve`. */
+  abstract managerDashboard(periodId?: number | null): Observable<KpiManagerDashboard>;
+  /** HR tier only (`kpi:Approve` with `employees:Edit`); anyone else gets a Forbidden error. */
+  abstract hrDashboard(
+    periodId?: number | null,
+    companyId?: number | null,
+  ): Observable<KpiHrDashboard>;
+
+  /** One row per period with a matching scorecard. Monthly, Quarterly, Annual: filter `periodType` (and `year`). */
+  abstract summaryReport(
+    request: PageRequest<KpiReportFilter>,
+  ): Observable<PagedResult<KpiPeriodSummary>>;
+  /** One employee's scorecards. An employee outside the caller's scope is NotFound. */
+  abstract employeeReport(
+    employeeId: number,
+    request: PageRequest<KpiReportFilter>,
+  ): Observable<KpiEmployeeReport>;
+  /** One department for one period (`periodId` or the default period). */
+  abstract departmentReport(
+    departmentId: number,
+    request: PageRequest<KpiReportFilter>,
+  ): Observable<KpiDepartmentReport>;
+  abstract rankingReport(
+    request: PageRequest<KpiReportFilter>,
+  ): Observable<PagedResult<KpiRankingRow>>;
+  abstract kpiAchievementReport(
+    request: PageRequest<KpiReportFilter>,
+  ): Observable<PagedResult<KpiAchievementRow>>;
+  abstract targetVsActualReport(
+    request: PageRequest<KpiReportFilter>,
+  ): Observable<PagedResult<KpiTargetVsActualRow>>;
+}
+
+/** The method names of {@link KpiInsightDataService} (for the lazy binding). */
+export const KPI_INSIGHT_METHODS: readonly (keyof KpiInsightDataService)[] = [
+  'employeeDashboard',
+  'managerDashboard',
+  'hrDashboard',
+  'summaryReport',
+  'employeeReport',
+  'departmentReport',
+  'rankingReport',
+  'kpiAchievementReport',
+  'targetVsActualReport',
+];

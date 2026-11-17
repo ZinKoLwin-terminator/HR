@@ -687,6 +687,15 @@ export const WORKFLOWS: readonly Workflow[] = [
         },
         route: '/performance/periods',
       },
+      {
+        module: 'Performance',
+        title: { en: 'Read the results', my: 'ရလဒ်များကို ကြည့်ပါ' },
+        text: {
+          en: 'The KPI Dashboard shows the period at a glance (yours, your team’s or, for HR, everyone’s) and Reports list the details, export them to Excel or print them. Averages and rankings count Finalized scorecards only.',
+          my: 'KPI Dashboard သည် Period ကို တစ်ချက်တည်းမြင်စေပြီး (ကိုယ့်ဟာ၊ အဖွဲ့၏ဟာ သို့ HR အတွက် အားလုံး) Reports က အသေးစိတ်ကို ပြ၊ Excel သို့ ထုတ်၊ Print လုပ်နိုင်သည်။ ပျမ်းမျှနှင့် Ranking များသည် Finalized Scorecard များကိုသာ ရေတွက်သည်။',
+        },
+        route: '/performance/dashboard',
+      },
     ],
   },
 ];

@@ -1,0 +1,287 @@
+<app-page-header
+  title="KPI reports"
+  [description]="definition().description"
+  [class.no-print]="printing()"
+>
+  <ng-container pageSearch>
+    @if (definition().search) {
+      <app-search-field
+        label="Search by employee code or name"
+        [value]="query.search()"
+        (searchChange)="query.setSearch($event)"
+      />
+    }
+    <app-filter-popup [activeCount]="activeFilterCount()" (cleared)="clearFilters()">
+      @for (f of filters(); track f.key) {
+        <app-filter-field [label]="f.label">
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-select
+              placeholder="All"
+              [attr.aria-label]="f.label"
+              [value]="filterValue(f.key)"
+              (selectionChange)="setFilter(f.key, $event.value)"
+            >
+              <mat-option [value]="null">All</mat-option>
+              @for (option of f.options; track option.value) {
+                <mat-option [value]="option.value">{{ option.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </app-filter-field>
+      }
+    </app-filter-popup>
+  </ng-container>
+  <ng-container pageTools>
+    <button
+      mat-stroked-button
+      type="button"
+      [attr.aria-label]="'Print ' + definition().title"
+      [disabled]="!result() || needsSubject()"
+      (click)="print()"
+    >
+      <mat-icon>print</mat-icon>Print
+    </button>
+    @if (definition().exportModule; as module) {
+      <app-excel-actions
+        [moduleCode]="module"
+        [allowImport]="false"
+        [search]="query.search() || undefined"
+        [filters]="exportFilters()"
+        [filterSummary]="filterSummary()"
+      />
+    }
+  </ng-container>
+</app-page-header>
+
+<div class="toolbar" role="group" aria-label="Report" [class.no-print]="printing()">
+  <mat-form-field subscriptSizing="dynamic" class="report">
+    <mat-label>Report</mat-label>
+    <mat-select
+      [value]="choiceId()"
+      (selectionChange)="selectReport($event.value)"
+      data-testid="report-picker"
+    >
+      @for (c of choices; track c.id) {
+        <mat-option [value]="c.id">{{ c.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (definition().report === 'department') {
+    <mat-form-field subscriptSizing="dynamic" class="subject">
+      <mat-label>Department</mat-label>
+      <mat-select [value]="departmentId()" (selectionChange)="chooseDepartment($event.value)">
+        @for (d of departmentOptions(); track d.value) {
+          <mat-option [value]="d.value">{{ d.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+
+  @if (canPickEmployee() && (definition().report === 'employee' || definition().employeeFilter)) {
+    <app-employee-picker
+      class="subject"
+      [label]="definition().report === 'employee' ? 'Employee' : 'Employee (optional)'"
+      [hint]="
+        definition().report === 'employee' ? 'Empty: your own history' : 'Empty: every employee'
+      "
+      [selected]="employee()"
+      (selectedChange)="chooseEmployee($event)"
+    />
+  }
+</div>
+
+@if (result()?.facts?.length && !needsSubject()) {
+  <dl class="facts" [class.no-print]="printing()">
+    @for (fact of result()!.facts; track fact.label) {
+      <div>
+        <dt>{{ fact.label }}</dt>
+        <dd>{{ fact.value }}</dd>
+      </div>
+    }
+  </dl>
+}
+
+@if (needsSubject()) {
+  <app-empty-state
+    [icon]="definition().report === 'department' ? 'apartment' : 'person_search'"
+    [title]="definition().report === 'department' ? 'Choose a department' : 'Choose an employee'"
+    [message]="
+      definition().report === 'department'
+        ? departmentOptions().length
+          ? 'The report lists the department’s scorecards for one period.'
+          : 'Your role cannot list departments, so this report is not available to you.'
+        : 'Pick an employee to see their scorecards, newest period first.'
+    "
+  />
+} @else if (report.error() && !result()) {
+  <app-empty-state icon="error" title="The report could not be loaded" [message]="errorText()">
+    <button mat-flat-button type="button" (click)="report.reload()">Try again</button>
+  </app-empty-state>
+} @else {
+  @if (report.error()) {
+    <p class="banner" role="alert">{{ errorText() }}</p>
+  }
+  <app-data-table
+    [class.no-print]="printing()"
+    [caption]="definition().title"
+    [columns]="definition().columns"
+    [rows]="result()?.rows ?? []"
+    [total]="result()?.total ?? 0"
+    [pageIndex]="query.pageIndex()"
+    [pageSize]="query.pageSize()"
+    [pageSizeOptions]="pageSizeOptions"
+    [sort]="query.sort()"
+    [loading]="report.isLoading()"
+    [rowLabel]="rowLabel"
+    emptyIcon="query_stats"
+    emptyTitle="No rows"
+    emptyMessage="Nothing matches the report and its filters. Change the filters or the period."
+    (pageChange)="query.onPage($event)"
+    (sortChange)="query.setSort($event)"
+  />
+
+  @if (result()?.scorecards?.length) {
+    <section class="kpis" aria-label="KPIs of each scorecard" [class.no-print]="printing()">
+      @for (card of result()!.scorecards; track card.scorecardId) {
+        <details>
+          <summary>
+            KPIs of {{ card.periodName }} · {{ card.status }} ·
+            {{ score(card.overallScore, card.ratingLabel) }}
+          </summary>
+          <div
+            class="scroll"
+            role="region"
+            [attr.aria-label]="'KPIs of ' + card.periodName"
+            tabindex="0"
+          >
+            <table class="simple-table">
+              <caption class="cdk-visually-hidden">
+                KPIs of
+                {{
+                  card.periodName
+                }}
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">KPI</th>
+                  <th scope="col">Category</th>
+                  <th scope="col" class="num">Target</th>
+                  <th scope="col" class="num">Actual</th>
+                  <th scope="col" class="num">Achievement %</th>
+                  <th scope="col" class="num">Weight %</th>
+                  <th scope="col" class="num">Weighted</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of card.items; track item.id) {
+                  <tr>
+                    <th scope="row">{{ item.kpiCode }} {{ item.kpiName }}</th>
+                    <td>{{ item.categoryName }}</td>
+                    <td class="num">{{ unit(item.target, item.unit) }}</td>
+                    <td class="num">{{ unit(item.actualValue, item.unit) }}</td>
+                    <td class="num">{{ fixed(item.achievementPct) }}</td>
+                    <td class="num">{{ fixed(item.weight) }}</td>
+                    <td class="num">{{ fixed(item.weightedScore) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </details>
+      }
+    </section>
+  }
+}
+
+@if (printing() && result(); as view) {
+  <div class="print-only" data-testid="report-print">
+    <app-print-header [title]="definition().title" [subtitle]="filterSummary().join(' · ')" />
+    @if (view.facts.length) {
+      <p class="print-note">
+        @for (fact of view.facts; track fact.label; let last = $last) {
+          {{ fact.label }}: {{ fact.value }}{{ last ? '' : ' · ' }}
+        }
+      </p>
+    }
+    <table class="print-table">
+      <caption class="cdk-visually-hidden">
+        {{
+          definition().title
+        }}
+      </caption>
+      <thead>
+        <tr>
+          @for (column of definition().columns; track column.key) {
+            <th scope="col" [class.align-end]="column.align === 'end'">{{ column.header }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of view.rows; track row.id) {
+          <tr>
+            @for (column of definition().columns; track column.key) {
+              <td [class.align-end]="column.align === 'end'">
+                @let value = cellValue(column, row);
+                @switch (column.type) {
+                  @case ('date') {
+                    {{ value ? ($any(value) | appDate) : '—' }}
+                  }
+                  @case ('number') {
+                    {{ $any(value) | number }}
+                  }
+                  @default {
+                    {{ value ?? '—' }}
+                  }
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+    @for (card of view.scorecards; track card.scorecardId) {
+      <table class="print-table print-avoid-break">
+        <caption>
+          KPIs of
+          {{
+            card.periodName
+          }}
+          ({{
+            card.status
+          }},
+          {{
+            score(card.overallScore, card.ratingLabel)
+          }})
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">KPI</th>
+            <th scope="col" class="align-end">Target</th>
+            <th scope="col" class="align-end">Actual</th>
+            <th scope="col" class="align-end">Achievement %</th>
+            <th scope="col" class="align-end">Weight %</th>
+            <th scope="col" class="align-end">Weighted</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of card.items; track item.id) {
+            <tr>
+              <td>{{ item.kpiCode }} {{ item.kpiName }}</td>
+              <td class="align-end">{{ unit(item.target, item.unit) }}</td>
+              <td class="align-end">{{ unit(item.actualValue, item.unit) }}</td>
+              <td class="align-end">{{ fixed(item.achievementPct) }}</td>
+              <td class="align-end">{{ fixed(item.weight) }}</td>
+              <td class="align-end">{{ fixed(item.weightedScore) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+    <p class="print-note">
+      Rows {{ view.rows.length ? view.pageIndex * view.pageSize + 1 : 0 }} to
+      {{ view.pageIndex * view.pageSize + view.rows.length }} of {{ view.total }} (the page shown on
+      screen). Figures are the server's.
+    </p>
+  </div>
+}

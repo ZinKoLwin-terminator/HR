@@ -396,6 +396,106 @@ export const PERFORMANCE_GUIDE: readonly GuideBlock[] = [
         en: 'Nobody reviews their own scorecard, whatever their role. The buttons only help: the server decides who may act and shows its message if a step is refused.',
         my: 'မည်သည့် Role ဖြစ်စေ ကိုယ့် Scorecard ကို ကိုယ်တိုင် Review မလုပ်ရ။ ခလုတ်များသည် အထောက်အကူသာ — မည်သူ လုပ်ဆောင်ခွင့်ရှိသည်ကို Server က ဆုံးဖြတ်ပြီး ပယ်လျှင် ၎င်း၏ စာကို ပြသည်။',
       },
+      {
+        en: 'The HR person who approved a scorecard at the manager stage cannot also give its final review. The screen recognises them by their user account, never by their name.',
+        my: 'Manager အဆင့်တွင် Approve လုပ်ခဲ့သော HR ဝန်ထမ်းသည် ထို Scorecard ၏ Final review ကို ထပ်မပေးရ။ Screen က ၎င်းတို့ကို အမည်ဖြင့်မဟုတ်ဘဲ User account ဖြင့် သိသည်။',
+      },
+    ],
+  },
+
+  // ───────────── Dashboards and reports ─────────────
+  {
+    type: 'heading',
+    text: { en: 'Dashboards and reports', my: 'Dashboard နှင့် Report များ' },
+  },
+  {
+    type: 'paragraph',
+    text: {
+      en: 'Performance › Dashboard shows a period at a glance and Performance › Reports lists the details. You only ever see the scorecards you may open: your own; as a reviewer also your team’s (your direct reports and the scorecards you review); as HR everyone’s. Every figure is calculated by the server; the screens only display it.',
+      my: 'Performance › Dashboard သည် Period တစ်ခုကို တစ်ချက်တည်းမြင်စေပြီး Performance › Reports က အသေးစိတ်ကို ပြသည်။ သင်ဖွင့်ခွင့်ရှိသော Scorecard များကိုသာ မြင်ရသည် — ကိုယ့်ဟာ၊ Reviewer ဆိုလျှင် အဖွဲ့၏ဟာ (တိုက်ရိုက်လက်အောက်ငယ်သားများနှင့် ကိုယ် Review လုပ်ရသော Scorecard များ)၊ HR ဆိုလျှင် အားလုံး။ ကိန်းဂဏန်းတိုင်းကို Server က တွက်ပြီး Screen များက ပြရုံသာ ပြသည်။',
+    },
+  },
+  {
+    type: 'table',
+    head: [
+      { en: 'Figure', my: 'ကိန်းဂဏန်း' },
+      { en: 'How it is worked out', my: 'တွက်ပုံ' },
+    ],
+    rows: [
+      [
+        { en: 'Average score', my: 'ပျမ်းမျှရမှတ်' },
+        {
+          en: 'The average overall score of the Finalized scorecards only, to 2 decimals. Rejected scorecards and scorecards still in the workflow (Submitted, Approved and so on) never count. With no Finalized scorecard it shows a dash, not 0.',
+          my: 'Finalized Scorecard များ၏ စုစုပေါင်းရမှတ် ပျမ်းမျှကိုသာ ဒဿမ ၂ နေရာအထိ။ Rejected နှင့် Workflow အတွင်းရှိနေဆဲ Scorecard များ (Submitted၊ Approved စသည်) ကို ဘယ်တော့မှ မရေတွက်ပါ။ Finalized Scorecard မရှိလျှင် 0 မဟုတ်ဘဲ မျဉ်းတို (—) ပြသည်။',
+        },
+      ],
+      [
+        { en: 'Lowest and highest score', my: 'အနိမ့်ဆုံးနှင့် အမြင့်ဆုံးရမှတ်' },
+        {
+          en: 'Of the same Finalized scores as the average.',
+          my: 'ပျမ်းမျှတွင် သုံးသော Finalized ရမှတ်များထဲမှပင်။',
+        },
+      ],
+      [
+        { en: 'Completion rate', my: 'Completion rate' },
+        {
+          en: 'Finalized scorecards divided by every scorecard that has left Planning, as a percentage with 2 decimals. 0 when no scorecard has left Planning yet.',
+          my: 'Finalized Scorecard အရေအတွက်ကို Planning မှ ထွက်ပြီးသော Scorecard အားလုံးဖြင့် စား၍ ဒဿမ ၂ နေရာပါ ရာခိုင်နှုန်းအဖြစ်။ Planning မှ မထွက်ရသေးလျှင် 0။',
+        },
+      ],
+      [
+        { en: 'Ranking', my: 'Ranking' },
+        {
+          en: 'Finalized scorecards with a score, highest first. Equal scores share a rank and the next rank is skipped: 90, 90, 80 rank 1, 1, 3. Equal scores are listed by employee code. Choose a period for a ranking within one period.',
+          my: 'ရမှတ်ရှိသော Finalized Scorecard များ၊ အမြင့်ဆုံးအရင်။ ရမှတ်တူလျှင် အဆင့်တူရပြီး နောက်အဆင့်ကို ကျော်သည် — 90, 90, 80 သည် 1, 1, 3။ ရမှတ်တူများကို ဝန်ထမ်း Code အလိုက် စီသည်။ Period တစ်ခုအတွင်း Ranking လိုလျှင် Period ကိုရွေးပါ။',
+        },
+      ],
+      [
+        { en: 'Requiring attention', my: 'အာရုံစိုက်ရန်လိုသူ' },
+        {
+          en: 'A Finalized scorecard below the threshold: the minimum score of the lowest active rating band that starts at 60 or above (Meets Expectations with the default bands), or 60 when there is no such band. The HR overview shows the threshold it used.',
+          my: 'Threshold အောက်ရှိ Finalized Scorecard — 60 နှင့်အထက်မှ စသော အနိမ့်ဆုံး Active Rating Band ၏ အနည်းဆုံးရမှတ် (ပုံသေ Band များတွင် Meets Expectations)၊ ထိုသို့ Band မရှိလျှင် 60။ HR overview က သုံးထားသော Threshold ကို ပြသည်။',
+        },
+      ],
+      [
+        { en: 'Default period', my: 'ပုံသေ Period' },
+        {
+          en: 'When you have not chosen a period: the most recent Active period among the scorecards of the view, else the most recent period whatever its status.',
+          my: 'Period မရွေးရသေးလျှင် — မြင်ကွင်း၏ Scorecard များထဲမှ နောက်ဆုံး Active Period၊ မရှိလျှင် Status မရွေး နောက်ဆုံး Period။',
+        },
+      ],
+      [
+        { en: 'Pending and overdue', my: 'Pending နှင့် Overdue' },
+        {
+          en: 'Your submission is pending while your scorecard is Draft or Returned and the period is Active; it is overdue once the period’s submission due date has passed. A late submission is still accepted and marked Late.',
+          my: 'သင့် Scorecard သည် Draft သို့ Returned ဖြစ်ပြီး Period က Active ဖြစ်နေသရွေ့ Submit ရန် Pending ဖြစ်သည် — Period ၏ Submission due date ကျော်လျှင် Overdue ဖြစ်သည်။ နောက်ကျ Submit လုပ်လည်း လက်ခံပြီး Late ဟု မှတ်သည်။',
+        },
+      ],
+    ],
+  },
+  {
+    type: 'list',
+    items: [
+      {
+        en: 'Department figures use the department the employee was in when the scorecard was created, so someone who moves later still counts in their old department for that period.',
+        my: 'ဌာနကိန်းဂဏန်းများသည် Scorecard ဖန်တီးစဉ်က ဝန်ထမ်းရှိခဲ့သော ဌာနကို သုံးသည် — နောက်မှ ပြောင်းသွားသူသည် ထို Period အတွက် ဌာနဟောင်းတွင်ပင် ရေတွက်ခံရသည်။',
+      },
+      {
+        en: 'Rejected scorecards never move an average, a minimum, a maximum or a rank, but the row reports list them with their status.',
+        my: 'Rejected Scorecard များသည် ပျမ်းမျှ၊ အနိမ့်ဆုံး၊ အမြင့်ဆုံး သို့ အဆင့်ကို ဘယ်တော့မှ မပြောင်းစေပါ — သို့သော် အတန်းလိုက် Report များတွင် ၎င်းတို့၏ Status နှင့်အတူ ပြသည်။',
+      },
+      {
+        en: 'Monthly, Quarterly and Annual summaries are the period summary filtered by period type (and year if you choose one).',
+        my: 'Monthly၊ Quarterly နှင့် Annual Summary များသည် Period အမျိုးအစား (ရွေးလျှင် နှစ်) ဖြင့် စစ်ထုတ်ထားသော Period Summary ပင် ဖြစ်သည်။',
+      },
+      {
+        en: 'Excel export (Ranking, Target vs actual and the scorecard list) uses the report’s filters and needs the Excel export permission; it never includes comments, manager ratings or evidence files. Print opens the browser’s print dialog: choose “Save as PDF” there for a PDF.',
+        my: 'Excel export (Ranking၊ Target vs actual နှင့် Scorecard စာရင်း) သည် Report ၏ Filter များကို သုံးပြီး Excel export ခွင့်လိုသည် — Comment၊ Manager rating သို့ Evidence ဖိုင်များ ဘယ်တော့မှ မပါပါ။ Print သည် Browser ၏ Print dialog ကို ဖွင့်သည် — PDF လိုလျှင် ထိုနေရာတွင် “Save as PDF” ကို ရွေးပါ။',
+      },
+      {
+        en: 'In the demo build the figures are worked out in the browser with the same definitions, from fictional sample data; with the API the server calculates them.',
+        my: 'Demo Build တွင် ကိန်းဂဏန်းများကို တူညီသော သတ်မှတ်ချက်များဖြင့် Browser ထဲတွင် စိတ်ကူးယဉ်နမူနာဒေတာမှ တွက်သည် — API ဖြင့်သုံးလျှင် Server က တွက်သည်။',
+      },
     ],
   },
 ];

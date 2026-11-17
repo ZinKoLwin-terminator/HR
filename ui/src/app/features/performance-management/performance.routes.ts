@@ -4,20 +4,20 @@ import { NAVIGATION, firstVisibleRoute } from '../../core/constants/navigation';
 import { permissionGuard } from '../../core/guards/permission.guard';
 import { PermissionService } from '../../core/services/permission.service';
 
-/** The employee's screens (My KPIs and one scorecard) need `kpi:View`. */
+/** The employee's screens (dashboard, My KPIs, one scorecard, reports) need `kpi:View`. */
 const EMPLOYEE = { permission: 'kpi:View' } as const;
 /** The reviewer's screens (queue and review) need `kpi:Approve`. */
 const REVIEWER = { permission: 'kpi:Approve' } as const;
 
 /**
  * `/performance` opens the first Performance screen the user's role may see, in sidebar order
- * (My KPIs for everyone with `kpi:View`), so an employee is never sent to the HR setup. Without
- * any, My KPIs, whose guard then shows the no-access page.
+ * (the KPI dashboard for everyone with `kpi:View`), so an employee is never sent to the HR setup.
+ * Without any, the dashboard, whose guard then shows the no-access page.
  */
 export const performanceLanding: RedirectFunction = () => {
   const permissions = inject(PermissionService);
   const group = NAVIGATION.filter((item) => item.label === 'Performance');
-  return firstVisibleRoute(group, (key) => permissions.can(key)) ?? '/performance/my-kpis';
+  return firstVisibleRoute(group, (key) => permissions.can(key)) ?? '/performance/dashboard';
 };
 
 /** Setup and planning (HR) need `kpi-setup:View`; the actions inside use Create, Edit and Delete. */
@@ -30,6 +30,14 @@ const SETUP = { permission: 'kpi-setup:View' } as const;
  */
 export const PERFORMANCE_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: performanceLanding },
+  {
+    path: 'dashboard',
+    title: 'KPI Dashboard',
+    data: { breadcrumb: 'KPI Dashboard', ...EMPLOYEE },
+    canActivate: [permissionGuard],
+    loadComponent: () =>
+      import('./dashboard/kpi-dashboard.component').then((m) => m.KpiDashboardComponent),
+  },
   {
     path: 'my-kpis',
     data: { breadcrumb: 'My KPIs', ...EMPLOYEE },
@@ -68,6 +76,14 @@ export const PERFORMANCE_ROUTES: Routes = [
           import('./reviews/review-detail.component').then((m) => m.ReviewDetailComponent),
       },
     ],
+  },
+  {
+    path: 'reports',
+    title: 'KPI Reports',
+    data: { breadcrumb: 'KPI Reports', ...EMPLOYEE },
+    canActivate: [permissionGuard],
+    loadComponent: () =>
+      import('./reports/kpi-reports.component').then((m) => m.KpiReportsComponent),
   },
   {
     path: 'assignments',

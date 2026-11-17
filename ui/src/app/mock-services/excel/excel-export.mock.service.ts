@@ -10,7 +10,7 @@ import { ActivityMockService } from '../activity/activity-mock.service';
 import { mockError } from '../mock-response';
 import { deferred } from './deferred';
 import { ExcelFileService } from './excel-file.service';
-import { EXCEL_MODULES } from './excel-module';
+import { EXCEL_MODULES, LAZY_EXCEL_MODULES, lazyExcelModules } from './excel-module';
 
 function pad(value: number): string {
   return String(value).padStart(2, '0');
@@ -21,9 +21,14 @@ function pad(value: number): string {
 export class ExcelCatalogMockService implements ExcelModuleCatalogDataService {
   private readonly latency = inject(APP_CONFIG).mockLatencyMs;
   private readonly registrations = inject(EXCEL_MODULES, { optional: true }) ?? [];
+  private readonly lazy = lazyExcelModules(inject(LAZY_EXCEL_MODULES, { optional: true }) ?? []);
 
   getModules(): Observable<ExcelModuleInfo[]> {
-    return deferred(() => this.registrations.map((r) => r.info), this.latency);
+    return deferred(async () => {
+      // A lazy chunk that cannot load leaves its modules out instead of failing the catalog.
+      const later = await this.lazy().catch(() => []);
+      return [...this.registrations, ...later].map((r) => r.info);
+    }, this.latency);
   }
 }
 
@@ -39,11 +44,14 @@ export class ExcelExportMockService implements ExcelExportDataService {
   private readonly modules = new Map(
     (inject(EXCEL_MODULES, { optional: true }) ?? []).map((m) => [m.info.code, m]),
   );
+  private readonly lazy = lazyExcelModules(inject(LAZY_EXCEL_MODULES, { optional: true }) ?? []);
 
   export(request: ExportRequest): Observable<ExcelFile> {
     return deferred(
       async () => {
-        const registration = this.modules.get(request.moduleCode);
+        const registration =
+          this.modules.get(request.moduleCode) ??
+          (await this.lazy()).find((m) => m.info.code === request.moduleCode);
         const adapter = registration?.exportAdapter;
         if (!registration || !registration.info.canExport || !adapter) {
           throw mockError('NotFound', `Export is not available for "${request.moduleCode}".`);

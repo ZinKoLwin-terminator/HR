@@ -38,11 +38,14 @@ import {
 } from '../core/services/data/employee-extras-data.services';
 import {
   EvaluationPeriodDataService,
+  KPI_INSIGHT_METHODS,
   KpiCategoryDataService,
+  KpiInsightDataService,
   KpiTemplateDataService,
   RatingBandDataService,
   ScorecardDataService,
 } from '../core/services/data/kpi-data.services';
+import { lazyDataService } from '../core/services/data/lazy-data-service';
 import {
   LeaveApplicationDataService,
   LeaveBalanceDataService,
@@ -201,6 +204,14 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(RatingBandDataService, RatingBandHttpService),
     bind(EvaluationPeriodDataService, EvaluationPeriodHttpService),
     bind(ScorecardDataService, ScorecardHttpService),
+    // Dashboards and reports (read only), loaded on first use to keep them out of the initial bundle.
+    {
+      provide: KpiInsightDataService,
+      useFactory: lazyDataService(
+        () => import('./kpi/kpi-insight-http.service').then((m) => m.KpiInsightHttpService),
+        KPI_INSIGHT_METHODS,
+      ),
+    },
     // Attendance: shifts, holidays, read-only records with punches, adjustments, overtime, overview, schedule.
     bind(ShiftDataService, ShiftHttpService),
     bind(HolidayDataService, HolidayHttpService),

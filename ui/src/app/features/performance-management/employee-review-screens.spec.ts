@@ -115,10 +115,15 @@ describe('My KPIs', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('shows the Late chip only for a submission after the period’s due date', async () => {
+  it('shows the Late chip from the list row’s submissionDueDate, without reading details', async () => {
     configure(EMPLOYEE_46);
     const api = TestBed.inject(ScorecardDataService);
-    const row = (id: number, periodId: number, submittedOn: string | null) =>
+    const row = (
+      id: number,
+      periodId: number,
+      submittedOn: string | null,
+      submissionDueDate: string | null,
+    ) =>
       ({
         id,
         periodId,
@@ -128,21 +133,26 @@ describe('My KPIs', () => {
         overallScore: null,
         ratingLabel: null,
         submittedOn,
+        submissionDueDate,
       }) as Scorecard;
     const page: PagedResult<Scorecard> = {
-      items: [row(1, 2, '2027-01-20'), row(2, 1, '2026-10-01')],
-      total: 2,
+      items: [
+        row(1, 2, '2027-01-20', '2027-01-14'),
+        row(2, 1, '2026-10-01', '2026-10-14'),
+        row(3, 3, '2026-10-01', null),
+      ],
+      total: 3,
       pageIndex: 0,
       pageSize: 10,
     };
     vi.spyOn(api, 'myScorecards').mockReturnValue(of(page));
-    vi.spyOn(api, 'getById').mockImplementation((id) =>
-      of({ submissionDueDate: id === 1 ? '2027-01-14' : '2026-10-14' } as ScorecardDetail),
-    );
+    const details = vi.spyOn(api, 'getById');
     const { el } = await render(MyKpisComponent);
     const rows = Array.from(el.querySelectorAll('tr.mat-mdc-row'));
     expect(rows[0].querySelector('[data-testid="late-chip"]')?.textContent).toContain('Late');
     expect(rows[1].querySelector('[data-testid="late-chip"]')).toBeNull();
+    expect(rows[2].querySelector('[data-testid="late-chip"]')).toBeNull(); // no due date
+    expect(details).not.toHaveBeenCalled();
   });
 });
 
@@ -473,6 +483,7 @@ describe('Review detail', () => {
           action: 'Approve',
           fromStatus: 'Under Review',
           toStatus: 'Approved',
+          actorUserId: HR_ADMIN.id,
           actorName: 'Su Myat Noe',
           comment: null,
           overallScore: real.overallScore,
@@ -629,13 +640,13 @@ describe('Performance routes for the employee and reviewer screens', () => {
   }
 
   it('sends /performance to the first screen the role may see, never setup for an employee', () => {
-    expect(landing(['dashboard:View', 'kpi:View', 'kpi:Create'])).toBe('/performance/my-kpis');
+    expect(landing(['dashboard:View', 'kpi:View', 'kpi:Create'])).toBe('/performance/dashboard');
   });
 
-  it('sends a setup-only role to Assignments and a role with nothing to My KPIs', () => {
+  it('sends a setup-only role to Assignments and a role with nothing to the dashboard', () => {
     expect(landing(['kpi-setup:View'])).toBe('/performance/assignments');
     expect(landing(['kpi:Approve'])).toBe('/performance/reviews');
-    expect(landing([])).toBe('/performance/my-kpis');
+    expect(landing([])).toBe('/performance/dashboard');
   });
 
   it('redirects /performance in the router (Employee role) and refuses Reviews', async () => {
@@ -658,7 +669,7 @@ describe('Performance routes for the employee and reviewer screens', () => {
     const harness = await RouterTestingHarness.create('/performance');
     await harness.fixture.whenStable();
     const router = TestBed.inject(Router);
-    expect(router.url).toBe('/performance/my-kpis');
+    expect(router.url).toBe('/performance/dashboard');
     await harness.navigateByUrl('/performance/reviews');
     expect(router.url).toBe('/forbidden');
     await harness.navigateByUrl('/performance/assignments');

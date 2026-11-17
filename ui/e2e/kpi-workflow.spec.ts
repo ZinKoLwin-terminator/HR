@@ -117,15 +117,19 @@ signedOutTest.describe('KPI employee results and evidence', () => {
         }
       }, EMPLOYEE_56_SESSION);
 
-      // The Performance group holds My KPIs only, and /performance never opens a setup screen.
+      // The Performance group holds the employee's screens only, and /performance opens the KPI
+      // dashboard, never a setup screen.
       await page.goto('/performance');
-      await expect(page).toHaveURL(/\/performance\/my-kpis$/);
+      await expect(page).toHaveURL(/\/performance\/dashboard$/);
       const group = nav(page).getByRole('button', { name: 'Performance' });
       if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click();
-      await expect(nav(page).getByRole('link', { name: 'My KPIs', exact: true })).toBeVisible();
+      for (const shown of ['My KPIs', 'Reports']) {
+        await expect(nav(page).getByRole('link', { name: shown, exact: true })).toBeVisible();
+      }
       for (const hidden of ['Reviews', 'Assignments', 'Templates', 'Evaluation Periods']) {
         await expect(nav(page).getByRole('link', { name: hidden, exact: true })).toHaveCount(0);
       }
+      await nav(page).getByRole('link', { name: 'My KPIs', exact: true }).click();
 
       // My KPIs: own scorecards only, newest period first.
       await expect(page.getByRole('heading', { name: 'My KPIs', level: 1 })).toBeVisible();

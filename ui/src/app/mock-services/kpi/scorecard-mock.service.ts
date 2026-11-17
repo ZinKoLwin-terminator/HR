@@ -77,7 +77,7 @@ const HR_OFFICER_ROLE = 'HR Officer';
 const MANAGER_ROLE = 'Department Manager';
 
 /** Who is acting, as the mock understands it. */
-interface Actor {
+export interface KpiMockActor {
   userId: number;
   employeeId: number | null;
   name: string;
@@ -179,7 +179,7 @@ export class ScorecardMockService implements ScorecardDataService {
     throw mockError('Conflict', message);
   }
 
-  private actor(): Actor {
+  private actor(): KpiMockActor {
     const current = this.user.current();
     const roles = current.roles;
     const hr = roles.includes(ADMIN_ROLE_NAME) || roles.includes(HR_OFFICER_ROLE);
@@ -193,7 +193,7 @@ export class ScorecardMockService implements ScorecardDataService {
   }
 
   /** Row scope of reads: HR sees all, a manager sees own, direct reports and ones naming them reviewer, others own. */
-  private inScope(record: ScorecardRecord, actor: Actor): boolean {
+  private inScope(record: ScorecardRecord, actor: KpiMockActor): boolean {
     if (actor.hr) {
       return true;
     }
@@ -212,6 +212,16 @@ export class ScorecardMockService implements ScorecardDataService {
     );
   }
 
+  /**
+   * For the KPI dashboard and report mock: who is acting and the scorecards they may see, with the
+   * same scope as every read here (HR all; a manager own, direct reports and the ones naming them
+   * reviewer; anyone else own). Live records: do not change them.
+   */
+  scopeNow(): { actor: KpiMockActor; visible: readonly ScorecardRecord[] } {
+    const actor = this.actor();
+    return { actor, visible: this.store().filter((r) => this.inScope(r, actor)) };
+  }
+
   private findRecord(id: number): ScorecardRecord {
     const record = this.store().find((r) => r.id === id);
     if (!record) {
@@ -221,7 +231,7 @@ export class ScorecardMockService implements ScorecardDataService {
   }
 
   /** A scorecard the caller may see; one outside the scope is "not found". */
-  private visible(id: number, actor: Actor): ScorecardRecord {
+  private visible(id: number, actor: KpiMockActor): ScorecardRecord {
     const record = this.findRecord(id);
     if (!this.inScope(record, actor)) {
       throw mockError('NotFound', `Scorecard #${id} was not found.`);
@@ -309,6 +319,7 @@ export class ScorecardMockService implements ScorecardDataService {
       action,
       fromStatus: from,
       toStatus: to,
+      actorUserId: this.actor().userId,
       actorName: this.actor().name,
       comment,
       overallScore: score,
@@ -361,6 +372,7 @@ export class ScorecardMockService implements ScorecardDataService {
       planFinalizedOn: record.planFinalizedOn,
       submittedOn: record.submittedOn,
       finalizedOn: record.finalizedOn,
+      submissionDueDate: this.periods.findById(record.periodId)?.submissionDueDate ?? null,
       rowVersion: record.rowVersion,
     };
   }
@@ -371,7 +383,6 @@ export class ScorecardMockService implements ScorecardDataService {
       ...this.summary(record),
       reviewedOn: record.reviewedOn,
       periodStatus: period?.status ?? 'Closed',
-      submissionDueDate: period?.submissionDueDate ?? null,
       requiresHrReview: period?.requiresHrReview ?? false,
       employeeComment: record.employeeComment,
       managerRating: record.managerRating,
@@ -1065,7 +1076,7 @@ export class ScorecardMockService implements ScorecardDataService {
   // ---- Employee: results and submission -------------------------------------------------------
 
   /** Only the scorecard's own employee; someone else who can see it gets 403. */
-  private requireOwner(record: ScorecardRecord, actor: Actor, message: string): void {
+  private requireOwner(record: ScorecardRecord, actor: KpiMockActor, message: string): void {
     if (actor.employeeId === null || record.employeeId !== actor.employeeId) {
       throw mockError('Forbidden', message);
     }
@@ -1250,14 +1261,14 @@ export class ScorecardMockService implements ScorecardDataService {
   // ---- Review ---------------------------------------------------------------------------------
 
   /** Nobody reviews their own scorecard, whatever their role (409). */
-  private refuseOwn(record: ScorecardRecord, actor: Actor): void {
+  private refuseOwn(record: ScorecardRecord, actor: KpiMockActor): void {
     if (actor.employeeId !== null && record.employeeId === actor.employeeId) {
       this.conflict('You cannot review your own scorecard.');
     }
   }
 
   /** Manager stage: the scorecard's reviewer or the HR tier (403 for anyone else). */
-  private requireManagerStage(record: ScorecardRecord, actor: Actor): void {
+  private requireManagerStage(record: ScorecardRecord, actor: KpiMockActor): void {
     this.refuseOwn(record, actor);
     if (!actor.approver) {
       throw mockError('Forbidden', 'You do not have permission to do that.');
@@ -1268,7 +1279,11 @@ export class ScorecardMockService implements ScorecardDataService {
   }
 
   /** HR stage: the HR tier, and not the user who recorded the manager-stage approval. */
-  private requireHrStage(record: ScorecardRecord, actor: Actor, checkSeparation: boolean): void {
+  private requireHrStage(
+    record: ScorecardRecord,
+    actor: KpiMockActor,
+    checkSeparation: boolean,
+  ): void {
     this.refuseOwn(record, actor);
     if (!actor.hr) {
       throw mockError('Forbidden', 'Only HR can give the final review of a scorecard.');
@@ -1537,7 +1552,7 @@ export class ScorecardMockService implements ScorecardDataService {
   /** Owner, version, status and period checks shared by adding and removing evidence. */
   private checkEvidenceWrite(
     record: ScorecardRecord,
-    actor: Actor,
+    actor: KpiMockActor,
     rowVersion: string,
   ): EvaluationPeriod {
     this.requireOwner(record, actor, 'You can only add or remove evidence on your own scorecard.');
