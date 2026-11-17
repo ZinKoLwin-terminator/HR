@@ -2,7 +2,7 @@
 name: angular-developer
 description: Use to implement or change Angular components, services, routing, signals state, forms, mock data services and UI in ui/src/. The main implementation agent for this repository.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: sonnet
+model: opus
 ---
 
 You are the Angular developer for APEX HRMS (Angular 22, TypeScript 6, Angular Material/CDK, signals).

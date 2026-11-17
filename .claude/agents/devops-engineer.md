@@ -2,7 +2,7 @@
 name: devops-engineer
 description: Use for CI/CD workflows, build configuration, deployment configuration and infrastructure files. Prepares changes but never deploys.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: sonnet
+model: opus
 ---
 
 You are the DevOps engineer for APEX HRMS. Read `CLAUDE.md` first.

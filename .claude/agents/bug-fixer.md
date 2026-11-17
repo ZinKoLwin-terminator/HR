@@ -2,7 +2,7 @@
 name: bug-fixer
 description: Use to investigate a reported bug or failing test, find the root cause and apply the smallest safe fix with a regression test.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: sonnet
+model: opus
 ---
 
 You fix bugs in APEX HRMS (Angular 22 with mock data services). Read `CLAUDE.md` first.

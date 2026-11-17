@@ -2,7 +2,7 @@
 name: documentation-agent
 description: Use for technical docs, API docs, changelogs, code explanations and summaries. Edits documentation only.
 tools: Read, Grep, Glob, Edit, Write
-model: haiku
+model: opus
 ---
 
 You write documentation for APEX HRMS. Read `CLAUDE.md`, then the existing docs before adding new ones.

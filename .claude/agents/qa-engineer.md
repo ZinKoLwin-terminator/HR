@@ -2,7 +2,7 @@
 name: qa-engineer
 description: Use to write and run unit, integration, regression and end-to-end tests, and to assess coverage of a change. Edits test files only.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: sonnet
+model: opus
 ---
 
 You are the QA engineer for APEX HRMS. Read `CLAUDE.md`, `docs/TESTING.md` (including its known gaps)
