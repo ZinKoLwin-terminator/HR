@@ -75,6 +75,87 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("employees:EditSensitive", policies["DELETE /api/employee-documents/{id:int}"]);
     }
 
+    private static bool IsKpiRoute(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText!.StartsWith("/api/kpi", StringComparison.Ordinal);
+
+    [Fact]
+    public void Kpi_maps_fifty_five_endpoints_and_every_one_uses_a_kpi_permission()
+    {
+        var policies = PoliciesOf(IsKpiRoute);
+
+        Assert.Equal(55, policies.Count);
+        Assert.All(policies.Values, policy => Assert.True(policy.StartsWith("kpi-setup:", StringComparison.Ordinal) || policy.StartsWith("kpi:", StringComparison.Ordinal), policy));
+    }
+
+    [Fact]
+    public void Kpi_setup_endpoints_have_the_policy_of_their_verb_and_only_the_period_picker_needs_the_performance_view()
+    {
+        var policies = PoliciesOf(IsKpiRoute);
+
+        foreach (var resource in new[] { "categories", "templates", "rating-bands" })
+        {
+            Assert.Equal("kpi-setup:View", policies[$"GET /api/kpi/{resource}/"]);
+            Assert.Equal("kpi-setup:View", policies[$"GET /api/kpi/{resource}/query"]);
+            Assert.Equal("kpi-setup:View", policies[$"GET /api/kpi/{resource}/{{id:int}}"]);
+            Assert.Equal("kpi-setup:Create", policies[$"POST /api/kpi/{resource}/"]);
+            Assert.Equal("kpi-setup:Edit", policies[$"PUT /api/kpi/{resource}/{{id:int}}"]);
+            Assert.Equal("kpi-setup:Delete", policies[$"DELETE /api/kpi/{resource}/{{id:int}}"]);
+            Assert.Equal("kpi-setup:Edit", policies[$"POST /api/kpi/{resource}/{{id:int}}/activate"]);
+            Assert.Equal("kpi-setup:Edit", policies[$"POST /api/kpi/{resource}/{{id:int}}/deactivate"]);
+        }
+
+        Assert.Equal("kpi-setup:View", policies["GET /api/kpi/periods/query"]);
+        Assert.Equal("kpi-setup:Create", policies["POST /api/kpi/periods/"]);
+        Assert.Equal("kpi-setup:Edit", policies["PUT /api/kpi/periods/{id:int}"]);
+        Assert.Equal("kpi-setup:Delete", policies["DELETE /api/kpi/periods/{id:int}"]);
+        Assert.Equal("kpi-setup:Edit", policies["POST /api/kpi/periods/{id:int}/activate"]);
+        Assert.Equal("kpi-setup:Edit", policies["POST /api/kpi/periods/{id:int}/complete"]);
+        Assert.Equal("kpi-setup:Edit", policies["POST /api/kpi/periods/{id:int}/close"]);
+        Assert.Equal("kpi:View", policies["GET /api/kpi/periods/options"]);
+    }
+
+    [Fact]
+    public void Scorecards_are_read_with_the_performance_view_and_planned_by_hr_with_the_setup_permissions()
+    {
+        var policies = PoliciesOf(IsKpiRoute);
+
+        Assert.Equal("kpi:View", policies["GET /api/kpi/scorecards/query"]);
+        Assert.Equal("kpi:View", policies["GET /api/kpi/scorecards/{id:int}"]);
+        Assert.Equal("kpi-setup:Delete", policies["DELETE /api/kpi/scorecards/{id:int}"]);
+        Assert.Equal("kpi-setup:Edit", policies["POST /api/kpi/scorecards/{id:int}/finalize-plan"]);
+        Assert.Equal("kpi-setup:Create", policies["POST /api/kpi/assignments/"]);
+        Assert.Equal("kpi-setup:Create", policies["POST /api/kpi/assignments/bulk"]);
+        Assert.Equal("kpi-setup:Edit", policies["PUT /api/kpi/scorecard-items/{id:int}"]);
+        Assert.Equal("kpi-setup:Edit", policies["DELETE /api/kpi/scorecard-items/{id:int}"]);
+    }
+
+    [Fact]
+    public void Submission_needs_kpi_create_and_the_review_steps_and_the_queue_need_kpi_approve()
+    {
+        var policies = PoliciesOf(IsKpiRoute);
+
+        Assert.Equal("kpi:View", policies["GET /api/kpi/my-scorecards"]);
+        Assert.Equal("kpi:Create", policies["PUT /api/kpi/scorecards/{id:int}/results"]);
+        Assert.Equal("kpi:Create", policies["POST /api/kpi/scorecards/{id:int}/submit"]);
+        Assert.Equal("kpi:Approve", policies["GET /api/kpi/reviews/pending"]);
+        Assert.Equal("kpi:Approve", policies["PUT /api/kpi/scorecards/{id:int}/review"]);
+
+        foreach (var step in new[] { "start-review", "approve", "return", "reject", "finalize" })
+        {
+            Assert.Equal("kpi:Approve", policies[$"POST /api/kpi/scorecards/{{id:int}}/{step}"]);
+        }
+    }
+
+    [Fact]
+    public void Evidence_files_are_added_and_removed_with_kpi_create_and_downloaded_with_kpi_view()
+    {
+        var policies = PoliciesOf(IsKpiRoute);
+
+        Assert.Equal("kpi:Create", policies["POST /api/kpi/scorecard-items/{itemId:int}/attachments"]);
+        Assert.Equal("kpi:View", policies["GET /api/kpi/attachments/{id:int}"]);
+        Assert.Equal("kpi:Create", policies["DELETE /api/kpi/attachments/{id:int}"]);
+    }
+
     private static bool IsLeaveRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/leave", StringComparison.Ordinal);
 
@@ -157,7 +238,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void Six_organization_resources_map_eight_endpoints_each()
     {
         var endpoints = ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint) && !IsKpiRoute(endpoint))
             .ToList();
 
         Assert.Equal(48, endpoints.Count);
@@ -256,6 +337,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
                 "employees:View", "employees:ViewBank", "employees:ViewBlacklist", "employees:ViewSensitive",
                 "excel:Export", "excel:Import", "excel:View",
                 "hr-administrator",
+                "kpi-setup:Create", "kpi-setup:Delete", "kpi-setup:Edit", "kpi-setup:View", "kpi:Approve", "kpi:Create", "kpi:View",
                 "leave:Approve", "leave:Create", "leave:Delete", "leave:Edit", "leave:View",
                 "organization:Create", "organization:Delete", "organization:Edit", "organization:View",
                 "payroll:Approve", "payroll:Create", "payroll:Edit", "payroll:View",
@@ -270,7 +352,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
         foreach (var endpoint in ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint)))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint) && !IsKpiRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);

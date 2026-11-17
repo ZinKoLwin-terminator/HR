@@ -25,6 +25,11 @@ internal sealed class EfRepository<TEntity>(HrmsDbContext context) : IRepository
         CancellationToken cancellationToken) =>
         await Set.AsNoTracking().Where(scope).OrderBy(entity => entity.Id).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<TEntity>> ListForChangeAsync(
+        Expression<Func<TEntity, bool>> scope,
+        CancellationToken cancellationToken) =>
+        await Set.Where(scope).OrderBy(entity => entity.Id).ToListAsync(cancellationToken);
+
     public async Task<PagedResult<TEntity>> QueryAsync(EntityQuery<TEntity> query, CancellationToken cancellationToken)
     {
         var filtered = Set.AsNoTracking().Where(query.Predicate);
@@ -47,6 +52,9 @@ internal sealed class EfRepository<TEntity>(HrmsDbContext context) : IRepository
 
     public void ExpectRowVersion(TEntity entity, byte[] rowVersion) =>
         context.Entry(entity).Property(nameof(AuditedEntity.RowVersion)).OriginalValue = rowVersion;
+
+    public void MarkModified(TEntity entity) =>
+        context.Entry(entity).Property(nameof(AuditedEntity.ModifiedAtUtc)).IsModified = true;
 
     /// <summary>Id is always the final sort key so paging stays stable when the chosen column has ties.</summary>
     private static IOrderedQueryable<TEntity> Order(IQueryable<TEntity> source, SortCriterion<TEntity>? sort)

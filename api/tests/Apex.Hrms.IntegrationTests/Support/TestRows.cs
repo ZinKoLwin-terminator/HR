@@ -55,6 +55,7 @@ internal static partial class TestRows
         await DeleteLeaveAsync(connection, pattern);
         await DeleteAttendanceOfEmployeesAsync(connection, pattern);
         await DeleteRecruitmentAsync(connection, pattern);
+        await DeleteKpiAsync(connection, tag, pattern);
         await DeleteEmployeesAsync(connection, pattern);
         await DeleteShiftsAsync(connection, pattern);
         foreach (var table in TablesChildToParent)
@@ -93,6 +94,11 @@ internal static partial class TestRows
         await CountInto(counts, connection, "rec.Application", $"Id IN ({TaggedApplications})", pattern);
         await CountInto(counts, connection, "rec.JobOpening", $"Id IN ({TaggedJobs})", pattern);
         await CountInto(counts, connection, "rec.Candidate", "LOWER(Email) LIKE LOWER(@pattern)", pattern);
+        await CountInto(counts, connection, "kpi.Scorecard", $"Id IN ({TaggedScorecards.Replace("@tag", "@pattern", StringComparison.Ordinal)})", pattern);
+        await CountInto(counts, connection, "kpi.EvaluationPeriod", "Name LIKE @pattern", pattern);
+        await CountInto(counts, connection, "kpi.Template", "Code LIKE @pattern", pattern);
+        await CountInto(counts, connection, "kpi.Category", "Code LIKE @pattern", pattern);
+        await CountInto(counts, connection, "kpi.RatingBand", "Label LIKE @pattern", pattern);
         foreach (var table in TablesChildToParent)
         {
             await CountInto(counts, connection, table, "Code LIKE @pattern", pattern);
@@ -169,6 +175,47 @@ internal static partial class TestRows
             $"DELETE FROM lve.LeavePolicy WHERE LeaveTypeId IN ({TaggedTypes}) OR JobGradeId IN (SELECT Id FROM org.JobGrade WHERE Code LIKE @pattern)");
         await ExecuteAsync(connection, pattern, "DELETE FROM lve.LeaveType WHERE Code LIKE @pattern");
         await ExecuteAsync(connection, pattern, "DELETE FROM att.Holiday WHERE Name LIKE @pattern");
+    }
+
+    // KPI rows are tagged through the code (categories, templates), the name (periods and rating labels, which start with the tag
+    // and a space, so they use "@tag" = the tag followed by %) or the employee, company or department they were made for.
+    private const string TaggedPeriods =
+        "SELECT Id FROM kpi.EvaluationPeriod WHERE Name LIKE @tag OR CompanyId IN (SELECT Id FROM org.Company WHERE Code LIKE @pattern)";
+
+    private const string TaggedScorecards =
+        $"SELECT Id FROM kpi.Scorecard WHERE EmployeeId IN ({TaggedEmployees}) OR PeriodId IN ({TaggedPeriods})";
+
+    private const string TaggedTemplates =
+        "SELECT Id FROM kpi.Template WHERE Code LIKE @pattern OR DepartmentId IN (SELECT Id FROM org.Department WHERE Code LIKE @pattern)";
+
+    private const string TaggedCategories = "SELECT Id FROM kpi.Category WHERE Code LIKE @pattern";
+
+    private const string TaggedItems =
+        $"SELECT Id FROM kpi.ScorecardItem WHERE ScorecardId IN ({TaggedScorecards}) OR TemplateId IN ({TaggedTemplates}) OR CategoryId IN ({TaggedCategories})";
+
+    /// <summary>
+    /// Child to parent, before the employees, departments and companies they point at: attachments, review history, items, scorecards
+    /// (of tagged employees or periods), then templates, categories, periods and rating bands. The history tables of the
+    /// temporal ones keep their rows (SQL Server owns them), as for leave applications.
+    /// </summary>
+    private static async Task DeleteKpiAsync(SqlConnection connection, string tag, string pattern)
+    {
+        async Task Run(string sql)
+        {
+            await using var command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@pattern", pattern);
+            command.Parameters.AddWithValue("@tag", tag + "%");
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await Run($"DELETE FROM kpi.Attachment WHERE ScorecardItemId IN ({TaggedItems})");
+        await Run($"DELETE FROM kpi.ReviewAction WHERE ScorecardId IN ({TaggedScorecards}) OR ActorEmployeeId IN ({TaggedEmployees})");
+        await Run($"DELETE FROM kpi.ScorecardItem WHERE Id IN ({TaggedItems})");
+        await Run($"DELETE FROM kpi.Scorecard WHERE Id IN ({TaggedScorecards})");
+        await Run($"DELETE FROM kpi.Template WHERE Id IN ({TaggedTemplates})");
+        await Run($"DELETE FROM kpi.Category WHERE Id IN ({TaggedCategories})");
+        await Run($"DELETE FROM kpi.EvaluationPeriod WHERE Id IN ({TaggedPeriods})");
+        await Run("DELETE FROM kpi.RatingBand WHERE Label LIKE @tag");
     }
 
     // Job openings carry a server-made code, so a test tags them through the title (or the manager or department it made);

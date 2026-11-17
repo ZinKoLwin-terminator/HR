@@ -5,16 +5,16 @@ results and reports. Specialist agents live in `.claude/agents/`, workflows in `
 
 ## What this repository actually is
 
-Check this before assuming anything. Inspected 2026-11-07; re-check if the backend appears.
+Check this before assuming anything. Inspected 2026-11-17; re-check when a module is added.
 
 | Area        | Reality                                                                                                  |
 | ----------- | -------------------------------------------------------------------------------------------------------- |
 | Frontend    | Angular 22, TypeScript 6, Angular Material/CDK, signals, ng2-charts, exceljs                             |
-| Backend     | **Started (2026-11, branch `feature/api`).** .NET 10 Clean Architecture API in `api/` (`dotnet build`/`dotnet test api/Apex.Hrms.slnx`). Organization module only; no auth yet (all endpoints anonymous). The UI still uses the mocks |
-| Database    | SQL Server 2025 schema as an SDK-style SSDT project in a separate repo, `D:\New folder\HR DBPJ\HR DBPJ`. A human publishes it, to a local database only. EF Core maps onto it and never runs migrations |
-| Data layer  | Abstract contracts in `ui/src/app/core/services/data`, bound to mocks in `ui/src/app/mock-services` by `provideMockDataServices()` |
-| Auth        | Simulation. `AuthService` keeps plain user info in browser storage. Roles and permissions enforce nothing |
-| Tests       | Vitest via `ng test` (`*.spec.ts` beside the code), Playwright (`ui/e2e/`). Fixture spreadsheets in `docs/test-data` |
+| Backend     | .NET 10 Clean Architecture API in `api/` for every module (organization, employees, attendance, leave, payroll, recruitment, dashboard, activity, settings, Excel). Minimal API endpoints (`MapCrud`, `MapCommand`), use-case handlers, FluentValidation, `Result`/`AppError`. Integrated on `integrate/all-features`, not yet on `main`. KPI/performance module in progress (`feature/api-kpi`) |
+| Database    | SQL Server 2025 schema as an SDK-style SSDT project in a separate repo, `D:\New folder\HR DBPJ\HR DBPJ` (one schema per module, `int IDENTITY` keys, temporal tables for history). A human publishes it, to a local database only. EF Core maps onto it and never runs migrations |
+| Data layer  | Abstract contracts in `ui/src/app/core/services/data`, bound to mocks in `ui/src/app/mock-services` by `provideMockDataServices()` (default, GitHub Pages demo) or to HTTP adapters in `ui/src/app/api-services` (`npm run start:api`) |
+| Auth        | API: ASP.NET Core Identity cookie sessions, permissions (`module:Action`, `sec.RolePermission`) checked on every request, row scoping by `SelfService` (own / direct reports / everyone). Mock mode: simulation in browser storage that enforces nothing |
+| Tests       | Vitest via `ng test` (`*.spec.ts` beside the code), Playwright (`ui/e2e/`), xUnit in `api/tests` (integration tests need a local SQL Server). Fixtures in `docs/test-data` |
 | CI/CD       | `.github/workflows/ci.yml`: lint, format, unit, build, E2E, then **deploy to GitHub Pages on every push to `main`** |
 | Data        | All sample data is fictional. Payroll rules are demonstrations, not statutory calculations               |
 

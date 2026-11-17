@@ -17,20 +17,33 @@ internal sealed partial class AntiforgeryMiddleware(RequestDelegate next, IAntif
     {
         if (IsUnsafe(context.Request.Method))
         {
+            // Without the header the framework would look for the token in a form field, which means reading (and buffering) the
+            // request body: an upload without the header is refused before a byte of its body is read.
+            if (string.IsNullOrWhiteSpace(context.Request.Headers[AuthCookies.XsrfHeader]))
+            {
+                await RejectAsync(context);
+                return;
+            }
+
             try
             {
                 await antiforgery.ValidateRequestAsync(context);
             }
             catch (AntiforgeryValidationException)
             {
-                LogRejected(context.Request.Method);
-                context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                await Results.Problem(ApiProblems.From(AppError.Validation(RejectedMessage))).ExecuteAsync(context);
+                await RejectAsync(context);
                 return;
             }
         }
 
         await next(context);
+    }
+
+    private async Task RejectAsync(HttpContext context)
+    {
+        LogRejected(context.Request.Method);
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await Results.Problem(ApiProblems.From(AppError.Validation(RejectedMessage))).ExecuteAsync(context);
     }
 
     private static bool IsUnsafe(string method) =>

@@ -1,6 +1,6 @@
 # End-to-End Test Scenarios: All Modules
 
-Playwright scenarios (`ui/e2e/`) for every module of APEX HRMS: sign-in and session, **Organization**, **Employees**, **Leave**, **Attendance**, **Recruitment**, **Settings**, **Dashboard** (with activity and notifications), **Excel** import and export, **Payroll** (with My Payslips), **printing** (section 15), the **do-not-rehire list** (section 16), and cross-module (X) scenarios.
+Playwright scenarios (`ui/e2e/`) for every module of APEX HRMS: sign-in and session, **Organization**, **Employees**, **Leave**, **Attendance**, **Recruitment**, **Settings**, **Dashboard** (with activity and notifications), **Excel** import and export, **Payroll** (with My Payslips), **printing** (section 15), the **do-not-rehire list** (section 16), **KPI and performance** (section 17, being built), and cross-module (X) scenarios.
 Each scenario lists its example data, the steps and the expected result.
 
 - **Written for:** QA engineers who write and maintain the Playwright suite.
@@ -28,11 +28,14 @@ Scenario count per section. A count is the number of rows with a scenario ID in 
 | 14 | Payroll | 33 | 40 | 40 | none |
 | 15 | Printing | 0 | 13 | 13 | none |
 | 16 | Do-not-rehire list | 0 | 19 | 19 | none |
-| | Total | 345 | 406 | 423 | 17 new |
+| 17 | KPI and performance | 0 | 0 | 47 | KPI-01 to KPI-47 (added 2026-11-17, all Pending) |
+| | Total | 345 | 406 | 470 | 64 new |
 
 Two updates on 2026-11-13. The first (406 rows) added X-19, AUTH-30, ATT-50, REC-36 to REC-40, SET-35, DSH-39 to DSH-41, XLS-29 to XLS-38, PAY-34 to PAY-40, PRN and BLK. The "before" column was counted row by row; the earlier table's figures were out of date. The second added the general settings rows (SET-36 to SET-43) and the Excel screen rows (XLS-39 to XLS-47), and moved XLS-29 to XLS-38 from "UI pending" to `Manual (API)`.
 
-Pending rows (behaviour not built yet): none. EMP-E26 (team scoping) and PAY-32 (own-payslip scoping) were built in an earlier update and are **API** rows.
+On 2026-11-17 section 17 (KPI and performance, KPI-01 to KPI-47) was added to the "after second update" column.
+
+Pending rows (behaviour not built yet): KPI-01 to KPI-47 (section 17). EMP-E26 (team scoping) and PAY-32 (own-payslip scoping) were built in an earlier update and are **API** rows.
 
 ## 0. Ground rules for the suite
 
@@ -605,7 +608,7 @@ Confirm codes and names against `ui/src/app/mock-data/` before you hard-code the
 ## 6. Suggested run order
 
 1. **Smoke (about 15 minutes):** AUTH-01, AUTH-11, ORG-E01, ORG-E04, ORG-E07, EMP-E01, EMP-E13, EMP-E15, LV-E06, LV-E13, LV-E19, LV-E22, ATT-11, REC-13, SET-01, DSH-03, XLS-02, PAY-16.
-2. **Full run, safest first:** sign-in (section 8), Organization, Employees, Leave, Attendance (section 9), Recruitment (section 10), Settings (section 11), Dashboard, activity and notifications (section 12), Excel (section 13), Payroll (section 14), then printing (section 15). The do-not-rehire list (section 16) is API only, so it runs after the API build is up. Each test starts from the seed, so the order does not change results. It helps reading failures: the first failing group points at the lowest module that broke. Each spec file runs its own `describe` blocks. Attendance and Recruitment rows can also run in API mode once the API and the UI are up; the order above does not change. The Dashboard, activity and notification rows marked **API** (DSH-13 to DSH-38) check the endpoints directly, so they do not need the UI. In API mode the dashboard, the activity card and the notification bell do call those endpoints too. The mock rows of section 12 still run in the Playwright suite.
+2. **Full run, safest first:** sign-in (section 8), Organization, Employees, Leave, Attendance (section 9), Recruitment (section 10), Settings (section 11), Dashboard, activity and notifications (section 12), Excel (section 13), Payroll (section 14), then printing (section 15). The do-not-rehire list (section 16) is API only, so it runs after the API build is up. KPI and performance (section 17) runs last, once it is built: setup (17.1), assignments (17.2), submission (17.3) and review (17.4) build on each other's data, so they run in that order within one test file. Each test starts from the seed, so the order does not change results. It helps reading failures: the first failing group points at the lowest module that broke. Each spec file runs its own `describe` blocks. Attendance and Recruitment rows can also run in API mode once the API and the UI are up; the order above does not change. The Dashboard, activity and notification rows marked **API** (DSH-13 to DSH-38) check the endpoints directly, so they do not need the UI. In API mode the dashboard, the activity card and the notification bell do call those endpoints too. The mock rows of section 12 still run in the Playwright suite.
 3. **Cross-module:** X-01 to X-10 after the module tests pass. X-06 to X-10 depend on the attendance, payroll and recruitment tests. X-11 to X-17 are API rows: they need the API, a local database and the test roles of SET-25. X-18 runs in both builds; in the mock, add the holiday and start the leave application in the same session. X-19 needs the do-not-rehire rows (section 16) and the `feature/schema-blacklist` database.
 4. **API build:** rows marked **API** run in a separate job, once a test API and local database are available. They are not run by the Playwright mock suite. The dashboard, activity and notification API rows are API tests in `api/`, not Playwright tests. The do-not-rehire API rows (BLK) and the recruitment scoping rows (REC-36 to REC-40) are run the same way.
 
@@ -644,6 +647,7 @@ Confirm codes and names against `ui/src/app/mock-data/` before you hard-code the
 - The do-not-rehire permissions (`employees:ViewBlacklist`, `EditBlacklist`) are not enforced in the mock build, so every mock user sees and uses the list (BLK-09, BLK-10).
 - General settings (SET-36 to SET-43) change only how values are shown. Not covered by them: fiscal year start (stored, unused), calendar headers and day badges (own patterns), and the fixed en-GB dates in letters, document expiry text and import history. In API mode a user without `settings:View` always sees the defaults (SET-42).
 - Excel in the mock build: the catalog allows every registered module and exports are not scoped (XLS-47); only the `excel:*` keys hide buttons. Some seed salaries are outside their grade band (XLS-45).
+- KPI and performance (section 17) is not built yet; every row is Pending. When it is: official scores come from the API only, and the demo build's mock repeats the same calculation for display. The mock does not enforce `kpi-setup` or `kpi` permissions or the team scope (KPI-47). The schema needs the database branch `feature/schema-kpi` published.
 - Print: the Print action is on the CRUD lists, the payslip, the profile, the letters and the payroll review. The Employee list, attendance, leave balances and the payslip list have no Print button yet. Printing is not checked on a real printer (PRN-13).
 
 ---
@@ -1053,4 +1057,117 @@ The API needs the database branch `feature/schema-blacklist` (the blacklist tabl
 | BLK-17 | − | Others cannot approve. As a user with `recruitment:Edit` but not an HR Administrator (role `Test Recruit Edit`, REC-36), try the move of BLK-15. In the API, send the override anyway | Role `Test Recruit Edit` | The UI shows no approval prompt, only the server's message in a toast. The API answers 403 "Only an HR Administrator can approve the hire of a candidate who matches the do-not-rehire list." | Unit test (mock: refuses an override from anyone who is not an HR Administrator); the prompt check: New (UI); Manual (API) |
 | BLK-18 | B | Override length is 300. Approve with a reason of 300 characters, then 301 | Fictional text of 300 and 301 characters | 300: accepted. 301: refused with "The approval reason can have at most 300 characters." (mock), and 400 on `blacklistOverrideReason` (API) | New (mock and API) |
 | BLK-19 | − | An override for a candidate without a match is ignored. Through the API (the screen sends an override only after a block), move a candidate with no match to Selected with an override reason, then read the activity | A candidate with no match | The move works as normal. The override is not stored, and no "approved despite" activity line is written | Unit test (mock: ignores an override for a candidate without a match); Manual (API) |
+
+## 17. KPI and performance
+
+**Every row in this section is `Pending`:** the module is being built (database branch `feature/schema-kpi`, API branch `feature/api-kpi`, UI to follow). The expected results are the intended behaviour from the agreed design. Re-check the wording of each message against the screens once they exist, and change the status as rows are automated.
+
+How the module works:
+
+- **Setup (`kpi-setup` permission, HR):** KPI categories, KPI templates, evaluation periods and rating bands. A template defines the measurement type, direction (Higher Is Better, Lower Is Better, Exact Target, Range Based), scoring method, default target, default weight and an optional achievement cap.
+- **Scorecard:** one per employee per evaluation period. HR assigns KPIs to it. Assigning copies the template's target, weight and rules into the scorecard, so a later template edit does not change it.
+- **Workflow:**
+  - Planning → Draft (the plan is finalized at exactly 100% weight; the employee enters results) → Submitted → Under Review → Approved → Finalized.
+  - Returned goes back to the employee and comes back as Resubmitted. Rejected is final.
+  - Approved is held only when the period requires an HR final review; otherwise approval finalizes.
+- **Scores:** official scores are calculated by the API only. The demo build's mock repeats the same calculation and is tested against the same cases (`docs/test-data/kpi-calculation-cases.json`).
+- **Who reviews:** the employee's direct manager when the plan was finalized (`kpi:Approve` without `employees:Edit`), or HR staff for everyone (`kpi:Approve` and `employees:Edit`). Nobody reviews their own scorecard.
+
+Example data:
+
+- **Employees:** the reporting line comes from the positions seed. EMP005 Daniel Carter (Engineering Manager) manages EMP046 Hein Thant Zin and EMP017 Phyu Sin Thant. EMP006 Hnin Ei Phyu reports to EMP002 Su Myat Noe. EMP056 Sai Htoo Aung is not in Daniel Carter's team.
+- **Company:** `AHT` APEX Technologies, the company of the ENG department (check the seed).
+- **Calculation cases** (2 decimals, rounded half away from zero):
+
+| Case | Rule | Actual | Achievement |
+|---|---|---|---|
+| Higher Is Better | Target 100, Capped Percentage at 120 | 85 | 85.00 |
+| Higher Is Better, capped | Target 100, cap 120 | 130 | 120.00 |
+| Higher Is Better, uncapped | Target 100, Direct Percentage | 130 | 130.00 |
+| Lower Is Better | Target 5, cap 100 | 8 | 62.50 |
+| Lower Is Better, zero actual | Target 5, cap 120 | 0 | 120.00 |
+| Exact Target | Target 40, cap 100 | 44 | 90.00 |
+| Range Based | Range 95 to 105 | 90 | 94.74 |
+| Range Based | Range 95 to 105 | 110 | 95.45 |
+| Rating Based | Maximum rating 5 | 4 | 80.00 |
+| Boolean | Achieved | 1 | 100.00 |
+
+Example scorecard: weights 40, 35 and 25 with achievements 85.00, 62.50 and 100.00 give weighted scores 34.00, 21.88 and 25.00. The overall score is 80.88, which is "Exceeds Expectations" with the default bands.
+
+### 17.1 Setup: categories, templates, periods
+
+| ID | Type | Scenario and steps | Example data | Expected result | Status |
+|---|---|---|---|---|---|
+| KPI-01 | + | Create, edit, deactivate and delete a KPI category. Performance > KPI Categories | Code `TSTQ`, name `Test Quality` | Created as Active, edited, deactivated. Delete works while no template uses it | Pending |
+| KPI-02 | − | Duplicate category code or name | Code `TSTQ` again; then another code with name `Test Quality` | Refused on the code field; refused on the name field | Pending |
+| KPI-03 | − | Delete a category in use | A category with a template | Refused (409) with the number of templates that use it. Deactivate is offered instead | Pending |
+| KPI-04 | + | Create a template of each direction | `TST-SALES` Higher Is Better target 100 weight 40 cap 120; `TST-DEFECT` Lower Is Better target 5 cap 100; `TST-RATE` Rating Based, maximum rating 5 | Each is saved and listed with its category, direction and scoring method | Pending |
+| KPI-05 | − | Inconsistent template rules | (a) Higher Is Better with target 0; (b) Rating Based without a maximum rating; (c) Range Based with range 105 to 95; (d) Capped Percentage without a cap; (e) Boolean method with measurement type Number; (f) Lower Is Better with Direct Percentage (no cap) | Each is refused on the field named in the message: (a) `target`, (b) `maxRating`, (c) `rangeMax`, (d) `maxAchievementPct`, (e) `scoringMethod`, (f) `maxAchievementPct`, because a result of 0 scores the cap. Nothing is saved | Pending |
+| KPI-06 | B | Weight and cap boundaries | Default weight 0, 0.01, 100, 100.01; cap 0.99, 1, 500, 500.01 | 0.01, 100, 1 and 500 are accepted; the others are refused | Pending |
+| KPI-07 | + | Department-specific template | `TST-CODE` for the ENG department | Offered when assigning to an ENG employee; not offered for EMP056 (IT) | Pending |
+| KPI-08 | + | Myanmar text | Category name `ထုတ်လုပ်မှု စွမ်းရည်` | Saved and shown unchanged in the list, the form and the export | Pending |
+| KPI-09 | + | Create an evaluation period and move it through its statuses | `AHT`, `2027 Q1`, Quarterly, `2027-01-01` to `2027-03-31` | Created as Draft, then Active, Completed and Closed in order | Pending |
+| KPI-10 | − | Invalid period dates | End `2026-12-31` before start `2027-01-01`; end equal to start | Refused: the end date must be after the start date | Pending |
+| KPI-11 | − | Overlapping period of the same type | Second Quarterly period for `AHT`, `2027-03-01` to `2027-05-31` | Refused: overlaps `2027 Q1`. A Monthly period inside Q1 is accepted (different type), and so is a Quarterly period for another company | Pending |
+| KPI-12 | − | A Closed period is final | Edit `2027 Q1` after it is Closed; save results on one of its scorecards | Both refused (409). Reports still show its scorecards | Pending |
+
+### 17.2 Assignments and plan
+
+| ID | Type | Scenario and steps | Example data | Expected result | Status |
+|---|---|---|---|---|---|
+| KPI-13 | + | Assign KPIs to one employee | EMP046, `2027 Q1`: `TST-SALES` 40, `TST-DEFECT` 35, `TST-RATE` 25 | The scorecard is created in Planning with three items. The target and weight default from the template and can be changed per item | Pending |
+| KPI-14 | − | Duplicate assignment | Assign `TST-SALES` to EMP046 in `2027 Q1` again | Refused: already assigned. One scorecard per employee and period | Pending |
+| KPI-15 | + | Bulk assignment by department | `TST-CODE` to every employee of ENG for `2027 Q1` | A result list: assigned employees, and skipped employees with the reason (already assigned, has left, other company). Re-running assigns nobody twice | Pending |
+| KPI-16 | − | Ineligible employees | EMP044 Tun Tun Naing (Terminated); an employee of `AHL` for an `AHT` period; an inactive template | Each refused with its reason; nothing is created for them | Pending |
+| KPI-17 | − | Finalize a plan that is not 100% | EMP046 with weights 40 and 35 only | Refused: "The KPI weights must add up to 100%. They add up to 75.00%." Stays in Planning | Pending |
+| KPI-18 | B | Weight total boundaries | Totals 99.99, 100.00 and 100.01 | Only 100.00 finalizes | Pending |
+| KPI-19 | + | Finalize the plan | EMP046 at 40, 35, 25 | Status Draft. The reviewer is set to EMP005 Daniel Carter (his manager). The history shows "Finalize Plan" with the HR user's name | Pending |
+| KPI-20 | + | A template edit does not change the scorecard | After KPI-19, change `TST-SALES` target to 200 | EMP046's item keeps target 100. New assignments use 200 | Pending |
+
+### 17.3 Employee submission
+
+| ID | Type | Scenario and steps | Example data | Expected result | Status |
+|---|---|---|---|---|---|
+| KPI-21 | + | View my KPIs and save a draft. Sign in as EMP046, open My KPIs | Actuals 85 and 8, no rating yet; comment `Fictional comment` | Targets and weights shown read-only. Draft saved; the achievement shown is the server's (85.00, 62.50). Nothing is submitted | Pending |
+| KPI-22 | − | Submit with a missing result | The draft of KPI-21 (rating missing) | Refused, pointing at the missing KPI. Status stays Draft | Pending |
+| KPI-23 | + | Submit | Add rating 4, submit | Status Submitted. Weighted 34.00 + 21.88 + 20.00 = overall score 75.88, "Exceeds Expectations". Results are read-only after submitting | Pending |
+| KPI-24 | − | Measurement validation | Boolean KPI with actual 0.5; rating 6 of 5; Lower Is Better with actual −1 | Each refused on that item's actual value | Pending |
+| KPI-25 | + | Upload evidence | A fictional PDF of 200 KB on the `TST-SALES` item | Listed with name and size; downloadable by EMP046, EMP005 and HR | Pending |
+| KPI-26 | − | Evidence limits | A file of 10 MB plus 1 byte; a file type that is not allowed | Both refused; nothing is stored | Pending |
+| KPI-27 | − | **API**. Own records only. User linked to EMP056 with the starter `Employee` role. Call `GET /api/kpi/scorecards/{id}` and save results on EMP046's scorecard | EMP046's scorecard id | 404 for both, as if it did not exist. EMP056's own scorecard answers 200 | Pending. Manual (API) |
+
+### 17.4 Review and approval
+
+| ID | Type | Scenario and steps | Example data | Expected result | Status |
+|---|---|---|---|---|---|
+| KPI-28 | + | Manager review queue. Sign in as EMP005 (starter `Department Manager`), open Performance > Reviews | EMP046's Submitted scorecard | Listed. EMP056's scorecard is not listed | Pending |
+| KPI-29 | + | Start review and approve | Manager rating 4, comment `Fictional feedback`; period without HR review | Under Review, then Finalized directly. The history shows Start Review and Approve with the score at that time. EMP046 sees the feedback and the final score | Pending |
+| KPI-30 | − | Return and reject need a reason | Return with an empty comment; reject with spaces only | Both refused: "A reason is required." Status unchanged | Pending |
+| KPI-31 | + | Return and resubmit | Return with `Fictional reason`; EMP046 changes actual 85 to 95 and submits | Returned, then Resubmitted. The new score is calculated. The earlier result (85) stays in the history | Pending |
+| KPI-32 | + | Reject | Reject with `Fictional reason` | Rejected, final. No more submissions on it. Not counted in averages or rankings | Pending |
+| KPI-33 | − | Nobody reviews their own scorecard | Su Myat Noe (HR, EMP002) with her own Submitted scorecard | No Approve, Reject or Return on her own row. Sent anyway: refused (409) "You cannot review your own scorecard." | Pending |
+| KPI-34 | − | **API**. Manager outside the team. EMP005 calls `POST /api/kpi/scorecards/{id}/approve` for EMP056's Submitted scorecard | EMP056's scorecard | 404, as if it did not exist | Pending. Manual (API) |
+| KPI-35 | + | HR final review | Period with "HR review required" on; EMP005 approves EMP046 | Status Approved (not Finalized). HR finalizes with a comment → Finalized. The manager cannot finalize | Pending |
+| KPI-36 | − | Invalid transitions and duplicate approvals | Approve a Draft; submit a Finalized scorecard; approve twice from two browsers | Each refused (409). The second approval with the old `rowVersion` is refused as changed by someone else; one Approve is recorded | Pending |
+| KPI-37 | − | **API**. The review history cannot be changed. As `hrms_api`, try `UPDATE` or `DELETE` on `kpi.ReviewAction` in a local database | Any row | Refused by the database (DENY). There is no endpoint to change or remove history | Pending. Manual (API) |
+
+### 17.5 Dashboards, reports and history
+
+| ID | Type | Scenario and steps | Example data | Expected result | Status |
+|---|---|---|---|---|---|
+| KPI-38 | + | HR dashboard | `2027 Q1` after KPI-29 and KPI-32 | Employees with KPIs, assignments, completed evaluations, pending submissions and approvals, average score, completion rate, top performers and employees needing attention. Figures match the scorecard list. Rejected scorecards are excluded from averages | Pending |
+| KPI-39 | + | Manager dashboard | EMP005 | Only his team: pending reviews, approved evaluations, team average and a comparison chart | Pending |
+| KPI-40 | + | Employee dashboard | EMP046 | His KPIs, targets, actuals, achievement, overall score, pending submissions, feedback and history | Pending |
+| KPI-41 | + | Reports and filters | Department report for ENG and `2027 Q1`; ranking report; target vs actual | Rows match the scorecards. Filters (company, branch, department, position, employee, category, period, status) narrow the rows. A manager sees only the team | Pending |
+| KPI-42 | + | Department history after a transfer | Move EMP046 to another department after `2027 Q1` is finalized | The `2027 Q1` department report still lists him under ENG | Pending |
+| KPI-43 | + | Excel export and print | Export the ranking report; print the employee report | The workbook has the filtered rows only. Print opens the browser dialog (save as PDF there) | Pending |
+| KPI-44 | + | Activity entries | KPI-19, KPI-23, KPI-29 | Activity lines (category `performance`) name the scorecard by employee code and period, never the comments | Pending |
+
+### 17.6 Permissions
+
+| ID | Type | Scenario and steps | Example data | Expected result | Status |
+|---|---|---|---|---|---|
+| KPI-45 | − | **API**. Employee role cannot use setup | Starter `Employee` role (`kpi:View,Create`, no `kpi-setup`). Open Performance > Templates; call `POST /api/kpi/templates` | Setup screens are hidden and the route goes to `/forbidden`; the call answers 403 | Pending. Manual (API) |
+| KPI-46 | + | **API**. Starter grants on an existing database | Publish `feature/schema-kpi` to a database that already has roles. Open Settings > Permissions | KPI Setup and Performance are listed. HR Officer has `kpi-setup` all and `kpi:View,Create,Approve`; Department Manager `kpi:View,Create,Approve`; Employee, Payroll Officer and Recruiter `kpi:View,Create`; Auditor View only. A second publish does not re-add a grant that was removed | Pending. Manual (API) |
+| KPI-47 | − | Mock build does not enforce | Any user in the demo build | Every screen opens. Section 7 notes this | Pending |
 

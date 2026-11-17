@@ -18,6 +18,9 @@ public interface IRepository<TEntity>
 
     Task<IReadOnlyList<TEntity>> ListAsync(Expression<Func<TEntity, bool>> scope, CancellationToken cancellationToken);
 
+    /// <summary>Like <see cref="ListAsync"/> but the records are tracked, so changing them and saving writes the changes (a use case that edits many records of one parent).</summary>
+    Task<IReadOnlyList<TEntity>> ListForChangeAsync(Expression<Func<TEntity, bool>> scope, CancellationToken cancellationToken);
+
     Task<PagedResult<TEntity>> QueryAsync(EntityQuery<TEntity> query, CancellationToken cancellationToken);
 
     Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken);
@@ -28,4 +31,10 @@ public interface IRepository<TEntity>
 
     /// <summary>Makes the next save fail with a conflict if the stored row version differs from this one.</summary>
     void ExpectRowVersion(TEntity entity, byte[] rowVersion);
+
+    /// <summary>
+    /// Makes the next save write this audited record even when none of its own fields changed, so its row version moves. A parent
+    /// whose children are changed in the same save uses it to keep one concurrency token for the whole aggregate.
+    /// </summary>
+    void MarkModified(TEntity entity);
 }

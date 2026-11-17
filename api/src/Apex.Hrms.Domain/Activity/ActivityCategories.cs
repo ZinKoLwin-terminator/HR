@@ -12,10 +12,11 @@ public static class ActivityCategories
     public const string Leave = "leave";
     public const string Payroll = "payroll";
     public const string Recruitment = "recruitment";
+    public const string Performance = "performance";
     public const string System = "system";
 
     public static IReadOnlyList<string> All { get; } =
-        [Employee, Organization, Attendance, Leave, Payroll, Recruitment, System];
+        [Employee, Organization, Attendance, Leave, Payroll, Recruitment, Performance, System];
 
     public static bool IsValid(string? category) => category is not null && All.Contains(category, StringComparer.Ordinal);
 }

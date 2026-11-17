@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\Shared\EvidenceSamples.cs" Link="Fakes\EvidenceSamples.cs" />
   </ItemGroup>
 
 </Project>

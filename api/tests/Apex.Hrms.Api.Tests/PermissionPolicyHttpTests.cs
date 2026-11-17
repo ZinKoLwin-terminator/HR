@@ -57,6 +57,44 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
         { "GET", "/api/excel/modules", "excel:View" },
         { "POST", "/api/excel/imports/employees/validate", "excel:Import" },
         { "POST", "/api/excel/exports/employees", "excel:Export" },
+        { "GET", "/api/kpi/categories/query", "kpi-setup:View" },
+        { "POST", "/api/kpi/templates", "kpi-setup:Create" },
+        { "PUT", "/api/kpi/templates/1", "kpi-setup:Edit" },
+        { "DELETE", "/api/kpi/templates/1", "kpi-setup:Delete" },
+        { "POST", "/api/kpi/templates/1/deactivate", "kpi-setup:Edit" },
+        { "GET", "/api/kpi/periods/query", "kpi-setup:View" },
+        { "POST", "/api/kpi/periods", "kpi-setup:Create" },
+        { "DELETE", "/api/kpi/periods/1", "kpi-setup:Delete" },
+        { "POST", "/api/kpi/periods/1/activate", "kpi-setup:Edit" },
+        { "POST", "/api/kpi/periods/1/complete", "kpi-setup:Edit" },
+        { "POST", "/api/kpi/periods/1/close", "kpi-setup:Edit" },
+        // The period picker is for employees and managers: it needs the performance view, not the setup permission.
+        { "GET", "/api/kpi/periods/options", "kpi:View" },
+        { "GET", "/api/kpi/rating-bands/query", "kpi-setup:View" },
+        { "POST", "/api/kpi/rating-bands/1/activate", "kpi-setup:Edit" },
+        // Scorecard reads need the performance view (rows are scoped in the query); assigning and planning are HR work.
+        { "GET", "/api/kpi/scorecards/query", "kpi:View" },
+        { "GET", "/api/kpi/scorecards/1", "kpi:View" },
+        { "DELETE", "/api/kpi/scorecards/1", "kpi-setup:Delete" },
+        { "POST", "/api/kpi/scorecards/1/finalize-plan", "kpi-setup:Edit" },
+        { "POST", "/api/kpi/assignments", "kpi-setup:Create" },
+        { "POST", "/api/kpi/assignments/bulk", "kpi-setup:Create" },
+        { "PUT", "/api/kpi/scorecard-items/1", "kpi-setup:Edit" },
+        { "DELETE", "/api/kpi/scorecard-items/1", "kpi-setup:Edit" },
+        { "GET", "/api/kpi/my-scorecards", "kpi:View" },
+        { "PUT", "/api/kpi/scorecards/1/results", "kpi:Create" },
+        { "POST", "/api/kpi/scorecards/1/submit", "kpi:Create" },
+        { "GET", "/api/kpi/reviews/pending", "kpi:Approve" },
+        // Evidence files: add and remove are the employee's (kpi:Create, own scorecard decided in the application layer); download follows the scorecard read.
+        { "POST", "/api/kpi/scorecard-items/1/attachments", "kpi:Create" },
+        { "GET", "/api/kpi/attachments/1", "kpi:View" },
+        { "DELETE", "/api/kpi/attachments/1", "kpi:Create" },
+        { "PUT", "/api/kpi/scorecards/1/review", "kpi:Approve" },
+        { "POST", "/api/kpi/scorecards/1/start-review", "kpi:Approve" },
+        { "POST", "/api/kpi/scorecards/1/approve", "kpi:Approve" },
+        { "POST", "/api/kpi/scorecards/1/return", "kpi:Approve" },
+        { "POST", "/api/kpi/scorecards/1/reject", "kpi:Approve" },
+        { "POST", "/api/kpi/scorecards/1/finalize", "kpi:Approve" },
     };
 
     private HttpClient ClientWith(IEnumerable<string> grants, Action<IServiceCollection>? configure = null, bool markAuthorized = true)
@@ -129,6 +167,78 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
 
         Assert.Equal(HttpStatusCode.Forbidden, create.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, punch.StatusCode);
+    }
+
+    [Fact]
+    public async Task An_employee_role_with_the_performance_view_can_pick_a_period_but_cannot_read_the_setup()
+    {
+        string[] employeeRole = ["kpi:View", "kpi:Create"];
+        using var client = ClientWith(employeeRole);
+
+        var options = await SendAsync(client, "GET", "/api/kpi/periods/options");
+        var periods = await SendAsync(client, "GET", "/api/kpi/periods/query");
+        var templates = await SendAsync(client, "GET", "/api/kpi/templates/query");
+        var activate = await SendAsync(client, "POST", "/api/kpi/periods/1/activate");
+
+        Assert.Equal(HttpStatusCode.NoContent, options.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, periods.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, templates.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, activate.StatusCode);
+    }
+
+    [Fact]
+    public async Task An_employee_role_reads_scorecards_but_cannot_assign_or_plan_and_hr_setup_alone_cannot_read_them()
+    {
+        string[] employeeRole = ["kpi:View", "kpi:Create"];
+        using var employee = ClientWith(employeeRole);
+        string[] setupOnly = ["kpi-setup:View", "kpi-setup:Create", "kpi-setup:Edit", "kpi-setup:Delete"];
+        using var hr = ClientWith(setupOnly);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(employee, "GET", "/api/kpi/scorecards/query")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(employee, "GET", "/api/kpi/scorecards/1")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(employee, "POST", "/api/kpi/assignments")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(employee, "POST", "/api/kpi/assignments/bulk")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(employee, "PUT", "/api/kpi/scorecard-items/1")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(employee, "POST", "/api/kpi/scorecards/1/finalize-plan")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(hr, "POST", "/api/kpi/assignments")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(hr, "GET", "/api/kpi/scorecards/query")).StatusCode);
+    }
+
+    [Fact]
+    public async Task An_employee_role_submits_its_scorecard_but_cannot_review_and_a_manager_role_reviews_but_cannot_plan()
+    {
+        string[] employeeRole = ["kpi:View", "kpi:Create"];
+        string[] managerRole = ["kpi:View", "kpi:Create", "kpi:Approve"];
+        using var employee = ClientWith(employeeRole);
+        using var manager = ClientWith(managerRole);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(employee, "GET", "/api/kpi/my-scorecards")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(employee, "PUT", "/api/kpi/scorecards/1/results")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(employee, "POST", "/api/kpi/scorecards/1/submit")).StatusCode);
+
+        foreach (var review in new[] { "start-review", "approve", "return", "reject", "finalize" })
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(employee, "POST", $"/api/kpi/scorecards/1/{review}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(manager, "POST", $"/api/kpi/scorecards/1/{review}")).StatusCode);
+        }
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(employee, "PUT", "/api/kpi/scorecards/1/review")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(employee, "GET", "/api/kpi/reviews/pending")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(manager, "PUT", "/api/kpi/scorecards/1/review")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(manager, "GET", "/api/kpi/reviews/pending")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(manager, "POST", "/api/kpi/scorecards/1/finalize-plan")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(manager, "POST", "/api/kpi/assignments")).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_setup_permission_alone_does_not_open_the_period_picker()
+    {
+        string[] setupOnly = ["kpi-setup:View", "kpi-setup:Create", "kpi-setup:Edit", "kpi-setup:Delete"];
+        using var client = ClientWith(setupOnly);
+
+        var options = await SendAsync(client, "GET", "/api/kpi/periods/options");
+
+        Assert.Equal(HttpStatusCode.Forbidden, options.StatusCode);
     }
 
     [Theory]

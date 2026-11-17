@@ -166,13 +166,14 @@ public sealed class SchemaMappingTests : IDisposable
     {
         // ON DELETE CASCADE exists in the database only for the rows an employee owns, for the rows an identity user
         // owns (claims, logins, tokens), for the grants of a role, for the issues of an import batch and for the rows a payroll
-        // structure, run or payslip owns.
+        // structure, run or payslip owns, for the items of a scorecard and the attachments of an item (a KPI item cascades from its scorecard, not from the template or category it names).
         var cascading = new[]
         {
             typeof(EmployeeBankAccount), typeof(EmployeeDocument), typeof(EmploymentHistoryEntry), typeof(Apex.Hrms.Domain.Attendance.ShiftWorkDay),
             typeof(IdentityUserClaim<string>), typeof(IdentityUserLogin<string>), typeof(IdentityUserToken<string>),
             typeof(RoleGrant), typeof(Apex.Hrms.Domain.Excel.ImportIssue),
             typeof(Apex.Hrms.Domain.Payroll.SalaryStructureComponent), typeof(Apex.Hrms.Domain.Payroll.PayrollRunWarning), typeof(Apex.Hrms.Domain.Payroll.PayslipLine),
+            typeof(Apex.Hrms.Domain.Performance.ScorecardItem), typeof(Apex.Hrms.Domain.Performance.KpiAttachment),
         };
         foreach (var type in context.Model.GetEntityTypes().Where(type => !type.IsOwned()))
         {
@@ -180,6 +181,7 @@ public sealed class SchemaMappingTests : IDisposable
             Assert.All(type.GetForeignKeys(), key => Assert.Equal(
                 cascading.Contains(type.ClrType)
                     && (type.ClrType != typeof(Apex.Hrms.Domain.Payroll.SalaryStructureComponent) || key.PrincipalEntityType.ClrType == typeof(Apex.Hrms.Domain.Payroll.SalaryStructure))
+                    && (type.ClrType != typeof(Apex.Hrms.Domain.Performance.ScorecardItem) || key.PrincipalEntityType.ClrType == typeof(Apex.Hrms.Domain.Performance.Scorecard))
                     ? DeleteBehavior.Cascade
                     : DeleteBehavior.NoAction,
                 key.DeleteBehavior));

@@ -75,7 +75,13 @@ internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Pe
     public static readonly PermissionModule Excel = new("excel", [Permission.View, Permission.Import, Permission.Export]);
 
 
-    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Payroll, Recruitment, Dashboard, Activity, Settings, Excel];
+    /// <summary>KPI master data: categories, templates, evaluation periods and rating bands (HR). Sort order 11 in the database seed.</summary>
+    public static readonly PermissionModule KpiSetup = new("kpi-setup", Standard);
+
+    /// <summary>Performance: scorecards and the period picker. View, Create and Approve only (Approve reviews a scorecard); no Edit or Delete in the database seed. Sort order 12.</summary>
+    public static readonly PermissionModule Kpi = new("kpi", [Permission.View, Permission.Create, Permission.Approve]);
+
+    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Payroll, Recruitment, Dashboard, Activity, Settings, Excel, KpiSetup, Kpi];
 
     public string PolicyName(Permission permission) => $"{Key}:{permission}";
 }

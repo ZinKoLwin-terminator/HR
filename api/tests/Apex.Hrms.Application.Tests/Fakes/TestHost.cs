@@ -18,6 +18,7 @@ using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Leave;
 using Apex.Hrms.Domain.Organization;
 using Apex.Hrms.Domain.Payroll;
+using Apex.Hrms.Domain.Performance;
 using Apex.Hrms.Domain.Recruitment;
 using Apex.Hrms.Domain.Security;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,6 +50,7 @@ internal sealed class TestHost : IDisposable
         services.AddSingleton<INotificationStore>(Notifications);
         services.AddSingleton<IDashboardSource>(DashboardSource);
         services.AddSingleton(typeof(IRepository<>), typeof(InMemoryRepository<>));
+        services.AddSingleton<IReadModel>(sp => new FakeReadModel(sp));
         services.AddSingleton<IRecordCounter<EmployeeOrgLink>>(Employees);
         AddCounter<Company>(services);
         AddCounter<Branch>(services);
@@ -72,6 +74,11 @@ internal sealed class TestHost : IDisposable
         AddCounter<AppAccount>(services);
         AddCounter<SalaryAssignment>(services);
         AddCounter<Payslip>(services);
+        AddCounter<KpiTemplate>(services);
+        AddCounter<EvaluationPeriod>(services);
+        AddCounter<Scorecard>(services);
+        AddCounter<ScorecardItem>(services);
+        AddCounter<ReviewAction>(services);
         services.AddSingleton<IRecordCounter<SalaryStructureComponent>>(sp => new StructureComponentCounter((InMemoryRepository<SalaryStructure>)sp.GetRequiredService<IRepository<SalaryStructure>>()));
         services.AddSingleton<IPayrollRunOutput>(sp => new FakePayrollRunOutput(
             sp.GetRequiredService<IUnitOfWork>(),
@@ -81,6 +88,9 @@ internal sealed class TestHost : IDisposable
         services.AddSingleton<ILeaveApplicationNumberSequence>(LeaveNumbers);
         services.AddSingleton<IJobOpeningCodeSequence>(JobCodes);
         services.AddSingleton<IBusinessWeek>(Week);
+        services.AddSingleton<IEvidenceStorage>(EvidenceStorage);
+        services.AddSingleton(Logs);
+        services.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(CapturingLogger<>));
         services.TryAddSingleton<Apex.Hrms.Application.Settings.IAccountLogins>(new FakeAccountLogins());
         services.AddApplication();
         configure?.Invoke(services);
@@ -97,6 +107,12 @@ internal sealed class TestHost : IDisposable
     public FakeActivityLog ActivityLog { get; }
 
     public FakeNotificationStore Notifications { get; } = new();
+
+    /// <summary>Where evidence files are kept (in memory).</summary>
+    public FakeEvidenceStorage EvidenceStorage { get; } = new();
+
+    /// <summary>What the handlers logged.</summary>
+    public LogCapture Logs { get; } = new();
 
     public FakeDashboardSource DashboardSource { get; } = new();
 

@@ -483,3 +483,5 @@ $RECYCLE.BIN/
 
 # Local runtime data: development mail files (hold reset tokens) and Excel uploads, never commit
 App_Data/
+# KPI evidence files (HR records): never commit; see Kpi:EvidenceFolder in the README
+App_Data/kpi-evidence/

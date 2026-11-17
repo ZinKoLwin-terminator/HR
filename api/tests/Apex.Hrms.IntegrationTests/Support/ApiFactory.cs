@@ -30,6 +30,9 @@ internal sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Where the development mail sink of this host writes. Removed with the host.</summary>
     public string MailFolder { get; } = Path.Combine(Path.GetTempPath(), "hrms-it-mail-" + Guid.NewGuid().ToString("N"));
 
+    /// <summary>Where the evidence files of this host are kept: a private temporary folder, removed with the host (never <c>App_Data</c>).</summary>
+    public string EvidenceFolder { get; } = Path.Combine(Path.GetTempPath(), "hrms-it-evidence-" + Guid.NewGuid().ToString("N"));
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -38,6 +41,7 @@ internal sealed class ApiFactory : WebApplicationFactory<Program>
         // Host settings, not ConfigureAppConfiguration: the API reads these while it registers its services, before
         // the app configuration of a test host is applied.
         builder.UseSetting("Email:DevelopmentFolder", MailFolder);
+        builder.UseSetting("Kpi:EvidenceFolder", EvidenceFolder);
         builder.UseSetting("Auth:RateLimit:PermitsPerMinute", loginPermitsPerMinute.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.UseSetting("Auth:PasswordResetUrl", "https://app.example.test/reset-password");
         builder.ConfigureAppConfiguration((_, configuration) =>
@@ -61,6 +65,11 @@ internal sealed class ApiFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
+        if (disposing && Directory.Exists(EvidenceFolder))
+        {
+            Directory.Delete(EvidenceFolder, recursive: true);
+        }
+
         if (disposing && Directory.Exists(MailFolder))
         {
             Directory.Delete(MailFolder, recursive: true);

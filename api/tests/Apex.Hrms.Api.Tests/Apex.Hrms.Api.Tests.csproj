@@ -16,6 +16,7 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Compile Include="..\Shared\BrowserHandler.cs" Link="Support\BrowserHandler.cs" />
+    <Compile Include="..\Shared\EvidenceSamples.cs" Link="Support\EvidenceSamples.cs" />
   </ItemGroup>
 
 </Project>

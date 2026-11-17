@@ -14,6 +14,11 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\Shared\EvidenceSamples.cs" Link="Performance\EvidenceSamples.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\docs\test-data\kpi-calculation-cases.json" Link="TestData\kpi-calculation-cases.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -2,6 +2,10 @@ using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Leave.Applications;
 using Apex.Hrms.Application.Leave.LeavePolicies;
 using Apex.Hrms.Application.Leave.LeaveTypes;
+using Apex.Hrms.Application.Performance.Categories;
+using Apex.Hrms.Application.Performance.Periods;
+using Apex.Hrms.Application.Performance.RatingBands;
+using Apex.Hrms.Application.Performance.Templates;
 using Apex.Hrms.Application.Organization.Branches;
 using Apex.Hrms.Application.Organization.Companies;
 using Apex.Hrms.Application.Organization.Departments;
@@ -420,6 +424,100 @@ public sealed class Requests(string tag)
 
     /// <summary>The name of a test holiday: it starts with the tag followed by a dash, as the cleanup expects.</summary>
     public string HolidayName(string text = "holiday") => $"{tag}-{text}";
+
+    /// <summary>A valid KPI category; the code and the name carry the tag.</summary>
+    public KpiCategoryCreateRequest KpiCategory(string code = "PROD", string name = "Productivity", string status = "Active") =>
+        new(Code(code), Name(name), Description: null, status);
+
+    public static KpiCategoryUpdateRequest KpiCategoryUpdate(KpiCategoryDto current, string? description = null) =>
+        new(current.Code, current.Name, description ?? current.Description, Version(current.RowVersion));
+
+    /// <summary>A valid higher-is-better number KPI scored as a direct percentage; the code and the name carry the tag.</summary>
+    public KpiTemplateCreateRequest KpiTemplate(
+        int categoryId,
+        string code = "S-01",
+        string name = "Monthly sales",
+        int? departmentId = null,
+        string measurement = "Number",
+        string direction = "Higher Is Better",
+        string scoring = "Direct Percentage",
+        decimal target = 100m,
+        decimal? rangeMin = null,
+        decimal? rangeMax = null,
+        decimal? maxRating = null,
+        decimal weight = 20m,
+        decimal? cap = null,
+        string status = "Active") => new(
+        Code(code),
+        Name(name),
+        Description: null,
+        categoryId,
+        departmentId,
+        measurement,
+        Unit: null,
+        direction,
+        scoring,
+        target,
+        rangeMin,
+        rangeMax,
+        maxRating,
+        weight,
+        cap,
+        "Monthly",
+        status);
+
+    public static KpiTemplateUpdateRequest KpiTemplateUpdate(KpiTemplateDto current, string? name = null, decimal? target = null, decimal? weight = null) => new(
+        current.Code,
+        name ?? current.Name,
+        current.Description,
+        current.CategoryId,
+        current.DepartmentId,
+        current.MeasurementType,
+        current.Unit,
+        current.Direction,
+        current.ScoringMethod,
+        target ?? current.DefaultTarget,
+        current.RangeMin,
+        current.RangeMax,
+        current.MaxRating,
+        weight ?? current.DefaultWeight,
+        current.MaxAchievementPct,
+        current.Frequency,
+        Version(current.RowVersion));
+
+    /// <summary>A valid evaluation period of a company; the name carries the tag.</summary>
+    public EvaluationPeriodCreateRequest Period(
+        int companyId,
+        string name = "2026 Q4",
+        string type = "Quarterly",
+        string start = "2026-10-01",
+        string end = "2026-12-31",
+        string? due = "2027-01-10",
+        bool hr = false) => new(
+        companyId,
+        Name(name),
+        type,
+        DateOnly.Parse(start, System.Globalization.CultureInfo.InvariantCulture),
+        DateOnly.Parse(end, System.Globalization.CultureInfo.InvariantCulture),
+        due is null ? null : DateOnly.Parse(due, System.Globalization.CultureInfo.InvariantCulture),
+        hr);
+
+    public static EvaluationPeriodUpdateRequest PeriodUpdate(EvaluationPeriodDto current, string? name = null, DateOnly? end = null, DateOnly? due = null) => new(
+        current.CompanyId,
+        name ?? current.Name,
+        current.PeriodType,
+        current.StartDate,
+        end ?? current.EndDate,
+        due ?? current.SubmissionDueDate,
+        current.RequiresHrReview,
+        Version(current.RowVersion));
+
+    /// <summary>A valid rating band; the label carries the tag. The default scores are far above the seeded bands (0 to 90).</summary>
+    public RatingBandCreateRequest RatingBand(string label = "Test band", decimal minScore = 401.25m, string status = "Active") =>
+        new(Name(label), minScore, Description: null, status);
+
+    public static RatingBandUpdateRequest RatingBandUpdate(RatingBandDto current, decimal? minScore = null) =>
+        new(current.Label, minScore ?? current.MinScore, current.Description, Version(current.RowVersion));
 
     private string Code(string suffix) => $"{tag}-{suffix}";
 

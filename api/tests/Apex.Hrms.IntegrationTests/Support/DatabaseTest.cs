@@ -5,6 +5,11 @@ using Apex.Hrms.Application.Leave.Applications;
 using Apex.Hrms.Application.Leave.LeavePolicies;
 using Apex.Hrms.Application.Leave.LeaveTypes;
 using Apex.Hrms.Application.Organization;
+using Apex.Hrms.Application.Performance.Categories;
+using Apex.Hrms.Application.Performance.Periods;
+using Apex.Hrms.Application.Performance.RatingBands;
+using Apex.Hrms.Application.Performance.Scorecards;
+using Apex.Hrms.Application.Performance.Templates;
 using Apex.Hrms.Application.Organization.Branches;
 using Apex.Hrms.Application.Organization.Companies;
 using Apex.Hrms.Application.Organization.Departments;
@@ -172,6 +177,22 @@ public abstract class DatabaseTest : IAsyncLifetime
 
     protected Task<Result<LeaveApplicationDto>> Update(int id, LeaveApplicationUpdateRequest request) => UpdateAsync<LeaveApplicationUpdateRequest, LeaveApplicationDto>(id, request);
 
+    protected Task<Result<KpiCategoryDto>> Create(KpiCategoryCreateRequest request) => CreateAsync<KpiCategoryCreateRequest, KpiCategoryDto>(request);
+
+    protected Task<Result<KpiTemplateDto>> Create(KpiTemplateCreateRequest request) => CreateAsync<KpiTemplateCreateRequest, KpiTemplateDto>(request);
+
+    protected Task<Result<EvaluationPeriodDto>> Create(EvaluationPeriodCreateRequest request) => CreateAsync<EvaluationPeriodCreateRequest, EvaluationPeriodDto>(request);
+
+    protected Task<Result<RatingBandDto>> Create(RatingBandCreateRequest request) => CreateAsync<RatingBandCreateRequest, RatingBandDto>(request);
+
+    protected Task<Result<KpiCategoryDto>> Update(int id, KpiCategoryUpdateRequest request) => UpdateAsync<KpiCategoryUpdateRequest, KpiCategoryDto>(id, request);
+
+    protected Task<Result<KpiTemplateDto>> Update(int id, KpiTemplateUpdateRequest request) => UpdateAsync<KpiTemplateUpdateRequest, KpiTemplateDto>(id, request);
+
+    protected Task<Result<EvaluationPeriodDto>> Update(int id, EvaluationPeriodUpdateRequest request) => UpdateAsync<EvaluationPeriodUpdateRequest, EvaluationPeriodDto>(id, request);
+
+    protected Task<Result<RatingBandDto>> Update(int id, RatingBandUpdateRequest request) => UpdateAsync<RatingBandUpdateRequest, RatingBandDto>(id, request);
+
     protected Task<Result<PagedResult<TDto>>> Query<TDto, TFilter>(PageRequest<TFilter> request) =>
         InScopeAsync(sp => sp.GetRequiredService<IQueryHandler<TDto, TFilter>>().HandleAsync(request, default));
 
@@ -227,6 +248,52 @@ public abstract class DatabaseTest : IAsyncLifetime
         var draft = await SeedLeaveApplicationAsync(employeeId, leaveTypeId, start, end);
         return Succeeded(await RunCommand<SubmitLeaveCommand, LeaveApplicationDto>(new SubmitLeaveCommand(draft.Id, Requests.Version(draft.RowVersion))));
     }
+
+    protected async Task<KpiCategoryDto> SeedKpiCategoryAsync(string code = "PROD", string name = "Productivity") =>
+        Succeeded(await Create(Requests.KpiCategory(code, name)));
+
+    protected async Task<KpiTemplateDto> SeedKpiTemplateAsync(int categoryId, string code = "S-01", string name = "Monthly sales", int? departmentId = null) =>
+        Succeeded(await Create(Requests.KpiTemplate(categoryId, code, name, departmentId)));
+
+    protected async Task<EvaluationPeriodDto> SeedPeriodAsync(
+        int companyId,
+        string name = "2026 Q4",
+        string type = "Quarterly",
+        string start = "2026-10-01",
+        string end = "2026-12-31") =>
+        Succeeded(await Create(Requests.Period(companyId, name, type, start, end)));
+
+    protected async Task<RatingBandDto> SeedRatingBandAsync(string label = "Test band", decimal minScore = 401.25m) =>
+        Succeeded(await Create(Requests.RatingBand(label, minScore)));
+
+    // ---- KPI scorecards: planning and reading through the real handlers. ----
+
+    /// <summary>A period of a company that is already Active, so KPIs can be assigned in it.</summary>
+    protected async Task<EvaluationPeriodDto> SeedActivePeriodAsync(
+        int companyId,
+        string name = "2026 Q4",
+        string type = "Quarterly",
+        string start = "2026-10-01",
+        string end = "2026-12-31")
+    {
+        var draft = await SeedPeriodAsync(companyId, name, type, start, end);
+        return Succeeded(await RunCommand<ActivatePeriodCommand, EvaluationPeriodDto>(new ActivatePeriodCommand(draft.Id, Requests.Version(draft.RowVersion))));
+    }
+
+    protected static AssignmentItemRequest ItemOf(int templateId, decimal? target = null, decimal? weight = null, DateOnly? start = null, DateOnly? end = null, int? sortOrder = null) =>
+        new(templateId, target, weight, start, end, sortOrder);
+
+    protected Task<Result<AssignmentResult>> Assign(int employeeId, int periodId, params AssignmentItemRequest[] items) =>
+        InScopeAsync(sp => sp.GetRequiredService<IAssignKpiHandler>().HandleAsync(new AssignKpiRequest(employeeId, periodId, items), default));
+
+    protected Task<Result<BulkAssignmentResult>> AssignBulk(BulkAssignKpiRequest request) =>
+        InScopeAsync(sp => sp.GetRequiredService<IBulkAssignKpiHandler>().HandleAsync(request, default));
+
+    protected async Task<ScorecardDetailDto> SeedScorecardAsync(int employeeId, int periodId, params AssignmentItemRequest[] items) =>
+        Succeeded(await Assign(employeeId, periodId, items)).Scorecard;
+
+    protected Task<Result<ScorecardDetailDto>> FinalizePlan(ScorecardDetailDto scorecard, string? rowVersion = null) =>
+        RunCommand<FinalizePlanCommand, ScorecardDetailDto>(new FinalizePlanCommand(scorecard.Id, rowVersion ?? Requests.Version(scorecard.RowVersion)));
 
     protected static T Succeeded<T>(Result<T> result)
     {

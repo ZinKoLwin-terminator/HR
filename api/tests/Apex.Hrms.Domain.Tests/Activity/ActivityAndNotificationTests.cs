@@ -15,6 +15,7 @@ public sealed class ActivityLogEntryTests
     [InlineData("leave")]
     [InlineData("payroll")]
     [InlineData("recruitment")]
+    [InlineData("performance")]
     [InlineData("system")]
     public void Every_category_of_the_database_check_is_accepted(string category)
     {

@@ -17,6 +17,10 @@ public sealed class SqlConflictsTests
     [InlineData(2627, "UQ_Branch_Code", "code", true)]
     [InlineData(2627, "UQ_Position_Code", "code", true)]
     [InlineData(2601, "UQ_Company_Name", "name", false)]
+    [InlineData(2627, "UQ_Category_Code", "code", true)]
+    [InlineData(2627, "UQ_Category_Name", "name", true)]
+    [InlineData(2627, "UQ_Template_Code", "code", true)]
+    [InlineData(2627, "UQ_RatingBand_Label", "label", true)]
     public void A_unique_violation_is_a_validation_error_on_the_field_named_by_the_constraint(
         int number,
         string constraint,
@@ -32,6 +36,39 @@ public sealed class SqlConflictsTests
         Assert.Equal([$"{char.ToUpperInvariant(field[0])}{field[1..]} must be unique."], error.FieldErrors[field]);
         Assert.DoesNotContain("SECRET-VALUE", error.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("SECRET-VALUE", error.FieldErrors[field][0], StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("UQ_EvaluationPeriod_CompanyId_Name", "name", "Period name must be unique within the company.")]
+    [InlineData("UQ_RatingBand_MinScore", "minScore", "Minimum score must be unique.")]
+    public void Kpi_unique_constraints_with_their_own_wording_are_validation_errors_on_their_field(string constraint, string field, string message)
+    {
+        var error = SqlConflicts.Translate(2627, DuplicateKey.Replace("{0}", constraint, StringComparison.Ordinal))!;
+
+        Assert.Equal(ErrorType.Validation, error.Type);
+        Assert.Equal([field], error.FieldErrors!.Keys);
+        Assert.Equal([message], error.FieldErrors[field]);
+        Assert.DoesNotContain("SECRET-VALUE", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("UQ_Scorecard_EmployeeId_PeriodId", "already has a scorecard")]
+    [InlineData("UQ_ScorecardItem_ScorecardId_TemplateId", "was just assigned")]
+    public void The_scorecard_races_are_conflicts_that_never_show_the_value(string constraint, string wording)
+    {
+        var error = SqlConflicts.Translate(2627, DuplicateKey.Replace("{0}", constraint, StringComparison.Ordinal))!;
+
+        Assert.Equal(ErrorType.Conflict, error.Type);
+        Assert.Contains(wording, error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("SECRET-VALUE", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_scorecard_whose_reviewer_is_the_employee_is_a_conflict()
+    {
+        var error = SqlConflicts.Translate(547, "The INSERT statement conflicted with the CHECK constraint \"CK_Scorecard_NotOwnReviewer\".")!;
+
+        Assert.Equal(ErrorType.Conflict, error.Type);
     }
 
     [Theory]
@@ -76,6 +113,13 @@ public sealed class SqlConflictsTests
     [InlineData("CK_Position_Headcount", "headcount")]
     [InlineData("CK_JobGrade_SalaryBand", "maxSalary")]
     [InlineData("CK_Position_ReportsToNotSelf", "reportsToPositionId")]
+    [InlineData("CK_Template_LowerCapped", "maxAchievementPct")]
+    [InlineData("CK_Template_Capped", "maxAchievementPct")]
+    [InlineData("CK_Template_Rating", "maxRating")]
+    [InlineData("CK_Template_Range", "rangeMax")]
+    [InlineData("CK_Template_DefaultTarget", "defaultTarget")]
+    [InlineData("CK_EvaluationPeriod_DateOrder", "endDate")]
+    [InlineData("CK_RatingBand_MinScore", "minScore")]
     public void A_check_violation_is_a_validation_error_on_the_guarded_field(string constraint, string field)
     {
         var error = SqlConflicts.Translate(

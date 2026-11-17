@@ -5,6 +5,7 @@ using Apex.Hrms.Api.Hosting;
 using Apex.Hrms.Application;
 using Apex.Hrms.Infrastructure;
 using Apex.Hrms.Infrastructure.Email;
+using Apex.Hrms.Infrastructure.Evidence;
 using Apex.Hrms.Infrastructure.Excel;
 
 // A command line tool, never an HTTP endpoint: it builds its own host and never starts the web server.
@@ -22,6 +23,7 @@ builder.Services
     .AddInfrastructure(builder.Configuration)
     .AddEmailSender(builder.Configuration, builder.Environment.IsDevelopment(), builder.Environment.ContentRootPath)
     .AddExcelUploadFolder(builder.Configuration, builder.Environment.ContentRootPath)
+    .AddEvidenceStorage(builder.Configuration, builder.Environment.ContentRootPath)
     .AddHrmsDataProtection(builder.Configuration, builder.Environment.ContentRootPath)
     .AddHrmsForwardedHeaders(builder.Configuration)
     .AddApi(builder.Configuration, builder.Environment);
@@ -39,6 +41,7 @@ app.MapAuthEndpoints();
 app.MapOrganizationEndpoints();
 app.MapEmployeeEndpoints();
 app.MapLeaveEndpoints();
+app.MapKpiEndpoints();
 app.MapAttendanceEndpoints();
 app.MapPayrollEndpoints();
 app.MapEmployeeDocumentEndpoints();

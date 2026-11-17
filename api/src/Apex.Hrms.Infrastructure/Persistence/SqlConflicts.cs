@@ -40,6 +40,14 @@ internal static partial class SqlConflicts
         ["CK_LeaveApplication_DateOrder"] = "endDate",
         ["CK_LeaveApplication_HalfDay"] = "endDate",
         ["CK_LeaveApplication_RejectionReason"] = "remarks",
+        ["CK_Template_DefaultTarget"] = "defaultTarget",
+        ["CK_Template_Capped"] = "maxAchievementPct",
+        ["CK_Template_Uncapped"] = "maxAchievementPct",
+        ["CK_Template_LowerCapped"] = "maxAchievementPct",
+        ["CK_Template_Rating"] = "maxRating",
+        ["CK_Template_Boolean"] = "scoringMethod",
+        ["CK_Template_Range"] = "rangeMax",
+        ["CK_EvaluationPeriod_DateOrder"] = "endDate",
     };
 
     // Unique indexes and checks whose name does not end in a field, or that are conflicts rather than bad input.
@@ -80,6 +88,20 @@ internal static partial class SqlConflicts
             "Another assignment starts on this date."),
         ["CK_PayrollRun_ApproverNotProcessor"] = AppError.Conflict(
             "You processed this payroll period, so you cannot approve it. Another approver must do it."),
+        ["UQ_EvaluationPeriod_CompanyId_Name"] = AppError.Validation(
+            "A period with that name already exists in this company.",
+            "name",
+            "Period name must be unique within the company."),
+        ["UQ_RatingBand_MinScore"] = AppError.Validation(
+            "A rating band with that minimum score already exists.",
+            "minScore",
+            "Minimum score must be unique."),
+        ["UQ_Scorecard_EmployeeId_PeriodId"] = AppError.Conflict(
+            "This employee already has a scorecard for this period. Reload and try again."),
+        ["UQ_ScorecardItem_ScorecardId_TemplateId"] = AppError.Conflict(
+            "A KPI of this template was just assigned to the scorecard. Reload and try again."),
+        ["CK_Scorecard_NotOwnReviewer"] = AppError.Conflict(
+            "An employee cannot review their own scorecard."),
         ["UQ_OvertimeRecord_EmployeeId_Date"] = AppError.Validation(
             "Overtime is already recorded for this employee on that date.",
             "date",

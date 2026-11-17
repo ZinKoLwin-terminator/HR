@@ -4,6 +4,7 @@ using Apex.Hrms.Domain.Attendance;
 using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Leave;
 using Apex.Hrms.Domain.Payroll;
+using Apex.Hrms.Domain.Performance;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Apex.Hrms.Application.Security;
@@ -63,6 +64,28 @@ internal sealed class SalaryAssignmentScope(SelfService self) : IAccessScope<Sal
         self.SalaryRows<SalaryAssignment>(ids => assignment => ids.Contains(assignment.EmployeeId));
 }
 
+/// <summary>
+/// KPI scorecards (module <c>kpi</c>, like leave): <c>kpi:Approve</c> with <c>employees:Edit</c> sees every scorecard (HR staff),
+/// <c>kpi:Approve</c> alone the caller's own, those of their direct reports and every scorecard they were made the reviewer of
+/// (managers), anyone else only their own. The reviewer is fixed when the plan is finalized: a manager who later stops being the
+/// employee's manager still sees and reviews it, while the new manager sees it (a direct report) but cannot review it; only
+/// scorecards finalized after the change name the new manager. Applied by the scorecard reads and by every submission and review action. The HR writes of the plan
+/// (<c>kpi-setup</c>) are not scoped: HR plans every employee's scorecard. Items have no scope of their own: they are read through
+/// their scorecard.
+/// </summary>
+internal sealed class ScorecardScope(SelfService self) : IAccessScope<Scorecard>
+{
+    public Expression<Func<Scorecard, bool>> PredicateFor(ICurrentUser user)
+    {
+        if (self.TierOf("kpi") == AccessTier.Team && user.EmployeeId is { } own)
+        {
+            return self.Rows<Scorecard>("kpi", ids => scorecard => ids.Contains(scorecard.EmployeeId) || scorecard.ReviewerEmployeeId == own);
+        }
+
+        return self.Rows<Scorecard>("kpi", ids => scorecard => ids.Contains(scorecard.EmployeeId));
+    }
+}
+
 internal static class OwnRecordScopeExtensions
 {
     public static IServiceCollection AddOwnRecordScopes(this IServiceCollection services) => services
@@ -73,5 +96,6 @@ internal static class OwnRecordScopeExtensions
         .AddScoped<IAccessScope<Employee>, EmployeeAccessScope>()
         .AddScoped<IAccessScope<EmployeeDocument>, EmployeeDocumentScope>()
         .AddScoped<IAccessScope<Payslip>, PayslipScope>()
-        .AddScoped<IAccessScope<SalaryAssignment>, SalaryAssignmentScope>();
+        .AddScoped<IAccessScope<SalaryAssignment>, SalaryAssignmentScope>()
+        .AddScoped<IAccessScope<Scorecard>, ScorecardScope>();
 }

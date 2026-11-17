@@ -42,6 +42,7 @@ For production settings, hosting notes and the go-live checklist see [`docs/DEPL
 | `Email:Smtp:Port` (587), `Email:Smtp:EnableSsl` (true), `Email:Smtp:FromName` | Optional. |
 | `Email:Smtp:UserName`, `Email:Smtp:Password` | Optional pair (both or neither). **Environment variables or user secrets only**, never an appsettings file. |
 | `DataProtection:KeysPath` | Directory where the data protection key ring (session cookie, antiforgery, reset tokens) is stored. Default `App_Data/keys` under the content root; a relative value starts at the content root. Protect it like a secret (see "Authentication"). |
+| `Kpi:EvidenceFolder` | Directory where the KPI evidence files (uploads on scorecard items) are kept **permanently**. Default `App_Data/kpi-evidence` under the content root; a relative value starts at the content root. The files are HR records: keep the folder outside any web root and never serve it, give the API's account (and nobody else) read and write access, back it up together with the database (a restored database without its files has attachments that answer `404`), and keep it out of git (`App_Data/kpi-evidence/` is ignored). See "HTTP contract (KPI evidence attachments)". |
 | `Hosting:ForwardedHeaders:Enabled` | Behind a reverse proxy, take the client IP and scheme from `X-Forwarded-For` and `X-Forwarded-Proto` (default `false`, so local development is unchanged). The client IP feeds the sign-in rate limit and lockout, the scheme feeds HTTPS redirection and secure cookies. When enabled, `UseForwardedHeaders` runs first in the pipeline with a forward limit of 1 and trusts only the proxies below; enabling it with neither list filled stops startup. |
 | `Hosting:ForwardedHeaders:KnownProxies` | List of trusted proxy IP addresses (for example `["10.0.0.5"]`; as environment variables `Hosting__ForwardedHeaders__KnownProxies__0`). An invalid address stops startup. |
 | `Hosting:ForwardedHeaders:KnownNetworks` | List of trusted proxy networks in CIDR form (for example `["10.0.0.0/8"]`). The framework's loopback defaults are removed: only these lists are trusted. |
@@ -118,6 +119,8 @@ Database errors that slip past the rules are translated by constraint name, neve
 | 547 CHECK `CK_<Table>_<Field>` | `400` Validation on that field |
 | 547 FOREIGN KEY / REFERENCE | `409` Conflict |
 | `UQ_LeavePolicy_ActiveGroup` | `400` Validation on `leaveTypeId` |
+| `UQ_EvaluationPeriod_CompanyId_Name`, `UQ_RatingBand_MinScore` | `400` Validation on `name` / `minScore` |
+| `UQ_Scorecard_EmployeeId_PeriodId`, `UQ_ScorecardItem_ScorecardId_TemplateId`, `CK_Scorecard_NotOwnReviewer` | `409` Conflict |
 | `UQ_LeaveApplication_ApplicationNo`, `CK_LeaveApplication_NotOwnApprover` | `409` Conflict |
 | THROW 51001-51004 (an approved payroll run and its payslips are locked, a paid run is final) | `409` Conflict |
 
@@ -357,6 +360,291 @@ basic plus earnings; deductions are fixed, a percentage of basic or of gross, pl
 net is gross minus deductions; every amount is rounded to 2 decimals (halves away from zero). Working days come from the
 configured weekend and the holidays. An employee without a salary assignment, or without a usable bank account (the payslip
 table requires a masked account), is skipped with a warning.
+
+## HTTP contract (KPI master data)
+
+Four resources under `/api/kpi`: categories, templates, evaluation periods and rating bands. Assigning KPIs and the scorecard
+plan are in "HTTP contract (KPI assignments)" below; submission, review, attachments, dashboards and reports are not part of this
+phase (`kpi.Attachment` is mapped but has no endpoint yet). Activity entries use the category `performance`. The KPI scoring
+itself (`KpiRule`, `KpiCalculator`, calculation version 1) lives in the domain and is not exposed here.
+
+Policies (checked against the role's grants, see "Permission check"): setup is the module `kpi-setup` with
+`View|Create|Edit|Delete` (HR); the period picker is the module `kpi` with `View` (everyone who uses scorecards:
+`kpi` also has `Create` and `Approve`: `Approve` decides the scorecard row scope, review routes come later). A caller with `kpi:View` only cannot read
+the setup, and `kpi-setup` alone does not open the picker. Every route needs a signed-in user (`401` otherwise).
+
+| Route | Policy | Body | Returns |
+| --- | --- | --- | --- |
+| `GET/POST /api/kpi/categories`, `GET /query`, `GET/PUT/DELETE /{id}`, `POST /{id}/activate` and `/deactivate` | `kpi-setup:` View / Create / View / View / Edit / Delete / Edit | as the organization resources | `KpiCategoryDto` |
+| `GET/POST /api/kpi/templates`, `GET /query`, `GET/PUT/DELETE /{id}`, `POST /{id}/activate` and `/deactivate` | as above | as the organization resources | `KpiTemplateDto` |
+| `GET/POST /api/kpi/rating-bands`, `GET /query`, `GET/PUT/DELETE /{id}`, `POST /{id}/activate` and `/deactivate` | as above | as the organization resources | `RatingBandDto` |
+| `GET/POST /api/kpi/periods`, `GET /query`, `GET/PUT/DELETE /{id}` | `kpi-setup:` View / Create / View / View / Edit / Delete | create fields (no status), update fields plus `rowVersion` | `EvaluationPeriodDto` |
+| `POST /api/kpi/periods/{id}/activate` | `kpi-setup:Edit` | `{ rowVersion }` | Draft to Active |
+| `POST /api/kpi/periods/{id}/complete` | `kpi-setup:Edit` | `{ rowVersion }` | Active to Completed |
+| `POST /api/kpi/periods/{id}/close` | `kpi-setup:Edit` | `{ rowVersion }` | Completed to Closed (final) |
+| `GET /api/kpi/periods/options?companyId?` | `kpi:View` | none | `EvaluationPeriodOptionDto[]`, periods that are not Draft, newest start first |
+
+The paging, `sort=field:asc|desc` whitelist (an unknown field is a `400` on `sort`), `search`, `rowVersion` and error rules
+are those of the organization module. Dates are `yyyy-MM-dd`; decimals travel as JSON numbers.
+
+* `KpiCategoryDto`: `id, code, name, description, status, rowVersion`. Create: `{ code, name, description?, status }`.
+  Code at most 20 characters (upper-case letters, digits and dashes, as every coded record), name at most 100 and unique,
+  description at most 300. Sort: `id, code, name, status`; filter: `status`; search: code or name.
+* `KpiTemplateDto`: `id, code, name, description, categoryId, departmentId, measurementType, unit, direction, scoringMethod,
+  defaultTarget, rangeMin, rangeMax, maxRating, defaultWeight, maxAchievementPct, frequency, status, rowVersion`. The four
+  text enums use the texts of the database CHECK constraints: `measurementType` `Number|Percentage|Currency|Hours|Rating|Boolean`;
+  `direction` `Higher Is Better|Lower Is Better|Exact Target|Range Based`; `scoringMethod` `Direct Percentage|Capped Percentage|Rating
+  Based|Boolean|Range Based`; `frequency` `Monthly|Quarterly|Half-Yearly|Yearly|Custom`. Create: the same fields without
+  `id`/`rowVersion`, plus `status`. Sort: `id, code, name, categoryId, defaultWeight, scoringMethod, frequency, status`; filters:
+  `status, categoryId, departmentId, scoringMethod`; search: code or name.
+  * **Shape (FluentValidation):** code at most 20, name at most 150, description at most 500, unit at most 20; known enum texts;
+    at most 4 decimals on the target, range and rating scale, 2 on the weight and the cap.
+  * **Scoring rule (domain, `KpiRule.Validate`, the same rules as the CHECK constraints), errors on the request field:** rating
+    scoring and the Rating measurement go together (`maxRating` above 0 only then); Boolean scoring and the Boolean measurement
+    go together; Range Based scoring and the Range Based direction go together (`rangeMin` above 0 and `rangeMax` above
+    `rangeMin` only then); Capped Percentage needs `maxAchievementPct`; Lower Is Better needs it too (a result of 0 scores the cap);
+    Direct Percentage must not have one; the cap is 1 to 500; `defaultTarget` is not negative and above 0 for Higher Is Better and
+    Exact Target (the target error is reported on `defaultTarget`); `defaultWeight` is above 0 and at most 100.
+  * **Other records:** the code is unique; `categoryId` must exist and be Active when the template is created or its category
+    changes (`400` on `categoryId`); `departmentId` is optional and must exist (`400` on `departmentId`).
+  * Editing a template never changes scorecard items already assigned from it: items hold their own copy of the code, name,
+    target, weight and scoring rules.
+  * **Delete protection:** a template with assigned KPIs (scorecard items) cannot be deleted (`409`, with the count).
+* `RatingBandDto`: `id, label, minScore, description, status, rowVersion`. Create: `{ label, minScore, description?, status }`.
+  Label at most 60 and unique, `minScore` 0 to 500 with at most 2 decimals and unique, description at most 300. Sort: `id, label,
+  minScore, status`; filter: `status`; search: label. A band's `minScore` is the lowest overall score that gets the label.
+* `EvaluationPeriodDto`: `id, companyId, name, periodType, startDate, endDate, submissionDueDate, requiresHrReview, status,
+  rowVersion`. `periodType` is a frequency text (`Monthly|Quarterly|Half-Yearly|Yearly|Custom`); `status` is
+  `Draft|Active|Completed|Closed`. Create: `{ companyId, name, periodType, startDate, endDate, submissionDueDate?,
+  requiresHrReview }` (always starts in Draft; there is no `status` field and a `status` in a PUT body is ignored). Sort: `id, name,
+  companyId, periodType, startDate, endDate, status`; filters: `companyId, periodType, status, year` (year of the start date);
+  search: name.
+  * **Dates:** `endDate` after `startDate` (`400` on `endDate`); `submissionDueDate`, when given, not before `startDate` (`400`
+    on `submissionDueDate`; it may be after `endDate`).
+  * **Company:** must exist, and be Active when the period is created or its company changes (`400` on `companyId`).
+  * **Name:** at most 100 characters, unique within the company (`400` on `name`; the same name may exist in another company).
+  * **No overlap:** two periods of the same type in the same company cannot share a day. Dates are inclusive, so a period that
+    starts on the day another ends overlaps it. A clash is `409` and the message names the period it clashes with and its dates.
+    Periods of another type or another company never clash. Checked on create and when the company, type or dates change.
+  * **Edits by status:** Draft: every field. Active: only `name` and `submissionDueDate`; any other change is `409` ("only its
+    name and submission due date can be changed"). Completed and Closed: no edit (`409`). `400` validation errors come before
+    these `409`s.
+  * **Commands:** `activate` (Draft to Active), `complete` (Active to Completed), `close` (Completed to Closed). A command out of
+    order is `409` naming the period and its status; a command is not idempotent. Each logs an activity entry
+    (`Evaluation period "X" activated|completed|closed`).
+  * **Delete:** only a Draft period, and only when no scorecard uses it (`409` with the status or the scorecard count). A
+    company with periods cannot be deleted (`409`).
+* `EvaluationPeriodOptionDto` (the picker): `id, name, companyId, periodType, startDate, endDate, status, requiresHrReview`; no
+  `rowVersion`. Only Active, Completed and Closed periods are listed; `companyId` narrows the list; unfiltered, every company.
+* **Other delete protection:** a category used by templates or assigned KPIs, and a department used by templates, cannot be
+  deleted (`409`, with the counts; the category and template wording ends in "Deactivate it instead.").
+* **Database errors** that slip past the rules: `UQ_Category_Code|Name`, `UQ_Template_Code`, `UQ_RatingBand_Label|MinScore` and
+  `UQ_EvaluationPeriod_CompanyId_Name` are `400` on `code`, `name`, `label`, `minScore` or `name`; every `CK_Template_*`,
+  `CK_EvaluationPeriod_*`, `CK_RatingBand_*` and `CK_Category_*` is `400` on the field it guards (for example
+  `CK_Template_LowerCapped` on `maxAchievementPct`); a foreign key violation is `409`. Never a `500`.
+* The tables `Template`, `EvaluationPeriod`, `Scorecard` and `ScorecardItem` are system-versioned: every change is kept in the
+  `*History` table (SQL Server owns it; the API never reads or writes it).
+
+## HTTP contract (KPI assignments)
+
+HR assigns KPI templates to employees for an evaluation period, plans a scorecard and finalizes the plan. A scorecard is one
+employee's KPI plan and result for one period (`kpi.Scorecard`), with its KPIs (`kpi.ScorecardItem`) and its review history
+(`kpi.ReviewAction`). This phase covers the status **Planning** and the move to **Draft**; submission and review (next section), attachments and
+later phases. Activity entries use the category `performance` and name an employee by code and a period by
+name, never a comment.
+
+| Route | Policy | Body | Returns |
+| --- | --- | --- | --- |
+| `GET /api/kpi/scorecards/query` | `kpi:View`, rows scoped (below) | filters `periodId, employeeId, departmentId, companyId, status`, `search`, `sort`, paging | `PagedResult<ScorecardDto>` |
+| `GET /api/kpi/scorecards/{id}` | `kpi:View`, scoped: out of scope is `404` | none | `ScorecardDetailDto` |
+| `POST /api/kpi/assignments` | `kpi-setup:Create` | `{ employeeId, periodId, items: [{ templateId, target?, weight?, startDate?, endDate?, sortOrder? }] }` (1 to 50 items) | `201` + `Location: /api/kpi/scorecards/{id}` when the call created the scorecard, `200` when it added items to the one in Planning; both return `ScorecardDetailDto` |
+| `POST /api/kpi/assignments/bulk` | `kpi-setup:Create` | `{ periodId, employeeIds?, departmentId?, branchId?, positionId?, jobGradeId?, items }` | `200` `{ assigned: [{ employeeId, employeeCode, scorecardId, itemsAdded }], skipped: [{ employeeId, employeeCode, reason }] }` |
+| `PUT /api/kpi/scorecard-items/{id}` | `kpi-setup:Edit` | `{ target, weight, startDate, endDate, sortOrder?, rowVersion }` | `200` `ScorecardItemDto` |
+| `DELETE /api/kpi/scorecard-items/{id}` | `kpi-setup:Edit` | `{ rowVersion }` | `204` |
+| `DELETE /api/kpi/scorecards/{id}` | `kpi-setup:Delete` | `{ rowVersion }` | `204` |
+| `POST /api/kpi/scorecards/{id}/finalize-plan` | `kpi-setup:Edit` | `{ rowVersion }` | `200` `ScorecardDetailDto` (status Draft) |
+
+* `ScorecardDto` (list): `id, employeeId, employeeCode, employeeName, periodId, periodName, departmentId, departmentName, status,
+  itemCount, totalWeight, overallScore, ratingLabel, reviewerEmployeeId, reviewerName, planFinalizedOn, submittedOn, finalizedOn,
+  rowVersion`. Only the employee code and name identify a person. `status` is `Planning|Draft|Submitted|Under
+  Review|Returned|Resubmitted|Approved|Rejected|Finalized`. Sort (`sort=field:asc|desc`, an unknown field is `400` on `sort`):
+  `id, employeeCode, employeeName, periodName, departmentName, status, overallScore, planFinalizedOn, modifiedAt`; `search`
+  (at most 100 characters) matches the employee code or name; an unknown `status` filter matches nothing. Every read is untracked and
+  projected: one query for the count, one for the page and one for the reviewers' names, whatever the page size.
+* `ScorecardDetailDto`: the list fields plus `items` (by `sortOrder`) and `history` (oldest first). `ScorecardItemDto`: `id,
+  templateId, categoryId, categoryName, kpiCode, kpiName, measurementType, unit, direction, scoringMethod, target, rangeMin,
+  rangeMax, maxRating, weight, maxAchievementPct, startDate, endDate, sortOrder, actualValue, employeeComment, achievementPct,
+  weightedScore, managerRating, managerComment, rowVersion` (texts as in the template). `ReviewActionDto`: `step`
+  (`Employee|Manager|HR`), `action` (`Finalize Plan`...), `fromStatus, toStatus, actorName, comment, overallScore, occurredAtUtc`.
+* **Scoping of reads.** The module `kpi` follows the leave tiers (`SelfService.TierOf("kpi")`): `kpi:Approve` **and** `employees:Edit`
+  (HR) sees every scorecard; `kpi:Approve` alone (a manager) sees their own and their direct reports' scorecards; anyone else
+  (an employee) only their own. The predicate is applied inside the query (`IAccessScope<Scorecard>`), so a scorecard outside it is
+  `404` on get and absent from the list, the total and every filter or search. A caller with no linked employee below the HR tier sees
+  nothing. Items have no scope of their own: they are read only through their scorecard.
+* **HR writes are not row-scoped.** The assignment, item and plan routes need only their `kpi-setup` permission and act on any
+  employee's scorecard (HR plans for everyone, like the other HR master operations); they never use the `kpi` tier. Nothing is trusted
+  from the body: the employee, period and templates are looked up and checked.
+* **Assignment rules** (the first failure is returned, in this order). Request shape (`400`, camel-case fields such as
+  `items[0].templateId`, `items[1].weight`): 1 to 50 items, `templateId` above 0, `target` not negative with at most 4 decimals,
+  `weight` above 0 and at most 100 with at most 2 decimals, `sortOrder` 0 to 32767, `endDate` not before `startDate`. Then the period
+  exists (`400` on `periodId`) and is **Draft or Active** (`409` when Completed or Closed); the employee exists (`400` on `employeeId`),
+  has no exit date, is not Resigned or Terminated, and belongs to the period's company (`400` on `employeeId`); each template exists and
+  is Active, appears once and, if it has a department, is the employee's department (`400` on `items[i].templateId`); dates default to
+  the period's and must lie within it (`items[i].startDate|endDate`); the snapshot rule must pass `KpiRule.Validate()` (an overridden
+  `target` of 0 on Higher Is Better is `400` on `items[i].target`); the weights together, with those already on the scorecard, cannot
+  exceed 100% (`400` on `items`, naming the total; they must add up to exactly 100% only at finalize). An existing scorecard must be in
+  Planning (`409`) and must not hold a requested template (`409` naming the KPI code).
+  * A new scorecard is created in Planning with `companyId, branchId, departmentId, positionId` copied from the employee **now** (the
+    scorecard keeps them if the employee moves later) and no reviewer. Each item copies its template (category, code, name,
+    measurement, unit, direction, scoring method, range, rating scale, cap); `target` and `weight` default to the template's
+    `defaultTarget` and `defaultWeight`; `sortOrder` defaults to the next free position (after the highest of the scorecard, in request
+    order). `assignedOn` is today (business time zone), `assignedByUserId` the caller. Editing the template later never changes the item.
+  * `201` versus `200`: `201` with a `Location` header means the call created the scorecard; `200` means it added items to a scorecard
+    that already existed. Both answer with the whole scorecard.
+* **Bulk assignment.** Exactly one selector kind: `employeeIds` (1 to 500; duplicates are ignored) **or** one or more of
+  `departmentId, branchId, positionId, jobGradeId` (combined with AND, current employees of the period's company only); both or neither
+  is `400` on `employeeIds`, more than 500 ids is `400` on `employeeIds`, and filters that match more than 500 employees are `400` on
+  `filters`. A bad request, period (`400` or `409`), template or item fails the whole call before anything is written. An
+  employee-level problem only **skips** that employee with a `reason`: not found (`employeeCode` is null), has left, other company,
+  department template mismatch, plan not in Planning, a requested KPI already assigned, weights above 100%. The employees, the existing
+  scorecards of the period and their items are loaded in set-based queries (never one query per employee). The scorecards and items of
+  the employees that pass are written in one transaction; the run records **one** activity entry (`KPIs assigned in bulk for "2026
+  Q4": 12 employee(s) assigned, 3 skipped`), and none when nobody was assigned. Running the same request again assigns nothing twice
+  (every employee is skipped as "already assigned").
+* **Item update** (`PUT`): only while the scorecard is Planning (`409` after), the period Draft or Active (`409`), dates within the
+  period, the rule re-validated with the new target (`400` on `target`), the weights of the scorecard at most 100% (`400` on `weight`).
+  The template snapshot fields are not editable. `sortOrder` keeps its value when left out. **Item delete** and **scorecard delete**:
+  only in Planning (`409` otherwise) and in any period state, so an abandoned plan can always be cleaned up; a scorecard with review
+  actions cannot be deleted (`409`); its items go with it.
+* **Finalize the plan** (`POST .../finalize-plan`): the scorecard must be in Planning, the period Draft or Active (`409`), and the item
+  weights must satisfy `KpiCalculator.ValidateWeights`: at least one KPI and a total of exactly 100% (`400` on `weights`, for example
+  "The KPI weights must add up to 100%. They add up to 75.00%."). It sets `reviewerEmployeeId` to the employee's **current** manager,
+  `planFinalizedOn` to today and the status to Draft, and appends a review action (`step` HR, `action` Finalize Plan, `Planning` to
+  `Draft`, the actor's account, linked employee (none for the built-in administrator) and display name, the time). **An employee without
+  a manager gets no reviewer**: only reviewers of the HR tier can review that scorecard later. A manager equal to the employee (a data
+  error) is refused with `409`.
+* **Concurrency.** Every change to a scorecard or item needs its `rowVersion` (`400` missing, `409` stale), checked again by the
+  database. On top of that every plan write (assign, bulk, item update and delete, scorecard delete, finalize) runs in a transaction that
+  holds the application lock `kpi-plan`, so a finalize never misses a KPI added at the same moment, two assignments cannot both pass the
+  100% check, and two finalize calls cannot both succeed (the second is `409`). Waiting for the lock lasts at most 15 seconds, then `409`.
+* **Database errors** that slip past the rules: `UQ_Scorecard_EmployeeId_PeriodId` and `UQ_ScorecardItem_ScorecardId_TemplateId` (a
+  race) are `409`, as is `CK_Scorecard_NotOwnReviewer`; the other `CK_Scorecard_*` and `CK_ScorecardItem_*` are validation errors; a foreign
+  key violation is `409`. `kpi.ReviewAction` is append-only: the API's database login has no UPDATE or DELETE on it (a test checks that
+  the deployed schema carries the DENY).
+* **Delete protection:** an employee that scorecards point at (as the scorecard's employee or its reviewer, or as the actor of a review
+  step) and a company, branch, department or position that scorecards copied cannot be deleted (`409` with the counts); branches,
+  departments and positions also cannot move under another parent while they have scorecards (the composite foreign keys forbid it).
+
+## HTTP contract (KPI submission and review)
+
+The employee enters results and submits a scorecard; the employee's manager (the reviewer) or HR reviews it. Every write body carries the
+scorecard's `rowVersion`; the status changes only through the commands below and every command answers `200` with the
+`ScorecardDetailDto` (which also carries `reviewedOn, periodStatus, submissionDueDate, requiresHrReview, employeeComment, managerRating,
+managerComment, hrComment`). One row version guards the whole scorecard: saving results or a review draft also moves it, so two
+concurrent writes on the same version give one `200` and one `409`.
+
+```
+Draft --submit--> Submitted --start-review--> Under Review --approve--> Approved --finalize (HR)--> Finalized
+Submitted / Resubmitted / Under Review --approve, period without HR review--> Finalized (at once)
+Submitted / Resubmitted / Under Review / Approved --return (reason)--> Returned --submit--> Resubmitted (then as Submitted)
+Submitted / Resubmitted / Under Review / Approved --reject (reason)--> Rejected   (final)
+```
+
+| Route | Policy | Body | Notes |
+| --- | --- | --- | --- |
+| `GET /api/kpi/my-scorecards` | `kpi:View` | filters, `sort`, paging | the caller's own scorecards except Planning, newest period first; no linked employee: empty page |
+| `PUT /api/kpi/scorecards/{id}/results` | `kpi:Create` | `{ rowVersion, employeeComment?, items: [{ id, actualValue?, employeeComment? }] }` | own employee only; Draft or Returned; period Active; saves a draft, no scorecard score |
+| `POST /api/kpi/scorecards/{id}/submit` | `kpi:Create` | `{ rowVersion }` | own employee only; Draft to Submitted, Returned to Resubmitted; period Active; every KPI needs a result |
+| `POST /api/kpi/scorecards/{id}/start-review` | `kpi:Approve` | `{ rowVersion }` | Submitted or Resubmitted to Under Review |
+| `PUT /api/kpi/scorecards/{id}/review` | `kpi:Approve` | `{ rowVersion, managerRating?, managerComment?, items: [{ id, managerRating?, managerComment? }] }` | Submitted, Resubmitted or Under Review; ratings 1 to 5, at most 2 decimals; no status change, no history |
+| `POST /api/kpi/scorecards/{id}/approve` | `kpi:Approve` | `{ rowVersion, comment? }` | manager stage; score recalculated on the server; period `requiresHrReview`: Approved, else Finalized |
+| `POST /api/kpi/scorecards/{id}/return` and `/reject` | `kpi:Approve` | `{ rowVersion, comment }` | comment required; manager stage (history step `Manager`) or Approved (step `HR`) |
+| `POST /api/kpi/scorecards/{id}/finalize` | `kpi:Approve`, HR tier | `{ rowVersion, comment? }` | Approved to Finalized; the comment is the HR comment |
+| `GET /api/kpi/reviews/pending` | `kpi:Approve` | filters `periodId, departmentId, status`, `search`, paging | oldest submission first |
+
+History: each command appends one `ReviewActionDto` (`step` Employee, Manager or HR; `action` `Submit`, `Resubmit`, `Start Review`,
+`Approve`, `Return`, `Reject`, `Finalize`) with the actor, the comment and the overall score at that time. Status texts: `Draft`,
+`Submitted`, `Under Review`, `Returned`, `Resubmitted`, `Approved`, `Rejected`, `Finalized`.
+
+* **Who may act.** Results and submit: only the scorecard's own employee (`ICurrentUser.EmployeeId`); someone else who can see the row
+  gets `403` "You can only enter results on your own scorecard." (submit: "You can only submit your own scorecard."), outside their
+  scope `404`. Nobody acts as reviewer on their own scorecard, whatever their grants: `409` "You cannot review your own scorecard.".
+  Manager stage: the scorecard's `reviewerEmployeeId` or the HR tier (`kpi:Approve` with `employees:Edit`, which includes the built-in
+  administrator); anyone else `403` "Only the employee's reviewer or HR can review this scorecard." (`404` when outside their scope). A
+  scorecard with no reviewer can only be reviewed by the HR tier. The reviewer is fixed when the plan is finalized: a manager who stops
+  being the employee's manager still reviews it, and the new manager sees it (direct report) but cannot review it.
+* **HR stage** (Approved: finalize, return, reject): HR tier only (`403` "Only HR can give the final review of a scorecard."), and not the
+  user who recorded the manager-stage approval (`409` "The person who approved this scorecard cannot also give the HR final review.").
+* **Period.** Results and submit need an Active period; review actions an Active or Completed one; a Draft or Closed period is `409`
+  for every write. A submission after the period's `submissionDueDate` is allowed; compare `submittedOn` with the due date to flag it.
+* **Validation.** Items must belong to the scorecard and appear once (`400` on `items[i].id`); an invalid result is `400` on
+  `items[i].actualValue` (Boolean must be 0 or 1, a rating within its scale, no negative when lower is better, at most 4 decimals);
+  comments at most 1000 characters; a missing result on submit is `400` on `items[i].actualValue` for each KPI (index in sort order). A
+  blank return or reject reason is `400` on `comment` "A reason is required.". A wrong status is `409` naming the current status; a stale
+  `rowVersion` is `409`.
+* **Scoring.** Only `KpiCalculator` scores: at submit and again at approve (from the stored results), with `calculationVersion` 1 and
+  the label of the active rating band the score reaches. Return clears the scorecard's score (the history entry keeps it); the earlier
+  figures of an item stay in the temporal `kpi.ScorecardItemHistory`.
+* **Review queue.** A manager sees manager-stage scorecards (Submitted, Resubmitted, Under Review) naming them reviewer; the HR tier sees
+  every manager-stage scorecard and every Approved one except those it approved itself; never the caller's own scorecard.
+* **Activity** entries (category `performance`) name the employee code and the period only, never a comment or a result.
+
+## HTTP contract (KPI evidence attachments)
+
+The employee attaches evidence (a PDF, an image, a Word or Excel file) to a KPI of their own scorecard. The database keeps metadata only
+(`kpi.Attachment`); the bytes live in the evidence folder (`Kpi:EvidenceFolder`, see Configuration) under a server-generated key. Every
+scorecard item in `ScorecardDetailDto.items[]` now carries `attachments: [{ id, fileName, contentType, sizeBytes, uploadedOn }]` (at most 5,
+oldest first, `[]` when none; filled in the scorecard detail only, loaded in one query for all items). The storage key is never exposed.
+
+| Route | Policy | Body | Answer |
+| --- | --- | --- | --- |
+| `POST /api/kpi/scorecard-items/{itemId}/attachments` | `kpi:Create`, the scorecard's own employee | `multipart/form-data`: text field `rowVersion` (the **scorecard's**) and exactly one file field named `file` | `201`, `Location: /api/kpi/attachments/{id}`, `{ attachment: { id, fileName, contentType, sizeBytes, uploadedOn }, scorecardRowVersion }` |
+| `GET /api/kpi/attachments/{id}` | `kpi:View`, whoever can see the scorecard | none | `200` the file (see headers below) |
+| `DELETE /api/kpi/attachments/{id}` | `kpi:Create`, the scorecard's own employee | JSON `{ "rowVersion": "..." }` (the scorecard's) | `200` `{ scorecardRowVersion }` |
+
+Both writes use the `X-XSRF-TOKEN` antiforgery header like every unsafe method; an upload without it is refused (`400`) before its body is
+read. Adding or removing a file changes the scorecard's row version (one token guards the whole scorecard): use the `scorecardRowVersion`
+of the answer for the next write, or reload the scorecard.
+
+* **Who and when.** Only the scorecard's own employee adds or removes evidence (someone else who can see the scorecard, a reviewer or HR
+  included, gets `403` "You can only add or remove evidence on your own scorecard."; outside their scope `404`). The scorecard must be Draft
+  or Returned (`409` otherwise) and its period Active (`409`), and the `rowVersion` current (`409`; missing or malformed: `400` on
+  `rowVersion`). The employee, the scorecard's reviewer and manager, and HR download (the scorecard scope of `GET /api/kpi/scorecards/{id}`:
+  anyone outside it gets `404`, also for an attachment id that does not exist). Evidence does not change the score and is not a workflow step.
+* **Limits.** At most 5 files per KPI (`409` "A KPI can have at most 5 evidence files. Remove one before adding another."). A file is 1 byte
+  to 10 MB (10,485,760 bytes; `400` on `file`, "The file is empty." and "The file is larger than 10 MB."). The whole request may be at most 11 MB
+  (the file limit plus multipart overhead): a request that declares more, or streams more, is cut off with `413` before it is buffered.
+* **Allowed types, decided by content.** PDF (`%PDF-`), PNG, JPEG, and Office Open XML (a ZIP that is really a Word document, with
+  `[Content_Types].xml` and `word/document.xml`, or an Excel workbook, with `xl/workbook.xml`) only as `.docx` or `.xlsx`. The extension must
+  agree with the content (`.pdf`, `.png`, `.jpg` or `.jpeg`, `.docx`, `.xlsx`; any case). The client's `Content-Type` is ignored: the stored
+  and served content type is the detected one (`application/pdf`, `image/png`, `image/jpeg`, the Word or Excel OOXML type). Anything else (an
+  executable, HTML, SVG, any other ZIP, a mismatched extension) is `400` on `file`: "Allowed evidence files are PDF, PNG, JPEG, Word (.docx)
+  and Excel (.xlsx), up to 10 MB."
+* **File name.** Only the last segment after `/` or `\` is kept; control characters, bidirectional overrides, line separators and
+  `< > : " | ? *` are removed; the name is trimmed and at most 260 characters (the extension is kept). A name with nothing left becomes
+  `evidence.<ext>`. The name is shown and used as the download name only: it is never part of a storage path, and it is never written to a log
+  or to the activity feed.
+* **Download.** `Content-Type` is the stored type, `Content-Disposition: attachment` with an RFC 6266 / 5987 encoded `filename` (never
+  `inline`), `X-Content-Type-Options: nosniff` and `Cache-Control: no-store` (the global headers). A record whose file is missing from the
+  folder is `404` and a warning with the attachment id only.
+* **Write order and failures.** Upload: the file is stored first under a new key (`Guid.NewGuid().ToString("N")`, 32 lower-case hex
+  characters, as the `CK_Attachment_StorageKey` check requires), then the row is saved together with the scorecard's new row version and
+  the activity line; if that save fails the stored file is deleted again. Delete: the row goes first (with the new row version), then the
+  file; a file that cannot be deleted is logged by attachment id and does not fail the request. A key read from the database is checked
+  against `^[0-9a-f]{32}$` before any path is built. Because the database cascades a deleted item to its attachments, a file can only be
+  orphaned by direct database work, never by the API (items are only deletable in Planning, where no evidence exists).
+* **Activity** (category `performance`): "Evidence added to the scorecard of EMP-0002 (Q4 2026)" and "Evidence removed from ...". Never the
+  file name.
+* **Errors.** `400` `file` (type, size, empty, not multipart, not exactly one `file` part), `400` `rowVersion`, `403` (not the owner), `404`
+  (item, attachment or scorecard not visible), `409` (stale `rowVersion`, status, period, 5 files per KPI), `413` (request too large).
+
+**Security note: there is no virus or malware scanning.** The API checks type, size and name and never executes or renders a file (every
+download is an attachment, with `nosniff`), but it cannot tell whether a PDF or an Office file carries malicious content. A production
+deployment should add, before going live: a malware scan of every upload (an antivirus or a scanning service, with the file held back until it
+is clean), encryption at rest for the evidence folder (disk or volume encryption) and for its backups, an access-controlled and monitored
+folder or an object store with private buckets, the removal of macros and active content from Office files (or a rejection of macro formats,
+which the allowed list already excludes), an agreed retention and deletion policy for evidence of employees who leave, and a reverse proxy
+request-size limit equal to the one above. Treat the downloads as untrusted content on the user's machine.
 
 ## HTTP contract (dashboard, activity and notifications)
 
@@ -727,6 +1015,7 @@ A caller's **team** is their own employee record plus their **direct reports**: 
 | Job openings, candidates, applications, interviews, the pipeline and counts | holds `recruitment:Edit` (Recruiter, HR Officer, HR Administrator) | not applicable (see below) | not applicable: a caller with only `recruitment:View` (Department Manager) sees the openings they are hiring manager of and what hangs on them; no linked employee means nothing |
 | `GET /api/me/payslips` | not applicable | not applicable | every signed-in caller, always only their own employee's payslips of Approved or Paid runs |
 | Payslips, salary assignments, the employee salary summary | holds `payroll:Approve` (Payroll Officer, HR Administrator) | not applicable | everyone else with the route's `payroll:View` (Auditor) |
+| KPI scorecards (list, get, submission and review; module `kpi`) | holds `kpi:Approve` **and** `employees:Edit` (HR Administrator) | holds `kpi:Approve` but not `employees:Edit` (a manager): own, direct reports and the scorecards that name them reviewer | everyone else with `kpi:View` (Employee). The HR plan writes (`kpi-setup`) are not scoped |
 
 Payroll runs (totals only) are not scoped. A caller with no linked employee (the built-in administrator) sees what their tier gives to everyone and nothing otherwise; the HR Administrator holds every grant, so it is in the "All" tier everywhere.
 
@@ -804,7 +1093,9 @@ Payroll runs (totals only) are not scoped. A caller with no linked employee (the
   (documents, history, bank account) first, then the organization tables child to parent. No `DROP`, `TRUNCATE` or
   unfiltered `DELETE`. The fixture fails the run, at the start and at the end, when a row with a test tag is left
   behind in the `org` tables, in `hr.Employee`, in `auth.User` / `sec.AppUser` (email prefix `TST-`) or in `sec.Role`
-  (name prefix); delete those rows in `HR_IntegrationTests` (child tables first) and run again.
+  (name prefix), or in the `kpi` tables (codes of categories and templates, names of periods and rating labels start with the
+  tag; the `*History` tables of the temporal tables keep their rows, SQL Server owns them); delete those rows in
+  `HR_IntegrationTests` (child tables first) and run again.
 * **Signed-in tests:** audited writes need a signed-in user, so the fixture creates one `TST-` administrator per run
   (random password, plain SQL, removed at the end) and the HTTP clients sign in as that account through
   `/api/auth/login` (`tests/Shared/BrowserHandler.cs` keeps cookies and copies `XSRF-TOKEN` into `X-XSRF-TOKEN` like the

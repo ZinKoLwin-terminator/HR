@@ -39,6 +39,9 @@ internal sealed class InMemoryRepository<TEntity> : IRepository<TEntity>, IRecor
     public Task<IReadOnlyList<TEntity>> ListAsync(Expression<Func<TEntity, bool>> scope, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<TEntity>>([.. items.Where(scope.Compile()).OrderBy(item => item.Id)]);
 
+    public Task<IReadOnlyList<TEntity>> ListForChangeAsync(Expression<Func<TEntity, bool>> scope, CancellationToken cancellationToken) =>
+        ListAsync(scope, cancellationToken);
+
     public Task<PagedResult<TEntity>> QueryAsync(EntityQuery<TEntity> query, CancellationToken cancellationToken)
     {
         var filtered = items.Where(query.Predicate.Compile()).ToList();
@@ -78,6 +81,8 @@ internal sealed class InMemoryRepository<TEntity> : IRepository<TEntity>, IRecor
         ExpectedRowVersions[entity] = rowVersion;
         changed.Add(entity);
     }
+
+    public void MarkModified(TEntity entity) => changed.Add(entity);
 
     void IVersionedStore.StampChanged()
     {
