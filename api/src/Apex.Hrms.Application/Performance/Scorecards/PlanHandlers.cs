@@ -89,6 +89,24 @@ internal sealed class PlanLoader(
         return notOwn.IsFailure ? Result.Failure<Scorecard>(notOwn.Error) : Result.Success(scorecard);
     }
 
+    /// <summary>
+    /// The period of the scorecard, read untracked before the plan lock is taken (the lock is per period, <see cref="PlanLock"/>); null when
+    /// the scorecard does not exist. Safe outside the lock: the period of a scorecard never changes.
+    /// </summary>
+    public Task<int?> PeriodIdOfScorecardAsync(int scorecardId, CancellationToken cancellationToken) =>
+        read.FirstOrDefaultAsync(
+            read.Query<Scorecard>().Where(scorecard => scorecard.Id == scorecardId).Select(scorecard => (int?)scorecard.PeriodId),
+            cancellationToken);
+
+    /// <summary>The period of the item's scorecard, as <see cref="PeriodIdOfScorecardAsync"/>; null when the item does not exist.</summary>
+    public Task<int?> PeriodIdOfItemAsync(int itemId, CancellationToken cancellationToken) =>
+        read.FirstOrDefaultAsync(
+            from item in read.Query<ScorecardItem>()
+            where item.Id == itemId
+            join scorecard in read.Query<Scorecard>() on item.ScorecardId equals scorecard.Id
+            select (int?)scorecard.PeriodId,
+            cancellationToken);
+
     /// <summary>What the caller may read of the review fields of <paramref name="scorecard"/> (<see cref="ReviewVisibility"/>).</summary>
     public ReviewVisibility VisibilityOf(Scorecard scorecard) => ReviewVisibility.For(scorecard.Status, scorecard.EmployeeId, user.EmployeeId);
 
@@ -136,7 +154,8 @@ internal sealed class ScorecardItemUpdateHandler(
             return Result.Failure<ScorecardItemDto>(valid.Error);
         }
 
-        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.Name, cancellationToken);
+        var periodId = await loader.PeriodIdOfItemAsync(id, cancellationToken);
+        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.ForPeriod(periodId), cancellationToken);
         if (begun.IsFailure)
         {
             return Result.Failure<ScorecardItemDto>(begun.Error);
@@ -216,7 +235,8 @@ internal sealed class ScorecardItemDeleteHandler(
 {
     public async Task<Result> HandleAsync(int id, string? rowVersion, CancellationToken cancellationToken)
     {
-        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.Name, cancellationToken);
+        var periodId = await loader.PeriodIdOfItemAsync(id, cancellationToken);
+        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.ForPeriod(periodId), cancellationToken);
         if (begun.IsFailure)
         {
             return Result.Failure(begun.Error);
@@ -268,7 +288,8 @@ internal sealed class ScorecardDeleteHandler(
 {
     public async Task<Result> HandleAsync(int id, string? rowVersion, CancellationToken cancellationToken)
     {
-        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.Name, cancellationToken);
+        var periodId = await loader.PeriodIdOfScorecardAsync(id, cancellationToken);
+        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.ForPeriod(periodId), cancellationToken);
         if (begun.IsFailure)
         {
             return Result.Failure(begun.Error);
@@ -331,7 +352,8 @@ internal sealed class FinalizePlanHandler(
 {
     public async Task<Result<ScorecardDetailDto>> HandleAsync(FinalizePlanCommand command, CancellationToken cancellationToken)
     {
-        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.Name, cancellationToken);
+        var periodId = await loader.PeriodIdOfScorecardAsync(command.Id, cancellationToken);
+        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.ForPeriod(periodId), cancellationToken);
         if (begun.IsFailure)
         {
             return Result.Failure<ScorecardDetailDto>(begun.Error);

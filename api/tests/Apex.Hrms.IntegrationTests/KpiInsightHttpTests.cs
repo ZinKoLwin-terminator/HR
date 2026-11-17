@@ -197,7 +197,8 @@ public sealed class KpiInsightHttpTests : DatabaseTest, IDisposable
 
         Assert.Equal(world.Q4.Id, Int(manager.GetProperty("period"), "id"));
         Assert.Equal((3, 1, 2, 85m), (Int(manager, "teamSize"), Int(manager, "pendingReviews"), Int(manager, "approvedOrFinalized"), Dec(manager, "averageScore")));
-        Assert.Equal([world.Code("Cara"), world.Code("Ben"), world.Code("Dan")], Items(manager, "employees").Select(row => Str(row, "employeeCode")));
+        Assert.Equal(new[] { world.Code("Cara"), world.Code("Ben"), world.Code("Dan") }.Order(StringComparer.Ordinal), Items(manager, "employees").Select(row => Str(row, "employeeCode")));
+        Assert.Equal((3, false), (Int(manager, "employeeCount"), manager.GetProperty("employeesTruncated").GetBoolean()));
 
         Assert.Equal(world.Q4Cards["Ben"], Int(employee.GetProperty("scorecard"), "id"));
         Assert.Equal(("Finalized", 80m), (Str(employee.GetProperty("scorecard"), "status"), Dec(employee.GetProperty("scorecard"), "overallScore")));

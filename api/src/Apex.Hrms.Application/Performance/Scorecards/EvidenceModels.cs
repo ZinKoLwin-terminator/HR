@@ -30,7 +30,7 @@ public interface IUploadEvidenceHandler
     /// <summary>
     /// The checks that need only the route's item id, run before the request body is read: the item exists and its scorecard is in the
     /// caller's scope (404 "KPI item #id was not found." either way), the caller is its employee (403), the scorecard is Draft or Returned
-    /// and its period Active (409). Read-only; <see cref="HandleAsync"/> checks everything again.
+    /// and its period Active, or Completed for a Returned scorecard (409). Read-only; <see cref="HandleAsync"/> checks everything again.
     /// </summary>
     Task<Result> PrecheckAsync(int itemId, CancellationToken cancellationToken);
 

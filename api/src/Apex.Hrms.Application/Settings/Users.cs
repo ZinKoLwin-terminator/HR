@@ -170,7 +170,7 @@ internal static class UserRules
         Func<Task>? afterSave,
         CancellationToken cancellationToken)
     {
-        var begun = await unitOfWork.BeginTransactionAsync(SecurityPolicy.AdministratorLockName, cancellationToken);
+        var begun = await unitOfWork.BeginTransactionAsync(SecurityPolicy.AdministratorLock, cancellationToken);
         if (begun.IsFailure)
         {
             return Result.Failure(begun.Error);

@@ -10,6 +10,7 @@ using Apex.Hrms.Domain.Employees;
 using Apex.Hrms.Domain.Organization;
 using Apex.Hrms.Domain.Performance;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Apex.Hrms.Application.Performance;
 
@@ -31,23 +32,27 @@ internal static class PerformanceServiceCollectionExtensions
         .AddCrudResource<KpiTemplate, KpiTemplateDetails, KpiTemplateCreateRequest, KpiTemplateUpdateRequest, KpiTemplateDto, KpiTemplateFilter, KpiTemplateMapping, KpiTemplateRules, KpiTemplateQuerySpecification>();
 
     /// <summary>
-    /// Periods have no code and no active flag: reads, create and update are shared, delete has its own flow (Draft only, no
-    /// scorecards), and each move through the life of a period is a command. The period picker is a read of its own.
+    /// Periods have no code and no active flag: reads are shared; create and update run the shared flows inside a transaction that holds
+    /// the company's period lock (<see cref="PeriodLock"/>, so the overlap check cannot race); delete has its own flow (Draft only, no
+    /// scorecards); activate and complete are shared commands, and close has its own handler (refused while scorecards are in review).
+    /// The period picker is a read of its own.
     /// </summary>
     private static IServiceCollection AddEvaluationPeriods(this IServiceCollection services)
     {
         services
             .AddResource<EvaluationPeriod, EvaluationPeriodDetails, EvaluationPeriodDto, EvaluationPeriodFilter, EvaluationPeriodMapping, EvaluationPeriodQuerySpecification>()
-            .AddCreate<EvaluationPeriod, EvaluationPeriodDetails, EvaluationPeriodCreateRequest, EvaluationPeriodDto, EvaluationPeriodRules>()
-            .AddUpdate<EvaluationPeriod, EvaluationPeriodDetails, EvaluationPeriodUpdateRequest, EvaluationPeriodDto, EvaluationPeriodRules>()
             .AddEntityCommand<EvaluationPeriod, ActivatePeriodCommand, EvaluationPeriodDto, ActivatePeriodAction>()
-            .AddEntityCommand<EvaluationPeriod, CompletePeriodCommand, EvaluationPeriodDto, CompletePeriodAction>()
-            .AddEntityCommand<EvaluationPeriod, ClosePeriodCommand, EvaluationPeriodDto, ClosePeriodAction>();
+            .AddEntityCommand<EvaluationPeriod, CompletePeriodCommand, EvaluationPeriodDto, CompletePeriodAction>();
+        services.TryAddScoped<ISaveRules<EvaluationPeriod, EvaluationPeriodDetails>, EvaluationPeriodRules>();
+        services.AddScoped<CreateHandler<EvaluationPeriod, EvaluationPeriodCreateRequest, EvaluationPeriodDetails, EvaluationPeriodDto>>();
+        services.AddScoped<UpdateHandler<EvaluationPeriod, EvaluationPeriodUpdateRequest, EvaluationPeriodDetails, EvaluationPeriodDto>>();
+        services.AddScoped<ICreateHandler<EvaluationPeriodCreateRequest, EvaluationPeriodDto>, LockedPeriodCreateHandler>();
+        services.AddScoped<IUpdateHandler<EvaluationPeriodUpdateRequest, EvaluationPeriodDto>, LockedPeriodUpdateHandler>();
+        services.AddScoped<ICommandHandler<ClosePeriodCommand, EvaluationPeriodDto>, ClosePeriodHandler>();
         services.AddScoped<IDeleteHandler<EvaluationPeriodDto>, EvaluationPeriodDeleteHandler>();
         services.AddScoped<IEvaluationPeriodOptionsHandler, EvaluationPeriodOptionsHandler>();
         services.AddScoped<ICommandActivity<EvaluationPeriod, ActivatePeriodCommand>, PeriodMoveActivity<ActivatePeriodCommand>>();
         services.AddScoped<ICommandActivity<EvaluationPeriod, CompletePeriodCommand>, PeriodMoveActivity<CompletePeriodCommand>>();
-        services.AddScoped<ICommandActivity<EvaluationPeriod, ClosePeriodCommand>, PeriodMoveActivity<ClosePeriodCommand>>();
         return services;
     }
 

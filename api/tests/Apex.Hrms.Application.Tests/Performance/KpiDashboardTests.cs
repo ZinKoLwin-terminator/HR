@@ -123,6 +123,23 @@ public sealed class KpiDashboardTests : IDisposable
     }
 
     [Fact]
+    public async Task Once_the_period_is_completed_a_returned_scorecard_is_still_pending_and_a_draft_one_is_not()
+    {
+        var world = await host.SeedInsightsAsync();
+        host.AsHr(world, who: null);
+        host.Permissions.Only("kpi-setup:Edit", "kpi:View", "kpi:Approve", "employees:Edit");
+        ResultAssert.Succeeded(await host.MoveAsync<CompletePeriodCommand>(world.Q4));
+
+        host.AsEmployee(world, "Ivy");
+        var returned = ResultAssert.Succeeded(await Employee(world.Q4.Id));
+        host.AsEmployee(world, "Finn");
+        var draft = ResultAssert.Succeeded(await Employee(world.Q4.Id));
+
+        Assert.Equal(("Returned", true), (returned.Scorecard!.Status, returned.Pending.IsPending));
+        Assert.Equal(("Draft", false), (draft.Scorecard!.Status, draft.Pending.IsPending));
+    }
+
+    [Fact]
     public async Task A_caller_without_a_linked_employee_or_with_only_a_planning_scorecard_gets_an_empty_dashboard()
     {
         var world = await host.SeedInsightsAsync();
@@ -207,14 +224,40 @@ public sealed class KpiDashboardTests : IDisposable
         // Ben F80, Cara F90, Dan Submitted 55 (reports) and Gail F65 (Anna reviews her); not Anna's own F90, not Eve or Jon.
         Assert.Equal(world.Q4.Id, dashboard.Period!.Id);
         Assert.Equal(4, dashboard.TeamSize);
-        Assert.Equal(["EMP-0003", "EMP-0002", "EMP-0007", "EMP-0004"], dashboard.Employees.Select(row => row.EmployeeCode));
-        Assert.Equal([90m, 80m, 65m, 55m], dashboard.Employees.Select(row => row.OverallScore));
+        Assert.Equal(["EMP-0002", "EMP-0003", "EMP-0004", "EMP-0007"], dashboard.Employees.Select(row => row.EmployeeCode));
+        Assert.Equal([80m, 90m, 55m, 65m], dashboard.Employees.Select(row => row.OverallScore));
+        Assert.Equal((4, false), (dashboard.EmployeeCount, dashboard.EmployeesTruncated));
         Assert.Equal(1, dashboard.PendingReviews);
         Assert.Equal(3, dashboard.ApprovedOrFinalized);
         Assert.Equal(78.33m, dashboard.AverageScore); // (80 + 90 + 65) / 3
         Assert.Equal(3, dashboard.ByStatus.Single(status => status.Status == "Finalized").Count);
         Assert.Equal(1, dashboard.ByStatus.Single(status => status.Status == "Submitted").Count);
         Assert.Equal(4, dashboard.ByStatus.Sum(status => status.Count));
+    }
+
+    [Fact]
+    public async Task The_manager_dashboard_lists_at_most_200_employees_by_code_and_says_how_many_there_are()
+    {
+        var world = await host.SeedInsightsAsync();
+        host.User.EmployeeId = null;
+        host.User.UserId = 1;
+        host.Permissions.Only("employees:View", "employees:Create", "employees:Edit", "kpi:View", "kpi:Create", "kpi:Approve");
+        for (var number = 1001; number <= 1201; number++)
+        {
+            // 201 more people whose scorecards name Anna as their reviewer: 205 in her set with Ben, Cara, Dan and Gail.
+            var person = await host.CreateStaffAsync(world.Org, $"EMP-{number}", first: "Many", last: "Test");
+            host.StoreScorecard(world, person.Id, world.Q4, world.Org.Department.Id, world.Id("Anna"), ScorecardStatus.Draft, null, null);
+        }
+
+        host.AsManager(world, "Anna", "Ben", "Cara", "Dan");
+        var dashboard = ResultAssert.Succeeded(await Manager());
+
+        Assert.Equal(205, dashboard.TeamSize);
+        Assert.Equal(205, dashboard.EmployeeCount);
+        Assert.True(dashboard.EmployeesTruncated);
+        Assert.Equal(KpiFigures.ManagerEmployeeLimit, dashboard.Employees.Count);
+        Assert.Equal(["EMP-0002", "EMP-0003", "EMP-0004", "EMP-0007", "EMP-1001"], dashboard.Employees.Take(5).Select(row => row.EmployeeCode));
+        Assert.Equal("EMP-1196", dashboard.Employees[^1].EmployeeCode);
     }
 
     [Fact]
@@ -232,6 +275,8 @@ public sealed class KpiDashboardTests : IDisposable
         Assert.Null(alone.Period);
         Assert.Equal(0, alone.TeamSize);
         Assert.Empty(alone.Employees);
+        Assert.Equal((0, false), (alone.EmployeeCount, alone.EmployeesTruncated));
+        Assert.Equal((3, false), (q3.EmployeeCount, q3.EmployeesTruncated));
     }
 
     // ---- HR ----

@@ -1,6 +1,8 @@
+using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Performance.Insights;
 using Apex.Hrms.Application.Tests.Fakes;
 using Apex.Hrms.Domain.Common;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Apex.Hrms.Application.Tests.Performance;
 
@@ -56,6 +58,40 @@ public sealed class KpiReportTests : IDisposable
         Assert.Equal(0m, q4.CompletionRatePct);
         Assert.Null(q4.AverageScore);
         Assert.Null(q4.MinScore);
+    }
+
+    [Fact]
+    public async Task A_period_of_the_page_whose_figures_are_gone_reads_as_zero_figures_instead_of_failing()
+    {
+        // The page and the figures are two queries; here the figures query finds nothing (the scorecards were deleted in between).
+        using var racing = new TestHost(services => services.AddSingleton<IReadModel>(sp => new FiguresLostReadModel(new FakeReadModel(sp))));
+        var world = await racing.SeedInsightsAsync();
+        racing.AsHr(world);
+
+        var summary = ResultAssert.Succeeded(await racing.Get<IKpiSummaryReportHandler>().HandleAsync(Page(), default));
+
+        Assert.Equal(2, summary.Total);
+        Assert.All(summary.Items, row =>
+        {
+            Assert.Equal((0, 0, 0, 0), (row.Scorecards, row.InPlanning, row.Finalized, row.Rejected));
+            Assert.Equal((null, null, null, 0m), (row.AverageScore, row.MinScore, row.MaxScore, row.CompletionRatePct));
+        });
+    }
+
+    /// <summary>Answers every query as the fake does, except the summary's figures query (rows with a <c>ScoreSum</c>), which finds nothing.</summary>
+    private sealed class FiguresLostReadModel(IReadModel inner) : IReadModel
+    {
+        public IQueryable<TEntity> Query<TEntity>()
+            where TEntity : Entity => inner.Query<TEntity>();
+
+        public Task<List<T>> ToListAsync<T>(IQueryable<T> query, CancellationToken cancellationToken) =>
+            typeof(T).GetProperty("ScoreSum") is not null && typeof(T).GetProperty("PeriodId") is not null
+                ? Task.FromResult(new List<T>())
+                : inner.ToListAsync(query, cancellationToken);
+
+        public Task<int> CountAsync<T>(IQueryable<T> query, CancellationToken cancellationToken) => inner.CountAsync(query, cancellationToken);
+
+        public Task<T?> FirstOrDefaultAsync<T>(IQueryable<T> query, CancellationToken cancellationToken) => inner.FirstOrDefaultAsync(query, cancellationToken);
     }
 
     [Fact]

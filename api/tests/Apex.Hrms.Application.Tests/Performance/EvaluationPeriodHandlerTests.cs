@@ -443,4 +443,52 @@ public sealed class EvaluationPeriodHandlerTests : IDisposable
         Assert.Equal(new DateOnly(2027, 1, 10), option.SubmissionDueDate);
         Assert.Null(firstOnly[1].SubmissionDueDate);
     }
+
+    // ---- The period lock (the overlap check cannot race) ----
+
+    [Fact]
+    public async Task Create_and_update_run_in_a_committed_transaction_under_the_period_lock_of_the_company()
+    {
+        var company = await host.CreateCompanyAsync();
+        host.UnitOfWork.TransactionLocks.Clear();
+        var commits = host.UnitOfWork.Commits;
+
+        var created = ResultAssert.Succeeded(await Create(KpiFixtures.NewPeriod(company.Id)));
+        ResultAssert.Succeeded(await Update(created, KpiFixtures.PeriodUpdateOf(created, "Renamed")));
+
+        Assert.Equal([$"kpi-period:{company.Id}", $"kpi-period:{company.Id}"], host.UnitOfWork.TransactionLocks);
+        Assert.Equal(commits + 2, host.UnitOfWork.Commits);
+    }
+
+    [Fact]
+    public async Task A_refused_create_is_not_committed()
+    {
+        var company = await host.CreateCompanyAsync();
+        ResultAssert.Succeeded(await Create(KpiFixtures.NewPeriod(company.Id, "First")));
+        var commits = host.UnitOfWork.Commits;
+
+        var clash = await Create(KpiFixtures.NewPeriod(company.Id, "Second"));
+
+        ResultAssert.Failed(clash, ErrorType.Conflict);
+        Assert.Equal(commits, host.UnitOfWork.Commits);
+    }
+
+    [Fact]
+    public async Task While_another_change_holds_the_company_period_lock_a_create_or_update_is_a_409_that_stores_nothing()
+    {
+        var company = await host.CreateCompanyAsync();
+        var other = await host.CreateCompanyAsync("OTHER", "Other Company");
+        var existing = ResultAssert.Succeeded(await Create(KpiFixtures.NewPeriod(company.Id, "Existing", start: "2027-01-01", end: "2027-03-31", due: null)));
+        host.UnitOfWork.HeldElsewhere.Add($"kpi-period:{company.Id}");
+
+        var created = await Create(KpiFixtures.NewPeriod(company.Id));
+        var updated = await Update(existing, KpiFixtures.PeriodUpdateOf(existing, "Renamed"));
+        var elsewhere = await Create(KpiFixtures.NewPeriod(other.Id));
+
+        Assert.Equal("Another change to the evaluation periods of this company is in progress. Try again.", ResultAssert.Failed(created, ErrorType.Conflict).Message);
+        Assert.Equal("Another change to the evaluation periods of this company is in progress. Try again.", ResultAssert.Failed(updated, ErrorType.Conflict).Message);
+        ResultAssert.Succeeded(elsewhere);
+        Assert.Equal(["Existing", "2026 Q4"], host.Repository<EvaluationPeriod>().Items.OrderBy(period => period.Id).Select(period => period.Name));
+        Assert.Equal(other.Id, host.Repository<EvaluationPeriod>().Items.Single(period => period.Name == "2026 Q4").CompanyId);
+    }
 }

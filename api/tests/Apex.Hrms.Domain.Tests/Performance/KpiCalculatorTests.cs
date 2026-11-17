@@ -414,6 +414,23 @@ public sealed class KpiCalculatorTests
     [Fact]
     public void An_empty_scorecard_fails() => Assert.True(KpiCalculator.Score([]).IsFailure);
 
+    [Theory]
+    [InlineData("5.0000", "5")]
+    [InlineData("4.5000", "4.5")]
+    [InlineData("3.2500", "3.25")]
+    [InlineData("10", "10")]
+    public void The_rating_error_shows_the_scale_without_the_stored_trailing_zeros(string stored, string shown)
+    {
+        // The database keeps the scale as decimal(18,4), so a read rule carries 5.0000, not 5.
+        var maxRating = decimal.Parse(stored, CultureInfo.InvariantCulture);
+
+        var result = KpiCalculator.Achievement(RatingRule(maxRating), maxRating + 1m);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal($"The rating must be between 0 and {shown}.", result.Error.Message);
+        Assert.Equal([$"The rating must be between 0 and {shown}."], result.Error.FieldErrors!["actualValue"]);
+    }
+
     // Rating label
 
     private static readonly (decimal MinScore, string Label)[] Bands =

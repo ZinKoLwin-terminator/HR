@@ -155,9 +155,10 @@ internal sealed class KpiEmployeeDashboardHandler(KpiReportSource source, ICurre
                 .Take(KpiFigures.HistoryLimit),
             cancellationToken);
 
+        // Pending: the employee can still act on it (the period rule of results and submit: Active, or Completed for a Returned scorecard).
         var pending = current is not null
             && current.Status is ScorecardStatus.Draft or ScorecardStatus.Returned
-            && period.Status == EvaluationPeriodStatus.Active;
+            && EvaluationPeriod.AcceptsEmployeeWork(period.Status, current.Status);
         var overdue = pending && period.SubmissionDueDate is { } due && clock.Today > due;
 
         return Result.Success(new KpiEmployeeDashboardDto(
@@ -223,22 +224,29 @@ internal sealed class KpiManagerDashboardHandler(KpiReportSource source, ICurren
 
         if (chosen.Value is not { } period)
         {
-            return Result.Success(new KpiManagerDashboardDto(null, 0, KpiFigures.ByStatus(new Dictionary<ScorecardStatus, int>()), 0, 0, null, []));
+            return Result.Success(new KpiManagerDashboardDto(null, 0, KpiFigures.ByStatus(new Dictionary<ScorecardStatus, int>()), 0, 0, null, [], 0, false));
         }
 
         var id = period.Id;
         var inPeriod = set.Where(scorecard => scorecard.PeriodId == id);
         var groups = await read.ToListAsync(KpiDashboardQueries.ByStatus(inPeriod, me), cancellationToken);
-        var rows = await read.ToListAsync(KpiDashboardQueries.ByScore(source.Rows(inPeriod)), cancellationToken);
+
+        // At most ManagerEmployeeLimit rows, by employee code; the total is the count of the set, which the status groups already have.
+        var rows = await read.ToListAsync(
+            source.Rows(inPeriod).OrderBy(row => row.EmployeeCode).ThenBy(row => row.ScorecardId).Take(KpiFigures.ManagerEmployeeLimit),
+            cancellationToken);
+        var total = groups.Sum(group => group.Count);
 
         return Result.Success(new KpiManagerDashboardDto(
             period.ToDto(),
-            groups.Sum(group => group.Count),
+            total,
             KpiFigures.ByStatus(KpiDashboardQueries.Counts(groups)),
             groups.Where(group => KpiDashboardQueries.ManagerStage.Contains(group.Status)).Sum(group => group.Mine),
             groups.Where(group => group.Status is ScorecardStatus.Approved or ScorecardStatus.Finalized).Sum(group => group.Count),
             KpiDashboardQueries.FinalizedAverage(groups),
-            [.. rows.Select(row => row.ToScore())]));
+            [.. rows.Select(row => row.ToScore())],
+            total,
+            total > rows.Count));
     }
 }
 

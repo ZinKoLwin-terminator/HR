@@ -121,4 +121,21 @@ public abstract class ScorecardWorkflowTestBase : IDisposable
             ResultAssert.Succeeded(await Host.MoveAsync<ClosePeriodCommand>(completed));
         }
     }
+
+    /// <summary>Asks to close the seeded period (which must be Completed), as an administrator. Whoever the caller was is replaced by the administrator.</summary>
+    private protected async Task<Result<EvaluationPeriodDto>> ClosePeriodAsync(World world)
+    {
+        Host.User.EmployeeId = null;
+        Host.User.UserId = 1;
+        Host.Permissions.Only("kpi:View", "kpi:Create", "kpi:Approve", "employees:Edit", "kpi-setup:Edit");
+        var current = ResultAssert.Succeeded(await Host.Get<Apex.Hrms.Application.UseCases.IGetByIdHandler<EvaluationPeriodDto>>().HandleAsync(world.Plan.Period.Id, default));
+        return await Host.MoveAsync<ClosePeriodCommand>(current);
+    }
+
+    /// <summary>
+    /// Closes the seeded Completed period straight in the store, past the close rule (which refuses while scorecards are in review): the
+    /// state a period could only reach through direct database work, for the defence-in-depth checks of the scorecard steps.
+    /// </summary>
+    private protected void ForceClosePeriod(World world) =>
+        Assert.True(Host.Repository<EvaluationPeriod>().Items.Single(period => period.Id == world.Plan.Period.Id).Close(scorecardsInReview: 0).IsSuccess);
 }

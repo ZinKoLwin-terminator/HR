@@ -33,7 +33,7 @@ public sealed class EvaluationPeriodTests
 
         if (status >= EvaluationPeriodStatus.Closed)
         {
-            Assert.True(period.Close().IsSuccess);
+            Assert.True(period.Close(scorecardsInReview: 0).IsSuccess);
         }
 
         return period;
@@ -104,7 +104,7 @@ public sealed class EvaluationPeriodTests
         Assert.Equal(EvaluationPeriodStatus.Active, period.Status);
         Assert.True(period.Complete().IsSuccess);
         Assert.Equal(EvaluationPeriodStatus.Completed, period.Status);
-        Assert.True(period.Close().IsSuccess);
+        Assert.True(period.Close(scorecardsInReview: 0).IsSuccess);
         Assert.Equal(EvaluationPeriodStatus.Closed, period.Status);
     }
 
@@ -126,7 +126,7 @@ public sealed class EvaluationPeriodTests
         {
             "activate" => period.Activate(),
             "complete" => period.Complete(),
-            _ => period.Close(),
+            _ => period.Close(scorecardsInReview: 0),
         };
 
         AssertConflict(result);
@@ -233,5 +233,104 @@ public sealed class EvaluationPeriodTests
         {
             AssertConflict(result);
         }
+    }
+
+    // ---- Closing while scorecards are in review (M2) ----
+
+    [Fact]
+    public void A_completed_period_with_scorecards_in_review_cannot_close_and_the_message_gives_the_count()
+    {
+        var period = Period(EvaluationPeriodStatus.Completed, Details(name: "Q1"));
+
+        var result = period.Close(scorecardsInReview: 3);
+
+        AssertConflict(result);
+        Assert.Equal(
+            "Period \"Q1\" still has 3 scorecard(s) in review or returned to the employee. Finish them before closing.",
+            result.Error.Message);
+        Assert.Equal(EvaluationPeriodStatus.Completed, period.Status);
+    }
+
+    [Fact]
+    public void A_move_out_of_order_names_the_status_even_when_scorecards_are_in_review()
+    {
+        var period = Period(EvaluationPeriodStatus.Active);
+
+        var result = period.Close(scorecardsInReview: 2);
+
+        AssertConflict(result);
+        Assert.Contains("Active", result.Error.Message, StringComparison.Ordinal);
+        Assert.Equal(EvaluationPeriodStatus.Active, period.Status);
+    }
+
+    [Theory]
+    [InlineData(ScorecardStatus.Planning, false)]
+    [InlineData(ScorecardStatus.Draft, false)]
+    [InlineData(ScorecardStatus.Submitted, true)]
+    [InlineData(ScorecardStatus.UnderReview, true)]
+    [InlineData(ScorecardStatus.Returned, true)]
+    [InlineData(ScorecardStatus.Resubmitted, true)]
+    [InlineData(ScorecardStatus.Approved, true)]
+    [InlineData(ScorecardStatus.Rejected, false)]
+    [InlineData(ScorecardStatus.Finalized, false)]
+    public void Only_scorecards_in_review_or_returned_block_closing(ScorecardStatus status, bool blocks)
+    {
+        Assert.Equal(blocks, EvaluationPeriod.BlocksClosing(status));
+        Assert.Equal(blocks, EvaluationPeriod.StatusesBlockingClose.Contains(status));
+    }
+
+    // ---- Employee work by period and scorecard status (M1) ----
+
+    [Theory]
+    [InlineData(EvaluationPeriodStatus.Draft, ScorecardStatus.Draft, false)]
+    [InlineData(EvaluationPeriodStatus.Draft, ScorecardStatus.Returned, false)]
+    [InlineData(EvaluationPeriodStatus.Active, ScorecardStatus.Draft, true)]
+    [InlineData(EvaluationPeriodStatus.Active, ScorecardStatus.Returned, true)]
+    [InlineData(EvaluationPeriodStatus.Completed, ScorecardStatus.Draft, false)]
+    [InlineData(EvaluationPeriodStatus.Completed, ScorecardStatus.Returned, true)]
+    [InlineData(EvaluationPeriodStatus.Closed, ScorecardStatus.Draft, false)]
+    [InlineData(EvaluationPeriodStatus.Closed, ScorecardStatus.Returned, false)]
+    public void A_returned_scorecard_may_be_worked_on_while_the_period_is_active_or_completed_and_a_draft_one_only_while_active(
+        EvaluationPeriodStatus periodStatus,
+        ScorecardStatus scorecardStatus,
+        bool allowed)
+    {
+        var period = Period(periodStatus);
+
+        Assert.Equal(allowed, period.AcceptsEmployeeWork(scorecardStatus));
+        Assert.Equal(allowed, period.EnsureAcceptsResults(scorecardStatus).IsSuccess);
+        Assert.Equal(allowed, period.EnsureAcceptsEvidence(scorecardStatus).IsSuccess);
+        if (!allowed)
+        {
+            AssertConflict(period.EnsureAcceptsResults(scorecardStatus));
+            AssertConflict(period.EnsureAcceptsEvidence(scorecardStatus));
+            Assert.Contains(EvaluationPeriodStatusText.ToText(periodStatus), period.EnsureAcceptsResults(scorecardStatus).Error.Message, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void A_draft_scorecard_in_a_completed_period_is_told_that_results_need_an_active_period()
+    {
+        var period = Period(EvaluationPeriodStatus.Completed);
+
+        Assert.Equal(
+            "Period \"2026 Q4\" is Completed; results can only be entered and submitted while the period is Active.",
+            period.EnsureAcceptsResults(ScorecardStatus.Draft).Error.Message);
+        Assert.Equal(
+            "Period \"2026 Q4\" is Completed; evidence can only be added or removed while the period is Active.",
+            period.EnsureAcceptsEvidence(ScorecardStatus.Draft).Error.Message);
+    }
+
+    [Fact]
+    public void A_returned_scorecard_in_a_closed_period_is_told_that_it_needs_an_active_or_completed_period()
+    {
+        var period = Period(EvaluationPeriodStatus.Closed);
+
+        Assert.Equal(
+            "Period \"2026 Q4\" is Closed; a returned scorecard can only be changed and resubmitted while the period is Active or Completed.",
+            period.EnsureAcceptsResults(ScorecardStatus.Returned).Error.Message);
+        Assert.Equal(
+            "Period \"2026 Q4\" is Closed; evidence of a returned scorecard can only be added or removed while the period is Active or Completed.",
+            period.EnsureAcceptsEvidence(ScorecardStatus.Returned).Error.Message);
     }
 }

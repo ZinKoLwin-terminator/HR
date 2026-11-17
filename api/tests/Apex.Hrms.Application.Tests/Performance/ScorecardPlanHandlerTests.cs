@@ -368,16 +368,67 @@ public sealed class ScorecardPlanHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task Every_plan_write_runs_inside_the_plan_lock()
+    public async Task Every_plan_write_runs_inside_the_plan_lock_of_its_period()
     {
-        var (_, _, scorecard) = await PlannedAsync();
+        var (plan, employee, scorecard) = await PlannedAsync();
         host.UnitOfWork.TransactionLocks.Clear();
+        host.UnitOfWork.Locks.Clear();
+        var name = $"kpi-plan:{plan.Period.Id}";
 
         var updated = ResultAssert.Succeeded(await host.UpdateItem(scorecard.Items[0].Id, ItemUpdateOf(scorecard.Items[0], weight: 55m)));
         Assert.True((await host.DeleteItem(scorecard.Items[1])).IsSuccess);
         ResultAssert.Succeeded(await host.UpdateItem(updated.Id, ItemUpdateOf(updated, weight: 100m)));
-        ResultAssert.Succeeded(await host.FinalizePlan(scorecard));
+        ResultAssert.Succeeded(await host.FinalizePlan(host.Fresh(scorecard)));
+        var other = await host.CreateStaffAsync(plan.Org, "EMP-0002");
+        var template = await TemplateAsync(plan, "B-1");
+        var assigned = await host.AssignedAsync(other.Id, plan.Period.Id, Item(template, weight: 100m));
+        ResultAssert.Succeeded(await host.AssignBulk(BulkOf(plan.Period.Id, [employee.Id, other.Id], Item(template, weight: 1m))));
+        Assert.True((await host.DeleteScorecard(host.Fresh(assigned))).IsSuccess);
 
-        Assert.Equal(["kpi-plan", "kpi-plan", "kpi-plan", "kpi-plan"], host.UnitOfWork.TransactionLocks);
+        Assert.Equal([name, name, name, name, name, name, name], host.UnitOfWork.TransactionLocks);
+        Assert.All(host.UnitOfWork.Locks, held => Assert.Equal("Another change to KPI plans is in progress. Try again.", held!.BusyMessage));
+    }
+
+    [Fact]
+    public async Task A_plan_write_for_another_period_does_not_wait_for_the_lock_of_a_busy_period()
+    {
+        var (plan, _, scorecard) = await PlannedAsync();
+        var next = await host.CreatePeriodAsync(plan.Org.Company.Id, "2027 Q1", start: "2027-01-01", end: "2027-03-31", due: null);
+        var other = await host.CreateStaffAsync(plan.Org, "EMP-0002");
+        var template = await TemplateAsync(plan, "B-1");
+        host.UnitOfWork.HeldElsewhere.Add($"kpi-plan:{plan.Period.Id}");
+
+        var elsewhere = await host.Assign(other.Id, next.Id, Item(template, weight: 100m));
+        var sameAssign = await host.Assign(other.Id, plan.Period.Id, Item(template, weight: 100m));
+        var sameBulk = await host.AssignBulk(BulkOf(plan.Period.Id, [other.Id], Item(template, weight: 100m)));
+        var sameUpdate = await host.UpdateItem(scorecard.Items[0].Id, ItemUpdateOf(scorecard.Items[0], weight: 55m));
+        var sameDelete = await host.DeleteItem(scorecard.Items[1]);
+        var sameFinalize = await host.FinalizePlan(scorecard);
+        var sameScorecardDelete = await host.DeleteScorecard(scorecard);
+
+        Assert.Equal(next.Id, ResultAssert.Succeeded(elsewhere).Scorecard.PeriodId);
+        const string busy = "Another change to KPI plans is in progress. Try again.";
+        Assert.Equal(busy, ResultAssert.Failed(sameAssign, ErrorType.Conflict).Message);
+        Assert.Equal(busy, ResultAssert.Failed(sameBulk, ErrorType.Conflict).Message);
+        Assert.Equal(busy, ResultAssert.Failed(sameUpdate, ErrorType.Conflict).Message);
+        Assert.Equal(busy, ResultAssert.Failed(sameDelete, ErrorType.Conflict).Message);
+        Assert.Equal(busy, ResultAssert.Failed(sameFinalize, ErrorType.Conflict).Message);
+        Assert.Equal(busy, ResultAssert.Failed(sameScorecardDelete, ErrorType.Conflict).Message);
+        Assert.Equal(2, host.Repository<ScorecardItem>().Items.Count(item => item.ScorecardId == scorecard.Id));
+        Assert.Equal(ScorecardStatus.Planning, host.Repository<Scorecard>().Items.Single(card => card.Id == scorecard.Id).Status);
+    }
+
+    [Fact]
+    public async Task A_plan_write_on_a_record_that_does_not_exist_takes_no_lock_and_answers_404()
+    {
+        var (_, _, scorecard) = await PlannedAsync();
+        host.UnitOfWork.TransactionLocks.Clear();
+
+        var missingItem = await host.UpdateItem(99_999, ItemUpdateOf(scorecard.Items[0]));
+        var missingScorecard = await host.FinalizePlan(scorecard with { Id = 99_999 });
+
+        ResultAssert.Failed(missingItem, ErrorType.NotFound);
+        ResultAssert.Failed(missingScorecard, ErrorType.NotFound);
+        Assert.Equal([null, null], host.UnitOfWork.TransactionLocks);
     }
 }

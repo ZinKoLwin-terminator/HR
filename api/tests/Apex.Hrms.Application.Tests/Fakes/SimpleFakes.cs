@@ -43,12 +43,24 @@ internal sealed class FakeUnitOfWork(FakeDatabase database, FakeActivityLog? act
     /// <summary>The exclusive lock name of every transaction a handler began (null when it asked for none).</summary>
     public List<string?> TransactionLocks { get; } = [];
 
+    /// <summary>The exclusive lock of every transaction a handler began, with its busy message (null when it asked for none).</summary>
+    public List<ApplicationLock?> Locks { get; } = [];
+
+    /// <summary>
+    /// Lock names that "another request" holds for longer than the wait: a transaction asking for one fails with a Conflict carrying the
+    /// lock's busy message, as the real unit of work does after 15 seconds. Any other lock is granted at once.
+    /// </summary>
+    public HashSet<string> HeldElsewhere { get; } = [];
+
     public int Commits { get; private set; }
 
-    public Task<Result<IUnitOfWorkTransaction>> BeginTransactionAsync(string? exclusiveLock, CancellationToken cancellationToken)
+    public Task<Result<IUnitOfWorkTransaction>> BeginTransactionAsync(ApplicationLock? exclusiveLock, CancellationToken cancellationToken)
     {
-        TransactionLocks.Add(exclusiveLock);
-        return Task.FromResult(Result.Success<IUnitOfWorkTransaction>(new FakeTransaction(this)));
+        TransactionLocks.Add(exclusiveLock?.Name);
+        Locks.Add(exclusiveLock);
+        return Task.FromResult(exclusiveLock is not null && HeldElsewhere.Contains(exclusiveLock.Name)
+            ? Result.Failure<IUnitOfWorkTransaction>(AppError.Conflict(exclusiveLock.BusyMessage))
+            : Result.Success<IUnitOfWorkTransaction>(new FakeTransaction(this)));
     }
 
     private sealed class FakeTransaction(FakeUnitOfWork owner) : IUnitOfWorkTransaction

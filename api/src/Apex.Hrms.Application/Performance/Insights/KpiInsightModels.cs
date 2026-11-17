@@ -68,7 +68,8 @@ public sealed record KpiDashboardItemDto(
     decimal? WeightedScore);
 
 /// <summary>
-/// <c>isPending</c>: the scorecard is Draft or Returned and its period is Active (the employee still has to submit). <c>dueDate</c> is
+/// <c>isPending</c>: the employee can still act on the scorecard: Draft or Returned and its period Active, or Returned and its period
+/// Completed (the employee still has to submit). <c>dueDate</c> is
 /// the period's submission due date; <c>isOverdue</c> is true when it is pending and today (business time zone) is after the due date.
 /// </summary>
 public sealed record KpiPendingSubmissionDto(bool IsPending, DateOnly? DueDate, bool IsOverdue);
@@ -98,7 +99,9 @@ public sealed record KpiHistoryEntryDto(
 /// reviewer, never the caller's own. <c>teamSize</c> is the number of those scorecards (one per employee and period);
 /// <c>pendingReviews</c> the ones in the manager stage (Submitted, Resubmitted, Under Review) naming the caller as reviewer;
 /// <c>approvedOrFinalized</c> the Approved and Finalized ones; <c>averageScore</c> the mean overall score of the Finalized ones
-/// (2 decimals, null when none). <c>employees</c> is ordered by score (highest first, unscored last), then employee code.
+/// (2 decimals, null when none). <c>employees</c> is ordered by employee code (then scorecard id) and holds at most
+/// <see cref="KpiFigures.ManagerEmployeeLimit"/> (200) rows; <c>employeeCount</c> is the number of rows there are in all (equal to
+/// <c>teamSize</c>) and <c>employeesTruncated</c> is true when the list stops short of it.
 /// </summary>
 public sealed record KpiManagerDashboardDto(
     KpiPeriodRefDto? Period,
@@ -107,7 +110,9 @@ public sealed record KpiManagerDashboardDto(
     int PendingReviews,
     int ApprovedOrFinalized,
     decimal? AverageScore,
-    IReadOnlyList<KpiEmployeeScoreDto> Employees);
+    IReadOnlyList<KpiEmployeeScoreDto> Employees,
+    int EmployeeCount,
+    bool EmployeesTruncated);
 
 // ---- HR dashboard ----
 

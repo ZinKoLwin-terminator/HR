@@ -118,7 +118,7 @@ internal static class KpiEndpoints
     /// <summary>
     /// Evidence files on a KPI of a scorecard. Adding and removing need <c>kpi:Create</c> and are for the scorecard's own employee only
     /// (the application layer decides: 404 outside the caller's scope, 403 for someone else) with the scorecard's row version, while it is
-    /// Draft or Returned and its period Active. Download needs <c>kpi:View</c> and follows the scorecard's visibility. The upload's request
+    /// Draft or Returned and its period Active (or Completed, for a Returned scorecard). Download needs <c>kpi:View</c> and follows the scorecard's visibility. The upload's request
     /// size is capped just above the 10 MB file limit; the file type is decided by its content. Antiforgery is checked for every unsafe
     /// method by the middleware (header <c>X-XSRF-TOKEN</c>), as everywhere else. Uploads are rate limited per signed-in user
     /// (<see cref="EvidenceUploadRateLimit"/>, 429), and the item, the owner, the status and the period are checked from the route's item id

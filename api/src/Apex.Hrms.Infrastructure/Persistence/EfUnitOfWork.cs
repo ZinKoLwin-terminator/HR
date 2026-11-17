@@ -56,7 +56,7 @@ internal sealed class EfUnitOfWork(HrmsDbContext context, EfActivityRecorder act
         }
     }
 
-    public async Task<Result<IUnitOfWorkTransaction>> BeginTransactionAsync(string? exclusiveLock, CancellationToken cancellationToken)
+    public async Task<Result<IUnitOfWorkTransaction>> BeginTransactionAsync(ApplicationLock? exclusiveLock, CancellationToken cancellationToken)
     {
         var outer = context.Database.CurrentTransaction;
         var transaction = outer is null ? await context.Database.BeginTransactionAsync(cancellationToken) : null;
@@ -72,7 +72,7 @@ internal sealed class EfUnitOfWork(HrmsDbContext context, EfActivityRecorder act
                 await outer.CreateSavepointAsync(savepoint!, cancellationToken);
             }
 
-            if (exclusiveLock is not null && !await TryTakeLockAsync(exclusiveLock, cancellationToken))
+            if (exclusiveLock is not null && !await TryTakeLockAsync(exclusiveLock.Name, cancellationToken))
             {
                 if (transaction is not null)
                 {
@@ -83,7 +83,7 @@ internal sealed class EfUnitOfWork(HrmsDbContext context, EfActivityRecorder act
                     await outer!.RollbackToSavepointAsync(savepoint!, cancellationToken);
                 }
 
-                return Result.Failure<IUnitOfWorkTransaction>(AppError.Conflict("Another change to the administrators is in progress. Try again."));
+                return Result.Failure<IUnitOfWorkTransaction>(AppError.Conflict(exclusiveLock.BusyMessage));
             }
         }
         catch
@@ -116,7 +116,7 @@ internal sealed class EfUnitOfWork(HrmsDbContext context, EfActivityRecorder act
     /// <summary>
     /// The transaction this unit of work opened (commit commits, dispose without commit rolls back), or, when it joined one
     /// the caller owns, a scope over a savepoint: commit leaves the work to the owner, dispose without a commit rolls back to
-    /// the savepoint. The administrator application lock is owned by the outer transaction and stays held until that ends.
+    /// the savepoint. An application lock taken in a joined scope is owned by the outer transaction and stays held until that ends.
     /// </summary>
     private sealed class EfTransaction(IDbContextTransaction? transaction, string? savepoint) : IUnitOfWorkTransaction
     {

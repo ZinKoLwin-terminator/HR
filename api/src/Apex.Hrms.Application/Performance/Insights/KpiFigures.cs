@@ -21,6 +21,9 @@ public static class KpiFigures
     /// <summary>At most this many rows in the HR dashboard's attention list (the count covers all).</summary>
     public const int AttentionListLimit = 50;
 
+    /// <summary>At most this many rows in the manager dashboard's employee list (<c>employeeCount</c> covers all).</summary>
+    public const int ManagerEmployeeLimit = 200;
+
     /// <summary>At most this many earlier scorecards in the employee dashboard's history.</summary>
     public const int HistoryLimit = 12;
 

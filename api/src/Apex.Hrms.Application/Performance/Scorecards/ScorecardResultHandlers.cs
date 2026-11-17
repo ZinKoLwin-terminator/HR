@@ -6,7 +6,7 @@ namespace Apex.Hrms.Application.Performance.Scorecards;
 
 /// <summary>
 /// The employee saves a draft of the results (<c>PUT /api/kpi/scorecards/{id}/results</c>): only the scorecard's own employee, while
-/// it is Draft or Returned and its period is Active. Each result is checked against the scoring rule of its KPI and gets its
+/// it is Draft or Returned and its period is Active (a Returned scorecard also while the period is Completed). Each result is checked against the scoring rule of its KPI and gets its
 /// achievement and weighted score; a null result clears them. Nothing is saved unless every item is valid. The scorecard gets no
 /// score until it is submitted.
 /// </summary>
@@ -36,7 +36,7 @@ internal sealed class SaveScorecardResultsHandler(
         }
 
         var period = await steps.PeriodOfAsync(scorecard, cancellationToken);
-        var open = period.EnsureAcceptsResults();
+        var open = period.EnsureAcceptsResults(scorecard.Status);
         if (open.IsFailure)
         {
             return Result.Failure<ScorecardDetailDto>(open.Error);
@@ -82,7 +82,7 @@ internal sealed class SaveScorecardResultsHandler(
 
 /// <summary>
 /// The employee submits the scorecard (<c>POST /api/kpi/scorecards/{id}/submit</c>): Draft to Submitted, Returned to Resubmitted.
-/// Every KPI needs a result. The API scores the scorecard from the stored results (one authority, <c>KpiCalculator</c>) and stores
+/// The period must be Active, or Completed for a Returned scorecard. Every KPI needs a result. The API scores the scorecard from the stored results (one authority, <c>KpiCalculator</c>) and stores
 /// the per-KPI scores, the overall score, its rating label (over the active bands) and the calculation version. A submission after the
 /// period's submission due date is allowed: the due date only informs (reports can flag late ones from <c>submittedOn</c>).
 /// </summary>
@@ -104,7 +104,7 @@ internal sealed class SubmitScorecardHandler(ScorecardSteps steps) : ICommandHan
         }
 
         var period = await steps.PeriodOfAsync(scorecard, cancellationToken);
-        var open = period.EnsureAcceptsResults();
+        var open = period.EnsureAcceptsResults(scorecard.Status);
         if (open.IsFailure)
         {
             return Result.Failure<ScorecardDetailDto>(open.Error);

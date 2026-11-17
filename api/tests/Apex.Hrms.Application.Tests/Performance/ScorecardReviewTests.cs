@@ -561,10 +561,12 @@ public sealed class ScorecardReviewTests : ScorecardWorkflowTestBase
     [Fact]
     public async Task Every_write_is_refused_once_the_period_is_closed()
     {
+        // Closing is refused while scorecards are in review, so this state needs direct database work: the steps refuse it all the same.
         var world = await SeedAsync(hrReview: true);
         var submitted = await SubmittedAsync(world);
         var other = await SubmittedCardAsync(world, world.Dan, 24, "C-1");
-        await MovePeriodAsync(world, close: true);
+        await MovePeriodAsync(world, close: false);
+        ForceClosePeriod(world);
         AsHr(null, 1);
 
         foreach (var attempt in new Func<Task<Result<ScorecardDetailDto>>>[]
@@ -581,6 +583,86 @@ public sealed class ScorecardReviewTests : ScorecardWorkflowTestBase
         }
 
         Assert.Equal(ScorecardStatus.Submitted, Stored(world.Card.Id).Status);
+    }
+
+    // ---- Closing the period does not strand scorecards ----
+
+    [Fact]
+    public async Task The_period_cannot_close_while_scorecards_are_in_review_or_returned_and_closes_once_they_are_finished()
+    {
+        var world = await SeedAsync(hrReview: true);
+        var ben = await SubmittedAsync(world);
+        var dan = await SubmittedCardAsync(world, world.Dan, 24, "C-1");
+        AsHr(world.Hr, 22);
+        var danReturned = ResultAssert.Succeeded(await host.Return(host.Fresh(dan), "Add detail"));
+
+        // Planning (Anna, never finalized) and Draft (Hana, never submitted) scorecards do not block closing.
+        AsHr(null, 1);
+        var annaTemplate = (await host.CreateTemplateAsync(world.Plan.Category.Id, "P-1")).Id;
+        await host.AssignedAsync(world.Anna.Id, world.Plan.Period.Id, Item(annaTemplate, weight: 100m));
+        var hanaTemplate = (await host.CreateTemplateAsync(world.Plan.Category.Id, "P-2")).Id;
+        ResultAssert.Succeeded(await host.FinalizePlan(await host.AssignedAsync(world.Hr.Id, world.Plan.Period.Id, Item(hanaTemplate, weight: 100m))));
+        await MovePeriodAsync(world, close: false);
+
+        var refused = await ClosePeriodAsync(world);
+        Assert.Equal(
+            "Period \"2026 Q4\" still has 2 scorecard(s) in review or returned to the employee. Finish them before closing.",
+            ResultAssert.Failed(refused, ErrorType.Conflict).Message);
+
+        // Ben's is approved by his manager (still in review: HR must finalize it) and finalized by HR.
+        AsManager(world.Anna, 21, world.Ben.Id);
+        var approved = ResultAssert.Succeeded(await host.Approve(host.Fresh(ben)));
+        Assert.Contains("2 scorecard(s)", ResultAssert.Failed(await ClosePeriodAsync(world), ErrorType.Conflict).Message, StringComparison.Ordinal);
+        AsHr(world.Hr, 22);
+        ResultAssert.Succeeded(await host.FinalizeByHr(host.Fresh(approved)));
+        Assert.Contains("1 scorecard(s)", ResultAssert.Failed(await ClosePeriodAsync(world), ErrorType.Conflict).Message, StringComparison.Ordinal);
+
+        // Dan resubmits his returned scorecard while the period is Completed, and HR rejects it.
+        AsEmployee(world.Dan, 24);
+        var corrected = ResultAssert.Succeeded(await host.SaveResults(host.Fresh(danReturned), Actual(danReturned.Items[0], 85m)));
+        var resubmitted = ResultAssert.Succeeded(await host.Submit(corrected));
+        AsHr(world.Hr, 22);
+        ResultAssert.Succeeded(await host.Reject(host.Fresh(resubmitted), "Not credible"));
+
+        var closed = ResultAssert.Succeeded(await ClosePeriodAsync(world));
+        Assert.Equal("Closed", closed.Status);
+        Assert.Equal(EvaluationPeriodStatus.Closed, Host.Repository<EvaluationPeriod>().Items.Single(period => period.Id == world.Plan.Period.Id).Status);
+    }
+
+    [Fact]
+    public async Task A_refused_close_changes_nothing_and_logs_nothing()
+    {
+        var world = await SeedAsync();
+        await SubmittedAsync(world);
+        await MovePeriodAsync(world, close: false);
+        var entries = host.ActivityLog.Entries.Count;
+
+        ResultAssert.Failed(await ClosePeriodAsync(world), ErrorType.Conflict);
+
+        Assert.Equal(EvaluationPeriodStatus.Completed, Host.Repository<EvaluationPeriod>().Items.Single(period => period.Id == world.Plan.Period.Id).Status);
+        Assert.Equal(entries, host.ActivityLog.Entries.Count);
+    }
+
+    [Fact]
+    public async Task The_review_queue_shows_only_scorecards_whose_period_is_active_or_completed()
+    {
+        var world = await SeedAsync();
+        var submitted = await SubmittedAsync(world);
+        AsHr(null, 1);
+        Assert.Equal([submitted.Id], Ids(ResultAssert.Succeeded(await host.PendingReviews())));
+
+        await MovePeriodAsync(world, close: false);
+        AsHr(null, 1);
+        Assert.Equal([submitted.Id], Ids(ResultAssert.Succeeded(await host.PendingReviews())));
+
+        ForceClosePeriod(world);
+        var page = ResultAssert.Succeeded(await host.PendingReviews());
+        AsManager(world.Anna, 21, world.Ben.Id);
+        var managerPage = ResultAssert.Succeeded(await host.PendingReviews());
+
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.Total);
+        Assert.Empty(managerPage.Items);
     }
 
     // ---- Scope of the reads ----

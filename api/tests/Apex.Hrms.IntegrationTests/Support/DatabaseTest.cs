@@ -373,7 +373,7 @@ public abstract class DatabaseTest : IAsyncLifetime
             return await inner.SaveChangesAsync(cancellationToken);
         }
 
-        public Task<Result<IUnitOfWorkTransaction>> BeginTransactionAsync(string? exclusiveLock, CancellationToken cancellationToken) =>
+        public Task<Result<IUnitOfWorkTransaction>> BeginTransactionAsync(ApplicationLock? exclusiveLock, CancellationToken cancellationToken) =>
             inner.BeginTransactionAsync(exclusiveLock, cancellationToken);
     }
 }

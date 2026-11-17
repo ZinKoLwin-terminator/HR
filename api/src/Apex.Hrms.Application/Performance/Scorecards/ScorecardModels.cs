@@ -212,7 +212,7 @@ public sealed record ResultItemRequest(int Id, decimal? ActualValue, string? Emp
 
 /// <summary>
 /// PUT body of <c>/api/kpi/scorecards/{id}/results</c>: the employee's draft results. Only the scorecard's own employee, while
-/// it is Draft or Returned and its period is Active. <c>items</c> lists the KPIs to change (each item of the scorecard at most
+/// it is Draft or Returned and its period is Active (or Completed, for a Returned scorecard). <c>items</c> lists the KPIs to change (each item of the scorecard at most
 /// once; the others stay as they are). It saves a draft: the scorecard gets no score until it is submitted.
 /// </summary>
 public sealed record SaveScorecardResultsRequest(

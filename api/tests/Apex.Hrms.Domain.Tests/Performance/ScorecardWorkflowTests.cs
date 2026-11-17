@@ -606,12 +606,7 @@ public sealed class ScorecardWorkflowTests
 
     // ---- The period ----
 
-    [Theory]
-    [InlineData(EvaluationPeriodStatus.Draft, false, false)]
-    [InlineData(EvaluationPeriodStatus.Active, true, true)]
-    [InlineData(EvaluationPeriodStatus.Completed, false, true)]
-    [InlineData(EvaluationPeriodStatus.Closed, false, false)]
-    public void Results_need_an_active_period_and_reviews_an_active_or_completed_one(EvaluationPeriodStatus status, bool results, bool review)
+    private static EvaluationPeriod PeriodIn(EvaluationPeriodStatus status)
     {
         var period = EvaluationPeriod.Create(new EvaluationPeriodDetails(1, "2026 Q4", KpiFrequency.Quarterly, new DateOnly(2026, 10, 1), new DateOnly(2026, 12, 31), null, false)).Value;
         if (status != EvaluationPeriodStatus.Draft)
@@ -626,15 +621,71 @@ public sealed class ScorecardWorkflowTests
 
         if (status == EvaluationPeriodStatus.Closed)
         {
-            Assert.True(period.Close().IsSuccess);
+            Assert.True(period.Close(scorecardsInReview: 0).IsSuccess);
         }
 
-        Assert.Equal(results, period.EnsureAcceptsResults().IsSuccess);
+        return period;
+    }
+
+    [Theory]
+    [InlineData(EvaluationPeriodStatus.Draft, false, false, false)]
+    [InlineData(EvaluationPeriodStatus.Active, true, true, true)]
+    [InlineData(EvaluationPeriodStatus.Completed, false, true, true)]
+    [InlineData(EvaluationPeriodStatus.Closed, false, false, false)]
+    public void Results_of_a_draft_scorecard_need_an_active_period_a_returned_one_also_a_completed_one_and_reviews_an_active_or_completed_one(
+        EvaluationPeriodStatus status,
+        bool draftResults,
+        bool returnedResults,
+        bool review)
+    {
+        var period = PeriodIn(status);
+
+        Assert.Equal(draftResults, period.EnsureAcceptsResults(ScorecardStatus.Draft).IsSuccess);
+        Assert.Equal(returnedResults, period.EnsureAcceptsResults(ScorecardStatus.Returned).IsSuccess);
         Assert.Equal(review, period.EnsureAllowsReview().IsSuccess);
-        if (!results)
+        if (!draftResults)
         {
-            Assert.Equal(ErrorType.Conflict, period.EnsureAcceptsResults().Error.Type);
-            Assert.Contains(EvaluationPeriodStatusText.ToText(status), period.EnsureAcceptsResults().Error.Message, StringComparison.Ordinal);
+            Assert.Equal(ErrorType.Conflict, period.EnsureAcceptsResults(ScorecardStatus.Draft).Error.Type);
+            Assert.Contains(EvaluationPeriodStatusText.ToText(status), period.EnsureAcceptsResults(ScorecardStatus.Draft).Error.Message, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void A_scorecard_returned_while_the_period_is_completed_can_be_resubmitted_and_finalized_and_then_the_period_can_close()
+    {
+        var period = PeriodIn(EvaluationPeriodStatus.Active);
+        var scorecard = In(ScorecardStatus.Submitted);
+        Assert.True(period.Complete().IsSuccess);
+
+        Assert.True(period.EnsureAllowsReview().IsSuccess);
+        Assert.True(scorecard.Return(Manager, "Please check sales", [], Now).IsSuccess);
+        Assert.True(EvaluationPeriod.BlocksClosing(scorecard.Status));
+        Assert.True(period.Close(scorecardsInReview: 1).IsFailure);
+
+        Assert.True(period.EnsureAcceptsResults(scorecard.Status).IsSuccess);
+        Assert.True(period.EnsureAcceptsEvidence(scorecard.Status).IsSuccess);
+        Assert.True(scorecard.SaveResults("Checked again").IsSuccess);
+        Assert.True(scorecard.Submit(Later, OtherScore, "Outstanding", Employee, Now).IsSuccess);
+        Assert.Equal(ScorecardStatus.Resubmitted, scorecard.Status);
+
+        // Once resubmitted the scorecard is no longer the employee's: results are refused again by the scorecard itself.
+        Assert.True(scorecard.EnsureResultsEditable().IsFailure);
+        Assert.True(scorecard.Approve(false, Later, OtherScore, "Outstanding", null, Manager, Now).IsSuccess);
+        Assert.Equal(ScorecardStatus.Finalized, scorecard.Status);
+        Assert.False(EvaluationPeriod.BlocksClosing(scorecard.Status));
+        Assert.True(period.Close(scorecardsInReview: 0).IsSuccess);
+    }
+
+    [Fact]
+    public void A_draft_scorecard_cannot_be_submitted_once_the_period_is_completed()
+    {
+        var period = PeriodIn(EvaluationPeriodStatus.Completed);
+        var scorecard = In(ScorecardStatus.Draft);
+
+        var refused = period.EnsureAcceptsResults(scorecard.Status);
+
+        Assert.Equal(ErrorType.Conflict, refused.Error.Type);
+        Assert.Contains("while the period is Active.", refused.Error.Message, StringComparison.Ordinal);
+        Assert.False(EvaluationPeriod.BlocksClosing(scorecard.Status));
     }
 }

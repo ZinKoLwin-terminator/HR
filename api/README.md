@@ -367,7 +367,13 @@ table requires a masked account), is skipped with a warning.
 Four resources under `/api/kpi`: categories, templates, evaluation periods and rating bands. Assigning KPIs and the scorecard
 plan are in "HTTP contract (KPI assignments)" below; submission and review, evidence attachments, and the dashboards, reports and
 Excel exports have sections of their own further down. Activity entries use the category `performance`. The KPI scoring
-itself (`KpiRule`, `KpiCalculator`, calculation version 1) lives in the domain and is not exposed here.
+itself (`KpiRule`, `KpiCalculator`, calculation version 1) lives in the domain and is not exposed here. Two shared case files pin it
+for the API and the Angular demo mock: `docs/test-data/kpi-calculation-cases.json` (single achievements, run by `KpiCalculatorTests`)
+and `docs/test-data/kpi-scorecard-cases.json` (whole scorecards with the error keys, the weight rule, the rating label and the
+`KpiFigures` of the dashboards: average, completion rate, competition ranks with ties and page offsets, attention threshold; run by
+`KpiScorecardCasesTests`). The second file is `{ "_comment": [...], "cases": [...] }`; every case has a unique `name` and a `kind`
+(`score`, `validateWeights`, `ratingLabel`, `average`, `completionRate`, `competitionRanks`, `attentionThreshold`), and `_comment`
+documents the fields of each kind. Numbers are plain JSON numbers and enum values the API's texts.
 
 Policies (checked against the role's grants, see "Permission check"): setup is the module `kpi-setup` with
 `View|Create|Edit|Delete` (HR); the period picker is the module `kpi` with `View` (everyone who uses scorecards:
@@ -382,7 +388,7 @@ the setup, and `kpi-setup` alone does not open the picker. Every route needs a s
 | `GET/POST /api/kpi/periods`, `GET /query`, `GET/PUT/DELETE /{id}` | `kpi-setup:` View / Create / View / View / Edit / Delete | create fields (no status), update fields plus `rowVersion` | `EvaluationPeriodDto` |
 | `POST /api/kpi/periods/{id}/activate` | `kpi-setup:Edit` | `{ rowVersion }` | Draft to Active |
 | `POST /api/kpi/periods/{id}/complete` | `kpi-setup:Edit` | `{ rowVersion }` | Active to Completed |
-| `POST /api/kpi/periods/{id}/close` | `kpi-setup:Edit` | `{ rowVersion }` | Completed to Closed (final) |
+| `POST /api/kpi/periods/{id}/close` | `kpi-setup:Edit` | `{ rowVersion }` | Completed to Closed (final); `409` while a scorecard of the period is in review or returned |
 | `GET /api/kpi/periods/options?companyId?` | `kpi:View` | none | `EvaluationPeriodOptionDto[]`, periods that are not Draft, newest start first |
 
 The paging, `sort=field:asc|desc` whitelist (an unknown field is a `400` on `sort`), `search`, `rowVersion` and error rules
@@ -427,12 +433,21 @@ are those of the organization module. Dates are `yyyy-MM-dd`; decimals travel as
   * **No overlap:** two periods of the same type in the same company cannot share a day. Dates are inclusive, so a period that
     starts on the day another ends overlaps it. A clash is `409` and the message names the period it clashes with and its dates.
     Periods of another type or another company never clash. Checked on create and when the company, type or dates change.
+    Create and update run the check and the save in one transaction that holds the application lock `kpi-period:{companyId}` (the
+    company of the request), so two requests at the same moment cannot both pass it: the second waits and then sees the first.
+    Waiting lasts at most 15 seconds, then `409` "Another change to the evaluation periods of this company is in progress. Try
+    again.". Periods of other companies never wait.
   * **Edits by status:** Draft: every field. Active: only `name` and `submissionDueDate`; any other change is `409` ("only its
     name and submission due date can be changed"). Completed and Closed: no edit (`409`). `400` validation errors come before
     these `409`s.
   * **Commands:** `activate` (Draft to Active), `complete` (Active to Completed), `close` (Completed to Closed). A command out of
     order is `409` naming the period and its status; a command is not idempotent. Each logs an activity entry
     (`Evaluation period "X" activated|completed|closed`).
+  * **Close needs every scorecard finished.** A Closed period refuses every scorecard write, so `close` is `409` while any scorecard
+    of the period is Submitted, Resubmitted, Under Review, Approved or Returned, with the count: `Period "2026 Q4" still has 3
+    scorecard(s) in review or returned to the employee. Finish them before closing.` (The status check comes first: closing a period
+    that is not Completed is the out-of-order `409`.) Draft and Planning scorecards do not block: they stay as they are, recorded as
+    never submitted. Finalized and Rejected are final and never block.
   * **Delete:** only a Draft period, and only when no scorecard uses it (`409` with the status or the scorecard count). A
     company with periods cannot be deleted (`409`).
 * `EvaluationPeriodOptionDto` (the picker): `id, name, companyId, periodType, startDate, endDate, status, requiresHrReview,
@@ -547,8 +562,12 @@ name, never a comment.
   error) is refused with `409`.
 * **Concurrency.** Every change to a scorecard or item needs its `rowVersion` (`400` missing, `409` stale), checked again by the
   database. On top of that every plan write (assign, bulk, item update and delete, scorecard delete, finalize) runs in a transaction that
-  holds the application lock `kpi-plan`, so a finalize never misses a KPI added at the same moment, two assignments cannot both pass the
-  100% check, and two finalize calls cannot both succeed (the second is `409`). Waiting for the lock lasts at most 15 seconds, then `409`.
+  holds the application lock of its period, `kpi-plan:{periodId}`, so a finalize never misses a KPI added at the same moment, two
+  assignments cannot both pass the 100% check, and two finalize calls cannot both succeed (the second is `409`). Every rule a plan write
+  checks stays inside one period, so writes for **different periods never wait for each other**; writes for the same period take turns.
+  Assign and bulk take the period from the request; item update and delete, scorecard delete and finalize read the scorecard's period
+  first (it never changes); a record that does not exist takes no lock and answers its `400`/`404`. Waiting for the lock lasts at most 15
+  seconds, then `409` "Another change to KPI plans is in progress. Try again.".
 * **Database errors** that slip past the rules: `UQ_Scorecard_EmployeeId_PeriodId` and `UQ_ScorecardItem_ScorecardId_TemplateId` (a
   race) are `409`, as is `CK_Scorecard_NotOwnReviewer`; the other `CK_Scorecard_*` and `CK_ScorecardItem_*` are validation errors; a foreign
   key violation is `409`. `kpi.ReviewAction` is append-only: the API's database login has no UPDATE or DELETE on it (a test checks that
@@ -575,14 +594,14 @@ Submitted / Resubmitted / Under Review / Approved --reject (reason)--> Rejected 
 | Route | Policy | Body | Notes |
 | --- | --- | --- | --- |
 | `GET /api/kpi/my-scorecards` | `kpi:View` | filters, `sort`, paging | the caller's own scorecards except Planning, newest period first; no linked employee: empty page |
-| `PUT /api/kpi/scorecards/{id}/results` | `kpi:Create` | `{ rowVersion, employeeComment?, items: [{ id, actualValue?, employeeComment? }] }` | own employee only; Draft or Returned; period Active; saves a draft, no scorecard score |
-| `POST /api/kpi/scorecards/{id}/submit` | `kpi:Create` | `{ rowVersion }` | own employee only; Draft to Submitted, Returned to Resubmitted; period Active; every KPI needs a result |
+| `PUT /api/kpi/scorecards/{id}/results` | `kpi:Create` | `{ rowVersion, employeeComment?, items: [{ id, actualValue?, employeeComment? }] }` | own employee only; Draft or Returned; period Active (Completed too for a Returned scorecard); saves a draft, no scorecard score |
+| `POST /api/kpi/scorecards/{id}/submit` | `kpi:Create` | `{ rowVersion }` | own employee only; Draft to Submitted, Returned to Resubmitted; period Active (Completed too for a Returned scorecard); every KPI needs a result |
 | `POST /api/kpi/scorecards/{id}/start-review` | `kpi:Approve` | `{ rowVersion }` | Submitted or Resubmitted to Under Review |
 | `PUT /api/kpi/scorecards/{id}/review` | `kpi:Approve` | `{ rowVersion, managerRating?, managerComment?, items: [{ id, managerRating?, managerComment? }] }` | Submitted, Resubmitted or Under Review; ratings 1 to 5, at most 2 decimals; no status change, no history |
 | `POST /api/kpi/scorecards/{id}/approve` | `kpi:Approve` | `{ rowVersion, comment? }` | manager stage; score recalculated on the server; period `requiresHrReview`: Approved, else Finalized |
 | `POST /api/kpi/scorecards/{id}/return` and `/reject` | `kpi:Approve` | `{ rowVersion, comment }` | comment required; manager stage (history step `Manager`) or Approved (step `HR`) |
 | `POST /api/kpi/scorecards/{id}/finalize` | `kpi:Approve`, HR tier | `{ rowVersion, comment? }` | Approved to Finalized; the comment is the HR comment |
-| `GET /api/kpi/reviews/pending` | `kpi:Approve` | filters `periodId, departmentId, status`, `search`, paging | oldest submission first |
+| `GET /api/kpi/reviews/pending` | `kpi:Approve` | filters `periodId, departmentId, status`, `search`, paging | oldest submission first; only scorecards whose period is Active or Completed |
 
 History: each command appends one `ReviewActionDto` (`step` Employee, Manager or HR; `action` `Submit`, `Resubmit`, `Start Review`,
 `Approve`, `Return`, `Reject`, `Finalize`) with the actor, the comment and the overall score at that time. Status texts: `Draft`,
@@ -597,8 +616,15 @@ History: each command appends one `ReviewActionDto` (`step` Employee, Manager or
   being the employee's manager still reviews it, and the new manager sees it (direct report) but cannot review it.
 * **HR stage** (Approved: finalize, return, reject): HR tier only (`403` "Only HR can give the final review of a scorecard."), and not the
   user who recorded the manager-stage approval (`409` "The person who approved this scorecard cannot also give the HR final review.").
-* **Period.** Results and submit need an Active period; review actions an Active or Completed one; a Draft or Closed period is `409`
-  for every write. A submission after the period's `submissionDueDate` is allowed; compare `submittedOn` with the due date to flag it.
+* **Period.** Review actions need an Active or Completed period. Results, submit and evidence need an Active period, **except for a
+  Returned scorecard, which may also save results, add or remove evidence and resubmit while the period is Completed**: a reviewer may
+  return a scorecard while the period is Completed, and the employee must be able to correct it, or it would be stuck. A Draft scorecard
+  still needs an Active period (its submission window is over once the period is Completed): `409` "Period "2026 Q4" is Completed; results
+  can only be entered and submitted while the period is Active." (evidence: "...; evidence can only be added or removed while the period is
+  Active."). A Draft or Closed period is `409` for every write (a Returned scorecard then reads "...; a returned scorecard can only be changed
+  and resubmitted while the period is Active or Completed."). The period cannot be closed while a scorecard is still in review or returned
+  (see "Close needs every scorecard finished"). A submission after the period's `submissionDueDate` is allowed; compare `submittedOn` with
+  the due date to flag it.
 * **Validation.** Items must belong to the scorecard and appear once (`400` on `items[i].id`); an invalid result is `400` on
   `items[i].actualValue` (Boolean must be 0 or 1, a rating within its scale, no negative when lower is better, at most 4 decimals);
   comments at most 1000 characters; a missing result on submit is `400` on `items[i].actualValue` for each KPI (index in sort order). A
@@ -627,7 +653,9 @@ History: each command appends one `ReviewActionDto` (`step` Employee, Manager or
   The history entries themselves (step, action, statuses, actor, score, time) are never hidden. Nothing stored changes: it is a rule of
   the answer, not of the data. The Own tier never sees a Planning scorecard at all (see "Scoping of reads").
 * **Review queue.** A manager sees manager-stage scorecards (Submitted, Resubmitted, Under Review) naming them reviewer; the HR tier sees
-  every manager-stage scorecard and every Approved one except those it approved itself; never the caller's own scorecard.
+  every manager-stage scorecard and every Approved one except those it approved itself; never the caller's own scorecard. Only
+  scorecards whose period is Active or Completed are listed (the periods in which a review step is allowed), so a scorecard of a period
+  that was closed by direct database work never appears in a queue where every action would be refused.
 * **Activity** entries (category `performance`) name the employee code and the period only, never a comment or a result. Because anyone
   with `activity:View` reads the feed for the whole company, a review decision is never told apart: approve, return, reject and the HR
   final review all read `Scorecard of EMP-0002 for "2026 Q4" was reviewed`, and a resubmission reads `... submitted` like the first
@@ -652,11 +680,12 @@ of the answer for the next write, or reload the scorecard. Neither answer carrie
 
 * **Who and when.** Only the scorecard's own employee adds or removes evidence (someone else who can see the scorecard, a reviewer or HR
   included, gets `403` "You can only add or remove evidence on your own scorecard."; outside their scope `404`). The scorecard must be Draft
-  or Returned (`409` otherwise) and its period Active (`409`), and the `rowVersion` current (`409`; missing or malformed: `400` on
+  or Returned (`409` otherwise) and its period Active, or Completed for a Returned scorecard (`409`), and the `rowVersion` current (`409`; missing or malformed: `400` on
   `rowVersion`). The employee, the scorecard's reviewer and manager, and HR download (the scorecard scope of `GET /api/kpi/scorecards/{id}`:
   anyone outside it gets `404`, also for an attachment id that does not exist). Evidence does not change the score and is not a workflow step.
 * **Checked before the body is read.** The upload route first checks what its item id alone decides: the item exists and its scorecard is
-  in the caller's scope (`404`), the caller is its employee (`403`), the scorecard is Draft or Returned and its period Active (`409`). Only
+  in the caller's scope (`404`), the caller is its employee (`403`), the scorecard is Draft or Returned and its period Active, or Completed for
+  a Returned scorecard (`409`). Only
   then is the multipart body read, so a refused upload never buffers a file. The upload checks everything again (with the row version)
   before it stores anything.
 * **One 404 per route resource.** A missing record and a record outside the caller's scope answer the same message, naming only the route's
@@ -763,7 +792,8 @@ scorecards are not shown, as in My scorecards. A caller with no linked employee,
 * `period`: `{ id, name, periodType, startDate, endDate, status, submissionDueDate }` or null.
 * `scorecard`: `{ id, status, overallScore, ratingLabel, reviewerEmployeeId, reviewerName, submittedOn, finalizedOn }` or null.
 * `items[]`: `{ id, kpiCode, kpiName, unit, target, actualValue, achievementPct, weight, weightedScore }` by sort order.
-* `pending`: `{ isPending, dueDate, isOverdue }`. `isPending` is true when the scorecard is Draft or Returned and its period Active;
+* `pending`: `{ isPending, dueDate, isOverdue }`. `isPending` is true when the employee can still act on the scorecard: Draft or Returned and its period
+  Active, or Returned and its period Completed (the period rule of results and submit);
   `dueDate` is the period's `submissionDueDate`; `isOverdue` is pending and today (business time zone) after the due date.
 * `feedback`: `{ managerRating, managerComment }` or null when there is no scorecard. Both are the stored values only when the scorecard
   is Finalized or Rejected, and `null` in every other status (the review visibility rule of "HTTP contract (KPI submission and review)").
@@ -778,7 +808,10 @@ caller as **reviewer**, never the caller's own (even an HR-tier caller sees only
 * `pendingReviews`: Submitted, Resubmitted or Under Review and naming the caller as reviewer.
 * `approvedOrFinalized`: Approved plus Finalized. `averageScore`: Finalized only (above).
 * `employees[]`: `{ scorecardId, employeeId, employeeCode, employeeName, departmentId, departmentName, status, overallScore,
-  ratingLabel }`, highest score first, unscored last, then employee code.
+  ratingLabel }`, **ordered by employee code** (then scorecard id), **at most 200 rows**. `employeeCount` (added with the cap) is the
+  number of rows there are in all (the same number as `teamSize`) and `employeesTruncated` is true when the list stops short of it, as the
+  HR dashboard does with `requiringAttentionCount`. A screen that shows a truncated list should say so and point to the reports, which
+  page.
 
 **HR dashboard** (`KpiHrDashboardDto`): every scorecard of the period (of `companyId` when given). `period`, `companyId`, then:
 
@@ -797,7 +830,9 @@ caller as **reviewer**, never the caller's own (even an HR-tier caller sees only
 
 * `summary`: one row per period that has a matching scorecard, `{ periodId, periodName, periodType, startDate, endDate, periodStatus,
   scorecards (all, Planning included), inPlanning, finalized, rejected, averageScore, minScore, maxScore, completionRatePct }`. Sort:
-  `periodStart` (default, newest first), `periodName`, `periodType`. Three queries per page (the count, the periods, their figures).
+  `periodStart` (default, newest first), `periodName`, `periodType`. Three queries per page (the count, the periods, their figures). A
+  period of the page whose figures are gone by the third query (its scorecards deleted in between) reads as zero figures (`averageScore`,
+  `minScore`, `maxScore` null, `completionRatePct` 0), never a `500`.
 * `employee/{employeeId}`: `{ employeeId, employeeCode, employeeName, finalized, averageScore, scorecards: PagedResult }` where each
   scorecard is `{ scorecardId, periodId, periodName, periodType, startDate, endDate, departmentId, departmentName, status, overallScore,
   ratingLabel, items[] }` and each item `{ id, kpiCode, kpiName, categoryName, unit, target, actualValue, achievementPct, weight,
@@ -816,7 +851,8 @@ caller as **reviewer**, never the caller's own (even an HR-tier caller sees only
 * `kpi-achievement`: one row per KPI template with an assigned KPI in the matching scorecards, `{ templateId, kpiCode, kpiName,
   categoryId, categoryName, assigned, counted, averageAchievementPct, minAchievementPct, maxAchievementPct }`. `assigned` counts every
   assigned KPI; `counted` and the figures cover the KPIs of Finalized scorecards that have an achievement. Code and name are the
-  template's current ones. Sort: `kpiCode` (default), `kpiName`, `categoryName`, `assigned`, `counted`, `averageAchievement`.
+  template's current ones. Sort: `kpiCode` (default), `kpiName`, `categoryName`, `assigned`, `counted`, `averageAchievement` (sorted by
+  the same definition as the shown figure, the sum over `counted`, unrounded; a template with nothing counted sorts as 0).
 * `target-vs-actual`: one row per KPI, every status (shown), `{ itemId, scorecardId, employeeId, employeeCode, employeeName,
   departmentId, departmentName, periodId, periodName, status, kpiCode, kpiName, categoryName, unit, target, actualValue, achievementPct,
   weight, weightedScore }`. Default order: newest period, then employee code, then KPI order. Sort: `periodStart`, `periodName`,
@@ -1184,7 +1220,9 @@ the user lacks using the `permissions` of `GET /api/auth/me`; the server stays t
   (`IUnitOfWork.BeginTransactionAsync`); nothing is repaired by hand after a failure.
 * A demotion, deactivation, delete or exit that could remove an HR Administrator takes the application lock
   `hrms:administrator-changes` (`sp_getapplock`, owned by the transaction) before it checks the last-administrator rule, so two
-  concurrent requests cannot both pass it. A request that cannot get the lock within 15 seconds is a `409`.
+  concurrent requests cannot both pass it. A request that cannot get the lock within 15 seconds is a `409` ("Another change to the
+  administrators is in progress. Try again."). Every application lock answers its own message (`ApplicationLock.BusyMessage`); the KPI
+  locks are in the KPI sections.
 * Only administrators who can sign in count towards "one active HR Administrator": an account whose employee has an exit date does not.
   Deactivating, deleting or demoting (and the automatic deactivation on exit) rotates the security stamp, so an open session ends at once
   and cannot come back by reactivating the account.

@@ -232,7 +232,7 @@ internal sealed class ScorecardSteps(
     /// <summary>
     /// Opens the scorecard for adding or removing evidence: only its own employee (404 outside the scope, with <paramref name="notFound"/>,
     /// the message of the route's own resource; 403 for someone else), a current row version (409), the scorecard in Draft or Returned and
-    /// its period Active (409).
+    /// its period Active, or Completed for a Returned scorecard (409).
     /// </summary>
     public async Task<Result<(Scorecard Scorecard, EvaluationPeriod Period)>> OpenForEvidenceAsync(
         int scorecardId,
@@ -283,7 +283,7 @@ internal sealed class ScorecardSteps(
         }
 
         var period = await PeriodOfAsync(scorecard, cancellationToken);
-        var open = period.EnsureAcceptsEvidence();
+        var open = period.EnsureAcceptsEvidence(scorecard.Status);
         return open.IsFailure ? Result.Failure<EvaluationPeriod>(open.Error) : Result.Success(period);
     }
 

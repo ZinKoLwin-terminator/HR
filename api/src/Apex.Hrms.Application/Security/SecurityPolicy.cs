@@ -21,6 +21,10 @@ public static class SecurityPolicy
     /// </summary>
     public const string AdministratorLockName = "hrms:administrator-changes";
 
+    /// <summary>The <see cref="AdministratorLockName"/> lock with the 409 answered when another administrator change holds it too long.</summary>
+    public static Abstractions.ApplicationLock AdministratorLock { get; } =
+        new(AdministratorLockName, "Another change to the administrators is in progress. Try again.");
+
     /// <summary>A message when <paramref name="password"/> breaks the password rule, otherwise null.</summary>
     public static string? PasswordViolation(string? password) =>
         string.IsNullOrEmpty(password) || password.Length < PasswordMinimumLength

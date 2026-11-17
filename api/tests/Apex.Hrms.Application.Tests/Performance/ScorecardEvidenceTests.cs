@@ -475,6 +475,40 @@ public sealed class ScorecardEvidenceTests : ScorecardWorkflowTestBase
         ResultAssert.Failed(await host.DownloadEvidence(9999), ErrorType.NotFound);
     }
 
+    [Fact]
+    public async Task A_scorecard_returned_while_the_period_is_completed_can_still_add_and_remove_evidence()
+    {
+        var world = await SeedAsync();
+        var submitted = await SubmittedAsync(world);
+        await MovePeriodAsync(world, close: false);
+        AsManager(world.Anna, 21, world.Ben.Id);
+        var returned = ResultAssert.Succeeded(await host.Return(host.Fresh(submitted), "Add proof"));
+        AsEmployee(world.Ben, 20);
+        var item = Of(returned, "A-1");
+
+        var precheck = await host.Get<IUploadEvidenceHandler>().PrecheckAsync(item.Id, default);
+        Assert.True(precheck.IsSuccess, precheck.IsFailure ? precheck.Error.Message : null);
+        var added = ResultAssert.Succeeded(await host.UploadEvidence(item, Report, "proof.pdf", host.VersionOf(returned)));
+        var removed = await host.RemoveEvidence(added.Attachment.Id, Requests.Version(added.ScorecardRowVersion));
+
+        ResultAssert.Succeeded(removed);
+        Assert.Empty(host.Repository<KpiAttachment>().Items);
+    }
+
+    [Fact]
+    public async Task A_draft_scorecard_is_told_that_evidence_needs_an_active_period()
+    {
+        var world = await SeedAsync();
+        await MovePeriodAsync(world, close: false);
+        AsEmployee(world.Ben, 20);
+
+        var precheck = await host.Get<IUploadEvidenceHandler>().PrecheckAsync(Of(world.Card, "A-1").Id, default);
+
+        Assert.Equal(
+            "Period \"2026 Q4\" is Completed; evidence can only be added or removed while the period is Active.",
+            ResultAssert.Failed(precheck, ErrorType.Conflict).Message);
+    }
+
     /// <summary>The wording the handler answers with when a KPI already has the most files.</summary>
     private static class UploadEvidenceHandlerMessages
     {

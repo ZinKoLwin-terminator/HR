@@ -1,3 +1,4 @@
+using System.Globalization;
 using Apex.Hrms.Domain.Common;
 
 namespace Apex.Hrms.Domain.Performance;
@@ -21,7 +22,8 @@ public sealed record EvaluationPeriodDetails(
 
 /// <summary>
 /// One evaluation window of a company (kpi.EvaluationPeriod): Draft, Active, Completed, Closed. Scorecards are planned in
-/// Draft and Active, submitted and reviewed while Active, and Closed is final. A Draft period can be changed in every
+/// Draft and Active, submitted while Active (a returned one also while Completed), reviewed while Active or Completed, and
+/// Closed is final: a period closes only once none of its scorecards is in review or returned. A Draft period can be changed in every
 /// field and deleted; an Active one only changes its name and submission due date; Completed and Closed ones are
 /// read-only. Overlap with other periods of the company is checked by the application layer (it needs other records).
 /// </summary>
@@ -128,20 +130,73 @@ public sealed class EvaluationPeriod : AuditedEntity
     /// <summary>Active to Completed.</summary>
     public Result Complete() => MoveTo(EvaluationPeriodStatus.Active, EvaluationPeriodStatus.Completed, "completed");
 
-    /// <summary>Completed to Closed (final).</summary>
-    public Result Close() => MoveTo(EvaluationPeriodStatus.Completed, EvaluationPeriodStatus.Closed, "closed");
+    /// <summary>
+    /// Completed to Closed (final). <paramref name="scorecardsInReview"/> is the number of the period's scorecards that are still in the
+    /// workflow (<see cref="BlocksClosing"/>): closing would freeze them, so any is a 409 with the count. Draft and Planning scorecards do
+    /// not block: they are recorded as never submitted.
+    /// </summary>
+    public Result Close(int scorecardsInReview)
+    {
+        if (Status == EvaluationPeriodStatus.Completed && scorecardsInReview > 0)
+        {
+            return Result.Failure(AppError.Conflict(string.Create(
+                CultureInfo.InvariantCulture,
+                $"Period \"{Name}\" still has {scorecardsInReview} scorecard(s) in review or returned to the employee. Finish them before closing.")));
+        }
 
-    /// <summary>Results are entered and scorecards submitted only while the period is Active (409 otherwise).</summary>
-    public Result EnsureAcceptsResults() => Status == EvaluationPeriodStatus.Active
-        ? Result.Success()
-        : Result.Failure(AppError.Conflict(
-            $"Period \"{Name}\" is {EvaluationPeriodStatusText.ToText(Status)}; results can only be entered and submitted while the period is Active."));
+        return MoveTo(EvaluationPeriodStatus.Completed, EvaluationPeriodStatus.Closed, "closed");
+    }
 
-    /// <summary>Evidence files are added or removed only while the period is Active (409 otherwise).</summary>
-    public Result EnsureAcceptsEvidence() => Status == EvaluationPeriodStatus.Active
-        ? Result.Success()
-        : Result.Failure(AppError.Conflict(
-            $"Period \"{Name}\" is {EvaluationPeriodStatusText.ToText(Status)}; evidence can only be added or removed while the period is Active."));
+    /// <summary>
+    /// The scorecard statuses that keep a period from closing: Submitted, Resubmitted, Under Review, Approved (waiting for a reviewer or
+    /// HR) and Returned (waiting for the employee, who may resubmit while the period is Completed).
+    /// </summary>
+    public static bool BlocksClosing(ScorecardStatus scorecardStatus) => StatusesBlockingClose.Contains(scorecardStatus);
+
+    /// <summary>The statuses of <see cref="BlocksClosing"/>, for a query.</summary>
+    public static IReadOnlyList<ScorecardStatus> StatusesBlockingClose { get; } =
+        [ScorecardStatus.Submitted, ScorecardStatus.Resubmitted, ScorecardStatus.UnderReview, ScorecardStatus.Approved, ScorecardStatus.Returned];
+
+    /// <summary>
+    /// Whether the employee may work on a scorecard of this period (enter results, submit, add or remove evidence): while the period is
+    /// Active, and for a scorecard that a reviewer <b>Returned</b> also while it is Completed. A reviewer may return a scorecard while the
+    /// period is Completed (<see cref="EnsureAllowsReview"/>), so the employee must be able to correct and resubmit it then, or it would
+    /// be stuck. A Draft scorecard was never submitted: its submission window ended with the Active period. A Draft or Closed period
+    /// refuses everything.
+    /// </summary>
+    public bool AcceptsEmployeeWork(ScorecardStatus scorecardStatus) => AcceptsEmployeeWork(Status, scorecardStatus);
+
+    /// <summary>The rule of <see cref="AcceptsEmployeeWork(ScorecardStatus)"/> for a period status read without the entity (a dashboard row).</summary>
+    public static bool AcceptsEmployeeWork(EvaluationPeriodStatus periodStatus, ScorecardStatus scorecardStatus) =>
+        periodStatus == EvaluationPeriodStatus.Active
+        || (periodStatus == EvaluationPeriodStatus.Completed && scorecardStatus == ScorecardStatus.Returned);
+
+    /// <summary>
+    /// Results are entered and scorecards submitted while the period is Active, and a Returned scorecard also while it is Completed
+    /// (<see cref="AcceptsEmployeeWork(ScorecardStatus)"/>); 409 otherwise.
+    /// </summary>
+    public Result EnsureAcceptsResults(ScorecardStatus scorecardStatus) =>
+        EnsureAcceptsEmployeeWork(scorecardStatus, "results can only be entered and submitted", "a returned scorecard can only be changed and resubmitted");
+
+    /// <summary>
+    /// Evidence files are added or removed while the period is Active, and on a Returned scorecard also while it is Completed
+    /// (<see cref="AcceptsEmployeeWork(ScorecardStatus)"/>); 409 otherwise.
+    /// </summary>
+    public Result EnsureAcceptsEvidence(ScorecardStatus scorecardStatus) =>
+        EnsureAcceptsEmployeeWork(scorecardStatus, "evidence can only be added or removed", "evidence of a returned scorecard can only be added or removed");
+
+    private Result EnsureAcceptsEmployeeWork(ScorecardStatus scorecardStatus, string what, string whatWhenReturned)
+    {
+        if (AcceptsEmployeeWork(scorecardStatus))
+        {
+            return Result.Success();
+        }
+
+        var status = EvaluationPeriodStatusText.ToText(Status);
+        return Result.Failure(AppError.Conflict(scorecardStatus == ScorecardStatus.Returned
+            ? $"Period \"{Name}\" is {status}; {whatWhenReturned} while the period is Active or Completed."
+            : $"Period \"{Name}\" is {status}; {what} while the period is Active."));
+    }
 
     /// <summary>A submitted scorecard is reviewed while the period is Active or Completed; Draft and Closed periods refuse it (409).</summary>
     public Result EnsureAllowsReview() => Status is EvaluationPeriodStatus.Active or EvaluationPeriodStatus.Completed

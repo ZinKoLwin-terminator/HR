@@ -491,4 +491,71 @@ public sealed class ScorecardSubmissionTests : ScorecardWorkflowTestBase
         Assert.Null(saved.ManagerComment);
         Assert.Null(saved.HrComment);
     }
+
+    // ---- A scorecard returned while the period is Completed (it must not be stranded) ----
+
+    [Fact]
+    public async Task A_scorecard_returned_while_the_period_is_completed_is_corrected_resubmitted_approved_and_finalized()
+    {
+        var world = await SeedAsync();
+        var submitted = await SubmittedAsync(world);
+        await MovePeriodAsync(world, close: false);
+        AsManager(world.Anna, 21, world.Ben.Id);
+        var returned = ResultAssert.Succeeded(await host.Return(host.Fresh(submitted), "Check A-2"));
+        Assert.Equal(("Returned", "Completed"), (returned.Status, returned.PeriodStatus));
+
+        AsEmployee(world.Ben, 20);
+        var corrected = ResultAssert.Succeeded(await host.SaveResults(host.Fresh(returned), Actual(Of(returned, "A-1"), 100m), Actual(Of(returned, "A-2"), 90m)));
+        var resubmitted = ResultAssert.Succeeded(await host.Submit(corrected));
+        AsManager(world.Anna, 21, world.Ben.Id);
+        var approved = ResultAssert.Succeeded(await host.Approve(host.Fresh(resubmitted)));
+
+        Assert.Equal("Resubmitted", resubmitted.Status);
+        Assert.Equal(96m, resubmitted.OverallScore); // 100% × 60 + 90% × 40
+        Assert.Equal("Finalized", approved.Status);
+        Assert.Equal(["Finalize Plan", "Submit", "Return", "Resubmit", "Approve"], HistoryOf(world.Card.Id).Select(step => ReviewActionTypeText.ToText(step.Action)));
+        ResultAssert.Succeeded(await ClosePeriodAsync(world));
+    }
+
+    [Fact]
+    public async Task A_draft_scorecard_is_still_refused_once_the_period_is_completed_while_a_returned_one_is_not()
+    {
+        var world = await SeedAsync();
+        var dan = await SubmittedCardAsync(world, world.Dan, 24, "C-1");
+        AsHr(world.Hr, 22);
+        var returned = ResultAssert.Succeeded(await host.Return(host.Fresh(dan), "Add detail"));
+        await MovePeriodAsync(world, close: false);
+
+        AsEmployee(world.Ben, 20);
+        var draftResults = await host.SaveResults(world.Card.Id, ResultsOf(host.Fresh(world.Card), null, Actual(Of(world.Card, "A-1"), 90m)));
+        var draftSubmit = await host.Submit(host.Fresh(world.Card));
+        AsEmployee(world.Dan, 24);
+        var returnedResults = await host.SaveResults(returned.Id, ResultsOf(host.Fresh(returned), null, Actual(returned.Items[0], 85m)));
+
+        const string refusal = "Period \"2026 Q4\" is Completed; results can only be entered and submitted while the period is Active.";
+        Assert.Equal(refusal, ResultAssert.Failed(draftResults, ErrorType.Conflict).Message);
+        Assert.Equal(refusal, ResultAssert.Failed(draftSubmit, ErrorType.Conflict).Message);
+        Assert.Equal(ScorecardStatus.Draft, Stored(world.Card.Id).Status);
+        ResultAssert.Succeeded(returnedResults);
+    }
+
+    [Fact]
+    public async Task A_returned_scorecard_is_refused_once_the_period_is_closed()
+    {
+        var world = await SeedAsync();
+        var submitted = await SubmittedAsync(world);
+        AsManager(world.Anna, 21, world.Ben.Id);
+        var returned = ResultAssert.Succeeded(await host.Return(host.Fresh(submitted), "Check A-2"));
+        await MovePeriodAsync(world, close: false);
+        ForceClosePeriod(world);
+        AsEmployee(world.Ben, 20);
+
+        var results = await host.SaveResults(returned.Id, ResultsOf(host.Fresh(returned), null, Actual(Of(returned, "A-1"), 90m)));
+        var submit = await host.Submit(host.Fresh(returned));
+
+        const string refusal = "Period \"2026 Q4\" is Closed; a returned scorecard can only be changed and resubmitted while the period is Active or Completed.";
+        Assert.Equal(refusal, ResultAssert.Failed(results, ErrorType.Conflict).Message);
+        Assert.Equal(refusal, ResultAssert.Failed(submit, ErrorType.Conflict).Message);
+        Assert.Equal(ScorecardStatus.Returned, Stored(world.Card.Id).Status);
+    }
 }

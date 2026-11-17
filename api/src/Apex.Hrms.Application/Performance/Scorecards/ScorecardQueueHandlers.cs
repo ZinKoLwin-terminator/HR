@@ -27,13 +27,18 @@ internal sealed class MyScorecardsHandler(ScorecardReader reader, ICurrentUser u
 /// The scorecards waiting for the caller (<c>GET /api/kpi/reviews/pending</c>), oldest submission first. A manager sees the scorecards in
 /// the manager stage (Submitted, Resubmitted, Under Review) that name them as the reviewer. The HR tier sees every scorecard in the
 /// manager stage and every Approved one, except those whose manager-stage approval they recorded themselves (they cannot give the HR
-/// review). Never the caller's own scorecard.
+/// review). Never the caller's own scorecard, and only scorecards whose period is Active or Completed (the periods in which a review step
+/// is allowed).
 /// </summary>
 internal sealed class PendingReviewsHandler(ScorecardReader reader, IReadModel read, ICurrentUser user, SelfService self) : IPendingReviewsHandler
 {
     public Task<Result<PagedResult<ScorecardDto>>> HandleAsync(PageRequest<ScorecardFilter> request, CancellationToken cancellationToken)
     {
-        var waiting = reader.Scoped();
+        // Only scorecards whose period still allows a review (Active or Completed): one in a Draft or Closed period could not be acted on.
+        var active = EvaluationPeriodStatus.Active;
+        var completed = EvaluationPeriodStatus.Completed;
+        var reviewable = read.Query<EvaluationPeriod>().Where(period => period.Status == active || period.Status == completed).Select(period => period.Id);
+        var waiting = reader.Scoped().Where(scorecard => reviewable.Contains(scorecard.PeriodId));
         if (user.EmployeeId is { } own)
         {
             waiting = waiting.Where(scorecard => scorecard.EmployeeId != own);

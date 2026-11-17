@@ -314,20 +314,88 @@ public sealed class ScorecardWorkflowTests : DatabaseTest
         Assert.Equal(11m, await Scalar<decimal>("SELECT ActualValue FROM kpi.ScorecardItem WHERE Id = @id", ("@id", setup.First.Id)));
     }
 
+    private Task<Result<EvaluationPeriodDto>> CompletePeriod(EvaluationPeriodDto period) =>
+        RunCommand<CompletePeriodCommand, EvaluationPeriodDto>(new CompletePeriodCommand(period.Id, Requests.Version(period.RowVersion)));
+
+    private Task<Result<EvaluationPeriodDto>> ClosePeriod(EvaluationPeriodDto period) =>
+        RunCommand<ClosePeriodCommand, EvaluationPeriodDto>(new ClosePeriodCommand(period.Id, Requests.Version(period.RowVersion)));
+
+    private Task<Result<PagedResult<ScorecardDto>>> PendingOf(EvaluationPeriodDto period) =>
+        InScopeAsync(sp => sp.GetRequiredService<IPendingReviewsHandler>().HandleAsync(
+            new PageRequest<ScorecardFilter>(0, 50, null, null, new ScorecardFilter(PeriodId: period.Id)),
+            default));
+
     [IntegrationFact]
-    public async Task Review_actions_and_results_are_refused_with_a_conflict_once_the_period_is_closed()
+    public async Task Closing_is_refused_while_a_scorecard_is_in_review_and_a_period_closed_by_hand_refuses_every_step_and_leaves_the_queue()
     {
         var setup = await SetupAsync();
         var submitted = await SubmittedAsync(setup);
-        var completed = Succeeded(await RunCommand<CompletePeriodCommand, EvaluationPeriodDto>(new CompletePeriodCommand(setup.Period.Id, Requests.Version(setup.Period.RowVersion))));
+        var completed = Succeeded(await CompletePeriod(setup.Period));
         ActAsManager(setup);
         var started = Succeeded(await StartReview(submitted));
-        Succeeded(await RunCommand<ClosePeriodCommand, EvaluationPeriodDto>(new ClosePeriodCommand(setup.Period.Id, Requests.Version(completed.RowVersion))));
+        Assert.Equal([setup.Card.Id], Succeeded(await PendingOf(setup.Period)).Items.Select(card => card.Id));
 
+        var refused = await ClosePeriod(completed);
+
+        Assert.Equal(
+            $"Period \"{setup.Period.Name}\" still has 1 scorecard(s) in review or returned to the employee. Finish them before closing.",
+            Failed(refused, ErrorType.Conflict).Message);
+        Assert.Equal("Completed", await Scalar<string>("SELECT Status FROM kpi.EvaluationPeriod WHERE Id = @id", ("@id", setup.Period.Id)));
+
+        // Direct database work could still close it: every step then refuses, and the review queue no longer offers the scorecard.
+        await Sql.ExecuteAsync("UPDATE kpi.EvaluationPeriod SET Status = 'Closed' WHERE Id = @id", ("@id", setup.Period.Id));
         Assert.Contains("Closed", Failed(await Approve(started), ErrorType.Conflict).Message, StringComparison.Ordinal);
         Assert.Contains("Closed", Failed(await Return(started, "x"), ErrorType.Conflict).Message, StringComparison.Ordinal);
         Assert.Contains("Closed", Failed(await Reject(started, "x"), ErrorType.Conflict).Message, StringComparison.Ordinal);
         Assert.Equal("Under Review", await StatusOf(setup.Card.Id));
+        Assert.Empty(Succeeded(await PendingOf(setup.Period)).Items);
+    }
+
+    [IntegrationFact]
+    public async Task A_scorecard_returned_while_the_period_is_completed_is_resubmitted_approved_and_finalized_and_the_period_then_closes()
+    {
+        var setup = await SetupAsync();
+        var submitted = await SubmittedAsync(setup);
+        var completed = Succeeded(await CompletePeriod(setup.Period));
+        ActAsManager(setup);
+        var returned = Succeeded(await Return(submitted, "Check the quality score"));
+        ActAsAdministrator();
+        Assert.Contains("1 scorecard(s)", Failed(await ClosePeriod(completed), ErrorType.Conflict).Message, StringComparison.Ordinal);
+
+        ActAsEmployee(setup);
+        var corrected = Succeeded(await SaveResults(returned, Actual(setup.First, 100m), Actual(setup.Second, 90m)));
+        var resubmitted = Succeeded(await Submit(corrected));
+        ActAsManager(setup);
+        var finalized = Succeeded(await Approve(resubmitted, "Thanks"));
+        ActAsAdministrator();
+        var closed = Succeeded(await ClosePeriod(completed));
+
+        Assert.Equal(("Resubmitted", 96m), (resubmitted.Status, resubmitted.OverallScore));
+        Assert.Equal("Finalized", finalized.Status);
+        Assert.Equal("Finalized", await StatusOf(setup.Card.Id));
+        Assert.Equal(
+            "HR/Finalize Plan/Planning>Draft;Employee/Submit/Draft>Submitted;Manager/Return/Submitted>Returned;Employee/Resubmit/Returned>Resubmitted;Manager/Approve/Resubmitted>Finalized",
+            await Trail(setup.Card.Id));
+        Assert.Equal("Closed", closed.Status);
+    }
+
+    [IntegrationFact]
+    public async Task A_draft_scorecard_is_refused_once_the_period_is_completed_and_does_not_keep_the_period_from_closing()
+    {
+        var setup = await SetupAsync();
+        var completed = Succeeded(await CompletePeriod(setup.Period));
+        ActAsEmployee(setup);
+
+        var results = await SaveResults(setup.Card, Actual(setup.First, 100m));
+        var submit = await Submit(setup.Card);
+        ActAsAdministrator();
+        var closed = await ClosePeriod(completed);
+
+        var refusal = $"Period \"{setup.Period.Name}\" is Completed; results can only be entered and submitted while the period is Active.";
+        Assert.Equal(refusal, Failed(results, ErrorType.Conflict).Message);
+        Assert.Equal(refusal, Failed(submit, ErrorType.Conflict).Message);
+        Assert.Equal("Closed", Succeeded(closed).Status);
+        Assert.Equal("Draft", await StatusOf(setup.Card.Id));
     }
 
     // ---- The review trail ----

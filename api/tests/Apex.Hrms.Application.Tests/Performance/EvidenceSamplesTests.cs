@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Apex.Hrms.TestSupport;
 
 namespace Apex.Hrms.Application.Tests.Performance;
@@ -8,16 +9,25 @@ namespace Apex.Hrms.Application.Tests.Performance;
 /// </summary>
 public sealed class EvidenceSamplesTests
 {
-    [Fact]
-    public async Task Office_samples_are_identical_across_calls_even_when_time_passes()
+    /// <summary>The clock time every sample entry is stamped with (zip keeps a local date and time, with no offset).</summary>
+    private static readonly DateTime FixedTime = new(2026, 1, 1, 0, 0, 0);
+
+    public static TheoryData<string> Samples => ["docx", "xlsx"];
+
+    private static byte[] Sample(string kind) => kind == "docx" ? EvidenceSamples.Docx() : EvidenceSamples.Xlsx();
+
+    [Theory]
+    [MemberData(nameof(Samples))]
+    public void Every_entry_of_an_office_sample_carries_the_fixed_time_not_the_current_one(string kind)
     {
-        var docx = EvidenceSamples.Docx();
-        var xlsx = EvidenceSamples.Xlsx();
+        using var archive = new ZipArchive(new MemoryStream(Sample(kind)), ZipArchiveMode.Read);
 
-        // Zip timestamps have a 2-second resolution: wait past one boundary.
-        await Task.Delay(TimeSpan.FromMilliseconds(2100));
-
-        Assert.Equal(docx, EvidenceSamples.Docx());
-        Assert.Equal(xlsx, EvidenceSamples.Xlsx());
+        Assert.NotEmpty(archive.Entries);
+        Assert.All(archive.Entries, entry => Assert.Equal(FixedTime, entry.LastWriteTime.DateTime));
     }
+
+    [Theory]
+    [MemberData(nameof(Samples))]
+    public void Office_samples_are_identical_across_calls(string kind) =>
+        Assert.Equal(Sample(kind), Sample(kind));
 }

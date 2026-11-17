@@ -8,7 +8,7 @@ namespace Apex.Hrms.Application.Performance.Scorecards;
 
 /// <summary>
 /// The employee adds an evidence file to a KPI of their own scorecard. Only the scorecard's own employee (a reviewer or HR gets 403, a
-/// scorecard outside the caller's scope is a 404), only while the scorecard is Draft or Returned and its period Active, with the
+/// scorecard outside the caller's scope is a 404), only while the scorecard is Draft or Returned and its period Active (or Completed, for a Returned one), with the
 /// scorecard's current row version, at most 5 files per KPI. The content is checked by what it is (<see cref="EvidenceFiles"/>), never by
 /// what the client says. The file is stored first under a new random key, then the metadata row is saved together with the scorecard's new
 /// row version and the activity line; if that save fails the stored file is deleted again, so no file is left without a row.

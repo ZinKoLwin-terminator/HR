@@ -19,4 +19,8 @@
     <Compile Include="..\Shared\EvidenceSamples.cs" Link="Fakes\EvidenceSamples.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\..\docs\test-data\kpi-scorecard-cases.json" Link="TestData\kpi-scorecard-cases.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

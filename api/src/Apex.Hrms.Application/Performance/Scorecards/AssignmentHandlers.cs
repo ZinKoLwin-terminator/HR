@@ -8,13 +8,25 @@ namespace Apex.Hrms.Application.Performance.Scorecards;
 
 /// <summary>
 /// Every write to the KPI plan of a scorecard (assign, change or remove a KPI, delete the scorecard, finalize the plan) runs
-/// one at a time under this application lock, taken for the length of its transaction. A check made after the lock sees every
-/// earlier change, so a finalize can never miss a KPI that is added at the same moment, and two assignments cannot both pass the
-/// "total weight is at most 100%" check. HR writes are short and rare; the wait is at most 15 seconds, then 409.
+/// one at a time per evaluation period under this application lock (<c>kpi-plan:{periodId}</c>), taken for the length of its
+/// transaction. A check made after the lock sees every earlier change of that period, so a finalize can never miss a KPI that is added
+/// at the same moment, and two assignments cannot both pass the "total weight is at most 100%" check. Every rule a plan write checks
+/// stays inside one period (a scorecard belongs to one period and never moves), so writes for different periods do not wait for each
+/// other. HR writes are short and rare; the wait is at most 15 seconds, then 409 <see cref="BusyMessage"/>.
 /// </summary>
 internal static class PlanLock
 {
-    public const string Name = "kpi-plan";
+    public const string BusyMessage = "Another change to KPI plans is in progress. Try again.";
+
+    public static string NameFor(int periodId) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"kpi-plan:{periodId}");
+
+    public static ApplicationLock For(int periodId) => new(NameFor(periodId), BusyMessage);
+
+    /// <summary>
+    /// The lock of the period a plan write works in, or none when the record is gone (<paramref name="periodId"/> null): the write then
+    /// answers its 400 or 404 without changing anything.
+    /// </summary>
+    public static ApplicationLock? ForPeriod(int? periodId) => periodId is { } id ? For(id) : null;
 }
 
 /// <summary>Loads what an assignment checks, in set-based queries: never one query per employee.</summary>
@@ -221,7 +233,7 @@ internal sealed class AssignKpiHandler(
             return Result.Failure<AssignmentResult>(valid.Error);
         }
 
-        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.Name, cancellationToken);
+        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.For(request.PeriodId), cancellationToken);
         if (begun.IsFailure)
         {
             return Result.Failure<AssignmentResult>(begun.Error);
@@ -318,7 +330,7 @@ internal sealed class BulkAssignKpiHandler(
             return Result.Failure<BulkAssignmentResult>(valid.Error);
         }
 
-        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.Name, cancellationToken);
+        var begun = await unitOfWork.BeginTransactionAsync(PlanLock.For(request.PeriodId), cancellationToken);
         if (begun.IsFailure)
         {
             return Result.Failure<BulkAssignmentResult>(begun.Error);

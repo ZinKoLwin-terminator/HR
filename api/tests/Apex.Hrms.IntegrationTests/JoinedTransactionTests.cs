@@ -76,7 +76,7 @@ public sealed class JoinedTransactionTests : DatabaseTest
         {
             var unitOfWork = sp.GetRequiredService<IUnitOfWork>();
             await using var outer = Succeeded(await unitOfWork.BeginTransactionAsync(null, default));
-            await using (var inner = Succeeded(await unitOfWork.BeginTransactionAsync(resource, default)))
+            await using (var inner = Succeeded(await unitOfWork.BeginTransactionAsync(new ApplicationLock(resource, "Busy."), default)))
             {
                 await inner.CommitAsync(default);
             }
@@ -98,7 +98,7 @@ public sealed class JoinedTransactionTests : DatabaseTest
         {
             var unitOfWork = sp.GetRequiredService<IUnitOfWork>();
             await using var outer = Succeeded(await unitOfWork.BeginTransactionAsync(null, default));
-            await using (Succeeded(await unitOfWork.BeginTransactionAsync(resource, default)))
+            await using (Succeeded(await unitOfWork.BeginTransactionAsync(new ApplicationLock(resource, "Busy."), default)))
             {
             }
 

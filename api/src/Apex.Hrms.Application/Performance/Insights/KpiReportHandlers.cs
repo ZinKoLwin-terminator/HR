@@ -67,7 +67,12 @@ internal sealed class KpiSummaryReportHandler(KpiReportSource source) : IKpiSumm
         return Result.Success(new PagedResult<KpiPeriodSummaryDto>(
             [.. page.Rows.Select(period =>
             {
-                var figure = figures[period.Id];
+                // The page and the figures are two queries: a period whose scorecards changed in between (deleted, say) has no figures
+                // and reads as zero figures, never a KeyNotFoundException.
+                var figure = figures.GetValueOrDefault(period.Id);
+                var scorecards = figure?.Scorecards ?? 0;
+                var inPlanning = figure?.Planning ?? 0;
+                var finalizedCount = figure?.Finalized ?? 0;
                 return new KpiPeriodSummaryDto(
                     period.Id,
                     period.Name,
@@ -75,14 +80,14 @@ internal sealed class KpiSummaryReportHandler(KpiReportSource source) : IKpiSumm
                     period.StartDate,
                     period.EndDate,
                     EvaluationPeriodStatusText.ToText(period.Status),
-                    figure.Scorecards,
-                    figure.Planning,
-                    figure.Finalized,
-                    figure.Rejected,
-                    KpiFigures.Average(figure.ScoreSum, figure.Scored),
-                    figure.MinScore,
-                    figure.MaxScore,
-                    KpiFigures.CompletionRate(figure.Finalized, figure.Scorecards - figure.Planning));
+                    scorecards,
+                    inPlanning,
+                    finalizedCount,
+                    figure?.Rejected ?? 0,
+                    KpiFigures.Average(figure?.ScoreSum, figure?.Scored ?? 0),
+                    figure?.MinScore,
+                    figure?.MaxScore,
+                    KpiFigures.CompletionRate(finalizedCount, scorecards - inPlanning));
             })],
             page.Total,
             page.PageIndex,
@@ -381,8 +386,6 @@ internal sealed class KpiAchievementReportHandler(KpiReportSource source) : IKpi
 
         public decimal? Sum { get; init; }
 
-        public decimal? Average { get; init; }
-
         public decimal? Min { get; init; }
 
         public decimal? Max { get; init; }
@@ -396,7 +399,8 @@ internal sealed class KpiAchievementReportHandler(KpiReportSource source) : IKpi
             ["categoryName"] = row => row.CategoryName,
             ["assigned"] = row => row.Assigned,
             ["counted"] = row => row.Counted,
-            ["averageAchievement"] = row => row.Average ?? 0m,
+            // The same definition as the shown figure (KpiFigures.Average: the sum over the counted KPIs), unrounded; none counted sorts as 0.
+            ["averageAchievement"] = row => row.Counted == 0 ? 0m : (row.Sum ?? 0m) / row.Counted,
         };
 
     public async Task<Result<PagedResult<KpiAchievementRowDto>>> HandleAsync(PageRequest<KpiReportFilter> request, CancellationToken cancellationToken)
@@ -426,7 +430,6 @@ internal sealed class KpiAchievementReportHandler(KpiReportSource source) : IKpi
             Assigned = group.Count(),
             Counted = group.Count(fact => fact.Counts),
             Sum = group.Sum(fact => fact.Counts ? fact.AchievementPct : null),
-            Average = group.Average(fact => fact.Counts ? fact.AchievementPct : null),
             Min = group.Min(fact => fact.Counts ? fact.AchievementPct : null),
             Max = group.Max(fact => fact.Counts ? fact.AchievementPct : null),
         });
@@ -444,7 +447,6 @@ internal sealed class KpiAchievementReportHandler(KpiReportSource source) : IKpi
                 Assigned = grouped.Assigned,
                 Counted = grouped.Counted,
                 Sum = grouped.Sum,
-                Average = grouped.Average,
                 Min = grouped.Min,
                 Max = grouped.Max,
             };

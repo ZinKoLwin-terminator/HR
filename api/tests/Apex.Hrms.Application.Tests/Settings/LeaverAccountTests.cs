@@ -55,6 +55,22 @@ public sealed class LeaverAccountTests : IDisposable
     }
 
     [Fact]
+    public async Task While_another_administrator_change_holds_the_lock_the_exit_is_a_409_with_the_administrators_message()
+    {
+        var role = settings.SeedRole("HR Officer");
+        var employee = await settings.SeedEmployeeAsync();
+        ResultAssert.Succeeded(await settings.CreateUserAsync(employee.Id, role.Id));
+        settings.Host.UnitOfWork.HeldElsewhere.Add(SecurityPolicy.AdministratorLockName);
+
+        var result = await ExitAsync(employee);
+
+        Assert.Equal("Another change to the administrators is in progress. Try again.", ResultAssert.Failed(result, ErrorType.Conflict).Message);
+        Assert.Equal(SecurityPolicy.AdministratorLock.BusyMessage, settings.Host.UnitOfWork.Locks[^1]!.BusyMessage);
+        Assert.Equal(AccountStatus.Active, settings.Host.Repository<AppAccount>().Items.Single().Status);
+        Assert.Empty(settings.Logins.SessionsInvalidated);
+    }
+
+    [Fact]
     public async Task Exit_of_an_employee_without_an_account_changes_no_login_and_opens_no_transaction()
     {
         var employee = await settings.SeedEmployeeAsync();

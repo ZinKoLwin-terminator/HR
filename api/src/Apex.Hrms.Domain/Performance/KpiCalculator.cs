@@ -173,7 +173,7 @@ public static class KpiCalculator
             case KpiScoringMethod.RatingBased:
                 var maxRating = rule.MaxRating!.Value;
                 return actual < 0m || actual > maxRating
-                    ? ActualError($"The rating must be between 0 and {maxRating.ToString(CultureInfo.InvariantCulture)}.")
+                    ? ActualError($"The rating must be between 0 and {maxRating.ToString("0.####", CultureInfo.InvariantCulture)}.")
                     : Result.Success(Percent(actual, maxRating));
 
             case KpiScoringMethod.RangeBased:

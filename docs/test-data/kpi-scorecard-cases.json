@@ -1,0 +1,239 @@
+{
+  "_comment": [
+    "Shared golden cases for the whole KPI calculation (calculation version 1), beyond the single achievements of kpi-calculation-cases.json.",
+    "The API runs every case against KpiCalculator and KpiFigures (Apex.Hrms.Application.Tests, KpiScorecardCasesTests); the Angular demo mock is meant to run the same file. Fictional figures only.",
+    "Shape: { _comment, cases: Case[] }. Every case has a unique 'name' and a 'kind'; the other fields depend on the kind. Numbers are plain JSON numbers (decimals in the API, two decimals unless stated); texts are the API's enum texts.",
+    "Rule (as in kpi-calculation-cases.json): { measurementType, direction, scoringMethod, target, rangeMin, rangeMax, maxRating, maxAchievementPct } (null where unused).",
+    "Error: { message, fieldErrors: { <field>: [<message>, ...] } }: the AppError of a 400; fieldErrors lists every field key the API answers with its messages.",
+    "kind 'score' (KpiCalculator.Score): input items: [{ rule, weight, actual (null = no result) }] in scorecard order. Expected: either expected { items: [{ achievementPct, weightedScore }], overallScore } or expectedError. Each weighted score is achievement x weight / 100 rounded to 2 decimals (away from zero) and the overall score is the sum of the rounded weighted scores. The weights are checked first, then the missing results, then each KPI in order.",
+    "kind 'validateWeights' (KpiCalculator.ValidateWeights): input weights: number[]. Expected: valid true, or valid false with expectedError (only the first problem is reported).",
+    "kind 'ratingLabel' (KpiCalculator.RatingLabel): input overallScore and bands: [{ minScore, label }] in any order. Expected: expectedLabel, the label of the highest minScore the score reaches, or null.",
+    "kind 'average' (KpiFigures.Average): input sum (null = no values) and count. Expected: expected = sum / count rounded to 2 decimals away from zero, or null when count is 0.",
+    "kind 'completionRate' (KpiFigures.CompletionRate): input finalized and evaluated (scorecards past Planning). Expected: expected = finalized x 100 / evaluated rounded to 2 decimals away from zero, 0 when evaluated is 0.",
+    "kind 'competitionRanks' (KpiFigures.CompetitionRanks): input scoresDescending (one page, highest first), firstRank (the rank of the first score) and firstPosition (its 1-based position in the whole ranking). Expected: expected = the rank of each score (standard competition ranking: equal scores share a rank, the next rank skips).",
+    "kind 'attentionThreshold' (KpiFigures.AttentionThreshold): input activeBandMinScores. Expected: expected = the lowest minScore that is at least 60, or 60 when there is none."
+  ],
+  "cases": [
+    {
+      "kind": "score",
+      "name": "score: a direct and a capped KPI",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 60, "actual": 80 },
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Capped Percentage", "target": 50, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": 120 }, "weight": 40, "actual": 75 }
+      ],
+      "expected": { "items": [ { "achievementPct": 80, "weightedScore": 48 }, { "achievementPct": 120, "weightedScore": 48 } ], "overallScore": 96 }
+    },
+    {
+      "kind": "score",
+      "name": "score: weighted scores are rounded before they are added",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 3, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 33.33, "actual": 1 },
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 3, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 33.33, "actual": 2 },
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 3, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 33.34, "actual": 3 }
+      ],
+      "expected": { "items": [ { "achievementPct": 33.33, "weightedScore": 11.11 }, { "achievementPct": 66.67, "weightedScore": 22.22 }, { "achievementPct": 100, "weightedScore": 33.34 } ], "overallScore": 66.67 }
+    },
+    {
+      "kind": "score",
+      "name": "score: every scoring method in one scorecard",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Lower Is Better", "scoringMethod": "Capped Percentage", "target": 10, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": 150 }, "weight": 20, "actual": 8 },
+        { "rule": { "measurementType": "Number", "direction": "Exact Target", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 20, "actual": 90 },
+        { "rule": { "measurementType": "Rating", "direction": "Higher Is Better", "scoringMethod": "Rating Based", "target": 5, "rangeMin": null, "rangeMax": null, "maxRating": 5, "maxAchievementPct": null }, "weight": 20, "actual": 4 },
+        { "rule": { "measurementType": "Boolean", "direction": "Higher Is Better", "scoringMethod": "Boolean", "target": 1, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 20, "actual": 1 },
+        { "rule": { "measurementType": "Number", "direction": "Range Based", "scoringMethod": "Range Based", "target": 100, "rangeMin": 90, "rangeMax": 110, "maxRating": null, "maxAchievementPct": null }, "weight": 20, "actual": 120 }
+      ],
+      "expected": {
+        "items": [
+          { "achievementPct": 125, "weightedScore": 25 },
+          { "achievementPct": 90, "weightedScore": 18 },
+          { "achievementPct": 80, "weightedScore": 16 },
+          { "achievementPct": 100, "weightedScore": 20 },
+          { "achievementPct": 91.67, "weightedScore": 18.33 }
+        ],
+        "overallScore": 97.33
+      }
+    },
+    {
+      "kind": "score",
+      "name": "score: a zero result when lower is better scores the cap",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Lower Is Better", "scoringMethod": "Capped Percentage", "target": 10, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": 120 }, "weight": 100, "actual": 0 }
+      ],
+      "expected": { "items": [ { "achievementPct": 120, "weightedScore": 120 } ], "overallScore": 120 }
+    },
+    {
+      "kind": "score",
+      "name": "score: nothing achieved scores 0",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 50, "actual": 0 },
+        { "rule": { "measurementType": "Boolean", "direction": "Higher Is Better", "scoringMethod": "Boolean", "target": 1, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 50, "actual": 0 }
+      ],
+      "expected": { "items": [ { "achievementPct": 0, "weightedScore": 0 }, { "achievementPct": 0, "weightedScore": 0 } ], "overallScore": 0 }
+    },
+    {
+      "kind": "score",
+      "name": "score: a missing result is an error on its item",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 60, "actual": 80 },
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 40, "actual": null }
+      ],
+      "expectedError": { "message": "Every KPI needs an actual result before it can be scored.", "fieldErrors": { "items[1].actualValue": [ "The actual result is missing." ] } }
+    },
+    {
+      "kind": "score",
+      "name": "score: every missing result is reported",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 60, "actual": null },
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 40, "actual": null }
+      ],
+      "expectedError": { "message": "Every KPI needs an actual result before it can be scored.", "fieldErrors": { "items[0].actualValue": [ "The actual result is missing." ], "items[1].actualValue": [ "The actual result is missing." ] } }
+    },
+    {
+      "kind": "score",
+      "name": "score: weights that do not add up to 100 are an error on weights",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 60, "actual": 80 },
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 30, "actual": 80 }
+      ],
+      "expectedError": { "message": "The KPI weights must add up to 100%. They add up to 90.00%.", "fieldErrors": { "weights": [ "The KPI weights must add up to 100%. They add up to 90.00%." ] } }
+    },
+    {
+      "kind": "score",
+      "name": "score: the weights are checked before the missing results",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 50, "actual": null },
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 40, "actual": 80 }
+      ],
+      "expectedError": { "message": "The KPI weights must add up to 100%. They add up to 90.00%.", "fieldErrors": { "weights": [ "The KPI weights must add up to 100%. They add up to 90.00%." ] } }
+    },
+    {
+      "kind": "score",
+      "name": "score: an empty scorecard needs at least one KPI",
+      "items": [],
+      "expectedError": { "message": "A scorecard needs at least one KPI.", "fieldErrors": { "weights": [ "A scorecard needs at least one KPI." ] } }
+    },
+    {
+      "kind": "score",
+      "name": "score: an invalid result is an error on its item",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 100, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 50, "actual": 80 },
+        { "rule": { "measurementType": "Boolean", "direction": "Higher Is Better", "scoringMethod": "Boolean", "target": 1, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 50, "actual": 0.5 }
+      ],
+      "expectedError": { "message": "A yes/no result must be 0 or 1.", "fieldErrors": { "items[1].actualValue": [ "A yes/no result must be 0 or 1." ] } }
+    },
+    {
+      "kind": "score",
+      "name": "score: a rating above the scale names the scale without trailing zeros",
+      "items": [
+        { "rule": { "measurementType": "Rating", "direction": "Higher Is Better", "scoringMethod": "Rating Based", "target": 5.0000, "rangeMin": null, "rangeMax": null, "maxRating": 5.0000, "maxAchievementPct": null }, "weight": 100, "actual": 6 }
+      ],
+      "expectedError": { "message": "The rating must be between 0 and 5.", "fieldErrors": { "items[0].actualValue": [ "The rating must be between 0 and 5." ] } }
+    },
+    {
+      "kind": "score",
+      "name": "score: an invalid rule is an error on its item",
+      "items": [
+        { "rule": { "measurementType": "Number", "direction": "Higher Is Better", "scoringMethod": "Direct Percentage", "target": 0, "rangeMin": null, "rangeMax": null, "maxRating": null, "maxAchievementPct": null }, "weight": 100, "actual": 5 }
+      ],
+      "expectedError": { "message": "The KPI rule is not valid.", "fieldErrors": { "items[0].target": [ "The target must be greater than 0 for this direction." ] } }
+    },
+
+    { "kind": "validateWeights", "name": "weights: 60 and 40 are valid", "weights": [ 60, 40 ], "valid": true },
+    { "kind": "validateWeights", "name": "weights: a single KPI of 100 is valid", "weights": [ 100 ], "valid": true },
+    { "kind": "validateWeights", "name": "weights: thirds with two decimals are valid", "weights": [ 33.33, 33.33, 33.34 ], "valid": true },
+    {
+      "kind": "validateWeights",
+      "name": "weights: more than 2 decimals",
+      "weights": [ 50.005, 49.995 ],
+      "valid": false,
+      "expectedError": { "message": "Each KPI weight can have at most 2 decimals.", "fieldErrors": { "weights": [ "Each KPI weight can have at most 2 decimals." ] } }
+    },
+    {
+      "kind": "validateWeights",
+      "name": "weights: a total below 100 is shown with 2 decimals",
+      "weights": [ 33.33, 33.33, 33.33 ],
+      "valid": false,
+      "expectedError": { "message": "The KPI weights must add up to 100%. They add up to 99.99%.", "fieldErrors": { "weights": [ "The KPI weights must add up to 100%. They add up to 99.99%." ] } }
+    },
+    {
+      "kind": "validateWeights",
+      "name": "weights: a total above 100",
+      "weights": [ 60, 40.5 ],
+      "valid": false,
+      "expectedError": { "message": "The KPI weights must add up to 100%. They add up to 100.50%.", "fieldErrors": { "weights": [ "The KPI weights must add up to 100%. They add up to 100.50%." ] } }
+    },
+    {
+      "kind": "validateWeights",
+      "name": "weights: a whole-number total still shows 2 decimals",
+      "weights": [ 60, 30 ],
+      "valid": false,
+      "expectedError": { "message": "The KPI weights must add up to 100%. They add up to 90.00%.", "fieldErrors": { "weights": [ "The KPI weights must add up to 100%. They add up to 90.00%." ] } }
+    },
+    {
+      "kind": "validateWeights",
+      "name": "weights: none at all",
+      "weights": [],
+      "valid": false,
+      "expectedError": { "message": "A scorecard needs at least one KPI.", "fieldErrors": { "weights": [ "A scorecard needs at least one KPI." ] } }
+    },
+    {
+      "kind": "validateWeights",
+      "name": "weights: a zero weight",
+      "weights": [ 0, 100 ],
+      "valid": false,
+      "expectedError": { "message": "Each KPI weight must be above 0 and at most 100%.", "fieldErrors": { "weights": [ "Each KPI weight must be above 0 and at most 100%." ] } }
+    },
+    {
+      "kind": "validateWeights",
+      "name": "weights: a weight above 100",
+      "weights": [ 100.01 ],
+      "valid": false,
+      "expectedError": { "message": "Each KPI weight must be above 0 and at most 100%.", "fieldErrors": { "weights": [ "Each KPI weight must be above 0 and at most 100%." ] } }
+    },
+    {
+      "kind": "validateWeights",
+      "name": "weights: the range is checked before the decimals of the same weight",
+      "weights": [ -0.005, 100.005 ],
+      "valid": false,
+      "expectedError": { "message": "Each KPI weight must be above 0 and at most 100%.", "fieldErrors": { "weights": [ "Each KPI weight must be above 0 and at most 100%." ] } }
+    },
+
+    { "kind": "ratingLabel", "name": "label: above the top band", "overallScore": 95, "bands": [ { "minScore": 90, "label": "Outstanding" }, { "minScore": 0, "label": "Poor" }, { "minScore": 70, "label": "Good" }, { "minScore": 50, "label": "Fair" } ], "expectedLabel": "Outstanding" },
+    { "kind": "ratingLabel", "name": "label: exactly on a band's minimum", "overallScore": 90, "bands": [ { "minScore": 90, "label": "Outstanding" }, { "minScore": 0, "label": "Poor" }, { "minScore": 70, "label": "Good" }, { "minScore": 50, "label": "Fair" } ], "expectedLabel": "Outstanding" },
+    { "kind": "ratingLabel", "name": "label: just below a band's minimum", "overallScore": 89.99, "bands": [ { "minScore": 90, "label": "Outstanding" }, { "minScore": 0, "label": "Poor" }, { "minScore": 70, "label": "Good" }, { "minScore": 50, "label": "Fair" } ], "expectedLabel": "Good" },
+    { "kind": "ratingLabel", "name": "label: the lowest band at 0", "overallScore": 0, "bands": [ { "minScore": 90, "label": "Outstanding" }, { "minScore": 0, "label": "Poor" }, { "minScore": 70, "label": "Good" }, { "minScore": 50, "label": "Fair" } ], "expectedLabel": "Poor" },
+    { "kind": "ratingLabel", "name": "label: a score above 100", "overallScore": 120, "bands": [ { "minScore": 70, "label": "Good" }, { "minScore": 90, "label": "Outstanding" } ], "expectedLabel": "Outstanding" },
+    { "kind": "ratingLabel", "name": "label: below every band", "overallScore": 10, "bands": [ { "minScore": 50, "label": "Fair" }, { "minScore": 70, "label": "Good" } ], "expectedLabel": null },
+    { "kind": "ratingLabel", "name": "label: no bands", "overallScore": 80, "bands": [], "expectedLabel": null },
+
+    { "kind": "average", "name": "average: rounds to 2 decimals", "sum": 200, "count": 3, "expected": 66.67 },
+    { "kind": "average", "name": "average: of three scores", "sum": 243.33, "count": 3, "expected": 81.11 },
+    { "kind": "average", "name": "average: a midpoint rounds away from zero", "sum": 160.01, "count": 2, "expected": 80.01 },
+    { "kind": "average", "name": "average: a small midpoint rounds away from zero", "sum": 0.05, "count": 2, "expected": 0.03 },
+    { "kind": "average", "name": "average: nothing counted is null, never 0", "sum": null, "count": 0, "expected": null },
+    { "kind": "average", "name": "average: a count of 0 is null whatever the sum", "sum": 50, "count": 0, "expected": null },
+    { "kind": "average", "name": "average: a missing sum over a count is 0", "sum": null, "count": 2, "expected": 0 },
+
+    { "kind": "completionRate", "name": "completion: 4 of 9", "finalized": 4, "evaluated": 9, "expected": 44.44 },
+    { "kind": "completionRate", "name": "completion: all finalized", "finalized": 3, "evaluated": 3, "expected": 100 },
+    { "kind": "completionRate", "name": "completion: 2 of 3 rounds up", "finalized": 2, "evaluated": 3, "expected": 66.67 },
+    { "kind": "completionRate", "name": "completion: a midpoint rounds away from zero", "finalized": 1, "evaluated": 800, "expected": 0.13 },
+    { "kind": "completionRate", "name": "completion: none finalized", "finalized": 0, "evaluated": 5, "expected": 0 },
+    { "kind": "completionRate", "name": "completion: nothing past planning is 0, not a division by zero", "finalized": 0, "evaluated": 0, "expected": 0 },
+
+    { "kind": "competitionRanks", "name": "ranks: a tie shares a rank and the next one skips", "scoresDescending": [ 90, 90, 80 ], "firstRank": 1, "firstPosition": 1, "expected": [ 1, 1, 3 ] },
+    { "kind": "competitionRanks", "name": "ranks: several ties", "scoresDescending": [ 95, 90, 90, 90, 80, 80, 70 ], "firstRank": 1, "firstPosition": 1, "expected": [ 1, 2, 2, 2, 5, 5, 7 ] },
+    { "kind": "competitionRanks", "name": "ranks: all equal", "scoresDescending": [ 75, 75, 75 ], "firstRank": 1, "firstPosition": 1, "expected": [ 1, 1, 1 ] },
+    { "kind": "competitionRanks", "name": "ranks: a page that starts inside a tie keeps the shared rank", "scoresDescending": [ 80, 80, 70 ], "firstRank": 4, "firstPosition": 6, "expected": [ 4, 4, 8 ] },
+    { "kind": "competitionRanks", "name": "ranks: a page that starts after a tie", "scoresDescending": [ 70, 60 ], "firstRank": 8, "firstPosition": 8, "expected": [ 8, 9 ] },
+    { "kind": "competitionRanks", "name": "ranks: an empty page", "scoresDescending": [], "firstRank": 1, "firstPosition": 1, "expected": [] },
+
+    { "kind": "attentionThreshold", "name": "attention: the lowest band at or above 60", "activeBandMinScores": [ 90, 70, 50 ], "expected": 70 },
+    { "kind": "attentionThreshold", "name": "attention: a band of exactly 60 counts", "activeBandMinScores": [ 60, 85 ], "expected": 60 },
+    { "kind": "attentionThreshold", "name": "attention: a band just below 60 does not count", "activeBandMinScores": [ 59.99, 75 ], "expected": 75 },
+    { "kind": "attentionThreshold", "name": "attention: an odd band minimum is used as it is", "activeBandMinScores": [ 62.5, 90 ], "expected": 62.5 },
+    { "kind": "attentionThreshold", "name": "attention: only bands below 60 give the default", "activeBandMinScores": [ 50, 40 ], "expected": 60 },
+    { "kind": "attentionThreshold", "name": "attention: no active band gives the default", "activeBandMinScores": [], "expected": 60 }
+  ]
+}
