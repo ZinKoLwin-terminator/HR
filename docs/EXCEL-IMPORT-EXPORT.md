@@ -1,12 +1,14 @@
 # Excel import and export
 
-A reusable import/export capability shared by all modules. **Status:** the shared foundation and the
-**Employees** module are implemented; Organization, Attendance, Leave and Payroll are planned.
+A reusable import/export capability shared by all modules. **Status:** the shared foundation and these
+modules are implemented: employees, companies, branches, departments, job grades, positions, leave
+balances, shift assignments, salary assignments, and the export-only KPI report modules.
 
-> Frontend-only: there is no backend. Spreadsheets are read and written **in the browser** behind the
-> same data-service contracts a real API would implement (see [API-INTEGRATION-PLAN.md](API-INTEGRATION-PLAN.md)).
-> The browser is **not a security boundary** — real enforcement (limits, content checks, permissions,
-> audit) must be repeated on a server.
+> Two builds. The **demo build** (default, GitHub Pages) reads and writes spreadsheets **in the browser**
+> behind the data-service contracts; the browser is **not a security boundary** and enforces nothing.
+> The **API build** (`npm run start:api`) sends files to the .NET API (`api/`, the `*ExcelModule*` classes),
+> which enforces the limits, content checks, permissions and audit (see
+> [API-INTEGRATION-PLAN.md](API-INTEGRATION-PLAN.md)).
 
 ## What users can do
 
@@ -103,12 +105,24 @@ Resigned/Terminated), and a consistent organization assignment (company → bran
 existing and matching; inactive units refused when newly assigned; manager and shift must exist).
 History entries (Joined, Promotion, Transfer…) are recorded for every way of saving.
 
-## KPI export modules (API)
+## KPI export modules (API and demo build)
 
-The .NET API (`api/`, branch `feature/api-kpi`) adds three **export-only** modules for the KPI and performance data. They are
-in the catalog that `GET /api/excel/modules` returns (`canImport` false, so there is no template and no import): scorecards change
-only through the planning and review workflow, never by upload. The exact contract is in `api/README.md`, sections "HTTP contract
-(KPI dashboards, reports and export)" and "HTTP contract (Excel import and export)".
+The .NET API (`api/`, branch `feature/api-kpi`) adds three **export-only** modules for the KPI and performance data
+(`api/src/Apex.Hrms.Application/Performance/Insights/KpiExcelModules.cs`: `KpiScorecardExcelModule`, `KpiRankingExcelModule`,
+`KpiTargetVsActualExcelModule`). They are in the catalog that `GET /api/excel/modules` returns (`canImport` false, so there is no
+template and no import): scorecards change only through the planning and review workflow, never by upload. The exact contract is in
+`api/README.md`, sections "HTTP contract (KPI dashboards, reports and export)" and "HTTP contract (Excel import and export)".
+
+**The demo build includes them too.** `ui/src/app/mock-services/excel/modules/kpi-excel.modules.ts` mirrors the same three
+definitions (same codes, labels, sheet names and columns; export date filter "Period dates") and is registered in
+`provideMockDataServices()` through `LAZY_EXCEL_MODULES`, so the definitions and the KPI insight mock that builds the rows load
+only on first use. In the demo the rows come from `KpiInsightMockService.exportRows`, over the scorecards the simulated session
+may see (scope by role name, see [MOCK-DATA-AND-SERVICES.md](MOCK-DATA-AND-SERVICES.md)); with the API the server builds them.
+
+**Where the Export button is** (Performance > Reports, `kpi-report-definitions.ts`): Summary by period, Employee performance
+history and Department performance export `kpi-scorecards`; Ranking exports `kpi-ranking`; Target vs actual exports
+`kpi-target-vs-actual`; KPI achievement has no export. The export dialog takes the report's current filters. E2E: KPI-43 in
+`docs/E2E-TEST-SCENARIOS.md` (ranking export of the filtered rows).
 
 | Module code            | Sheet / label        | Columns                                                                                                                                               |
 | ---------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -117,6 +131,7 @@ only through the planning and review workflow, never by upload. The exact contra
 | `kpi-target-vs-actual` | KPI target vs actual | Employee Code, Employee Name, Department, Period, Status, KPI Code, KPI, Category, Unit, Target, Actual, Achievement %, Weight, Weighted Score         |
 
 - **Permissions:** the export route needs `excel:Export`, and each module needs `kpi:View` on top, checked by name like every other module.
+  In the demo build only the `excel:*` keys hide the button; nothing is enforced.
 - **Rows:** the same rows as the KPI reports for the caller: their own scorecards, their team's (direct reports and the scorecards they
   review), or everyone's for HR (`kpi:Approve` with `employees:Edit`).
 - **Filters:** `filters` takes the report filter names (`companyId`, `branchId`, `departmentId`, `positionId`, `employeeId`, `categoryId`,
@@ -131,5 +146,7 @@ only through the planning and review workflow, never by upload. The exact contra
 - Organization, Attendance, Leave and Payroll import/export (planned phases 4–7). **Payroll import scope is still to be agreed.**
 - No background jobs or progress for very large files (everything runs in the browser; limits keep it small).
 - Zip-bomb protection is limited to the compressed file-size cap; a server must also limit the uncompressed size.
-- No permission checks (the permission matrix is only a simulation); exports are not restricted per role.
+- No permission checks (the permission matrix is only a simulation); exports are not restricted per role. The KPI exports
+  are the exception in the demo: they follow the KPI mock's scope, which is decided by the simulated session's role names,
+  not by permissions.
 - Import history and uploads are kept in memory and cleared on reload (a server would persist batches and keep files in temporary storage).

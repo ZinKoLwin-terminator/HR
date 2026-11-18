@@ -1,7 +1,29 @@
 # Future API integration plan
 
-> **Status: plan only.** No backend exists, and none should be started without an explicit decision.
-> This document describes how the current frontend is prepared for one.
+> **Status (updated 2026-11-18):** this started as a plan only. The .NET API now exists in `api/`, and the HTTP
+> adapters in `ui/src/app/api-services` are bound by `provideApiDataServices()` (`npm run start:api`). Every module
+> before KPI is integrated on `integrate/all-features`; the KPI module is integrated on `feature/api-kpi`. Nothing is on
+> `main` yet, and the GitHub Pages demo still runs the mock build. The steps below are kept as the design record; see
+> "Integration status" for what is done.
+
+## Integration status
+
+| Module | Contracts (`core/services/data`) | HTTP adapters (`api-services/`) | Status |
+| --- | --- | --- | --- |
+| KPI and performance | `kpi-data.services.ts`: `KpiCategoryDataService`, `KpiTemplateDataService`, `RatingBandDataService`, `EvaluationPeriodDataService`, `ScorecardDataService`, `KpiInsightDataService` | `kpi/kpi-setup-http.services.ts` (`KpiCategoryHttpService`, `KpiTemplateHttpService`, `RatingBandHttpService`, `EvaluationPeriodHttpService`), `kpi/scorecard-http.service.ts` (`ScorecardHttpService`, including the multipart evidence upload), `kpi/kpi-insight-http.service.ts` (`KpiInsightHttpService`, lazy-loaded), `kpi/kpi-http.util.ts` | **Done on `feature/api-kpi`** (API, adapters, screens and E2E). Needs the database branch `feature/schema-kpi` published to a local database. The three KPI Excel exports go through the shared Excel adapter |
+| Every other module | as listed in `provide-api-data-services.ts` | as listed there | Done on `integrate/all-features`. Only the demo-data contract stays on the mock |
+
+KPI endpoint families (full contract in `api/README.md`, "HTTP contract (KPI ...)"):
+
+| Contract | HTTP shape |
+| --- | --- |
+| KPI setup CRUD (`query`, `getById`, `create`, `update`, `delete`) | `/api/kpi/categories`, `/templates`, `/rating-bands`, `/periods` (activate/deactivate for the first three: `POST /{id}/activate` and `/deactivate`) |
+| `EvaluationPeriodDataService.activate/complete/close/options` | `POST /api/kpi/periods/{id}/activate`, `/complete`, `/close`; `GET /api/kpi/periods/options` |
+| `ScorecardDataService` reads | `GET /api/kpi/scorecards/query`, `/scorecards/{id}`, `/my-scorecards`, `/reviews/pending` |
+| `assign`, `bulkAssign`, `updateItem`, `deleteItem`, `deleteScorecard`, `finalizePlan` | `POST /api/kpi/assignments`, `/assignments/bulk`; `PUT`/`DELETE /api/kpi/scorecard-items/{id}`; `DELETE /api/kpi/scorecards/{id}`; `POST .../finalize-plan` |
+| `saveResults`, `submit`, `startReview`, `saveReview`, `approve`, `returnForRevision`, `reject`, `finalize` | `PUT .../results`, `POST .../submit`, `POST .../start-review`, `PUT .../review`, `POST .../approve`, `/return`, `/reject`, `/finalize` |
+| `uploadEvidence`, `downloadEvidence`, `deleteEvidence` | `POST /api/kpi/scorecard-items/{itemId}/attachments` (multipart), `GET` and `DELETE /api/kpi/attachments/{id}` |
+| `KpiInsightDataService` | `GET /api/kpi/dashboard/employee`, `/manager`, `/hr`; `GET /api/kpi/reports/summary`, `/employee/{id}`, `/department/{id}`, `/ranking`, `/kpi-achievement`, `/target-vs-actual` |
 
 ## Why the swap is small
 

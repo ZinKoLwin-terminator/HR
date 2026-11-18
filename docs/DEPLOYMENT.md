@@ -50,6 +50,8 @@ items) or the host's secret store. Configuration is read at startup; restart aft
 | `Auth__RateLimit__PermitsPerMinute` | Login, forgot- and reset-password per client IP, default 10. |
 | `Logging__LogLevel__Default` etc. | `Warning` default, `Apex.Hrms` at `Information`. Never log at Debug/Trace in production (SQL text and parameters). |
 | `Business__TimeZone` | Default `Asia/Yangon`. |
+| `Kpi__EvidenceFolder` | Absolute directory for the KPI evidence files (uploads on scorecard items), kept **permanently**. Default `App_Data/kpi-evidence` under the content root, which is wrong for a published folder that gets replaced. See "KPI evidence folder" below. |
+| `Kpi__EvidenceUploadsPerMinute` | Evidence uploads one signed-in account may start per minute, default 10 (a positive whole number; anything else falls back to 10). Every attempt counts; the next one is `429` with `Retry-After`. In memory per instance (section 5). |
 
 A suggested `appsettings.Production.json` (placeholders only, no secrets, no connection string) is in
 section 9. Prefer environment variables for everything host-specific.
@@ -67,6 +69,23 @@ maps the runtime account into it, for example a gMSA (`CREATE LOGIN ... FROM WIN
 * All instances must share the same directory. A host that cannot write it fails on the first key.
 * Optional encryption at rest with a certificate (`ProtectKeysWithCertificate`) is **not wired in**; add it in
   `Hosting/HostingSetup.cs` if the host has no OS-level protection (DPAPI on Windows, a protected volume elsewhere).
+
+**KPI evidence folder.** The database keeps only the metadata of an evidence file (`kpi.Attachment`); the bytes are in
+`Kpi__EvidenceFolder` under a server-generated key. The files are HR records.
+
+* Put it **outside any web root** and never serve it directly: downloads go only through
+  `GET /api/kpi/attachments/{id}`, which checks the caller's scorecard scope.
+* Give the API's runtime identity (and nobody else) read and write access. Keep it out of the published folder (it
+  would be replaced on the next deploy) and out of git (`App_Data/kpi-evidence/` is ignored).
+* Use **backed-up** storage, and back it up **together with the database** (section 4). A restored database without
+  its files has attachments that answer `404`; files without their rows are orphans.
+* Several instances must share the same folder (or replace the local storage with an object store).
+* Encrypt it at rest (disk or volume encryption) together with its backups.
+* **There is no virus or malware scan** of uploads. The API checks the type by content, the size (10 MB), the count (5
+  per KPI) and the name, and serves every file as a download with `nosniff`. Before real data, add a malware scan that
+  holds a file back until it is clean, and agree a retention and deletion policy for the evidence of employees who leave
+  (`api/README.md`, "Security note").
+* Set the reverse proxy's request-size limit to match the API's evidence upload limit (11 MB for the whole request).
 
 ## 3. HTTPS, HSTS, cookies, hosts
 
@@ -97,7 +116,28 @@ maps the runtime account into it, for example a gMSA (`CREATE LOGIN ... FROM WIN
   password is typed twice, never passed as an argument). It refuses if an active HR Administrator exists.
   Check the printed target before confirming.
 * Backups: full plus log backups on the SQL Server side with a tested restore, retention to match policy, encrypted
-  and stored off the server. Back up the data protection key ring alongside. Test a restore into a non-production server.
+  and stored off the server. Back up the data protection key ring alongside, and the KPI evidence folder at the same
+  time as the database, so a restore brings back rows and files that belong together. Test a restore into a
+  non-production server.
+
+**KPI module schema** (database branch `feature/schema-kpi` of the SSDT project `D:\New folder\HR DBPJ\HR DBPJ`; it
+adds the `kpi` schema, its tables, the `hrms_api` grants with `DENY UPDATE, DELETE` on `kpi.ReviewAction`, and the
+`kpi-setup` and `kpi` permission modules):
+
+* A **human** publishes it, and only after reviewing the script SqlPackage generates for the target
+  (`SqlPackage /Action:Script`, then `/Action:Publish` with the same profile). Publish to a local or other
+  non-production database first and run the KPI checks there (API integration tests, the **API** rows of
+  `docs/E2E-TEST-SCENARIOS.md` section 17). Never from CI or by an agent, and never to production without explicit
+  approval.
+* **Starter grants apply only to newly inserted modules.** The post-deployment script adds the KPI starter grants
+  (HR Officer `kpi-setup` all and `kpi` View, Create, Approve; Department Manager `kpi` View, Create, Approve; Employee,
+  Payroll Officer and Recruiter `kpi` View, Create; Auditor View) only in the publish that inserts the `kpi-setup` and
+  `kpi` modules, and only to roles that still exist. A later publish does not add them again, and does not bring back a
+  grant an administrator removed. If the modules already exist (for example after an earlier test publish), tick the
+  grants in Settings > Permissions.
+* The default rating bands are inserted only into an empty `kpi.RatingBand` table.
+* Granting `employees:Edit` together with `kpi:Approve` gives a role the KPI HR rights (every scorecard, the HR
+  dashboard, the HR final review). Check the custom roles before go-live.
 
 ## 5. Multi-instance notes
 
@@ -107,25 +147,27 @@ Per-instance, in memory today (FUTURE-TODO 3.3):
 * The password-reset throttle.
 * The grant cache safety net (permissions are read from the database on each request, so a stale cache is a safety
   net, not the source of truth).
+* The KPI evidence upload rate limiter (`Kpi__EvidenceUploadsPerMinute`, fixed window per signed-in account), so an
+  account gets N times the limit across N instances.
 
-With more than one instance: share `DataProtection__KeysPath`, use a proxy without session affinity needs (cookie
-sessions are stateless), and replace the three in-memory stores with a shared store (for example a distributed cache or
+With more than one instance: share `DataProtection__KeysPath` and `Kpi__EvidenceFolder`, use a proxy without session affinity needs (cookie
+sessions are stateless), and replace the four in-memory stores with a shared store (for example a distributed cache or
 Redis, or SQL-backed counters) behind the existing abstractions. Until then run a single instance, or accept the weaker
 throttling.
 
 ## 6. Host notes
 
 * **Windows Server / IIS:** install the ASP.NET Core Hosting Bundle, publish to a folder, an app pool with "No Managed
-  Code" under a gMSA that is the SQL login and has write access to the keys folder only. Set variables at machine or
+  Code" under a gMSA that is the SQL login and has write access to the keys folder and the KPI evidence folder only. Set variables at machine or
   app pool level or from a vault; never put passwords in a `web.config` that is in source control. If IIS (or ARR in
   front) terminates TLS, enable forwarded headers and list that proxy's address. Serve the UI from the IIS site and add a URL Rewrite SPA fallback that
   excludes `/api`.
 * **Azure App Service:** use application settings (or Key Vault references) for the variables, a managed identity for
-  SQL where possible, persistent storage (mounted Azure Files, not the ephemeral folder) for the key ring, and
+  SQL where possible, persistent storage (mounted Azure Files, not the ephemeral folder) for the key ring and the KPI evidence folder, and
   HTTPS Only on. The front end terminates TLS, so enable forwarded headers with the front end's ranges. Several
   instances need the shared keys path plus the section 5 changes.
-* **Docker / Linux reverse proxy:** build with `dotnet publish`, run a non-root user, mount a volume for
-  `DataProtection__KeysPath`, pass secrets as orchestrator secrets or an env file kept out of the image and repo.
+* **Docker / Linux reverse proxy:** build with `dotnet publish`, run a non-root user, mount volumes for
+  `DataProtection__KeysPath` and `Kpi__EvidenceFolder`, pass secrets as orchestrator secrets or an env file kept out of the image and repo.
   nginx or similar serves the UI files, proxies `/api/` with `X-Forwarded-For`, `X-Forwarded-Proto` and `Host`, and
   falls back to `index.html`. Put the API on a private network and list the proxy's address in `KnownProxies`.
   Do not publish the API port directly.
@@ -139,6 +181,8 @@ throttling.
   compatible changes so the old API still works against the new schema. Restore from backup only as a last resort
   and accept data loss since the backup.
 * Do not delete the key ring on rollback: sessions and reset tokens depend on it.
+* Do not delete or replace the KPI evidence folder on rollback. If the database is restored from a backup, restore the
+  evidence folder from the same point in time.
 * The mock-data demo on GitHub Pages is unaffected by this deployment.
 
 ## 8. Pre-go-live checklist
@@ -156,6 +200,10 @@ throttling.
 - [ ] `AllowedHosts` exact; `Cors` index 0 overridden; HTTPS valid; HSTS header present; cookies show `__Host-`, Secure.
 - [ ] Forwarded headers on with the real proxy only; sign-in rate limit sees real client IPs (test from two clients).
 - [ ] Key ring on a protected, shared, backed-up path; restore tested.
+- [ ] KPI: `feature/schema-kpi` script reviewed and published by a human (non-production first); KPI starter grants
+      checked in Settings > Permissions; roles with both `kpi:Approve` and `employees:Edit` reviewed.
+- [ ] KPI evidence folder outside the web root, writable by the API identity only, encrypted at rest, backed up with the
+      database; malware scanning of uploads in place (none today); proxy request-size limit set; retention policy agreed.
 - [ ] Database backups and restore tested; bootstrap-admin run; first admin password stored in a vault.
 - [ ] A production API-mode UI build exists and has no source maps (see section 1).
 - [ ] Monitoring and alerts: the API has **no health endpoint** today (gap). Add liveness (process up) and readiness

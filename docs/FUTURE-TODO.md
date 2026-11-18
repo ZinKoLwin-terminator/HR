@@ -1,7 +1,8 @@
 # APEX HRMS — future to-do list
 
-Last updated: 2026-11-13. State: every module has an API and API-mode screens, merged on
-`integrate/all-features` (latest `787482c`). Nothing here is merged to `main` yet.
+Last updated: 2026-11-18. State: every module has an API and API-mode screens, merged on
+`integrate/all-features` (latest `787482c`). The KPI and performance module (API, screens, E2E) is on `feature/api-kpi`
+with its schema on the database branch `feature/schema-kpi`. Nothing here is merged to `main` yet.
 
 > **မြန်မာလို အကျဉ်း:** Module အားလုံး ပြီးပါပြီ။ ဒီစာရင်းမှာ (၁) သင် ကိုယ်တိုင် လုပ်ရမယ့်အရာ၊
 > (၂) မပြည့်စုံသေးတဲ့ feature များ၊ (၃) security နဲ့ production မတိုင်မီ လိုအပ်ချက်များ၊ (၄) test၊
@@ -27,6 +28,14 @@ Priority: **P1** = before real use, **P2** = next features, **P3** = nice to hav
       then `git push origin main` (local `main` is ahead and was never pushed; the hook blocks Claude from pushing to main).
 - [ ] **P1** Decide when to merge `integrate/all-features` into `main` in the app repo. **Merging to `main` deploys the
       live demo (GitHub Pages).** Review the diff and CI first.
+- [ ] **P1** KPI schema: review the SqlPackage script of the database branch `feature/schema-kpi`, then publish it to the
+      local database yourself (never production). The KPI starter grants are added only by the publish that inserts the
+      `kpi-setup` and `kpi` modules; if they already exist, tick the grants in Settings > Permissions
+      (`docs/DEPLOYMENT.md`, section 4).
+- [ ] **P2** KPI database hardening I4 and I5 (grant tightening suggested by the KPI database review): awaiting your
+      approval. Permission and schema changes need a human decision (CLAUDE.md, safety rule 7).
+- [ ] **P1** Decide when to merge `feature/api-kpi` (and `feature/schema-kpi` in the database repo). Merging to `main`
+      deploys the live demo.
 - [ ] **P3** Decide what to do with the untracked `docs/E2E-FORM-EXAMPLE-DATA.md` (commit or delete).
 - [ ] **P3** Remove old git worktrees under `.claude/worktrees/` once their branches are merged
       (`git worktree list`, then `git worktree remove <path>`).
@@ -110,6 +119,22 @@ Priority: **P1** = before real use, **P2** = next features, **P3** = nice to hav
 - [ ] **P3** Edit a pending adjustment or overtime request (the API has no PUT; today: delete and create again).
 - [ ] **P3** A future exit date ends access immediately (product decision: keep or change to "on the exit date").
 
+### KPI and performance
+- [x] **P2** KPI setup, assignments and plan, results with evidence, review and HR final review, dashboards, reports,
+      Excel export and print (API, API-mode screens and the demo mock). Proposed priorities below.
+- [ ] **P2** HR tier is tied to `kpi:Approve` **together with** `employees:Edit` (review finding L5), as for leave and
+      attendance. Any role with both gets every scorecard, the HR dashboard and the HR final review. Decide whether KPI
+      needs its own HR key instead.
+- [ ] **P3** Report sort order options: the reports sort only by the API's whitelisted fields, and the ranking has a
+      fixed order (rank, then employee code). Offer more sort choices if users ask.
+- [ ] **P3** Demo build: the mock decides HR, manager and own from the session's role names, not from `kpi:Approve` and
+      `employees:Edit`, and checks no `kpi-setup` or `kpi` permission.
+- [x] **P3** Demo build aligned with the API: own-plan refusal (E2E KPI-35 now has Ye Yint Naing plan EMP002), review
+      visibility for the scorecard's own employee, "was reviewed" activity wording, Returned scorecards in a Completed
+      period, the period close check, Return clearing the review draft, the manager dashboard's 200-row list.
+- [ ] **P3** Demo build: evidence files are held in memory and lost on reload (the help guide says so); no upload rate
+      limit.
+
 ### Notifications
 - [ ] **P2** Per-user read flag for broadcast notifications. Today one `IsRead` flag per row is shared by everyone, so
       reading a broadcast marks it read for all users. The schema proposal is in `api/README.md` (HTTP contract,
@@ -148,6 +173,12 @@ Priority: **P1** = before real use, **P2** = next features, **P3** = nice to hav
       grant cache safety net are per instance (in memory). Use a shared store if several API instances run.
 - [ ] **P2** Remember-me sessions: 30 days maximum (`Auth:RememberMeMaxDays`). Confirm the value.
 - [ ] **P3** Audit/retention policy for activity logs and dev mail (`App_Data/dev-mail` holds reset tokens in development).
+- [ ] **P1** KPI evidence files: virus and malware scanning of every upload (none today; the API checks type by content,
+      size, count and name only), encryption at rest of the evidence folder and its backups, a retention and deletion
+      policy for the evidence of employees who leave, and the proxy request-size limit (`api/README.md`, "Security note";
+      `docs/DEPLOYMENT.md`, "KPI evidence folder").
+- [ ] **P2** Multi-instance: the KPI evidence upload rate limiter is per instance too, and the evidence folder must be
+      shared.
 - [ ] **P1** Real HR data only after all of the above, plus a data protection review (PII, bank details, documents).
 
 ---
@@ -180,7 +211,13 @@ Priority: **P1** = before real use, **P2** = next features, **P3** = nice to hav
 - [ ] **P3** Initial bundle is ~1.21 MB against a 1.00 MB budget (warning in `npm run build`). Lazy-load more.
       The module help articles now load with the lazy help feature (the header imports only
       `module-guide-menu.ts`), which took it down from ~1.33 MB. What remains is mostly Angular,
-      Material and CDK plus the eagerly provided mock services.
+      Material and CDK plus the eagerly provided mock services. The KPI module keeps its dashboards, reports and Excel
+      exports in lazy chunks, but the initial bundle is still above the 1 MB warning budget (size after the KPI work
+      not re-measured here).
+- [ ] **P3** Split the large KPI files: `mock-services/kpi/scorecard-mock.service.ts` (~1,650 lines),
+      `kpi-insight-mock.service.ts` (~1,000), and the components `my-scorecard.component.ts` (~860),
+      `review-detail.component.ts` (~760), `plan-detail.component.ts` (~590), `bulk-assign-dialog.component.ts` (~520)
+      and `kpi-reports.component.ts` (~440).
 - [x] **P3** Mixed CRLF/LF line endings: `.gitattributes` added.
 - [ ] **P3** Renormalize the existing files to the new line-ending rules, in its own commit.
 - [x] **P3** Stale doc comment in `api/src/Apex.Hrms.Application/Security/CallerPermissions.cs` ("an approver"): no longer present.
@@ -193,9 +230,11 @@ Priority: **P1** = before real use, **P2** = next features, **P3** = nice to hav
 
 ## 6. Documentation
 
-- [ ] **P2** Module guides: `docs/modules/` has only Organization and Payroll. Add Employees, Leave, Attendance,
+- [ ] **P2** Module guides: `docs/modules/` has only Organization, Payroll and Performance. Add Employees, Leave, Attendance,
       Recruitment, Settings, Excel. Printing and the do-not-rehire list need a guide too (proposed).
-- [ ] **P2** Keep `docs/E2E-TEST-SCENARIOS.md` updated with every behaviour change (406 scenarios as of 2026-11-13).
+- [ ] **P2** Keep `docs/E2E-TEST-SCENARIOS.md` updated with every behaviour change (470 scenarios as of 2026-11-18,
+      including KPI-01 to KPI-47).
+- [x] **P2** KPI module guide: `docs/modules/performance.md`.
 - [ ] **P3** Audit the in-app guides in `ui/src/app/core/constants` for any remaining "mock only" wording, and check the
       printing and Excel guides against the code.
 - [ ] **P3** Host-specific deployment steps once hosting is decided (the host-neutral guide is `docs/DEPLOYMENT.md`).
