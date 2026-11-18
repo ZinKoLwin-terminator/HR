@@ -27,7 +27,15 @@ USING (VALUES
     ('kpi-setup',    N'KPI Setup',    11),
     -- Scorecards: Create enters and submits your own results; Approve reviews them (the API scopes
     -- managers to their direct reports and HR staff to everyone, like leave).
-    ('kpi',          N'Performance',  12)
+    ('kpi',          N'Performance',  12),
+    -- Grievances. View/Create: your own grievances (drafts, submit, messages). The case-team modules are scoped by
+    -- the API: investigation to the cases the caller is assigned to, review to escalated cases and pending
+    -- resolutions, management to every submitted case (Delete archives). Nobody on the case team sees a case
+    -- about themselves.
+    ('grievance',               N'Grievances',              13),
+    ('grievance-investigation', N'Grievance Investigation', 14),
+    ('grievance-management',    N'Grievance Management',    15),
+    ('grievance-review',        N'Grievance Review',        16)
 ) AS s ([ModuleKey], [Label], [SortOrder])
     ON t.[ModuleKey] = s.[ModuleKey]
 WHEN MATCHED AND (t.[Label] <> s.[Label] OR t.[SortOrder] <> s.[SortOrder]) THEN
@@ -54,7 +62,11 @@ USING (VALUES
     ('activity',     'View',    1),
     ('excel',        'View',    1), ('excel',        'Import', 10), ('excel',        'Export', 11),
     ('kpi-setup',    'View',    1), ('kpi-setup',    'Create', 2), ('kpi-setup',    'Edit', 3), ('kpi-setup',    'Delete', 4),
-    ('kpi',          'View',    1), ('kpi',          'Create', 2), ('kpi',          'Approve', 5)
+    ('kpi',          'View',    1), ('kpi',          'Create', 2), ('kpi',          'Approve', 5),
+    ('grievance',               'View', 1), ('grievance',               'Create', 2),
+    ('grievance-investigation', 'View', 1), ('grievance-investigation', 'Edit',   3),
+    ('grievance-management',    'View', 1), ('grievance-management',    'Create', 2), ('grievance-management', 'Edit', 3), ('grievance-management', 'Delete', 4),
+    ('grievance-review',        'View', 1), ('grievance-review',        'Approve', 5)
 ) AS s ([ModuleKey], [Action], [SortOrder])
     ON t.[ModuleKey] = s.[ModuleKey] AND t.[Action] = s.[Action]
 WHEN MATCHED AND t.[SortOrder] <> s.[SortOrder] THEN
@@ -139,7 +151,15 @@ FROM (VALUES
         (N'Recruiter',          'kpi',          'View,Create'),
         (N'Employee',           'kpi',          'View,Create'),
         (N'Auditor',            'kpi-setup',    'View'),
-        (N'Auditor',            'kpi',          'View')
+        (N'Auditor',            'kpi',          'View'),
+        -- Grievances: everyone can raise their own; HR Officer investigates the cases they are assigned to. Management
+        -- and review stay with HR Administrator until an administrator grants them (no starter role gets them).
+        (N'HR Officer',         'grievance',               'View,Create'),
+        (N'HR Officer',         'grievance-investigation', 'View,Edit'),
+        (N'Department Manager', 'grievance',               'View,Create'),
+        (N'Payroll Officer',    'grievance',               'View,Create'),
+        (N'Recruiter',          'grievance',               'View,Create'),
+        (N'Employee',           'grievance',               'View,Create')
 ) AS g ([RoleName], [ModuleKey], [Actions])
 CROSS APPLY STRING_SPLIT(g.[Actions], ',') AS x
 WHERE @IsInitialRoleSeed = 1
@@ -184,6 +204,25 @@ BEGIN
         (N'Meets Expectations',   60.00, N'Meets the agreed targets.'),
         (N'Needs Improvement',    40.00, N'Misses several targets; a development plan is expected.'),
         (N'Unsatisfactory',        0.00, N'Misses most targets.');
+END;
+
+-- ---- Grievance categories -------------------------------------------------------------------------
+-- Inserted into an empty table only; categories an administrator changed later are never overwritten.
+-- Salary and compensation cases need the employee's own pay details, so they cannot be raised anonymously.
+IF NOT EXISTS (SELECT 1 FROM [grv].[Category])
+BEGIN
+    INSERT INTO [grv].[Category] ([Code], [Name], [Description], [AllowsAnonymous], [DefaultTargetDays], [SortOrder])
+    VALUES
+        (N'HARASSMENT',       N'Workplace Harassment',           N'Bullying, intimidation, sexual or other harassment at work.',              1, 14, 1),
+        (N'DISCRIMINATION',   N'Discrimination',                 N'Unequal treatment because of a protected characteristic.',                 1, 14, 2),
+        (N'COMPENSATION',     N'Salary and Compensation Issues', N'Pay, allowances, deductions or benefits.',                                 0, 21, 3),
+        (N'SAFETY',           N'Workplace Safety',               N'Unsafe conditions, equipment or practices.',                               1,  7, 4),
+        (N'RELATIONS',        N'Employee Relations',             N'Conflicts between colleagues or within a team.',                           1, 30, 5),
+        (N'MISCONDUCT',       N'Management Misconduct',          N'Abuse of authority or improper conduct by a manager.',                     1, 21, 6),
+        (N'UNFAIR-TREATMENT', N'Unfair Treatment',               N'Unfair decisions on assignments, appraisals, promotion or discipline.',    1, 30, 7),
+        (N'POLICY',           N'Policy Violations',              N'A company policy or procedure that is not being followed.',                1, 30, 8),
+        (N'CONDITIONS',       N'Working Conditions',             N'Working hours, workload, facilities or the work environment.',             1, 30, 9),
+        (N'OTHER',            N'Other',                          N'Anything that does not fit another category.',                             1, 30, 10);
 END;
 
 COMMIT TRANSACTION;

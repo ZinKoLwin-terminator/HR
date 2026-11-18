@@ -22,6 +22,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[sec] TO [hrms_api];
 GO
 GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[kpi] TO [hrms_api];
 GO
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[grv] TO [hrms_api];
+GO
 -- ASP.NET Core Identity store (credentials). Only the API reads or writes it.
 GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[auth] TO [hrms_api];
 GO
@@ -41,6 +43,17 @@ GO
 DENY UPDATE, DELETE ON OBJECT::[kpi].[ReviewAction] TO [hrms_api];
 GO
 
+-- Grievances: the status history, the investigation notes, the messages and the access log cannot be rewritten
+-- or removed.
+DENY UPDATE, DELETE ON OBJECT::[grv].[StatusHistory]     TO [hrms_api];
+GO
+DENY UPDATE, DELETE ON OBJECT::[grv].[InvestigationNote] TO [hrms_api];
+GO
+DENY UPDATE, DELETE ON OBJECT::[grv].[Communication]     TO [hrms_api];
+GO
+DENY UPDATE, DELETE ON OBJECT::[grv].[AuditLog]          TO [hrms_api];
+GO
+
 -- ---- Other app tables ---------------------------------------------------------------------------
 GRANT SELECT, INSERT, UPDATE, DELETE ON OBJECT::[app].[Notification] TO [hrms_api];
 GO
@@ -56,6 +69,8 @@ GO
 GRANT UPDATE ON OBJECT::[lve].[LeaveApplicationNoSeq] TO [hrms_api];
 GO
 GRANT UPDATE ON OBJECT::[rec].[JobOpeningCodeSeq]     TO [hrms_api];
+GO
+GRANT UPDATE ON OBJECT::[grv].[CaseNoSeq]             TO [hrms_api];
 GO
 
 -- ---- Organization module's delete/move checks (security L5) ----------------------------------------
@@ -83,6 +98,8 @@ GO
 DENY ALTER ON SCHEMA::[sec] TO [hrms_api];
 GO
 DENY ALTER ON SCHEMA::[kpi] TO [hrms_api];
+GO
+DENY ALTER ON SCHEMA::[grv] TO [hrms_api];
 GO
 DENY ALTER ON SCHEMA::[app] TO [hrms_api];
 GO

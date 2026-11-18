@@ -1,5 +1,5 @@
 -- Read-only reporting (security H1). SELECT only; no write, DDL or EXECUTE permission is granted.
--- Not granted: sec (accounts and permissions), app (activity, notifications, imports) and auth (credentials).
+-- Not granted: sec (accounts and permissions), app (activity, notifications, imports), auth (credentials) and grv (grievances).
 
 GRANT SELECT ON SCHEMA::[org] TO [hrms_report];
 GO
@@ -35,4 +35,9 @@ GO
 
 -- Credentials (password hashes, security stamps, reset and authenticator tokens) are never reported on.
 DENY SELECT ON SCHEMA::[auth] TO [hrms_report];
+GO
+
+-- Grievances (submitters, investigations, anonymous cases) are never reported on outside the API, which applies the
+-- case-team scopes and suppresses small groups.
+DENY SELECT ON SCHEMA::[grv] TO [hrms_report];
 GO
