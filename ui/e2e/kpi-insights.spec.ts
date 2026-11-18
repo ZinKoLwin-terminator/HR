@@ -1,9 +1,16 @@
 import { Locator, Page } from '@playwright/test';
 import { closeFilters, openFilters } from './filters';
-import { expect, signedOutTest, test } from './fixtures';
+import {
+  dialogFocused,
+  expect,
+  pickEmployeeOption,
+  searchEmployeesInApp,
+  signedOutTest,
+  test,
+} from './fixtures';
 
 /**
- * KPI dashboards and reports (section 17 of docs/E2E-TEST-SCENARIOS.md, rows KPI-38 to KPI-43).
+ * KPI dashboards and reports (section 17 of docs/E2E-TEST-SCENARIOS.md, rows KPI-38 to KPI-44).
  * Mock `e2e` build: sample data, reset on every page load. The browser clock is fixed (and keeps
  * running) so the seeded periods are 2026 Q3 (Closed, HR review) and 2026 Q4 (Active).
  *
@@ -316,8 +323,7 @@ test.describe('KPI reports', () => {
 
     // Employee performance history of EMP046, printed (the browser's Save as PDF).
     await choose(page, reportPicker(page), 'Employee performance history');
-    await page.getByLabel('Employee', { exact: true }).fill('EMP046');
-    await page.getByRole('option', { name: /EMP046/ }).click();
+    await pickEmployeeOption(page, page.getByLabel('Employee', { exact: true }), 'EMP046');
     await expect(rows(page)).toHaveCount(2);
     await page.getByRole('button', { name: 'Print Employee performance history' }).click();
     await expect
@@ -326,6 +332,117 @@ test.describe('KPI reports', () => {
     const printed = page.getByTestId('report-print');
     await expect(printed.locator('table.print-table').first().locator('tbody tr')).toHaveCount(2);
     await expect(printed).toContainText('Employee: EMP046');
+  });
+
+  test('KPI-42: after a transfer, a finalized period still lists him under his old department', async ({
+    page,
+  }) => {
+    await start(page);
+    // Hein Thant Zin (EMP046) moves from Engineering to IT Infrastructure in the employee form. His
+    // 2026 Q3 scorecard (period Closed, scorecard Finalized) copied Engineering when it was planned.
+    await page.goto('/employees/46/edit');
+    await expect(page.getByLabel('Employee code')).toHaveValue('EMP046');
+    await choose(page, page.getByRole('combobox', { name: 'Department' }), 'IT Infrastructure');
+    await choose(page, page.getByRole('combobox', { name: 'Position' }), 'Network Engineer');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByText('Employee "Hein Thant Zin" updated successfully.')).toBeVisible();
+    await expect(page).toHaveURL(/\/employees\/46$/);
+
+    // The employee list (inside the app, so the change stays) shows the new department.
+    await searchEmployeesInApp(page, 'EMP046');
+    await expect(rows(page)).toHaveCount(1);
+    await expect(rows(page).first()).toContainText('IT Infrastructure');
+
+    // The 2026 Q3 Engineering report still lists him, beside EMP014 and EMP017.
+    await openPerformance(page, 'Reports');
+    await choose(page, reportPicker(page), 'Department performance');
+    const department = page.getByRole('combobox', { name: 'Department' });
+    await choose(page, department, 'Engineering');
+    await filter(page, 'Period', '2026 Q3 (Closed)');
+    const facts = page.locator('dl.facts');
+    await expect(facts).toContainText('Engineering');
+    await expect(facts).toContainText('2026 Q3');
+    await expect(rows(page)).toHaveCount(3);
+    await expect(rows(page).filter({ hasText: 'EMP046' })).toHaveCount(1);
+
+    // His new department's report for that period does not: it holds EMP056 (Rejected) only.
+    await choose(page, department, 'IT Infrastructure');
+    await expect(facts).toContainText('IT Infrastructure');
+    await expect(facts).toContainText('2026 Q3');
+    await expect(rows(page)).toHaveCount(1);
+    await expect(rows(page).first()).toContainText('EMP056');
+  });
+});
+
+test.describe('KPI activity', () => {
+  test.skip(({ isMobile }) => isMobile, 'Write flows run on desktop');
+
+  test('KPI-44: KPI actions appear in Recent activities by employee code, never with comments', async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const dialog = page.getByRole('dialog');
+    const toast = (text: string) => page.locator('.app-toast').filter({ hasText: text });
+    await start(page);
+
+    // KPI-19: complete EMP019's 2026 Q4 plan (60%) with one KPI, then finalize it.
+    await page.goto('/performance/assignments/3');
+    await expect(page.getByTestId('plan-total')).toContainText('60%');
+    await page.getByRole('button', { name: 'Add KPIs' }).click();
+    await expect(dialog.getByRole('heading', { name: 'Add KPIs to the plan' })).toBeVisible();
+    await dialogFocused(page);
+    await choose(page, dialog.getByRole('combobox', { name: 'Add a KPI' }), /^DEFECT-RATE ·/);
+    await dialog.getByLabel('Weight for DEFECT-RATE').fill('40');
+    await expect(dialog.getByTestId('weight-total')).toContainText('Total weight: 100%');
+    await dialog.getByRole('button', { name: 'Add KPIs' }).click();
+    await expect(toast('KPIs added to the scorecard of EMP019 (2026 Q4).')).toBeVisible();
+    await page.getByRole('button', { name: 'Finalize plan' }).click();
+    await dialog.getByRole('button', { name: 'Finalize plan' }).click();
+    await expect(toast('Plan finalized for EMP019.')).toBeVisible();
+
+    // KPI-31: return EMP006's scorecard (Under Review) with a reason.
+    await openPerformance(page, 'Reviews');
+    await page.getByRole('link', { name: 'Review the scorecard of EMP006 for 2026 Q4' }).click();
+    await page.getByRole('button', { name: 'Return for revision' }).click();
+    await dialogFocused(page);
+    await dialog.getByLabel('Reason').fill('Fictional KPI-44 return reason');
+    await dialog.getByRole('button', { name: 'Return', exact: true }).click();
+    await expect(toast('Scorecard of EMP006 returned for revision.')).toBeVisible();
+
+    // KPI-29: approve EMP046's submitted scorecard with feedback and a comment (no HR review).
+    await openPerformance(page, 'Reviews');
+    await page.getByRole('link', { name: 'Review the scorecard of EMP046 for 2026 Q4' }).click();
+    await page.getByLabel('Overall feedback').fill('Fictional KPI-44 feedback');
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    await dialogFocused(page);
+    await dialog.getByLabel('Comment (optional)').fill('Fictional KPI-44 approval note');
+    await dialog.getByRole('button', { name: 'Approve and finalize' }).click();
+    await expect(toast('Scorecard of EMP046 approved and finalized.')).toBeVisible();
+
+    // The dashboard's activity card, newest first. Each line names the scorecard by employee code
+    // and period, shows the performance icon and the actor, and never a comment or a name.
+    // The main dashboard (Performance has a Dashboard link too).
+    await nav(page).locator('a[href="/dashboard"]').click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    const card = page.getByRole('region', { name: 'Recent activities' });
+    const entries = card.getByRole('listitem');
+    const expected = [
+      'Scorecard of EMP046 for "2026 Q4" approved and finalized',
+      'Review notes saved on the scorecard of EMP046 for "2026 Q4"',
+      'Scorecard of EMP006 for "2026 Q4" returned to the employee',
+      'KPI plan of EMP019 for "2026 Q4" finalized',
+      '1 KPI(s) assigned to EMP019 for "2026 Q4"',
+    ];
+    for (const [i, message] of expected.entries()) {
+      const entry = entries.nth(i);
+      await expect(entry.locator('.list__title')).toHaveText(message);
+      await expect(entry.locator('mat-icon')).toHaveText('trending_up'); // category performance
+      await expect(entry).toContainText('Su Myat Noe');
+      for (const name of ['Hein Thant Zin', 'Hnin Ei Phyu']) {
+        await expect(entry).not.toContainText(name);
+      }
+    }
+    await expect(card).not.toContainText('Fictional');
   });
 });
 

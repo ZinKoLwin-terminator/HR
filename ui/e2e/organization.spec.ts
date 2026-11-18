@@ -1,5 +1,5 @@
 import { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { dialogFocused, expect, test } from './fixtures';
 import { closeFilters, openFilters } from './filters';
 
 test.skip(({ isMobile }) => isMobile, 'Organization CRUD flows are exercised on desktop');
@@ -47,6 +47,7 @@ test.describe('companies', () => {
   test('validates, creates, edits, deactivates and deletes a company', async ({ page }) => {
     await page.getByRole('button', { name: 'Add company' }).click();
     await expect(dialog(page).getByRole('heading', { name: 'Add company' })).toBeVisible();
+    await dialogFocused(page);
 
     // Required-field and format validation
     await dialog(page).getByRole('button', { name: 'Create company' }).click();
@@ -81,6 +82,8 @@ test.describe('companies', () => {
     // Edit (code is locked after creation)
     await rowMenu(page, 'Brand New Co', 'Edit');
     await expect(dialog(page).getByLabel('Company code')).toBeDisabled();
+    // Without this wait the dialog's delayed initial focus can send the text to Company name.
+    await dialogFocused(page);
     await dialog(page).getByLabel('Industry').fill('E-commerce');
     await dialog(page).getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText('Company "Brand New Co" updated successfully.')).toBeVisible();
@@ -137,6 +140,7 @@ test.describe('departments', () => {
 
   test('branch dropdown depends on the selected company', async ({ page }) => {
     await page.getByRole('button', { name: 'Add department' }).click();
+    await dialogFocused(page);
     await choose(page, 'Company', 'APEX Logistics');
     await dialog(page).getByRole('combobox', { name: 'Branch' }).click();
     // Branch is required, so there is no "None" entry; only this company's branches are offered.
@@ -167,6 +171,7 @@ test.describe('job grades', () => {
     await page.goto('/organization/job-grades');
     await expect(rows(page)).toHaveCount(9);
     await page.getByRole('button', { name: 'Add job grade' }).click();
+    await dialogFocused(page);
     await dialog(page).getByLabel('Grade code').fill('G10');
     await dialog(page).getByLabel('Grade name').fill('Fellow');
     await dialog(page)

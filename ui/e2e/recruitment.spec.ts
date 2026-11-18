@@ -1,5 +1,5 @@
 import { Locator, Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { dialogFocused, expect, test } from './fixtures';
 
 const rows = (page: Page) => page.locator('tr.mat-mdc-row');
 const dialog = (page: Page) => page.getByRole('dialog');
@@ -46,6 +46,7 @@ test.describe('recruitment', () => {
     await expect(rows(page).filter({ hasText: 'Senior Angular Developer' })).toContainText('Open');
 
     await page.getByRole('button', { name: 'Add job opening' }).click();
+    await dialogFocused(page);
     await dialog(page).getByRole('button', { name: 'Create job opening' }).click();
     await expect(dialog(page).getByText('Job title is required.')).toBeVisible();
     await dialog(page).getByLabel('Job title').fill('Data Analyst');
@@ -76,6 +77,7 @@ test.describe('recruitment', () => {
     await page.goto('/recruitment/candidates');
     await expect(rows(page).first()).toBeVisible();
     await page.getByRole('button', { name: 'Add candidate' }).click();
+    await dialogFocused(page);
     await dialog(page).getByRole('button', { name: 'Create candidate' }).click();
     await expect(dialog(page).getByText('First name is required.')).toBeVisible();
     await dialog(page).getByLabel('First name').fill('Zara');
@@ -111,6 +113,7 @@ test.describe('recruitment', () => {
     // Reject needs a reason
     await column(page, 'Screening').getByRole('button', { name: 'Actions for Lena Vogel' }).click();
     await page.getByRole('menuitem', { name: /Reject/ }).click();
+    await dialogFocused(page);
     await alertDialog(page).getByRole('button', { name: 'Reject' }).click();
     await expect(alertDialog(page)).toBeVisible(); // still open: reason required
     await alertDialog(page).getByLabel('Reason').fill('Salary expectations too high');
@@ -136,6 +139,7 @@ test.describe('recruitment', () => {
     await page.goto('/recruitment/pipeline');
     await expect(column(page, 'Applied')).toBeVisible();
     await page.getByRole('button', { name: 'Add application' }).click();
+    await dialogFocused(page);
     await chooseInDialog(page, 'Job opening', /Customer Support Agent/, false);
     await chooseInDialog(page, 'Candidate', /Zoe|Kai Tanaka/, false);
     await dialog(page).getByRole('button', { name: 'Create application' }).click();

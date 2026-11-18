@@ -1,5 +1,12 @@
 import { Locator, Page } from '@playwright/test';
-import { ADMIN_SESSION, expect, signedOutTest, test } from './fixtures';
+import {
+  ADMIN_SESSION,
+  dialogFocused,
+  expect,
+  pickEmployeeOption,
+  signedOutTest,
+  test,
+} from './fixtures';
 import { closeFilters, openFilters } from './filters';
 
 /**
@@ -59,6 +66,7 @@ async function addPeriod(
   p: { name: string; type?: string; start: string; end: string; company?: string },
 ) {
   await page.getByRole('button', { name: 'Add evaluation period' }).click();
+  await dialogFocused(page);
   const form = dialog(page);
   await chooseIn(form, page, 'Company', p.company ?? 'APEX Technologies');
   await form.getByLabel('Period name').fill(p.name);
@@ -70,8 +78,7 @@ async function addPeriod(
 
 /** Picks an employee in the searchable picker of an assign dialog. */
 async function pickEmployee(page: Page, code: string) {
-  await dialog(page).getByLabel('Employee', { exact: true }).fill(code);
-  await page.getByRole('option', { name: new RegExp(`^${code} ·`) }).click();
+  await pickEmployeeOption(page, dialog(page).getByLabel('Employee', { exact: true }), code);
 }
 
 /** Adds a KPI row from the "Add a KPI" picker of an assign dialog. */
@@ -95,6 +102,7 @@ test.describe('KPI setup', () => {
     await expect(page.getByRole('heading', { name: 'KPI categories', level: 1 })).toBeVisible();
 
     await page.getByRole('button', { name: 'Add category' }).click();
+    await dialogFocused(page);
     await dialog(page).getByLabel('Code').fill('TSTQ');
     await dialog(page).getByLabel('Category name').fill('Test Quality');
     await dialog(page).getByRole('button', { name: 'Create category' }).click();
@@ -105,6 +113,7 @@ test.describe('KPI setup', () => {
 
     // KPI-02: the code, then the name, must be unique (refused on that field).
     await page.getByRole('button', { name: 'Add category' }).click();
+    await dialogFocused(page);
     await dialog(page).getByLabel('Code').fill('TSTQ');
     await dialog(page).getByLabel('Category name').fill('Test Quality two');
     await dialog(page).getByRole('button', { name: 'Create category' }).click();
@@ -117,6 +126,7 @@ test.describe('KPI setup', () => {
 
     await rowMenu(page, 'TSTQ', 'Edit');
     await expect(dialog(page).getByLabel('Code')).toBeDisabled();
+    await dialogFocused(page);
     await dialog(page).getByLabel('Description').fill('Fictional test category.');
     await dialog(page).getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText('Category "Test Quality" updated successfully.')).toBeVisible();
@@ -150,6 +160,7 @@ test.describe('KPI setup', () => {
 
     // TST-SALES: Higher Is Better, Capped Percentage, target 100, weight 40, cap 120.
     await page.getByRole('button', { name: 'Add template' }).click();
+    await dialogFocused(page);
     await form.getByLabel('Code').fill('TST-SALES');
     await form.getByLabel('KPI name').fill('Test sales');
     await chooseIn(form, page, 'Category', 'Productivity');
@@ -175,6 +186,7 @@ test.describe('KPI setup', () => {
 
     // TST-DEFECT: (f) Lower Is Better with Direct Percentage is refused on the cap, then fixed.
     await page.getByRole('button', { name: 'Add template' }).click();
+    await dialogFocused(page);
     await form.getByLabel('Code').fill('TST-DEFECT');
     await form.getByLabel('KPI name').fill('Test defects');
     await chooseIn(form, page, 'Category', 'Quality');
@@ -194,6 +206,7 @@ test.describe('KPI setup', () => {
     // TST-RATE: (e) Boolean forces its measurement type, (c) a reversed range is refused,
     // (b) Rating Based needs the maximum rating.
     await page.getByRole('button', { name: 'Add template' }).click();
+    await dialogFocused(page);
     await form.getByLabel('Code').fill('TST-RATE');
     await form.getByLabel('KPI name').fill('Test rating');
     await chooseIn(form, page, 'Category', 'Quality');
@@ -301,6 +314,7 @@ test.describe('KPI setup', () => {
 
     // Active: only the name and the due date can change.
     await rowMenu(page, '2027 Q1', 'Edit');
+    await dialogFocused(page);
     await expect(dialog(page).getByRole('note')).toContainText(
       'only its name and submission due date',
     );
@@ -349,6 +363,7 @@ test.describe('KPI assignments', () => {
     await expect(page.getByRole('heading', { name: 'KPI assignments', level: 1 })).toBeVisible();
 
     await page.getByRole('button', { name: 'Assign KPIs' }).click();
+    await dialogFocused(page);
     await chooseIn(dialog(page), page, 'Evaluation period', '2027 Q1 (Draft)');
 
     // KPI-07: ENG-REVIEW-HOURS is for Engineering only: hidden for EMP056 (IT), offered for EMP046.
@@ -380,6 +395,7 @@ test.describe('KPI assignments', () => {
 
     // KPI-14: the same KPI again for the same employee and period is refused.
     await page.getByRole('button', { name: 'Assign KPIs' }).click();
+    await dialogFocused(page);
     await chooseIn(dialog(page), page, 'Evaluation period', '2027 Q1 (Draft)');
     await pickEmployee(page, 'EMP046');
     await addKpi(page, 'OUTPUT-TASKS', '10');
@@ -405,6 +421,7 @@ test.describe('KPI assignments', () => {
     // Add the last KPI from the plan: 200 means "KPIs added".
     await page.getByRole('button', { name: 'Add KPIs' }).click();
     await expect(dialog(page).getByRole('heading', { name: 'Add KPIs to the plan' })).toBeVisible();
+    await dialogFocused(page);
     await addKpi(page, 'ATTENDANCE-RATE', '25');
     await expect(dialog(page).getByTestId('weight-total')).toContainText('Total weight: 100%');
     await dialog(page).getByRole('button', { name: 'Add KPIs' }).click();
@@ -413,6 +430,7 @@ test.describe('KPI assignments', () => {
 
     // Edit a KPI's target in the plan.
     await page.getByRole('button', { name: 'Edit OUTPUT-TASKS' }).click();
+    await dialogFocused(page);
     await dialog(page).getByLabel('Target').fill('120');
     await dialog(page).getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText('OUTPUT-TASKS updated.')).toBeVisible();
@@ -466,6 +484,7 @@ test.describe('KPI assignments', () => {
     await page.goto('/performance/assignments');
     const bulk = async () => {
       await page.getByRole('button', { name: 'Bulk assign' }).click();
+      await dialogFocused(page);
       await chooseIn(dialog(page), page, 'Evaluation period', '2026 Q4 (Active)');
       await chooseIn(dialog(page), page, 'Department', 'Engineering');
       await addKpi(page, 'TRAINING-DONE', '10');
@@ -517,6 +536,7 @@ test.describe('KPI screens on a phone', () => {
     await expect(page.getByTestId('plan-total')).toContainText('60%');
     await noSideways();
     await page.getByRole('button', { name: 'Add KPIs' }).click();
+    await dialogFocused(page);
     await addKpi(page, 'DEFECT-RATE', '40');
     await expect(dialog(page).getByTestId('weight-total')).toContainText('100%');
     await noSideways();

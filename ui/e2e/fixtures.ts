@@ -1,4 +1,4 @@
-import { test as base, expect, Page } from '@playwright/test';
+import { test as base, expect, Locator, Page } from '@playwright/test';
 
 /**
  * Opens the employee list through the sidebar and searches it. The app has no global search,
@@ -34,6 +34,22 @@ export async function dialogFocused(page: Page) {
       { message: 'the dialog takes its initial focus' },
     )
     .toBe(true);
+}
+
+/**
+ * Types an employee code into an employee picker (`app-employee-picker`) and chooses the match.
+ * The picker opens on focus with its previous list (the first 20 employees by first name) and
+ * replaces it once the debounced search answers (150 ms plus the mock latency). An option of the
+ * old list can be clicked while that list is swapped out, and the click then misses: nothing is
+ * chosen. So wait until the list holds only the match, then click it. For a picker that keeps its
+ * choice (not `clearOnPick`): the field then shows the chosen employee.
+ */
+export async function pickEmployeeOption(page: Page, input: Locator, code: string) {
+  await input.fill(code);
+  const options = page.getByRole('option');
+  await expect(options).toHaveText([new RegExp(`^\\s*${code} ·`)]);
+  await options.first().click();
+  await expect(input).toHaveValue(new RegExp(`^${code} ·`));
 }
 
 /** Mirrors AuthService's stored session (frontend-only demo auth). */

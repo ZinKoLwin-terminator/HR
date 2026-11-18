@@ -1,5 +1,5 @@
 import { Locator, Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { dialogFocused, expect, test } from './fixtures';
 
 const rows = (page: Page) => page.locator('tr.mat-mdc-row');
 const dialog = (page: Page) => page.getByRole('dialog');
@@ -42,6 +42,7 @@ test.describe('payroll setup', () => {
     await expect(rows(page).filter({ hasText: 'Housing allowance' })).toContainText('10% of basic');
 
     await page.getByRole('button', { name: 'Add salary component' }).click();
+    await dialogFocused(page);
     await dialog(page).getByRole('button', { name: 'Create salary component' }).click();
     await expect(dialog(page).getByText('Code is required.')).toBeVisible();
     await dialog(page).getByLabel('Code').fill('BONUS');
@@ -82,6 +83,7 @@ test.describe('payroll setup', () => {
 
     // A basic salary outside the employee's grade band is refused with the band in the message.
     await page.getByRole('button', { name: 'Add salary assignment' }).click();
+    await dialogFocused(page);
     await chooseInDialog(page, 'Employee', /EMP015/);
     await chooseInDialog(page, 'Salary structure', /^Staff/, false);
     await dialog(page).getByLabel('Monthly basic salary (sample)').fill('99999');
@@ -147,6 +149,7 @@ test.describe('payroll processing workflow', () => {
     await expect(rows(page).filter({ hasText: 'Pending Approval' })).toHaveCount(1);
 
     await rowMenu(page, 'Pending Approval', 'Return to draft');
+    await dialogFocused(page);
     await alertDialog(page).getByLabel('Reason (optional)').fill('Allowance changed');
     await alertDialog(page).getByRole('button', { name: 'Return to draft' }).click();
     await expect(page.getByText(/returned to draft\./)).toBeVisible();

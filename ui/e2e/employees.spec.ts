@@ -1,5 +1,5 @@
 import { Page } from '@playwright/test';
-import { expect, searchEmployeesInApp, test } from './fixtures';
+import { dialogFocused, expect, searchEmployeesInApp, test } from './fixtures';
 import { closeFilters, openFilters } from './filters';
 
 test.skip(({ isMobile }) => isMobile, 'Employee workflows are exercised on desktop');
@@ -288,6 +288,7 @@ test.describe('employee documents', () => {
 
   test('uploads, edits and deletes a document', async ({ page }) => {
     await page.getByRole('button', { name: 'Add document' }).click();
+    await dialogFocused(page);
 
     await dialog(page).getByRole('button', { name: 'Create document' }).click();
     await expect(dialog(page).getByText('Employee is required.')).toBeVisible();

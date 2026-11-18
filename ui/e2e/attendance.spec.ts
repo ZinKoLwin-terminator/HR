@@ -364,6 +364,7 @@ test.describe('overtime', () => {
     await expect.poll(() => total(page)).toBe(pending - 1);
 
     await othersPendingMenu(page, 'Reject');
+    await dialogFocused(page);
     await confirmDialog(page).getByLabel('Reason for rejection').fill('Not pre-approved');
     await confirmDialog(page).getByRole('button', { name: 'Reject' }).click();
     await expect(page.getByText(/Overtime for .* rejected\./)).toBeVisible();
@@ -433,6 +434,7 @@ test.describe('attendance adjustments', () => {
     await expect.poll(() => total(page)).toBe(pending - 1);
 
     await othersPendingMenu(page, 'Reject');
+    await dialogFocused(page);
     await confirmDialog(page).getByLabel('Reason for rejection').fill('Times do not match the log');
     await confirmDialog(page).getByRole('button', { name: 'Reject' }).click();
     await expect(page.getByText(/ADJ-\d{4} rejected/)).toBeVisible();

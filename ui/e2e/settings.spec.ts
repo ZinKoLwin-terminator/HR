@@ -1,5 +1,5 @@
 import { Locator, Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { dialogFocused, expect, test } from './fixtures';
 import { closeFilters, openFilters } from './filters';
 
 const rows = (page: Page) => page.locator('tr.mat-mdc-row');
@@ -80,6 +80,7 @@ test.describe('settings', () => {
     await page.getByLabel('Search by name or email').fill('');
 
     await page.getByRole('button', { name: 'Add user' }).click();
+    await dialogFocused(page);
     await dialog(page).getByRole('button', { name: 'Create user' }).click();
     await expect(
       dialog(page)
@@ -104,6 +105,7 @@ test.describe('settings', () => {
     await expect(rows(page).filter({ hasText: 'HR Administrator' })).toContainText('Built-in');
 
     await page.getByRole('button', { name: 'Add role' }).click();
+    await dialogFocused(page);
     await dialog(page).getByLabel('Role name').fill('Trainer');
     await dialog(page).getByRole('button', { name: 'Create role' }).click();
     await expect(page.getByText('Role "Trainer" created successfully.')).toBeVisible();

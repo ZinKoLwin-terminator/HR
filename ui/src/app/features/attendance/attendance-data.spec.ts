@@ -413,9 +413,13 @@ describe('attendance data', () => {
 
   describe('dashboard and schedule views', () => {
     it('summarises a working day consistently', async () => {
-      // Newest Present record on a weekday, so the test does not depend on today's weekday.
+      // Newest Present record on a weekday before today, so the test depends on neither today's
+      // weekday nor the clock: today is seeded only up to now, and the trend drops a day before
+      // most check-ins are in.
       const isWeekday = (iso: string) => ![0, 6].includes(new Date(`${iso}T00:00:00Z`).getUTCDay());
-      const day = (await query({ status: 'Present' })).find((r) => isWeekday(r.date))!.date;
+      const day = (await query({ status: 'Present' })).find(
+        (r) => isWeekday(r.date) && r.date < todayIso(),
+      )!.date;
       const overview = await firstValueFrom(
         TestBed.inject(AttendanceOverviewDataService).getOverview(day, null),
       );

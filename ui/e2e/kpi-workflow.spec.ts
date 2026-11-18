@@ -1,5 +1,5 @@
 import { Locator, Page } from '@playwright/test';
-import { expect, signedOutTest, test } from './fixtures';
+import { dialogFocused, expect, pickEmployeeOption, signedOutTest, test } from './fixtures';
 
 /**
  * KPI submission and review (section 17 of docs/E2E-TEST-SCENARIOS.md, rows KPI-21 to KPI-36).
@@ -279,6 +279,7 @@ test.describe('KPI review and approval', () => {
     await expect(dialog(page)).toContainText('A reason is required.');
     await dialog(page).getByRole('button', { name: 'Cancel' }).click();
     await page.getByRole('button', { name: 'Reject', exact: true }).click();
+    await dialogFocused(page);
     await alertDialog(page).getByLabel('Reason').fill('   ');
     await alertDialog(page).getByRole('button', { name: 'Reject' }).click();
     await expect(alertDialog(page)).toContainText('A reason is required.');
@@ -287,6 +288,7 @@ test.describe('KPI review and approval', () => {
 
     // KPI-31: return with a reason.
     await page.getByRole('button', { name: 'Return for revision' }).click();
+    await dialogFocused(page);
     await dialog(page).getByLabel('Reason').fill('Fictional reason');
     await dialog(page).getByRole('button', { name: 'Return', exact: true }).click();
     await expect(toast(page, 'Scorecard of EMP002 returned for revision.')).toBeVisible();
@@ -315,6 +317,7 @@ test.describe('KPI review and approval', () => {
     await page.getByLabel('Overall feedback').fill('Fictional feedback');
     await page.getByRole('button', { name: 'Approve', exact: true }).click();
     await expect(dialog(page)).toContainText('approving finalizes the scorecard');
+    await dialogFocused(page);
     await dialog(page).getByLabel('Comment (optional)').fill('Fictional approval note');
     await dialog(page).getByRole('button', { name: 'Approve and finalize' }).click();
     await expect(toast(page, 'Scorecard of EMP002 approved and finalized.')).toBeVisible();
@@ -345,6 +348,7 @@ test.describe('KPI review and approval', () => {
     // A period of our own that asks for an HR final review, with a plan for Su Myat Noe.
     await page.goto('/performance/periods');
     await page.getByRole('button', { name: 'Add evaluation period' }).click();
+    await dialogFocused(page);
     const form = dialog(page);
     await chooseIn(form, page, 'Company', 'APEX Technologies');
     await form.getByLabel('Period name').fill('2027 Q1');
@@ -364,9 +368,9 @@ test.describe('KPI review and approval', () => {
 
     await openPerformance(page, 'Assignments');
     await page.getByRole('button', { name: 'Assign KPIs' }).click();
+    await dialogFocused(page);
     await chooseIn(dialog(page), page, 'Evaluation period', '2027 Q1 (Active)');
-    await dialog(page).getByLabel('Employee', { exact: true }).fill('EMP002');
-    await page.getByRole('option', { name: /^EMP002 ·/ }).click();
+    await pickEmployeeOption(page, dialog(page).getByLabel('Employee', { exact: true }), 'EMP002');
     for (const code of ['ATTENDANCE-RATE', 'TRAINING-DONE']) {
       await chooseIn(dialog(page), page, 'Add a KPI', new RegExp(`^${code} ·`));
       await dialog(page).getByLabel(`Weight for ${code}`).fill('50');
@@ -411,6 +415,7 @@ test.describe('KPI review and approval', () => {
     await expect(waiting).toContainText('HR final review');
     await waiting.getByRole('link', { name: 'Review the scorecard of EMP002 for 2027 Q1' }).click();
     await page.getByRole('button', { name: 'Finalize', exact: true }).click();
+    await dialogFocused(page);
     await dialog(page).getByLabel('HR comment (optional)').fill('Fictional HR comment');
     await dialog(page).getByRole('button', { name: 'Finalize', exact: true }).click();
     await expect(toast(page, 'Scorecard of EMP002 finalized.')).toBeVisible();
@@ -426,6 +431,7 @@ test.describe('KPI review and approval', () => {
     await expect(status(page)).toContainText('Under Review');
     await page.getByRole('button', { name: 'Reject', exact: true }).click();
     await expect(alertDialog(page)).toContainText('Rejecting is final');
+    await dialogFocused(page);
     await alertDialog(page).getByLabel('Reason').fill('Fictional reason');
     await alertDialog(page).getByRole('button', { name: 'Reject' }).click();
     await expect(toast(page, 'Scorecard of EMP006 rejected.')).toBeVisible();

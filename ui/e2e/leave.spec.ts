@@ -1,5 +1,5 @@
 import { Locator, Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { dialogFocused, expect, test } from './fixtures';
 import { closeFilters, openFilters } from './filters';
 
 const rows = (page: Page) => page.locator('tr.mat-mdc-row');
@@ -55,6 +55,7 @@ test.describe('leave types', () => {
     await expect(rows(page).filter({ hasText: 'Maternity Leave' })).toContainText('Women only');
 
     await page.getByRole('button', { name: 'Add leave type' }).click();
+    await dialogFocused(page);
     await dialog(page).getByRole('button', { name: 'Create leave type' }).click();
     await expect(dialog(page).getByText('Code is required.')).toBeVisible();
     await dialog(page).getByLabel('Code').fill('SAB');
@@ -80,6 +81,7 @@ test.describe('leave types', () => {
 
     await rowMenu(page, 'Sabbatical', 'Edit');
     await expect(dialog(page).getByLabel('Code')).toBeDisabled();
+    await dialogFocused(page);
     await dialog(page).getByLabel('Default days per year').fill('25');
     await dialog(page).getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText('Leave type "Sabbatical" updated successfully.')).toBeVisible();
@@ -105,6 +107,7 @@ test.describe('leave policies', () => {
     await expect(rows(page).filter({ hasText: 'monthly accrual' })).toContainText('Monthly');
 
     await page.getByRole('button', { name: 'Add leave policy' }).click();
+    await dialogFocused(page);
     await dialog(page).getByLabel('Policy name').fill('Annual leave — executives (copy)');
     await chooseInDialog(page, 'Leave type', 'Annual Leave');
     await dialog(page).getByLabel('Days per year').fill('30');
@@ -139,6 +142,7 @@ test.describe('leave applications', () => {
     await expect(rows(page)).toHaveCount(10);
 
     await page.getByRole('button', { name: 'Add leave application' }).click();
+    await dialogFocused(page);
     await chooseInDialog(page, 'Employee', 'Hnin Ei Phyu (EMP006)');
     // Leave types follow the employee: women see maternity but not paternity leave
     await openSelect(dialog(page).getByRole('combobox', { name: 'Leave type' }));
@@ -225,6 +229,7 @@ test.describe('leave applications', () => {
 
     // Overlapping dates for the same employee are refused
     await page.getByRole('button', { name: 'Add leave application' }).click();
+    await dialogFocused(page);
     await chooseInDialog(page, 'Employee', 'Hnin Ei Phyu (EMP006)');
     await openSelect(dialog(page).getByRole('combobox', { name: 'Leave type' }));
     await page.getByRole('option', { name: 'Casual Leave', exact: true }).click();
@@ -241,6 +246,7 @@ test.describe('leave applications', () => {
 
     // Cancel the submitted request with a reason
     await rowMenu(page, 'Submitted', 'Cancel leave');
+    await dialogFocused(page);
     await alertDialog(page).getByLabel('Reason (optional)').fill('Plans changed');
     await alertDialog(page).getByRole('button', { name: 'Cancel leave' }).click();
     await expect(page.getByText(/LV-\d{4}-\d{4} cancelled\./)).toBeVisible();
@@ -274,6 +280,7 @@ test.describe('leave approvals', () => {
     // Approve
     await rowMenu(page, /LV-/, 'Approve');
     await expect(dialog(page)).toContainText('Approve leave?');
+    await dialogFocused(page);
     await dialog(page).getByLabel('Remarks (optional)').fill('Enjoy the break');
     await dialog(page).getByRole('button', { name: 'Approve' }).click();
     await expect(page.getByText(/LV-\d{4}-\d{4} approved\./)).toBeVisible();
@@ -281,6 +288,7 @@ test.describe('leave approvals', () => {
 
     // Reject needs a reason
     await rowMenu(page, /LV-/, 'Reject');
+    await dialogFocused(page);
     await alertDialog(page).getByRole('button', { name: 'Reject' }).click();
     await expect(alertDialog(page).getByText('Reason for rejection is required.')).toBeVisible();
     await alertDialog(page).getByLabel('Reason for rejection').fill('Not enough team cover');
@@ -298,6 +306,7 @@ test.describe('leave approvals', () => {
   test('refuses to let the signed-in user decide their own request', async ({ page }) => {
     await page.goto('/leave/applications');
     await page.getByRole('button', { name: 'Add leave application' }).click();
+    await dialogFocused(page);
     await chooseInDialog(page, 'Employee', 'Su Myat Noe (EMP002)');
     await openSelect(dialog(page).getByRole('combobox', { name: 'Leave type' }));
     await page.getByRole('option', { name: 'Annual Leave', exact: true }).click();
