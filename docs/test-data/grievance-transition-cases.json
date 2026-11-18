@@ -1,0 +1,801 @@
+{
+  "_comment": [
+    "Shared golden cases for the grievance case workflow (GrievanceCaseWorkflow.cs). The API runs every case against the domain (Apex.Hrms.Domain.Tests, GrievanceTransitionCasesTests); the Angular demo mock is meant to run the same file. Fictional data only.",
+    "Shape: { _comment, cases: Case[] }. Every case has a unique 'name', a starting 'case', an 'action', an 'actor', an optional 'input', and either 'expected' or 'expectedError'.",
+    "Clock: today is 2026-11-18 and every step happens at 2026-11-18T08:00:00Z.",
+    "Actors: submitter = { userId 10, employeeId 100, name 'TST Submitter', role Submitter }, management = { 20, 200, 'TST HR Manager', Management }, investigator = { 30, 300, 'TST Investigator', Investigator }, reviewer = { 40, 400, 'TST Reviewer', Reviewer }. The submitter is never identified in what a case records: on a named case as { userId null, employeeId null, name 'Submitter', role Submitter } (screens show the name from the case's submitter record), on an anonymous case as { userId null, employeeId null, name 'Anonymous submitter', role Submitter }.",
+    "case: { status, isAnonymous (false), returnStatus (only for AwaitingEmployeeResponse: UnderReview, Assigned or UnderInvestigation), hasLead (whether the case has an active lead; the lead is employee 300; reached through Assigned; on a Reopened case: the lead it had before the reopening, which the reopening ended, so it has no active lead), members (employee ids of active Member assignments), proposedBy (who made the pending proposal of a ResolutionProposed case: investigator when there is a lead, management otherwise), reopenedFrom (Closed or Rejected), isEscalated, legalHold, archived, subjectEmployeeId, reassignedAfterReopen (Assigned reached by closing a case with its lead, reopening it, which ends every assignment, and assigning the same lead again) }. Missing fields take the defaults in brackets, null or false. A runner may build the state directly; the API test reaches it through the real transitions.",
+    "The draft of every case: category id 0 (active, allows anonymous, 14 default target days), subject 'Repeated unfair shift assignments', description 'My shifts are changed without notice every week.', no incident date. On the way to the starting status: acknowledge with priority Medium, reject with reason 'TST rejected on the way.', reopen with 'TST reopened on the way.', request info with 'TST question on the way?', propose 'TST resolution on the way.' and approve by the reviewer; escalation (isEscalated) and the subject (subjectEmployeeId) are set right after submission. A named submitter's placement { company 1, branch 2, department 3, position 4 } is offered at submission.",
+    "action and input: submit { declarationAccepted (true), categoryActive (true), categoryAllowsAnonymous (true) }; acknowledge { priority, targetResolutionDate (null = default), defaultTargetDays }; reject { reason }; startReview; assign { investigatorEmployeeId, role, reason }; unassign { investigatorEmployeeId }; startInvestigation; requestInfo { message }; respond { message }; postSubmitterMessage { message }; postTeamMessage { message }; proposeResolution { summary }; approveResolution { visibleToSubmitter, comment }; rejectResolution { reason }; close; reopen { reason }; escalate { reason }; archive. A text input '<field>Length': n stands for a text of n letters 'x'. The named submitter (employee 100) is passed as the submitter an investigator must not be; an anonymous case passes none.",
+    "expected (only the fields present are compared): status, returnStatus, isEscalated, archived, hasPlacement, priority, targetResolutionDate, rejectionReason, resolutionVisibleToSubmitter, proposalDecision, assignment { investigatorEmployeeId, role }, endedAssignment (employee id), endedAssignments (the employee ids a reopening unassigned, in order), message { direction, kind } or null (no message), history: the new history entries in order, each { action, fromStatus, toStatus, actorRole, visibleToSubmitter, reason } plus actorName, actorUserId and actorEmployeeId where given. An empty history means the step wrote none.",
+    "expectedError: { type (Validation, Conflict or Forbidden, as AppError), fields (the fieldErrors keys of a Validation failure) }. Messages are the API's and are not compared. A failed step changes nothing."
+  ],
+  "cases": [
+    {
+      "name": "submit: a named draft becomes Submitted and keeps the placement",
+      "case": { "status": "Draft" },
+      "action": "submit",
+      "actor": "submitter",
+      "expected": {
+        "status": "Submitted",
+        "hasPlacement": true,
+        "history": [ { "action": "Submit", "fromStatus": "Draft", "toStatus": "Submitted", "actorRole": "Submitter", "actorName": "Submitter", "actorUserId": null, "actorEmployeeId": null, "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "submit: an anonymous draft records the anonymous submitter and no placement",
+      "case": { "status": "Draft", "isAnonymous": true },
+      "action": "submit",
+      "actor": "submitter",
+      "expected": {
+        "status": "Submitted",
+        "hasPlacement": false,
+        "history": [ { "action": "Submit", "fromStatus": "Draft", "toStatus": "Submitted", "actorRole": "Submitter", "actorName": "Anonymous submitter", "actorUserId": null, "actorEmployeeId": null, "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "submit: the declaration must be accepted",
+      "case": { "status": "Draft" },
+      "action": "submit",
+      "actor": "submitter",
+      "input": { "declarationAccepted": false },
+      "expectedError": { "type": "Validation", "fields": [ "declarationAccepted" ] }
+    },
+    {
+      "name": "submit: anonymity the category no longer allows is refused",
+      "case": { "status": "Draft", "isAnonymous": true },
+      "action": "submit",
+      "actor": "submitter",
+      "input": { "categoryAllowsAnonymous": false },
+      "expectedError": { "type": "Validation", "fields": [ "isAnonymous" ] }
+    },
+    {
+      "name": "submit: an inactive category is refused",
+      "case": { "status": "Draft" },
+      "action": "submit",
+      "actor": "submitter",
+      "input": { "categoryActive": false },
+      "expectedError": { "type": "Validation", "fields": [ "categoryId" ] }
+    },
+    {
+      "name": "submit: a submitted case cannot be submitted again",
+      "case": { "status": "Submitted" },
+      "action": "submit",
+      "actor": "submitter",
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "acknowledge: the target date defaults to today plus the category's days",
+      "case": { "status": "Submitted" },
+      "action": "acknowledge",
+      "actor": "management",
+      "input": { "priority": "High", "targetResolutionDate": null, "defaultTargetDays": 14 },
+      "expected": {
+        "status": "Acknowledged",
+        "priority": "High",
+        "targetResolutionDate": "2026-12-02",
+        "isEscalated": false,
+        "history": [ { "action": "Acknowledge", "fromStatus": "Submitted", "toStatus": "Acknowledged", "actorRole": "Management", "actorName": "TST HR Manager", "actorUserId": 20, "actorEmployeeId": 200, "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "acknowledge: a chosen target date is kept",
+      "case": { "status": "Submitted" },
+      "action": "acknowledge",
+      "actor": "management",
+      "input": { "priority": "Low", "targetResolutionDate": "2026-11-18", "defaultTargetDays": 14 },
+      "expected": { "status": "Acknowledged", "priority": "Low", "targetResolutionDate": "2026-11-18" }
+    },
+    {
+      "name": "acknowledge: a target date in the past is refused",
+      "case": { "status": "Submitted" },
+      "action": "acknowledge",
+      "actor": "management",
+      "input": { "priority": "Medium", "targetResolutionDate": "2026-11-17", "defaultTargetDays": 14 },
+      "expectedError": { "type": "Validation", "fields": [ "targetResolutionDate" ] }
+    },
+    {
+      "name": "acknowledge: a Critical case is escalated at once",
+      "case": { "status": "Submitted" },
+      "action": "acknowledge",
+      "actor": "management",
+      "input": { "priority": "Critical", "targetResolutionDate": null, "defaultTargetDays": 7 },
+      "expected": {
+        "status": "Acknowledged",
+        "priority": "Critical",
+        "targetResolutionDate": "2026-11-25",
+        "isEscalated": true,
+        "history": [
+          { "action": "Acknowledge", "fromStatus": "Submitted", "toStatus": "Acknowledged", "actorRole": "Management", "visibleToSubmitter": true, "reason": null },
+          { "action": "Escalate", "fromStatus": "Acknowledged", "toStatus": "Acknowledged", "actorRole": "Management", "visibleToSubmitter": false, "reason": "Critical priority: escalated when acknowledged." }
+        ]
+      }
+    },
+    {
+      "name": "acknowledge: Critical on a case escalated before acknowledgement does not escalate it again",
+      "case": { "status": "Submitted", "isEscalated": true },
+      "action": "acknowledge",
+      "actor": "management",
+      "input": { "priority": "Critical", "targetResolutionDate": null, "defaultTargetDays": 7 },
+      "expected": {
+        "status": "Acknowledged",
+        "priority": "Critical",
+        "isEscalated": true,
+        "history": [ { "action": "Acknowledge", "fromStatus": "Submitted", "toStatus": "Acknowledged", "actorRole": "Management", "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "acknowledge: an acknowledged case cannot be acknowledged again",
+      "case": { "status": "Acknowledged" },
+      "action": "acknowledge",
+      "actor": "management",
+      "input": { "priority": "Medium", "targetResolutionDate": null, "defaultTargetDays": 14 },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "reject: a submitted case is rejected with its reason",
+      "case": { "status": "Submitted" },
+      "action": "reject",
+      "actor": "management",
+      "input": { "reason": "Outside the grievance policy." },
+      "expected": {
+        "status": "Rejected",
+        "rejectionReason": "Outside the grievance policy.",
+        "history": [ { "action": "Reject", "fromStatus": "Submitted", "toStatus": "Rejected", "actorRole": "Management", "visibleToSubmitter": true, "reason": "Outside the grievance policy." } ]
+      }
+    },
+    {
+      "name": "reject: a case under review can be rejected",
+      "case": { "status": "UnderReview" },
+      "action": "reject",
+      "actor": "management",
+      "input": { "reason": "Already settled." },
+      "expected": { "status": "Rejected", "rejectionReason": "Already settled." }
+    },
+    {
+      "name": "reject: a reason is required",
+      "case": { "status": "Acknowledged" },
+      "action": "reject",
+      "actor": "management",
+      "input": { "reason": "   " },
+      "expectedError": { "type": "Validation", "fields": [ "reason" ] }
+    },
+    {
+      "name": "reject: the reason is at most 1000 characters",
+      "case": { "status": "Submitted" },
+      "action": "reject",
+      "actor": "management",
+      "input": { "reasonLength": 1001 },
+      "expectedError": { "type": "Validation", "fields": [ "reason" ] }
+    },
+    {
+      "name": "reject: an assigned case can no longer be rejected",
+      "case": { "status": "Assigned" },
+      "action": "reject",
+      "actor": "management",
+      "input": { "reason": "Too late." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "start review: an acknowledged case goes under review",
+      "case": { "status": "Acknowledged" },
+      "action": "startReview",
+      "actor": "management",
+      "expected": {
+        "status": "UnderReview",
+        "history": [ { "action": "StartReview", "fromStatus": "Acknowledged", "toStatus": "UnderReview", "actorRole": "Management", "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "start review: a reopened case goes under review",
+      "case": { "status": "Reopened" },
+      "action": "startReview",
+      "actor": "management",
+      "expected": { "status": "UnderReview" }
+    },
+    {
+      "name": "start review: a submitted case must be acknowledged first",
+      "case": { "status": "Submitted" },
+      "action": "startReview",
+      "actor": "management",
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "assign: a lead on an acknowledged case moves it to Assigned",
+      "case": { "status": "Acknowledged" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 300, "role": "Lead", "reason": null },
+      "expected": {
+        "status": "Assigned",
+        "assignment": { "investigatorEmployeeId": 300, "role": "Lead" },
+        "endedAssignment": null,
+        "history": [ { "action": "Assign", "fromStatus": "Acknowledged", "toStatus": "Assigned", "actorRole": "Management", "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "assign: a lead on a case under review moves it to Assigned",
+      "case": { "status": "UnderReview" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 300, "role": "Lead", "reason": null },
+      "expected": { "status": "Assigned", "assignment": { "investigatorEmployeeId": 300, "role": "Lead" } }
+    },
+    {
+      "name": "assign: a member is added without a status change",
+      "case": { "status": "Acknowledged" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 301, "role": "Member", "reason": null },
+      "expected": {
+        "status": "Acknowledged",
+        "assignment": { "investigatorEmployeeId": 301, "role": "Member" },
+        "history": [ { "action": "Assign", "fromStatus": "Acknowledged", "toStatus": "Acknowledged", "actorRole": "Management", "visibleToSubmitter": false, "reason": null } ]
+      }
+    },
+    {
+      "name": "assign: replacing the lead needs a reason",
+      "case": { "status": "UnderInvestigation" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 301, "role": "Lead", "reason": null },
+      "expectedError": { "type": "Validation", "fields": [ "reason" ] }
+    },
+    {
+      "name": "assign: a new lead replaces the old one and keeps the status",
+      "case": { "status": "UnderInvestigation" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 301, "role": "Lead", "reason": "The lead is on extended leave." },
+      "expected": {
+        "status": "UnderInvestigation",
+        "assignment": { "investigatorEmployeeId": 301, "role": "Lead" },
+        "endedAssignment": 300,
+        "history": [ { "action": "Assign", "fromStatus": "UnderInvestigation", "toStatus": "UnderInvestigation", "actorRole": "Management", "visibleToSubmitter": false, "reason": "The lead is on extended leave." } ]
+      }
+    },
+    {
+      "name": "assign: the subject of the case cannot investigate it",
+      "case": { "status": "Acknowledged", "subjectEmployeeId": 500 },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 500, "role": "Lead", "reason": null },
+      "expectedError": { "type": "Validation", "fields": [ "investigatorEmployeeId" ] }
+    },
+    {
+      "name": "assign: the named submitter cannot investigate their own case",
+      "case": { "status": "Acknowledged" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 100, "role": "Member", "reason": null },
+      "expectedError": { "type": "Validation", "fields": [ "investigatorEmployeeId" ] }
+    },
+    {
+      "name": "assign: an anonymous case is not checked against its submitter (a refusal would reveal them)",
+      "case": { "status": "Acknowledged", "isAnonymous": true },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 100, "role": "Lead", "reason": null },
+      "expected": { "status": "Assigned", "assignment": { "investigatorEmployeeId": 100, "role": "Lead" } }
+    },
+    {
+      "name": "assign: an investigator already on the case is refused",
+      "case": { "status": "Assigned" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 300, "role": "Member", "reason": null },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "assign: a submitted case needs acknowledging before a lead",
+      "case": { "status": "Submitted" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 300, "role": "Lead", "reason": null },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "assign: a submitted case needs acknowledging before a member",
+      "case": { "status": "Submitted" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 301, "role": "Member", "reason": null },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "unassign: a member is removed without a status change",
+      "case": { "status": "Assigned", "members": [ 301 ] },
+      "action": "unassign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 301 },
+      "expected": {
+        "status": "Assigned",
+        "endedAssignment": 301,
+        "history": [ { "action": "Unassign", "fromStatus": "Assigned", "toStatus": "Assigned", "actorRole": "Management", "visibleToSubmitter": false, "reason": null } ]
+      }
+    },
+    {
+      "name": "unassign: the lead cannot be unassigned, only replaced",
+      "case": { "status": "Assigned" },
+      "action": "unassign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 300 },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "start investigation: an assigned case goes under investigation",
+      "case": { "status": "Assigned" },
+      "action": "startInvestigation",
+      "actor": "investigator",
+      "expected": {
+        "status": "UnderInvestigation",
+        "history": [ { "action": "StartInvestigation", "fromStatus": "Assigned", "toStatus": "UnderInvestigation", "actorRole": "Investigator", "actorName": "TST Investigator", "actorUserId": 30, "actorEmployeeId": 300, "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "start investigation: a case under review has no lead to investigate",
+      "case": { "status": "UnderReview" },
+      "action": "startInvestigation",
+      "actor": "management",
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "request info: the case waits for the submitter and remembers where it was",
+      "case": { "status": "UnderInvestigation" },
+      "action": "requestInfo",
+      "actor": "investigator",
+      "input": { "message": "Which dates were the shifts changed?" },
+      "expected": {
+        "status": "AwaitingEmployeeResponse",
+        "returnStatus": "UnderInvestigation",
+        "message": { "direction": "ToSubmitter", "kind": "InfoRequest" },
+        "history": [ { "action": "RequestInfo", "fromStatus": "UnderInvestigation", "toStatus": "AwaitingEmployeeResponse", "actorRole": "Investigator", "visibleToSubmitter": true, "reason": "Which dates were the shifts changed?" } ]
+      }
+    },
+    {
+      "name": "request info: from review the case returns to review",
+      "case": { "status": "UnderReview" },
+      "action": "requestInfo",
+      "actor": "management",
+      "input": { "message": "Please name a witness if there was one." },
+      "expected": { "status": "AwaitingEmployeeResponse", "returnStatus": "UnderReview" }
+    },
+    {
+      "name": "request info: the question is at most 1000 characters",
+      "case": { "status": "Assigned" },
+      "action": "requestInfo",
+      "actor": "management",
+      "input": { "messageLength": 1001 },
+      "expectedError": { "type": "Validation", "fields": [ "message" ] }
+    },
+    {
+      "name": "request info: the question is required",
+      "case": { "status": "Assigned" },
+      "action": "requestInfo",
+      "actor": "management",
+      "input": { "message": "" },
+      "expectedError": { "type": "Validation", "fields": [ "message" ] }
+    },
+    {
+      "name": "request info: not before the case is reviewed or assigned",
+      "case": { "status": "Acknowledged" },
+      "action": "requestInfo",
+      "actor": "management",
+      "input": { "message": "Anything else?" },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "respond: the answer returns the case to its return status",
+      "case": { "status": "AwaitingEmployeeResponse", "returnStatus": "Assigned" },
+      "action": "respond",
+      "actor": "submitter",
+      "input": { "message": "On 3 and 10 November." },
+      "expected": {
+        "status": "Assigned",
+        "returnStatus": null,
+        "message": { "direction": "FromSubmitter", "kind": "InfoResponse" },
+        "history": [ { "action": "Respond", "fromStatus": "AwaitingEmployeeResponse", "toStatus": "Assigned", "actorRole": "Submitter", "actorName": "Submitter", "actorUserId": null, "actorEmployeeId": null, "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "respond: an anonymous submitter's answer keeps no ids",
+      "case": { "status": "AwaitingEmployeeResponse", "returnStatus": "UnderInvestigation", "isAnonymous": true },
+      "action": "respond",
+      "actor": "submitter",
+      "input": { "message": "On 3 and 10 November." },
+      "expected": {
+        "status": "UnderInvestigation",
+        "history": [ { "action": "Respond", "fromStatus": "AwaitingEmployeeResponse", "toStatus": "UnderInvestigation", "actorRole": "Submitter", "actorName": "Anonymous submitter", "actorUserId": null, "actorEmployeeId": null, "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "respond: only a case awaiting the submitter can be answered",
+      "case": { "status": "UnderReview" },
+      "action": "respond",
+      "actor": "submitter",
+      "input": { "message": "Here is more." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "respond: the answer is required",
+      "case": { "status": "AwaitingEmployeeResponse", "returnStatus": "UnderReview" },
+      "action": "respond",
+      "actor": "submitter",
+      "input": { "message": " " },
+      "expectedError": { "type": "Validation", "fields": [ "message" ] }
+    },
+    {
+      "name": "message: a submitter's plain message changes no status and writes no history",
+      "case": { "status": "UnderReview" },
+      "action": "postSubmitterMessage",
+      "actor": "submitter",
+      "input": { "message": "One more detail about the rota." },
+      "expected": { "status": "UnderReview", "message": { "direction": "FromSubmitter", "kind": "Message" }, "history": [] }
+    },
+    {
+      "name": "message: while the case awaits the submitter, the message must be the response",
+      "case": { "status": "AwaitingEmployeeResponse", "returnStatus": "UnderReview" },
+      "action": "postSubmitterMessage",
+      "actor": "submitter",
+      "input": { "message": "Here you go." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "message: none on a draft",
+      "case": { "status": "Draft" },
+      "action": "postSubmitterMessage",
+      "actor": "submitter",
+      "input": { "message": "Hello." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "message: none on a closed case",
+      "case": { "status": "Closed" },
+      "action": "postSubmitterMessage",
+      "actor": "submitter",
+      "input": { "message": "Thank you." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "message: the case team can still write on a rejected case",
+      "case": { "status": "Rejected" },
+      "action": "postTeamMessage",
+      "actor": "management",
+      "input": { "message": "You may raise it again with new facts." },
+      "expected": { "status": "Rejected", "message": { "direction": "ToSubmitter", "kind": "Message" }, "history": [] }
+    },
+    {
+      "name": "message: the case team cannot write on a closed case",
+      "case": { "status": "Closed" },
+      "action": "postTeamMessage",
+      "actor": "management",
+      "input": { "message": "Follow-up." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "propose: the lead investigator proposes a resolution",
+      "case": { "status": "UnderInvestigation" },
+      "action": "proposeResolution",
+      "actor": "investigator",
+      "input": { "summary": "Rota rules clarified and shifts rebalanced." },
+      "expected": {
+        "status": "ResolutionProposed",
+        "proposalDecision": "Pending",
+        "history": [ { "action": "ProposeResolution", "fromStatus": "UnderInvestigation", "toStatus": "ResolutionProposed", "actorRole": "Investigator", "visibleToSubmitter": false, "reason": null } ]
+      }
+    },
+    {
+      "name": "propose: HR proposes a resolution from review",
+      "case": { "status": "UnderReview" },
+      "action": "proposeResolution",
+      "actor": "management",
+      "input": { "summary": "Apology and mediation meeting." },
+      "expected": { "status": "ResolutionProposed", "proposalDecision": "Pending" }
+    },
+    {
+      "name": "propose: the summary is required",
+      "case": { "status": "UnderInvestigation" },
+      "action": "proposeResolution",
+      "actor": "investigator",
+      "input": { "summary": "" },
+      "expectedError": { "type": "Validation", "fields": [ "summary" ] }
+    },
+    {
+      "name": "propose: not before the investigation has started",
+      "case": { "status": "Assigned" },
+      "action": "proposeResolution",
+      "actor": "investigator",
+      "input": { "summary": "Too early." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "approve: a reviewer resolves the case with the proposed summary",
+      "case": { "status": "ResolutionProposed", "hasLead": true },
+      "action": "approveResolution",
+      "actor": "reviewer",
+      "input": { "visibleToSubmitter": true, "comment": null },
+      "expected": {
+        "status": "Resolved",
+        "resolutionVisibleToSubmitter": true,
+        "proposalDecision": "Approved",
+        "history": [ { "action": "ApproveResolution", "fromStatus": "ResolutionProposed", "toStatus": "Resolved", "actorRole": "Reviewer", "actorName": "TST Reviewer", "actorUserId": 40, "actorEmployeeId": 400, "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "approve: the resolution can be kept from the submitter",
+      "case": { "status": "ResolutionProposed" },
+      "action": "approveResolution",
+      "actor": "reviewer",
+      "input": { "visibleToSubmitter": false, "comment": "Disciplinary detail stays internal." },
+      "expected": { "status": "Resolved", "resolutionVisibleToSubmitter": false, "proposalDecision": "Approved" }
+    },
+    {
+      "name": "approve: nobody approves their own proposal",
+      "case": { "status": "ResolutionProposed", "proposedBy": "management" },
+      "action": "approveResolution",
+      "actor": "management",
+      "input": { "visibleToSubmitter": true, "comment": null },
+      "expectedError": { "type": "Forbidden" }
+    },
+    {
+      "name": "approve: only a proposed resolution can be approved",
+      "case": { "status": "UnderReview" },
+      "action": "approveResolution",
+      "actor": "reviewer",
+      "input": { "visibleToSubmitter": true, "comment": null },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "reject resolution: back to the investigation when there is a lead",
+      "case": { "status": "ResolutionProposed", "hasLead": true },
+      "action": "rejectResolution",
+      "actor": "reviewer",
+      "input": { "reason": "Interview the second witness first." },
+      "expected": {
+        "status": "UnderInvestigation",
+        "proposalDecision": "Rejected",
+        "history": [ { "action": "RejectResolution", "fromStatus": "ResolutionProposed", "toStatus": "UnderInvestigation", "actorRole": "Reviewer", "visibleToSubmitter": false, "reason": "Interview the second witness first." } ]
+      }
+    },
+    {
+      "name": "reject resolution: back to review when there is no lead",
+      "case": { "status": "ResolutionProposed" },
+      "action": "rejectResolution",
+      "actor": "reviewer",
+      "input": { "reason": "Consider mediation." },
+      "expected": { "status": "UnderReview", "proposalDecision": "Rejected" }
+    },
+    {
+      "name": "reject resolution: a reason is required",
+      "case": { "status": "ResolutionProposed", "hasLead": true },
+      "action": "rejectResolution",
+      "actor": "reviewer",
+      "input": { "reason": null },
+      "expectedError": { "type": "Validation", "fields": [ "reason" ] }
+    },
+    {
+      "name": "reject resolution: nobody rejects their own proposal",
+      "case": { "status": "ResolutionProposed", "hasLead": true, "proposedBy": "investigator" },
+      "action": "rejectResolution",
+      "actor": "investigator",
+      "input": { "reason": "Changed my mind." },
+      "expectedError": { "type": "Forbidden" }
+    },
+    {
+      "name": "close: a resolved case is closed",
+      "case": { "status": "Resolved" },
+      "action": "close",
+      "actor": "management",
+      "expected": {
+        "status": "Closed",
+        "history": [ { "action": "Close", "fromStatus": "Resolved", "toStatus": "Closed", "actorRole": "Management", "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "close: an open case is resolved first",
+      "case": { "status": "UnderInvestigation" },
+      "action": "close",
+      "actor": "management",
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "reopen: a closed case is reopened with a reason",
+      "case": { "status": "Closed" },
+      "action": "reopen",
+      "actor": "management",
+      "input": { "reason": "The submitter reported the same behaviour again." },
+      "expected": {
+        "status": "Reopened",
+        "history": [ { "action": "Reopen", "fromStatus": "Closed", "toStatus": "Reopened", "actorRole": "Management", "visibleToSubmitter": true, "reason": "The submitter reported the same behaviour again." } ]
+      }
+    },
+    {
+      "name": "reopen: reopening ends every active assignment, the lead included",
+      "case": { "status": "Closed", "hasLead": true },
+      "action": "reopen",
+      "actor": "management",
+      "input": { "reason": "New facts were reported." },
+      "expected": {
+        "status": "Reopened",
+        "endedAssignments": [ 300 ],
+        "history": [
+          { "action": "Reopen", "fromStatus": "Closed", "toStatus": "Reopened", "actorRole": "Management", "visibleToSubmitter": true, "reason": "New facts were reported." },
+          { "action": "Unassign", "fromStatus": "Reopened", "toStatus": "Reopened", "actorRole": "Management", "visibleToSubmitter": false, "reason": "Case reopened" }
+        ]
+      }
+    },
+    {
+      "name": "assign: the lead of a reopened case can be assigned again",
+      "case": { "status": "Reopened", "hasLead": true },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 300, "role": "Lead", "reason": null },
+      "expected": {
+        "status": "Assigned",
+        "assignment": { "investigatorEmployeeId": 300, "role": "Lead" },
+        "endedAssignment": null,
+        "history": [ { "action": "Assign", "fromStatus": "Reopened", "toStatus": "Assigned", "actorRole": "Management", "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "start investigation: the lead assigned again after a reopening continues the investigation",
+      "case": { "status": "Assigned", "hasLead": true, "reassignedAfterReopen": true },
+      "action": "startInvestigation",
+      "actor": "investigator",
+      "expected": {
+        "status": "UnderInvestigation",
+        "history": [ { "action": "StartInvestigation", "fromStatus": "Assigned", "toStatus": "UnderInvestigation", "actorRole": "Investigator", "visibleToSubmitter": true, "reason": null } ]
+      }
+    },
+    {
+      "name": "reopen: a rejected case can be reopened",
+      "case": { "status": "Rejected" },
+      "action": "reopen",
+      "actor": "management",
+      "input": { "reason": "New evidence." },
+      "expected": { "status": "Reopened", "rejectionReason": "TST rejected on the way." }
+    },
+    {
+      "name": "reopen: a reason is required",
+      "case": { "status": "Resolved" },
+      "action": "reopen",
+      "actor": "management",
+      "input": { "reason": "" },
+      "expectedError": { "type": "Validation", "fields": [ "reason" ] }
+    },
+    {
+      "name": "reopen: an archived case is never reopened",
+      "case": { "status": "Closed", "archived": true },
+      "action": "reopen",
+      "actor": "management",
+      "input": { "reason": "New evidence." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "reopen: an open case is not reopened",
+      "case": { "status": "UnderReview" },
+      "action": "reopen",
+      "actor": "management",
+      "input": { "reason": "Why not." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "escalate: an open case is escalated without a status change",
+      "case": { "status": "UnderReview" },
+      "action": "escalate",
+      "actor": "management",
+      "input": { "reason": "Senior manager involved." },
+      "expected": {
+        "status": "UnderReview",
+        "isEscalated": true,
+        "history": [ { "action": "Escalate", "fromStatus": "UnderReview", "toStatus": "UnderReview", "actorRole": "Management", "visibleToSubmitter": false, "reason": "Senior manager involved." } ]
+      }
+    },
+    {
+      "name": "escalate: an assigned investigator can escalate",
+      "case": { "status": "UnderInvestigation" },
+      "action": "escalate",
+      "actor": "investigator",
+      "input": { "reason": "Possible retaliation." },
+      "expected": {
+        "status": "UnderInvestigation",
+        "isEscalated": true,
+        "history": [ { "action": "Escalate", "fromStatus": "UnderInvestigation", "toStatus": "UnderInvestigation", "actorRole": "Investigator", "visibleToSubmitter": false, "reason": "Possible retaliation." } ]
+      }
+    },
+    {
+      "name": "escalate: a case is escalated once",
+      "case": { "status": "Acknowledged", "isEscalated": true },
+      "action": "escalate",
+      "actor": "management",
+      "input": { "reason": "Again." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "escalate: a reason is required",
+      "case": { "status": "Acknowledged" },
+      "action": "escalate",
+      "actor": "management",
+      "input": { "reason": null },
+      "expectedError": { "type": "Validation", "fields": [ "reason" ] }
+    },
+    {
+      "name": "escalate: a resolved case is no longer escalated",
+      "case": { "status": "Resolved" },
+      "action": "escalate",
+      "actor": "management",
+      "input": { "reason": "Late concern." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "archive: a closed case is archived and keeps its status",
+      "case": { "status": "Closed" },
+      "action": "archive",
+      "actor": "management",
+      "expected": {
+        "status": "Closed",
+        "archived": true,
+        "history": [ { "action": "Archive", "fromStatus": "Closed", "toStatus": "Closed", "actorRole": "Management", "visibleToSubmitter": false, "reason": null } ]
+      }
+    },
+    {
+      "name": "archive: a rejected case can be archived",
+      "case": { "status": "Rejected" },
+      "action": "archive",
+      "actor": "management",
+      "expected": { "status": "Rejected", "archived": true }
+    },
+    {
+      "name": "archive: a case on legal hold is not archived",
+      "case": { "status": "Closed", "legalHold": true },
+      "action": "archive",
+      "actor": "management",
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "archive: an archived case is not archived again",
+      "case": { "status": "Rejected", "archived": true },
+      "action": "archive",
+      "actor": "management",
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "archive: an open case is not archived",
+      "case": { "status": "UnderReview" },
+      "action": "archive",
+      "actor": "management",
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "closed is final: no review on a closed case",
+      "case": { "status": "Closed" },
+      "action": "startReview",
+      "actor": "management",
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "closed is final: no escalation of a closed case",
+      "case": { "status": "Closed" },
+      "action": "escalate",
+      "actor": "management",
+      "input": { "reason": "Late concern." },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "closed is final: no new investigator on a closed case",
+      "case": { "status": "Closed" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 301, "role": "Member", "reason": null },
+      "expectedError": { "type": "Conflict" }
+    },
+    {
+      "name": "reopened: a lead on a reopened case moves it to Assigned",
+      "case": { "status": "Reopened", "reopenedFrom": "Rejected" },
+      "action": "assign",
+      "actor": "management",
+      "input": { "investigatorEmployeeId": 300, "role": "Lead", "reason": null },
+      "expected": { "status": "Assigned", "assignment": { "investigatorEmployeeId": 300, "role": "Lead" } }
+    }
+  ]
+}

@@ -500,6 +500,101 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
     ),
   ],
 
+  '/grievances/overview': [
+    b(
+      'Counts of your own grievances: updates you have not read, questions from HR waiting for your answer, open, drafts, resolved, closed or rejected.',
+      'ကိုယ့် Grievance များ၏ အရေအတွက် — မဖတ်ရသေးသော Update၊ သင့်အဖြေစောင့်နေသော HR မေးခွန်း၊ ဖွင့်လျက်ရှိသည်၊ Draft၊ Resolved၊ Closed သို့ Rejected။',
+    ),
+    b(
+      'The recently updated cases (a dot marks a new update) and the New grievance button.',
+      'မကြာမီ Update ဖြစ်သော Case များ (Update အသစ်ကို အစက်ဖြင့်ပြ) နှင့် New grievance ခလုတ်။',
+    ),
+  ],
+  '/grievances/my': [
+    b(
+      'Search by subject or case number, filter by status. Drafts have no case number yet.',
+      'Subject သို့ Case နံပါတ်ဖြင့် ရှာ၊ Status ဖြင့် Filter လုပ်ပါ။ Draft များတွင် Case နံပါတ် မရှိသေး။',
+    ),
+    b(
+      'A new grievance: category (some do not accept anonymous reports), subject, description, incident date (not after today), location, people and department involved, files (PDF, PNG, JPEG, Word, Excel; up to 10 MB each, 10 per grievance), the anonymous switch with what HR will and will not see, and the declaration.',
+      'Grievance အသစ် — Category (အချို့က အမည်မဖော်သော တင်ပြချက် လက်မခံ)၊ Subject၊ ဖော်ပြချက်၊ ဖြစ်ရပ်ရက် (ယနေ့ထက် မကျော်)၊ နေရာ၊ ပါဝင်သူနှင့် ဌာန၊ ဖိုင်များ (PDF၊ PNG၊ JPEG၊ Word၊ Excel — တစ်ခုလျှင် 10 MB၊ Grievance တစ်ခုလျှင် ၁၀ ခု)၊ HR မြင်ရ/မမြင်ရသည်ကို ပြသော အမည်မဖော်ခလုတ်နှင့် Declaration။',
+    ),
+    b(
+      'Save draft keeps it to yourself; Submit (after a confirmation) sends it to HR and gives it a case number. Opening a grievance shows its timeline, HR’s messages and shared files; when HR asks a question the reply box becomes “Respond to HR’s request”.',
+      'Save draft က ကိုယ့်ထံတွင်သာ သိမ်းထားသည် — Submit (အတည်ပြုပြီးနောက်) က HR ထံ ပို့ပြီး Case နံပါတ် ပေးသည်။ Grievance ကိုဖွင့်လျှင် Timeline၊ HR ၏ Message များနှင့် မျှဝေထားသော ဖိုင်များ ပြသည် — HR က မေးလျှင် ပြန်ဖြေရန်အကွက်သည် “Respond to HR’s request” ဖြစ်လာသည်။',
+    ),
+  ],
+  '/grievances/dashboard': [
+    b(
+      'Cards: total, new, under review, under investigation, awaiting the employee, pending resolution, resolved, closed, overdue, escalated, resolution rate and average resolution days.',
+      'Card များ — စုစုပေါင်း၊ အသစ်၊ Review လုပ်ဆဲ၊ Investigate လုပ်ဆဲ၊ ဝန်ထမ်းကိုစောင့်ဆဲ၊ Resolution စောင့်ဆဲ၊ Resolved၊ Closed၊ Overdue၊ Escalated၊ Resolution rate နှင့် ပျမ်းမျှ Resolve ရက်။',
+    ),
+    b(
+      'Charts with a table view: monthly trend (submitted and resolved), by category, by department (“Not disclosed” for anonymous cases, groups under 3 merged into “Other / suppressed”), by priority and by status; recent activity by case number only.',
+      'Table view ပါ Chart များ — လစဉ် Trend (Submit နှင့် Resolve)၊ Category အလိုက်၊ ဌာနအလိုက် (အမည်မဖော်လျှင် “Not disclosed”၊ ၃ ခုအောက်အုပ်စုများကို “Other / suppressed” အဖြစ်ပေါင်း)၊ Priority နှင့် Status အလိုက် — မကြာမီလုပ်ဆောင်ချက်များကို Case နံပါတ်ဖြင့်သာ။',
+    ),
+  ],
+  '/grievances/cases': [
+    b(
+      'Every submitted case with search, sorting and filters (status, priority, category, department, anonymous, escalated, overdue, archived, investigator, submission dates). Archived cases appear only with the Archived filter.',
+      'Search၊ Sort နှင့် Filter (Status၊ Priority၊ Category၊ ဌာန၊ အမည်မဖော်၊ Escalated၊ Overdue၊ Archived၊ Investigator၊ Submit ရက်) ပါသော Submit လုပ်ပြီး Case အားလုံး။ Archive လုပ်ထားသည်များကို Archived filter ဖြင့်သာ ပြသည်။',
+    ),
+    b(
+      'A case: the commands its status allows (acknowledge with priority and target date, review, assign, request information, propose, reject, close, reopen, escalate, archive), triage, investigators, messages, notes, files with who may see them, corrective actions, the proposal and escalations, and the history. Administrators also see the access log.',
+      'Case တစ်ခု — ၎င်း၏ Status ခွင့်ပြုသော Command များ (Priority နှင့် Target date ဖြင့် Acknowledge၊ Review၊ Assign၊ အချက်အလက်တောင်း၊ Propose၊ Reject၊ Close၊ Reopen၊ Escalate၊ Archive)၊ Triage၊ Investigator၊ Message၊ Note၊ မြင်ခွင့်ရှိသူပါ ဖိုင်များ၊ Corrective action၊ Proposal နှင့် Escalation နှင့် History။ Administrator များက Access log ကိုလည်း မြင်ရသည်။',
+    ),
+  ],
+  '/grievances/investigations': [
+    b(
+      'The cases you are assigned to. Add notes, interviews, follow-ups, findings and recommendations (they cannot be edited later), upload files for the case team or to share with the employee, start the investigation, ask the employee for information and escalate.',
+      'သင့်ကို Assign လုပ်ထားသော Case များ။ Note၊ Interview၊ Follow-up၊ Finding နှင့် Recommendation ထည့်ပါ (နောက်မှ ပြင်၍မရ)၊ Case team အတွက် သို့ ဝန်ထမ်းနှင့် မျှဝေရန် ဖိုင်တင်၊ Investigation စတင်၊ ဝန်ထမ်းထံ အချက်အလက်တောင်းပြီး Escalate လုပ်ပါ။',
+    ),
+    b(
+      'Only the Lead investigator proposes a resolution. Corrective actions and restricted files stay with HR management.',
+      'Lead investigator ကသာ Resolution အဆိုပြုသည်။ Corrective action နှင့် Restricted ဖိုင်များကို HR Management ကသာ ကိုင်တွယ်သည်။',
+    ),
+  ],
+  '/grievances/reviews': [
+    b(
+      'Escalated open cases and proposed resolutions, oldest first. A review shows the findings, recommendations and the proposal.',
+      'Escalated ဖြစ်ပြီး ဖွင့်လျက်ရှိသော Case များနှင့် အဆိုပြုထားသော Resolution များ — အဟောင်းဆုံးမှ စ။ Review တွင် Finding၊ Recommendation နှင့် Proposal ကို ပြသည်။',
+    ),
+    b(
+      'Approve (and choose whether the employee sees the resolution summary) or send the proposal back with a reason. You cannot decide a proposal you made.',
+      'Approve လုပ်ပါ (ဝန်ထမ်းက Resolution summary မြင်မမြင် ရွေးပါ) သို့ အကြောင်းပြချက်ဖြင့် Proposal ကို ပြန်ပို့ပါ။ ကိုယ်တိုင် အဆိုပြုခဲ့သော Proposal ကို မဆုံးဖြတ်နိုင်။',
+    ),
+  ],
+  '/grievances/review-summary': [
+    b(
+      'The review queue in figures: proposals to decide, escalations, overdue, the oldest proposal and your own decisions; charts by priority and category.',
+      'Review queue ကို ကိန်းဂဏန်းဖြင့် — ဆုံးဖြတ်ရမည့် Proposal၊ Escalation၊ Overdue၊ အဟောင်းဆုံး Proposal နှင့် ကိုယ့်ဆုံးဖြတ်ချက်များ — Priority နှင့် Category အလိုက် Chart များ။',
+    ),
+    b(
+      'The grievance summary by submission dates, category and priority. There is no department filter, so no one can be singled out.',
+      'Submit ရက်၊ Category နှင့် Priority အလိုက် Grievance summary။ မည်သူ့ကိုမျှ ခွဲထုတ်မပြနိုင်ရန် ဌာန Filter မပါ။',
+    ),
+  ],
+  '/grievances/reports': [
+    b(
+      'Filters: submission dates, department, category, status, priority, investigator, days to resolve (from, to) and overdue; the summary follows the dates, category and priority.',
+      'Filter များ — Submit ရက်၊ ဌာန၊ Category၊ Status၊ Priority၊ Investigator၊ Resolve ရက် (မှ၊ ထိ) နှင့် Overdue — Summary သည် ရက်၊ Category နှင့် Priority ကို လိုက်သည်။',
+    ),
+    b(
+      'Excel export (when your role allows it) and Print (Save as PDF in the browser). Case numbers only: never the subject, description, notes or submitter; anonymous cases show the department as “Not disclosed”. Every export is logged.',
+      'Excel export (Role ခွင့်ပြုလျှင်) နှင့် Print (Browser တွင် Save as PDF)။ Case နံပါတ်သာ — Subject၊ ဖော်ပြချက်၊ Note သို့ Submit လုပ်သူ ဘယ်တော့မှ မပါ — အမည်မဖော်သော Case များ၏ ဌာနကို “Not disclosed” ဟု ပြသည်။ Export တိုင်းကို မှတ်တမ်းတင်သည်။',
+    ),
+  ],
+  '/grievances/categories': [
+    b(
+      'Add, edit, activate and deactivate categories: code, name, description, whether anonymous reports are allowed, the default target days and the order.',
+      'Category များကို ထည့်/ပြင်/Activate/Deactivate — Code၊ အမည်၊ ဖော်ပြချက်၊ အမည်မဖော်ခွင့်ရှိမရှိ၊ ပုံသေ Target ရက်နှင့် အစီအစဉ်။',
+    ),
+    b(
+      'A category that a case uses cannot be deleted; deactivate it instead.',
+      'Case တစ်ခု သုံးနေသော Category ကို ဖျက်၍မရ — Deactivate လုပ်ပါ။',
+    ),
+  ],
+
   '/payroll/salary-components': [
     b(
       'Define earnings (housing, transport…) and deductions (tax, social…). Each has a unique code and a method: fixed amount, % of basic or % of gross.',

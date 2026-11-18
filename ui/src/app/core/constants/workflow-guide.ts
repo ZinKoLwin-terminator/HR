@@ -698,4 +698,74 @@ export const WORKFLOWS: readonly Workflow[] = [
       },
     ],
   },
+  {
+    id: 'grievance',
+    title: {
+      en: '6. A grievance from report to resolution',
+      my: '၆။ Grievance တစ်ခု တင်ပြချက်မှ ဖြေရှင်းချက်အထိ',
+    },
+    summary: {
+      en: 'How an employee raises a grievance (named or anonymous), HR handles it, an investigator looks into it and a reviewer approves the resolution.',
+      my: 'ဝန်ထမ်းက Grievance (အမည်ဖြင့် သို့ အမည်မဖော်ဘဲ) တင်ပြပုံ၊ HR က ကိုင်တွယ်ပုံ၊ Investigator က စုံစမ်းပုံနှင့် Reviewer က Resolution ကို Approve လုပ်ပုံ။',
+    },
+    steps: [
+      {
+        module: 'Grievances',
+        title: { en: 'The employee reports', my: 'ဝန်ထမ်းက တင်ပြသည်' },
+        text: {
+          en: 'In My Grievances: a category, what happened, files if any, named or anonymous (where the category allows it), the declaration, then Submit. The case gets its number and HR is told.',
+          my: 'My Grievances တွင် — Category၊ ဖြစ်ရပ်၊ ရှိလျှင် ဖိုင်များ၊ အမည်ဖြင့် သို့ အမည်မဖော် (Category ခွင့်ပြုလျှင်)၊ Declaration ပြီးမှ Submit။ Case နံပါတ်ရပြီး HR ကို အကြောင်းကြားသည်။',
+        },
+        route: '/grievances/my',
+      },
+      {
+        module: 'Grievances',
+        title: { en: 'HR acknowledges and triages', my: 'HR က Acknowledge နှင့် Triage လုပ်သည်' },
+        text: {
+          en: 'In Case Management: a priority and a target date (Critical escalates to the reviewers at once), then the subject employee, involved department and legal hold if needed. HR may also reject the case with a reason.',
+          my: 'Case Management တွင် — Priority နှင့် Target date (Critical ဆိုလျှင် Reviewer များထံ ချက်ချင်း Escalate)၊ လိုအပ်လျှင် Subject employee၊ ဌာနနှင့် Legal hold။ HR က အကြောင်းပြချက်ဖြင့် Reject လည်း လုပ်နိုင်သည်။',
+        },
+        route: '/grievances/cases',
+      },
+      {
+        module: 'Grievances',
+        title: { en: 'HR assigns an investigator', my: 'HR က Investigator Assign လုပ်သည်' },
+        text: {
+          en: 'A Lead (and members if needed). Nobody investigates a case about them or that they submitted by name.',
+          my: 'Lead တစ်ဦး (လိုအပ်လျှင် Member များ)။ ကိုယ့်အကြောင်းဖြစ်သော သို့ ကိုယ်တိုင် အမည်ဖြင့် တင်ပြခဲ့သော Case ကို မည်သူမျှ Investigate မလုပ်ရ။',
+        },
+        route: '/grievances/cases',
+      },
+      {
+        module: 'Grievances',
+        title: { en: 'The investigation', my: 'စုံစမ်းစစ်ဆေးခြင်း' },
+        text: {
+          en: 'In Investigations: start it, record interviews, notes and findings, ask the employee for information (the case waits for the answer), then the Lead proposes a resolution.',
+          my: 'Investigations တွင် — စတင်၊ Interview၊ Note နှင့် Finding မှတ်တမ်းတင်၊ ဝန်ထမ်းထံ အချက်အလက်တောင်း (Case သည် အဖြေကိုစောင့်သည်) ပြီးနောက် Lead က Resolution အဆိုပြုသည်။',
+        },
+        route: '/grievances/investigations',
+      },
+      {
+        module: 'Grievances',
+        title: { en: 'A reviewer decides', my: 'Reviewer က ဆုံးဖြတ်သည်' },
+        text: {
+          en: 'In Reviews: approve, choosing whether the employee sees the summary, or send the proposal back with a reason. The proposer cannot decide.',
+          my: 'Reviews တွင် — ဝန်ထမ်းက Summary မြင်မမြင် ရွေးပြီး Approve လုပ်ပါ၊ သို့ အကြောင်းပြချက်ဖြင့် Proposal ကို ပြန်ပို့ပါ။ အဆိုပြုသူက မဆုံးဖြတ်ရ။',
+        },
+        route: '/grievances/reviews',
+      },
+      {
+        module: 'Grievances',
+        title: {
+          en: 'Close, follow up and read the figures',
+          my: 'Close၊ ဆက်လက်လုပ်ဆောင်ပြီး ကိန်းဂဏန်းကြည့်ပါ',
+        },
+        text: {
+          en: 'HR closes the resolved case and tracks corrective actions. The Dashboard and Reports show the figures without singling anyone out; archive Closed or Rejected cases when they are no longer needed (not under legal hold).',
+          my: 'HR က Resolve ပြီး Case ကို Close လုပ်ကာ Corrective action များကို ခြေရာခံသည်။ Dashboard နှင့် Reports က မည်သူ့ကိုမျှ ခွဲထုတ်မပြဘဲ ကိန်းဂဏန်းများ ပြသည် — မလိုတော့သော Closed သို့ Rejected Case များကို Archive လုပ်ပါ (Legal hold မရှိလျှင်)။',
+        },
+        route: '/grievances/dashboard',
+      },
+    ],
+  },
 ];

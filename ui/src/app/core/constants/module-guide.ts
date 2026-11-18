@@ -1,5 +1,6 @@
 import { ATTENDANCE_GUIDE } from './attendance-guide';
 import { EMPLOYEES_GUIDE } from './employees-guide';
+import { GRIEVANCE_GUIDE } from './grievance-guide';
 import { LEAVE_GUIDE } from './leave-guide';
 import { ORGANIZATION_GUIDE } from './organization-guide';
 import { PAYROLL_GUIDE } from './payroll-guide';
@@ -456,6 +457,116 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
     note: {
       en: 'Scores in the demo come from a mock that repeats the API’s calculation; official scores come from the API. Evidence files in the demo live in memory and are lost on reload. Roles and permissions here are a simulation and enforce nothing; dashboards and reports come later.',
       my: 'Demo ရှိ ရမှတ်များသည် API ၏ တွက်နည်းကို ပုံတူလုပ်ထားသော Mock မှ ဖြစ်ပြီး တရားဝင်ရမှတ်ကို API ကသာ တွက်ပေးသည်။ Demo တွင် Evidence ဖိုင်များသည် Memory ထဲတွင်သာ ရှိပြီး Reload လုပ်လျှင် ပျောက်သည်။ ဤနေရာရှိ Role နှင့် Permission များသည် Simulation သာဖြစ်ပြီး မည်သည့်ကန့်သတ်ချက်ကိုမျှ အမှန်တကယ် မစစ်ဆေးပါ။ Dashboard နှင့် Report များကို နောက်မှ ထည့်ပါမည်။',
+    },
+  },
+  {
+    id: 'grievances',
+    name: 'Grievances',
+    icon: 'gavel',
+    summary: {
+      en: 'Employees raise workplace grievances, by name or anonymously where the category allows it, and follow them; HR triages, investigates and resolves them, reviewers approve resolutions, and HR sees the figures without singling anyone out.',
+      my: 'ဝန်ထမ်းများက အလုပ်ခွင်ဆိုင်ရာ Grievance များကို အမည်ဖြင့် သို့ Category ခွင့်ပြုလျှင် အမည်မဖော်ဘဲ တင်ပြပြီး ဆက်ကြည့်နိုင်သည်။ HR က Triage၊ Investigate နှင့် Resolve လုပ်ပြီး Reviewer က Resolution ကို Approve လုပ်ကာ HR က မည်သူ့ကိုမျှ ခွဲထုတ်မပြဘဲ ကိန်းဂဏန်းများကို ကြည့်နိုင်သည်။',
+    },
+    screens: [
+      {
+        label: 'Overview',
+        route: '/grievances/overview',
+        text: {
+          en: 'Your grievances at a glance: updates to read, questions from HR waiting for your answer, and a New grievance button.',
+          my: 'သင့် Grievance များ တစ်ချက်ကြည့် — ဖတ်ရန် Update များ၊ သင့်အဖြေစောင့်နေသော HR ၏ မေးခွန်းများနှင့် New grievance ခလုတ်။',
+        },
+      },
+      {
+        label: 'My Grievances',
+        route: '/grievances/my',
+        text: {
+          en: 'Everything you raised, drafts included: open one to follow its timeline, message HR, answer HR’s questions and share files.',
+          my: 'Draft များအပါအဝင် သင်တင်ပြခဲ့သမျှ — တစ်ခုဖွင့်ပြီး Timeline ကြည့်၊ HR ထံ Message ပို့၊ HR ၏ မေးခွန်းကို ဖြေ၊ ဖိုင်မျှဝေပါ။',
+        },
+      },
+      {
+        label: 'Dashboard',
+        route: '/grievances/dashboard',
+        text: {
+          en: 'HR’s figures: cases by stage, overdue and escalated, resolution rate and time, and charts by category, department, priority, status and month.',
+          my: 'HR ၏ ကိန်းဂဏန်းများ — အဆင့်အလိုက် Case၊ Overdue နှင့် Escalated၊ Resolution rate နှင့် အချိန်၊ Category၊ ဌာန၊ Priority၊ Status နှင့် လအလိုက် Chart များ။',
+        },
+      },
+      {
+        label: 'Case Management',
+        route: '/grievances/cases',
+        text: {
+          en: 'Every submitted case with filters: acknowledge, triage, assign investigators, message the employee, add corrective actions and close.',
+          my: 'Filter များဖြင့် Submit လုပ်ပြီးသော Case အားလုံး — Acknowledge၊ Triage၊ Investigator Assign၊ ဝန်ထမ်းထံ Message၊ Corrective action ထည့်ခြင်းနှင့် Close။',
+        },
+      },
+      {
+        label: 'Investigations',
+        route: '/grievances/investigations',
+        text: {
+          en: 'The cases you are assigned to: record notes, interviews and findings, ask the employee for information and, as Lead, propose a resolution.',
+          my: 'သင့်ကို Assign လုပ်ထားသော Case များ — Note၊ Interview နှင့် Finding မှတ်တမ်းတင်၊ ဝန်ထမ်းထံ အချက်အလက်တောင်း၊ Lead အနေဖြင့် Resolution အဆိုပြုပါ။',
+        },
+      },
+      {
+        label: 'Reviews',
+        route: '/grievances/reviews',
+        text: {
+          en: 'Escalated cases and proposed resolutions: approve (and choose whether the employee sees the summary) or send the proposal back with a reason.',
+          my: 'Escalated Case များနှင့် အဆိုပြုထားသော Resolution များ — Approve လုပ် (ဝန်ထမ်းက Summary မြင်မမြင် ရွေး) သို့ အကြောင်းပြချက်ဖြင့် Proposal ကို ပြန်ပို့ပါ။',
+        },
+      },
+      {
+        label: 'Review Summary',
+        route: '/grievances/review-summary',
+        text: {
+          en: 'The review queue in figures and the grievance summary for a period, category or priority.',
+          my: 'Review queue ကို ကိန်းဂဏန်းဖြင့်နှင့် Period၊ Category သို့ Priority အလိုက် Grievance summary။',
+        },
+      },
+      {
+        label: 'Reports',
+        route: '/grievances/reports',
+        text: {
+          en: 'Cases by date, department, category, status, priority, investigator, days to resolve and overdue, with a summary, Excel export and print. Case numbers only.',
+          my: 'ရက်စွဲ၊ ဌာန၊ Category၊ Status၊ Priority၊ Investigator၊ Resolve ရက်နှင့် Overdue အလိုက် Case များ — Summary၊ Excel export နှင့် Print ပါ။ Case နံပါတ်သာ။',
+        },
+      },
+      {
+        label: 'Categories',
+        route: '/grievances/categories',
+        text: {
+          en: 'What employees choose when reporting, whether it may be anonymous, and the default days to resolve.',
+          my: 'တင်ပြရာတွင် ဝန်ထမ်းရွေးရသော အမျိုးအစား၊ အမည်မဖော်ဘဲ တင်ပြခွင့်ရှိမရှိနှင့် Resolve လုပ်ရန် ပုံသေရက်။',
+        },
+      },
+    ],
+    rules: [
+      {
+        en: 'A draft needs a category and a subject; submitting needs a subject of at least 5 and a description of at least 20 characters and the declaration.',
+        my: 'Draft အတွက် Category နှင့် Subject လိုသည် — Submit လုပ်ရန် Subject အနည်းဆုံး စာလုံး ၅ လုံး၊ ဖော်ပြချက် အနည်းဆုံး ၂၀ လုံးနှင့် Declaration လိုသည်။',
+      },
+      {
+        en: 'Anonymity is chosen when the draft is first saved and only where the category allows it; it never changes afterwards.',
+        my: 'အမည်မဖော်ခြင်းကို Draft ပထမဆုံး Save လုပ်ချိန်တွင် Category ခွင့်ပြုမှသာ ရွေးနိုင်ပြီး နောက်ပိုင်း မပြောင်းနိုင်။',
+      },
+      {
+        en: 'Nobody investigates or reviews a case they submitted or that is about them; the person proposing a resolution cannot approve it.',
+        my: 'ကိုယ်တိုင်တင်ပြခဲ့သော သို့ ကိုယ့်အကြောင်းဖြစ်သော Case ကို မည်သူမျှ Investigate သို့ Review မလုပ်ရ — Resolution အဆိုပြုသူက ၎င်းကို Approve မလုပ်ရ။',
+      },
+      {
+        en: 'Investigation notes are append-only; reviewers see findings, recommendations and the proposal, not the raw notes.',
+        my: 'Investigation note များကို ထပ်ထည့်ရုံသာ ရပြီး ပြင်/ဖျက်၍မရ — Reviewer များက Finding၊ Recommendation နှင့် Proposal ကိုသာ မြင်ရပြီး Note အကြမ်းများ မမြင်ရ။',
+      },
+      {
+        en: 'Closed and Rejected cases are kept for 7 years; they can be archived unless under legal hold, and an archived case is read-only.',
+        my: 'Closed နှင့် Rejected Case များကို ၇ နှစ် ထိန်းသိမ်းသည် — Legal hold မရှိလျှင် Archive လုပ်နိုင်ပြီး Archive လုပ်ထားသော Case သည် ဖတ်ရန်သာ။',
+      },
+    ],
+    article: GRIEVANCE_GUIDE,
+    note: {
+      en: 'This demo stores grievances in your browser; anonymity, roles and permissions here are a simulation and enforce nothing. The real API keeps the submitter’s identity out of every case record and checks every request.',
+      my: 'ဤ Demo တွင် Grievance များကို သင့် Browser ထဲ၌သာ သိမ်းသည် — ဤနေရာရှိ အမည်မဖော်မှု၊ Role နှင့် Permission များသည် Simulation သာဖြစ်ပြီး မည်သည့်ကန့်သတ်ချက်ကိုမျှ အမှန်တကယ် မစစ်ဆေးပါ။ တကယ့် API ကမူ Submit လုပ်သူ၏ ကိုယ်ရေးအချက်အလက်ကို Case မှတ်တမ်းတိုင်းမှ ဖယ်ထားပြီး Request တိုင်းကို စစ်ဆေးသည်။',
     },
   },
   {

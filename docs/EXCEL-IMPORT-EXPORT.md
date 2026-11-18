@@ -2,7 +2,8 @@
 
 A reusable import/export capability shared by all modules. **Status:** the shared foundation and these
 modules are implemented: employees, companies, branches, departments, job grades, positions, leave
-balances, shift assignments, salary assignments, and the export-only KPI report modules.
+balances, shift assignments, salary assignments, the export-only KPI report modules and the export-only grievance case
+module (`grievance-cases`, branches `feature/grievance` and `feature/api-grievance`).
 
 > Two builds. The **demo build** (default, GitHub Pages) reads and writes spreadsheets **in the browser**
 > behind the data-service contracts; the browser is **not a security boundary** and enforces nothing.
@@ -141,6 +142,33 @@ history and Department performance export `kpi-scorecards`; Ranking exports `kpi
 - **Privacy:** never a comment (employee, manager or HR), a manager rating or an evidence file. Only the employee code and name identify a person.
 - PDF stays the browser's print of the report screens.
 
+## Grievance case export (API and demo build)
+
+One **export-only** module, `grievance-cases` (API: `GrievanceCasesExcelModule` in
+`api/src/Apex.Hrms.Application/Grievances/Insights/GrievanceExcelModule.cs`; demo build:
+`ui/src/app/mock-services/excel/modules/grievance-excel.modules.ts`, registered through `LAZY_EXCEL_MODULES` so the
+definition and the grievance insight mock load on first use). There is no template and no import: cases change only
+through the grievance workflow. The Export button is on Grievances > Reports and takes the report's current filters;
+the export's own date range filters the **submission date** ("Submission dates").
+
+| Module code | Sheet / label | Columns |
+| --- | --- | --- |
+| `grievance-cases` | Grievance cases | Case No, Category, Status, Priority, Department ("Not disclosed" for an anonymous case), Submitted, Target, Resolved, Days, Overdue, Lead Investigator, Escalated |
+
+- **Permissions:** the export route needs `excel:Export`, and the module needs `grievance-management:View` on top. In the
+  demo build the grievance mock checks the simulated session's `grievance-management:View` grant; nothing is enforced.
+- **Rows:** the case report's rows: every non-draft case (archived included) except the cases whose subject employee is
+  the caller; the caller's own submissions stay (rows never show a submitter). `filtered` uses the report filters and
+  the case-number search; `all` ignores them; `selected` takes case ids. Newest submission first. The usual export row
+  limit applies.
+- **Values:** Status and Priority are the codes (for example `UnderReview`); Overdue (`isOverdue`) and Escalated
+  (`isEscalated`) are booleans, shown as Yes/No in the file; the lead is `leadInvestigator`.
+- **Privacy:** never the subject, the description, notes, messages or the submitter. Only case numbers identify a case.
+- **Audit:** every export writes one `Export` entry (module and row count, no case) to the grievance access log
+  (`grv.AuditLog`), and **no** line to the company-wide activity feed.
+- The demo mirror has the same code, sheet, column keys, headers and value types as the API module.
+- PDF is the browser's print of the report page.
+
 ## Not done yet / limitations
 
 - Organization, Attendance, Leave and Payroll import/export (planned phases 4–7). **Payroll import scope is still to be agreed.**
@@ -148,5 +176,6 @@ history and Department performance export `kpi-scorecards`; Ranking exports `kpi
 - Zip-bomb protection is limited to the compressed file-size cap; a server must also limit the uncompressed size.
 - No permission checks (the permission matrix is only a simulation); exports are not restricted per role. The KPI exports
   are the exception in the demo: they follow the KPI mock's scope, which is decided by the simulated session's role names,
-  not by permissions.
+  not by permissions. The grievance export checks the simulated session's `grievance-management:View` grant, which is
+  equally a simulation.
 - Import history and uploads are kept in memory and cleared on reload (a server would persist batches and keep files in temporary storage).

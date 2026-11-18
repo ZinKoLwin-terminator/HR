@@ -19,6 +19,7 @@ export const MODULE_GUIDE_MENU: readonly GuideMenuEntry[] = [
   { id: 'attendance', name: 'Attendance', icon: 'schedule' },
   { id: 'leave', name: 'Leave Management', icon: 'beach_access' },
   { id: 'performance', name: 'Performance (KPI)', icon: 'trending_up' },
+  { id: 'grievances', name: 'Grievances', icon: 'gavel' },
   { id: 'payroll', name: 'Payroll', icon: 'payments' },
   { id: 'recruitment', name: 'Recruitment', icon: 'person_search' },
   { id: 'data-exchange', name: 'Data Exchange', icon: 'swap_vert' },

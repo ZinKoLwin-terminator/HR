@@ -45,6 +45,25 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
   { key: 'kpi-setup', label: 'KPI Setup', actions: ['View', 'Create', 'Edit', 'Delete'] },
   // Scorecards: Create enters and submits your own results; Approve reviews them.
   { key: 'kpi', label: 'Performance', actions: ['View', 'Create', 'Approve'] },
+  // Grievances. `grievance`: own cases (Create drafts and submits them). The three case-team modules
+  // are confidential and granted to few people: investigation (assigned cases), management (every
+  // case, categories; Delete archives) and review (escalations and resolution approval).
+  { key: 'grievance', label: 'Grievances', actions: ['View', 'Create'] },
+  { key: 'grievance-investigation', label: 'Grievance Investigation', actions: ['View', 'Edit'] },
+  {
+    key: 'grievance-management',
+    label: 'Grievance Management',
+    actions: ['View', 'Create', 'Edit', 'Delete'],
+  },
+  { key: 'grievance-review', label: 'Grievance Review', actions: ['View', 'Approve'] },
+];
+
+/** The four grievance module keys (confidential: never granted by a blanket "view everything"). */
+export const GRIEVANCE_PERMISSION_MODULE_KEYS: readonly string[] = [
+  'grievance',
+  'grievance-investigation',
+  'grievance-management',
+  'grievance-review',
 ];
 
 export const PERMISSION_ACTIONS: readonly PermissionAction[] = [

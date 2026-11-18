@@ -45,6 +45,16 @@ import {
   RatingBandDataService,
   ScorecardDataService,
 } from '../core/services/data/kpi-data.services';
+import {
+  GRIEVANCE_CASE_METHODS,
+  GRIEVANCE_CATEGORY_METHODS,
+  GRIEVANCE_INSIGHT_METHODS,
+  GRIEVANCE_MY_METHODS,
+  GrievanceCaseDataService,
+  GrievanceCategoryDataService,
+  GrievanceInsightDataService,
+  MyGrievanceDataService,
+} from '../core/services/data/grievance-data.services';
 import { lazyDataService } from '../core/services/data/lazy-data-service';
 import {
   LeaveApplicationDataService,
@@ -162,7 +172,7 @@ function bind<T>(contract: AbstractType<T>, implementation: Type<T>): Provider {
 }
 
 /**
- * Binds ONLY the Organization, Employee (employees, history, documents, salary summary), Leave, Attendance, Recruitment, Settings, Excel, Dashboard, Activity, Notification, Payroll and KPI contracts to HTTP. Only the demo-data contract stays on its mock
+ * Binds ONLY the Organization, Employee (employees, history, documents, salary summary), Leave, Attendance, Recruitment, Settings, Excel, Dashboard, Activity, Notification, Payroll, KPI and Grievance contracts to HTTP. Only the demo-data contract stays on its mock
  * (the adapter is per dependency cluster). Register it AFTER `provideMockDataServices()` so
  * these bindings win; `app.config.ts` does that and the switch defaults to off.
  */
@@ -210,6 +220,43 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
       useFactory: lazyDataService(
         () => import('./kpi/kpi-insight-http.service').then((m) => m.KpiInsightHttpService),
         KPI_INSIGHT_METHODS,
+      ),
+    },
+    // Grievances (`/api/grievances`): categories, the submitter's own cases, the case team and the
+    // dashboards and reports. All four load on first use, so none is in the initial bundle.
+    {
+      provide: GrievanceCategoryDataService,
+      useFactory: lazyDataService(
+        () =>
+          import('./grievance/grievance-category-http.service').then(
+            (m) => m.GrievanceCategoryHttpService,
+          ),
+        GRIEVANCE_CATEGORY_METHODS,
+      ),
+    },
+    {
+      provide: MyGrievanceDataService,
+      useFactory: lazyDataService(
+        () => import('./grievance/my-grievance-http.service').then((m) => m.MyGrievanceHttpService),
+        GRIEVANCE_MY_METHODS,
+      ),
+    },
+    {
+      provide: GrievanceCaseDataService,
+      useFactory: lazyDataService(
+        () =>
+          import('./grievance/grievance-case-http.service').then((m) => m.GrievanceCaseHttpService),
+        GRIEVANCE_CASE_METHODS,
+      ),
+    },
+    {
+      provide: GrievanceInsightDataService,
+      useFactory: lazyDataService(
+        () =>
+          import('./grievance/grievance-insight-http.service').then(
+            (m) => m.GrievanceInsightHttpService,
+          ),
+        GRIEVANCE_INSIGHT_METHODS,
       ),
     },
     // Attendance: shifts, holidays, read-only records with punches, adjustments, overtime, overview, schedule.

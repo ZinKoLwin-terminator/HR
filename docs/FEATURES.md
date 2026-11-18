@@ -220,6 +220,177 @@ all of them. Excel export: three export-only modules (see
   Returned scorecards, the close check, Return clearing the review draft and the manager dashboard's 200-row list.
 - The figures use the same formulas and golden cases; with the API on, the server calculates them.
 
+## Grievances (employee grievance cases)
+
+Branches `feature/grievance` (screens), `feature/api-grievance` (API) and the database branch `feature/schema-grievance`
+(schema `grv`); none is on `main`. The API is the authority for scope, redaction, the state machine, files and figures;
+the demo build's mock services repeat the rules for display only and protect nothing (see "Demo build" at the end of this
+section). Full contract: `api/README.md`, "HTTP contract (grievances)". Customer guide (Burmese):
+[modules/grievance.md](modules/grievance.md).
+
+**Screens** (sidebar group **Grievances**, routes under `/grievances`; each route carries its own permission, and
+`/grievances` opens the first screen the role may see):
+
+| Screen | Route | Permission | Purpose |
+| --- | --- | --- | --- |
+| Overview | `/grievances/overview` | `grievance:View` | Counts of the caller's own cases, unread updates, latest changes, "New grievance" |
+| My Grievances | `/grievances/my`, `/my/:id` | `grievance:View` | Own cases including drafts; timeline, messages with HR, shared files, the resolution when shared |
+| New grievance, Edit draft | `/grievances/my/new`, `/my/:id/edit` | `grievance:Create` | The submission form (unsaved-changes guard) |
+| Dashboard | `/grievances/dashboard` | `grievance-management:View` | HR figures and charts |
+| Case Management | `/grievances/cases`, `/:id` | `grievance-management:View` | Every submitted case; triage, assignment, corrective actions, every command |
+| Investigations | `/grievances/investigations`, `/:id` | `grievance-investigation:View` | Cases with the caller's active assignment |
+| Reviews | `/grievances/reviews`, `/:id` | `grievance-review:View` | Escalated cases and proposals to decide |
+| Review Summary | `/grievances/review-summary` | `grievance-review:View` | Review-queue figures and the summary (aggregates only, no case list, no names) |
+| Reports | `/grievances/reports` | `grievance-management:View` | Case report, Excel export, print |
+| Access log | `/grievances/access-log` | `grievance-management:View` and the HR Administrator role | Module-wide access log; linked from Reports, not in the sidebar |
+| Categories | `/grievances/categories` | `grievance-management:View` (Create, Edit, Delete to change) | Code, name, anonymity allowed, default target days, sort order, status |
+
+**Permissions** (four modules; starter grants of the post-deployment script, mirrored in the mock):
+
+| Module | Actions | Scope | Starter grants |
+| --- | --- | --- | --- |
+| `grievance` | View, Create | The caller's own cases (drafts included), named or anonymous | Employee, HR Officer, Department Manager, Payroll Officer, Recruiter |
+| `grievance-investigation` | View, Edit | Cases with an active assignment of the caller's employee; not drafts, not archived | HR Officer |
+| `grievance-management` | View, Create, Edit, Delete | Every non-draft case (archived only with the Archived filter); categories; Delete archives | None (HR Administrator only) |
+| `grievance-review` | View, Approve | Escalated open cases, pending proposals, and proposals the caller decided (read only); not archived | None (an HR Administrator grants it in Settings) |
+
+- HR Administrator holds every grievance grant. The Auditor role has none.
+- **Every case-team tier silently leaves out a case the caller submitted (named or anonymous) and a case whose subject
+  employee is the caller**: it is not listed and opening it is `404`.
+- The built-in administrator (no linked employee) cannot raise a grievance or be assigned (`403`).
+
+**Workflow** (`GrievanceCaseWorkflow` in the API, `core/utilities/grievance-workflow.ts` in the UI; both run the golden
+file `docs/test-data/grievance-transition-cases.json`):
+
+| From | Action | To | Who |
+| --- | --- | --- | --- |
+| Draft | Submit (declaration required; anonymous only if the category allows it) | Submitted (number `GRV-yyyy-nnnnn`, UTC year) | Owner, `grievance:Create` |
+| Submitted | Acknowledge (priority and target date; Critical escalates at once and alerts the reviewers) | Acknowledged | Management Edit |
+| Acknowledged, Reopened | Start review | Under Review | Management Edit |
+| Acknowledged, Under Review, Reopened | Assign a Lead | Assigned | Management Edit |
+| Assigned, Under Investigation, Awaiting Employee Response | Replace the Lead (reason required) | unchanged | Management Edit |
+| Any open status after Submitted | Add a Member, remove a Member (the Lead is only replaced) | unchanged | Management Edit |
+| Assigned | Start investigation | Under Investigation | Assigned investigator Edit or Management Edit |
+| Under Review, Assigned, Under Investigation | Request information (stores the return status) | Awaiting Employee Response | Management Edit or assigned investigator Edit |
+| Awaiting Employee Response | Respond (the submitter's message) | The stored return status | Owner |
+| Under Investigation | Propose resolution | Resolution Proposed | Lead investigator Edit |
+| Under Review | Propose resolution | Resolution Proposed | Management Edit |
+| Resolution Proposed | Approve (choose whether the employee sees the summary) | Resolved | `grievance-review:Approve`; not the proposer, not an active investigator of the case |
+| Resolution Proposed | Send back (reason) | Under Investigation, or Under Review without a Lead | As approve |
+| Submitted, Acknowledged, Under Review | Reject (reason) | Rejected | Management Edit |
+| Resolved | Close | Closed | Management Edit |
+| Resolved, Rejected | Reopen (reason) | Reopened | Management Edit |
+| Closed | Reopen (reason) | Reopened | Management Edit **and** `grievance-review:Approve` |
+| Any open status | Escalate (reason; once, never cleared) | unchanged | Management Edit or assigned investigator Edit |
+| Closed, Rejected, not on legal hold | Archive | unchanged, archive date set | Management Delete |
+
+- Every step appends to `grv.StatusHistory`. Errors: malformed `rowVersion` `400`, outside the caller's scope `404`,
+  wrong actor `403`, wrong status or stale `rowVersion` `409`. One `rowVersion` guards the case.
+- Overdue = open and the target date before today (business time zone), computed when read. The target date keeps
+  running while the case awaits the employee. There is no employee withdraw in v1: only a draft can be deleted.
+- The submitter's timeline shows every status change except the proposal loop (propose, send back); assign, unassign,
+  escalate and archive stay internal.
+- Messages: the submitter and the case team may write on any submitted case that is not Closed or archived (Rejected and
+  Resolved included). While the case awaits the employee, the submitter's message is the response.
+- Submit validates the draft before a case number is taken from the sequence. Acknowledging as Critical escalates the
+  case once; it is never escalated twice.
+- **Reopen ends every active assignment** (hidden "Case reopened" unassign entries, not on the submitter's timeline);
+  HR assigns a Lead again, and may choose the same person.
+
+**Submission form.** A draft needs an active category and a subject; submitting also needs a subject of 5 to 200
+characters, a description of 20 to 4000, the declaration, and asks for confirmation. Incident date not after today;
+location and involved person at most 200 characters; involved department optional. At most **5 open drafts** per
+employee. **Named or anonymous is fixed when the draft is first saved** (`PUT` with another `isAnonymous` is a `400`: start
+a new draft); a category change must still allow the draft's anonymity. Submitting copies a named submitter's company,
+branch, department and position; an anonymous case keeps no placement.
+
+**Anonymity (keyed pseudonym).** An anonymous case stores `HMACSHA256(Grievance:PseudonymKey,
+"apex-hrms:grievance-submitter:<employee id>")` in `grv.CaseSubmitter.SubmitterPseudonym`, never the employee id; the
+key is not in the database. "My grievances" matches the caller's employee id or their pseudonym. The category
+**Salary and Compensation Issues** (`COMPENSATION`) does not allow anonymity; every category has the switch. There is no
+legal-disclosure route in v1.
+
+- The case team sees `submitter: null`, the label "Anonymous", department "Not disclosed", and "Anonymous submitter" in
+  history and messages, with no ids. A submitter (named or anonymous) is never stored with a user or employee id in
+  history, messages, files or the access log; on a named case the case team sees the name resolved from
+  `grv.CaseSubmitter`.
+- Anonymous submitters get no notification (they see an unread badge from `LastSubmitterUpdateAtUtc` against
+  `SubmitterSeenAtUtc`, which lives in `grv.CaseSubmitter` so reading never changes the case row).
+- Files uploaded by an anonymous submitter lose their identifying metadata before storage: DOCX/XLSX document
+  properties, JPEG EXIF, XMP, IPTC and comments, PNG text, EXIF and time chunks. A file that cannot be followed is
+  refused. **PDFs are stored as sent**; the form warns about this.
+- Assigning the subject, or the submitter of a **named** case, as investigator is a `400` on `investigatorEmployeeId`
+  with one generic conflict-of-interest message (logged as AccessRefused). The submitter of an anonymous case is never
+  checked (a refusal would reveal them); they simply get `404` when opening it.
+- **Residual risks** (stated in the form and the in-app guide): timing of submissions and replies (and the database-wide
+  `RowVersion` counter), writing style, PDF metadata, file names, the facts in a small department, count differencing
+  (totals are the same for everyone, but lists, the case report and recent activity leave out the caller's subject
+  cases), database-level linkability through parameter-capturing traces, and loss or change of the key (anonymous cases
+  are then cut off from their submitters for good).
+
+**Who sees what in a case.** Management: everything. Investigator: no corrective actions, no Restricted files.
+Reviewer-only caller: Finding and Recommendation notes, Shared files and the proposal only; no messages, corrective
+actions, assignment or escalation reasons, or information-request text in the history. The submitter: their timeline,
+messages, Shared files, the rejection reason, and the resolution summary only when Resolved or Closed and the reviewer
+shared it; never notes, corrective actions, priority, assignments, case-team files or a case-team name ("HR team").
+
+**Files.** PDF, PNG, JPEG, DOCX and XLSX, decided by content; at most **10 MB** per file; **10 submitter files** and
+**20 case-team files** per case (separate counts); **100 MB per submitter account per day**
+(`Grievance:SubmitterDailyUploadBytes`); **10 uploads per minute per account** (`Grievance:FileUploadsPerMinute`).
+Visibility: Shared (submitter and case team), CaseTeam (management and assigned investigators), Restricted (management
+only). Submitter uploads are always Shared and never change the case row. The submitter adds files to a draft or an
+open case; the case team to an open case only (never Resolved, Rejected, Closed or archived). **There is no virus or
+malware scan.**
+
+**Access log and notifications.**
+
+- `grv.AuditLog` (append-only) records case-team views, history reads, downloads, uploads, exports, assignment changes,
+  status changes, triage, notes, messages, corrective actions and refused access, with codes and ids only. A submitter's
+  own reads and anything done to a draft are never logged; a submitter's actions on a submitted case are logged without
+  a user id. The case log and the module-wide log need `grievance-management:View` **and** the HR Administrator role.
+- No `app.ActivityLog` entries: the company-wide activity feed never mentions grievances.
+- Notifications are in-app only (no email): title `Grievance GRV-…`, text `Grievance GRV-…: <event>.`, never a category,
+  subject or name. The mock now sends exactly the same ones.
+
+  | Event | Recipients |
+  | --- | --- |
+  | "a new grievance was submitted" | Holders of `grievance-management:View` |
+  | "the employee responded" | Holders of `grievance-management:View`, and the case's active investigators (link `/grievances/investigations/{id}`) |
+  | "you were assigned to investigate it" | The assigned investigator |
+  | "a resolution was proposed"; "it was escalated as urgent" (immediate escalations only) | Holders of `grievance-review:Approve` |
+  | "there is an update on your grievance" | A **named** submitter, on any history step they can see, an HR message or a Shared file |
+
+  Never the anonymous submitter (unread badge only), never the subject employee; an event caused by the case team
+  leaves out the actor.
+
+**Retention.** Close and reject set `RetentionUntil` to that date plus `Grievance:RetentionYears` (default 7); reopening
+clears it. Archive is a soft delete of a Closed or Rejected case; an archived case is read-only. A case on legal hold
+(set in triage) cannot be archived. There is no purge in v1.
+
+**Triage** (management Edit): category (an anonymous case only to a category that allows anonymity), priority, target
+date (not before today), subject employee (a picker of at most 20 current employees; an employee who is an active
+assignee of the case is refused), involved department and legal hold (required in the request). On a case that is no
+longer open only the legal hold may change. Raising an open case to Critical escalates it.
+
+**Dashboards and reports.** Aggregates count every non-draft case, archived included, and are **the same for every
+viewer** (they do not leave out the caller's own or subject cases). Resolution rate = (Resolved + Closed) ÷ (counted −
+Rejected) × 100, 2 decimals; average resolution days over cases now Resolved or Closed, 1 decimal. Departments are those
+copied at submission; anonymous is "Not disclosed"; departments with fewer than 3 cases merge into "Other /
+suppressed". Monthly trend: the last 12 months. Recent activity: the 10 latest steps, case numbers only, without the
+caller's subject cases. The case report filters submission dates, department, category, status, priority,
+investigator, days to resolve and overdue; its rows leave out the caller's subject cases. The summary (management or
+review View) has no department filter. Excel: export-only `grievance-cases` (see
+[EXCEL-IMPORT-EXPORT.md](EXCEL-IMPORT-EXPORT.md)); PDF is the browser's print of the loaded report page.
+
+**Demo build (mock).** Sample data only, and nothing is security:
+
+- The tiers come from the simulated session's role grants in Settings > Permissions; nothing outside the grievance
+  mocks honours them. The pseudonym is a fixed-key FNV-1a hash anyone can recompute from the bundle.
+- Files are held in memory and lost on reload; no metadata removal, no upload rate limit (the daily quota is simulated
+  in memory), no virus scan.
+- Otherwise the mock repeats the API's checks in the API's order, the redaction, the state machine (same golden file),
+  the access log and the same per-recipient notifications. See [MOCK-DATA-AND-SERVICES.md](MOCK-DATA-AND-SERVICES.md).
+
 ## Settings (UI simulation)
 
 - **General settings**: organization name, contact email, time zone, date format, currency, fiscal
@@ -237,5 +408,5 @@ Import wizard (template → upload → columns → review → confirm → result
 details and a downloadable validation report, and an Export dialog on lists. **Implemented for**
 employees, companies, branches, departments, job grades, positions, leave balances, shift assignments
 and salary assignments, in the demo build and in the API. The KPI reports offer three export-only modules (`kpi-scorecards`,
-`kpi-ranking`, `kpi-target-vs-actual`), in the demo build too. See [EXCEL-IMPORT-EXPORT.md](EXCEL-IMPORT-EXPORT.md) for the
+`kpi-ranking`, `kpi-target-vs-actual`), and the grievance report one (`grievance-cases`), in the demo build too. See [EXCEL-IMPORT-EXPORT.md](EXCEL-IMPORT-EXPORT.md) for the
 rules (strategies, all-or-nothing vs partial, formula safety, limits).

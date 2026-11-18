@@ -466,8 +466,50 @@ Run these after every build, then the full module tables before release.
 | Excel | `excel.spec.ts` | `excel-engine.spec.ts`, `excel-coercion.spec.ts`, `employee-excel.spec.ts`, `excel-import-wizard.component.spec.ts` |
 | Settings | `settings.spec.ts` | `settings-data.spec.ts` |
 | UI quality | `quality.spec.ts`, `shell.spec.ts`, `dashboard.spec.ts` | `dashboard.component.spec.ts` |
+| Grievances (branch `feature/grievance`) | `grievance-submit.spec.ts`, `grievance-case-workflow.spec.ts`, `grievance-confidentiality.spec.ts`, `grievance-insights.spec.ts`, `grievance-quality.spec.ts` (scenarios in [E2E-TEST-SCENARIOS.md](E2E-TEST-SCENARIOS.md) section 18) | `grievance-workflow.spec.ts`, `grievance-mock-data.spec.ts`, `grievance-case-domain.spec.ts`, `my-grievance-mock.spec.ts`, `grievance-case-mock.spec.ts`, `grievance-insight-mock.spec.ts`, `grievance-security-review.spec.ts`, `grievance-api-alignment.spec.ts`, `grievance-http.spec.ts`, `grievance-screens.spec.ts`, `grievance-case-screens.spec.ts`, `grievance-insight-screens.spec.ts` |
 
 Not automated yet: the calendar popup itself (DT-01 to DT-13, DT-16, DT-20), time-zone checks, browser matrix, and Recruitment/Payroll/Settings screen components. Existing e2e tests only fill dates by typing ISO text.
+
+### 13.1 Grievances: unit and API test coverage
+
+The grievance module has no manual scenario table yet. What the automated tests cover (counts of `it` / `[Fact]` /
+`[Theory]` blocks as of 2026-11-18):
+
+**UI unit tests (Vitest, `ng test`), about 170 tests in 12 files:**
+
+| File | Covers |
+| --- | --- |
+| `core/utilities/grievance-workflow.spec.ts` | The order of refusals (no right 403, then status 409), the proposer rule, reopening a Closed case needing management and review, messages on Rejected but not Closed cases, what the submitter screens offer, a reviewer who also investigates never deciding |
+| `mock-services/grievance/grievance-case-domain.spec.ts` | Runs every case of the shared golden file `docs/test-data/grievance-transition-cases.json` against the mock's domain step |
+| `mock-data/grievance/grievance-mock-data.spec.ts` | 10 unique categories, statuses covered, one submitter link per case, unique case numbers, at most one Lead and one pending proposal per case |
+| `my-grievance-mock.spec.ts`, `grievance-case-mock.spec.ts`, `grievance-insight-mock.spec.ts` | Drafts, submission, messages and response, files; case-team tiers, commands, triage, notes, corrective actions; figures, report rows and export |
+| `grievance-security-review.spec.ts` | Anonymity fixed when the draft is first saved, the daily upload quota, separate submitter and case-team file quotas, reviewer-only redaction, subject cases left out of recent activity, the module-wide access log for administrators only |
+| `grievance-api-alignment.spec.ts` | Named submitter stored without ids, information-request text hidden from reviewers, the Archived filter only in Case management, triage of a closed case changing only the legal hold, submitter actions audited without a user id, the submitter not left out of a notice their action caused, report rows without subject cases but with own submissions |
+| `api-services/grievance/grievance-http.spec.ts` | Lazy bindings, routes, query strings and whitelisted sorts, multipart uploads, downloads, 429 wording, the conflict-of-interest field error |
+| `features/grievances/*.spec.ts` | The employee screens, the case screens and the insight screens |
+
+**API tests (xUnit, `api/tests`, worktree `feature/api-grievance`), about 160 tests:**
+
+| Project / file | Covers |
+| --- | --- |
+| `Domain.Tests/Grievances/GrievanceTransitionCasesTests.cs`, `GrievanceEntitiesTests.cs` | The golden transition file and the entity rules |
+| `Application.Tests/Grievances/GrievanceScopeTests.cs` | Submitter finds named and anonymous cases; management never sees drafts; the subject and the submitter never see their case on the case team; investigator and reviewer scopes; archived cases; the built-in administrator cannot submit |
+| `GrievanceCommandTests.cs`, `GrievanceRedactionTests.cs`, `GrievanceInsightTests.cs` | Commands, redaction by tier, figures |
+| `GrievanceSecurityTests.cs` | Metadata removed from anonymous DOCX/XLSX, JPEG and PNG uploads, PDF and named uploads stored as sent, uncleanable files refused, the 20 case-team files, the daily byte quota, reviewer-only reads, the module access log |
+| `GrievanceNotificationAuditFileTests.cs` | Who is notified (never the anonymous submitter or the subject; text = case number and event), case-team reads logged and submitter reads not, codes-only log details, row-version effects of notes, messages and uploads, file checks, retention years from settings |
+| `Infrastructure.Tests/GrievanceInfrastructureTests.cs`, `GrievanceSchemaMappingTests.cs` | The file storage (own folder, never the KPI folder), the HMAC pseudonym and the key checks (missing, not Base64, under 32 bytes, development value only with a local database), EF mapping onto the `grv` schema |
+| `Api.Tests/GrievanceHostingTests.cs`, `GrievanceHttpContractTests.cs` | Production refuses to start without a real key; the four permission modules and their actions; the HTTP contract |
+| `IntegrationTests/GrievanceHttpTests.cs` (needs a local SQL Server with the `grv` schema published) | A case from submission to closure and reopening, the documented status codes, no stored trace of an anonymous submitter, shared submitter files, append-only tables denying UPDATE and DELETE, the database triggers |
+
+The integration test suite (`Apex.Hrms.IntegrationTests`, every module) last ran with **535 passed** on LocalDB with the
+`grv` schema published (reported 2026-11-18).
+
+**E2E (Playwright, mock build only):** 39 scenarios, GRV-E2E-01 to GRV-E2E-47, in
+[E2E-TEST-SCENARIOS.md section 18](E2E-TEST-SCENARIOS.md#18-grievances): submission (18.1), the case workflow across
+roles (18.2), confidentiality and tiers (18.3), dashboard, reports, export, categories and access log (18.4), and a
+quality sweep on desktop and phone (18.5). GRV-E2E-34 and GRV-E2E-39 failed until the error-state fix of the
+grievance screens (fixed since; re-run to confirm). They test the mock's **simulation** of the API's rules, not real security. Not yet covered end to end: see
+18.6 (triage, corrective actions, escalation, archive and legal hold, quotas, stale-data conflicts and more).
 
 
 ---
@@ -928,3 +970,5 @@ Build တိုင်းပြီးနောက် ဤအရာများက�
 ## ၁၃။ Automation ဖုံးလွှမ်းမှု
 
 အင်္ဂလိပ်ဘာသာပိုင်း ၁၃ ကိုကြည့်ပါ (ဖိုင်အမည်များ တူညီသည်)။ မ automate ရသေးသည်များ: calendar popup (DT-01 မှ DT-13, DT-16, DT-20), time-zone စစ်ဆေးမှု, browser matrix, Recruitment/Payroll/Settings screen component များ။ ရှိပြီးသား e2e က ISO စာသားကို ရိုက်ထည့်ခြင်းသာလုပ်သည်။
+
+**Grievances (၁၃.၁):** UI unit test (Vitest) ဖိုင် ၁၂ ခု (test ~၁၇၀) နှင့် API xUnit test (~၁၆၀၊ Integration test တွင် Local SQL Server လို) ရှိသည် — Workflow golden file၊ Scope၊ Redaction၊ Anonymity (Pseudonym၊ Metadata ဖယ်ရှားခြင်း)၊ Access log၊ Notification၊ ဖိုင် ကန့်သတ်ချက်များကို ဖုံးသည်။ ဇယားအပြည့်ကို အင်္ဂလိပ်ပိုင်း ၁၃.၁ တွင် ကြည့်ပါ။ E2E (Playwright၊ Mock build သာ) Scenario ၃၉ ခု (GRV-E2E-01 မှ 47) ကို [E2E-TEST-SCENARIOS.md အပိုင်း ၁၈](E2E-TEST-SCENARIOS.md#18-grievances) တွင် ကြည့်ပါ — API ၏ စည်းမျဉ်းကို Simulation အဖြစ်သာ စစ်ပြီး တကယ့် Security မဟုတ်ပါ။ GRV-E2E-34 နှင့် 39 သည် Grievance Screen များ၏ Error-state bug ကြောင့် Fail ဖြစ်ခဲ့ပြီး ယခု ပြင်ပြီးဖြစ်သည် (ပြန် Run၍ အတည်ပြုရန်)။ Integration test (Module အားလုံး) ၅၃၅ ခု LocalDB တွင် Pass ဖြစ်သည်။
