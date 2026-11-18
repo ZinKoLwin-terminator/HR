@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <None Include="..\..\..\docs\test-data\kpi-calculation-cases.json" Link="TestData\kpi-calculation-cases.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\docs\test-data\grievance-transition-cases.json" Link="TestData\grievance-transition-cases.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

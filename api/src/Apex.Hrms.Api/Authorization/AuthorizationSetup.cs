@@ -14,6 +14,22 @@ internal static class AuthorizationSetup
     public const string EmployeeLookupPolicy = "employee-lookup";
 
     /// <summary>
+    /// A grievance case-team read shared by the three tiers (case detail, history, a file): <c>grievance-management:View</c>,
+    /// <c>grievance-investigation:View</c> or <c>grievance-review:View</c>. The application layer applies the scope of the tiers the caller holds.
+    /// </summary>
+    public const string GrievanceCaseTeamPolicy = "grievance-case-team";
+
+    /// <summary>
+    /// Grievance case work shared by management and the assigned investigators (start investigation, request information, escalate,
+    /// propose a resolution, messages, notes, files): <c>grievance-management:Edit</c> or <c>grievance-investigation:Edit</c>. The
+    /// application layer decides whether the caller is management or an investigator assigned to that case.
+    /// </summary>
+    public const string GrievanceCaseWorkPolicy = "grievance-case-work";
+
+    /// <summary>The grievance summary report: <c>grievance-management:View</c> or <c>grievance-review:View</c>.</summary>
+    public const string GrievanceInsightPolicy = "grievance-insight";
+
+    /// <summary>
     /// Registers one named policy per module and action (<c>employees:ViewBank</c>), each a <see cref="PermissionRequirement"/>
     /// checked against sec.RolePermission by <see cref="PermissionHandler"/>, the administrator policy, the signed-in policy
     /// and the fallback policy. The same policy names are used by the endpoints and by code that asks the authorization
@@ -30,6 +46,16 @@ internal static class AuthorizationSetup
                 options.AddPolicy(
                     EmployeeLookupPolicy,
                     policy => policy.RequireAuthenticatedUser().AddRequirements(new AnyPermissionRequirement("recruitment", "Edit", "employees:View")));
+                options.AddPolicy(
+                    GrievanceCaseTeamPolicy,
+                    policy => policy.RequireAuthenticatedUser().AddRequirements(
+                        new AnyPermissionRequirement("grievance-management", "View", "grievance-investigation:View", "grievance-review:View")));
+                options.AddPolicy(
+                    GrievanceCaseWorkPolicy,
+                    policy => policy.RequireAuthenticatedUser().AddRequirements(new AnyPermissionRequirement("grievance-management", "Edit", "grievance-investigation:Edit")));
+                options.AddPolicy(
+                    GrievanceInsightPolicy,
+                    policy => policy.RequireAuthenticatedUser().AddRequirements(new AnyPermissionRequirement("grievance-management", "View", "grievance-review:View")));
 
                 foreach (var module in PermissionModule.All)
                 {

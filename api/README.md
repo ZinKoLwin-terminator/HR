@@ -44,6 +44,11 @@ For production settings, hosting notes and the go-live checklist see [`docs/DEPL
 | `DataProtection:KeysPath` | Directory where the data protection key ring (session cookie, antiforgery, reset tokens) is stored. Default `App_Data/keys` under the content root; a relative value starts at the content root. Protect it like a secret (see "Authentication"). |
 | `Kpi:EvidenceFolder` | Directory where the KPI evidence files (uploads on scorecard items) are kept **permanently**. Default `App_Data/kpi-evidence` under the content root; a relative value starts at the content root. The files are HR records: keep the folder outside any web root and never serve it, give the API's account (and nobody else) read and write access, back it up together with the database (a restored database without its files has attachments that answer `404`), and keep it out of git (`App_Data/kpi-evidence/` is ignored). See "HTTP contract (KPI evidence attachments)". |
 | `Kpi:EvidenceUploadsPerMinute` | KPI evidence uploads (`POST /api/kpi/scorecard-items/{itemId}/attachments`) one signed-in account may start per minute (default 10; a positive whole number, anything else falls back to 10). Every attempt counts, whatever its answer; the next one is `429`. In memory per instance. See "HTTP contract (KPI evidence attachments)". |
+| `Grievance:FileFolder` | Directory where grievance files (submitter and case-team uploads) are kept **permanently**. Default `App_Data/grievance-files` under the content root; a relative value starts at the content root. It must not be the KPI evidence folder (startup refuses). The files are confidential HR records: keep the folder outside any web root, give only the API's account access, back it up with the database, keep it out of git. See "HTTP contract (grievances)". |
+| `Grievance:PseudonymKey` | **Secret.** The key of the anonymous submitter's pseudonym, HMACSHA256(key, employee id), stored in `grv.CaseSubmitter.SubmitterPseudonym` instead of the employee id. **Base64** that decodes to at least 32 bytes, for example 48 random bytes (`openssl rand -base64 48`). Set it with `dotnet user-secrets set "Grievance:PseudonymKey" "..." --project src/Apex.Hrms.Api` or the environment variable `Grievance__PseudonymKey`; never in an appsettings file, source control or a log. `appsettings.Development.json` holds a labelled development value (it decodes to "DEVELOPMENT-ONLY grievance pseudonym key. Not a secret. LocalDB only."); the API refuses it in **every** environment unless `ConnectionStrings:Hrms` points at LocalDB or this machine, and refuses to start without a key, with a key that is not Base64 or with fewer than 32 bytes. **Never change or lose it once anonymous cases exist:** with another key every anonymous case is cut off from its submitter for good (they no longer see it under "My grievances", and nobody can restore the link, by design). Keep it in the secret store with the same care and backup as the database credentials. |
+| `Grievance:RetentionYears` | Years a Closed or Rejected grievance is kept (sets `RetentionUntil` when the case is closed or rejected; reopening clears it). Default 7, accepted 1 to 100 (anything else stops startup). A case on legal hold is never archived. |
+| `Grievance:FileUploadsPerMinute` | Grievance uploads (`POST /api/grievances/my/{id}/attachments` and `POST /api/grievances/cases/{id}/attachments`) one signed-in account may start per minute (default 10; its own counter, separate from the KPI one). Every attempt counts; the next one is `429`. |
+| `Grievance:SubmitterDailyUploadBytes` | Bytes one account may upload as a grievance submitter per business day (default 104857600, 100 MB; accepted 1 MB to 10 GB, anything else stops startup). Over it the upload is a `400` on `file` ("You have reached today's upload limit ..."). In memory per instance, like the rate limits; it keeps the account id and a byte count for today only, never a case. |
 | `Hosting:ForwardedHeaders:Enabled` | Behind a reverse proxy, take the client IP and scheme from `X-Forwarded-For` and `X-Forwarded-Proto` (default `false`, so local development is unchanged). The client IP feeds the sign-in rate limit and lockout, the scheme feeds HTTPS redirection and secure cookies. When enabled, `UseForwardedHeaders` runs first in the pipeline with a forward limit of 1 and trusts only the proxies below; enabling it with neither list filled stops startup. |
 | `Hosting:ForwardedHeaders:KnownProxies` | List of trusted proxy IP addresses (for example `["10.0.0.5"]`; as environment variables `Hosting__ForwardedHeaders__KnownProxies__0`). An invalid address stops startup. |
 | `Hosting:ForwardedHeaders:KnownNetworks` | List of trusted proxy networks in CIDR form (for example `["10.0.0.0/8"]`). The framework's loopback defaults are removed: only these lists are trusted. |
@@ -876,6 +881,109 @@ overlap the range; `scope: "selected"` takes scorecard ids, and ids outside the 
 **Indexes.** The queries are served by the indexes the SSDT project already has (`IX_Scorecard_PeriodId_Status` with its included
 `EmployeeId, DepartmentId, OverallScore`; `IX_Scorecard_DepartmentId_PeriodId`; `IX_Scorecard_ReviewerEmployeeId_Status`;
 `UQ_Scorecard_EmployeeId_PeriodId`; `UQ_ScorecardItem_ScorecardId_TemplateId`; `IX_ScorecardItem_CategoryId`). No index was added.
+
+## HTTP contract (grievances)
+
+Everything under `/api/grievances`. The UI contract is `ui/src/app/core/services/data/grievance-data.services.ts` with the models
+`grievance.models.ts` and `grievance-insight.models.ts`; JSON is camelCase, enums are their exact texts (`UnderReview`, `CaseTeam`),
+dates `yyyy-MM-dd`, `...AtUtc` UTC date-times, `rowVersion` the case's base64 row version. Errors are the usual problem details:
+400 Validation (also a malformed `rowVersion`), 404 NotFound (also a case outside the caller's scope), 403 Forbidden (wrong capacity on
+that case), 409 Conflict (wrong status, stale `rowVersion`, the database triggers `grv.TR_Case_ClosedIsFinal` and
+`grv.TR_Case_SubmittedIsFixed`, THROW 51101).
+
+Permission modules: `grievance` (View, Create: your own cases), `grievance-investigation` (View, Edit: cases you are assigned to),
+`grievance-management` (View, Create, Edit, Delete: every submitted case and the categories; Delete archives), `grievance-review` (View,
+Approve: escalated cases and proposed resolutions). Where several tiers share a route the endpoint asks for ANY of their permissions:
+`grievance-case-team` (any of the three Views), `grievance-case-work` (`grievance-management:Edit` or `grievance-investigation:Edit`),
+`grievance-insight` (`grievance-management:View` or `grievance-review:View`); the handler then decides on the case itself.
+
+**Scope (applied in the database predicates).** Submitter: the cases they submitted, named (`grv.CaseSubmitter.EmployeeId`) or anonymous
+(`SubmitterPseudonym` = HMAC of their employee id, see `Grievance:PseudonymKey`), drafts included. Management: every non-Draft case
+(archived ones only with `archived=true` in the list). Investigator: an active assignment, not archived. Reviewer: escalated, a pending
+proposal, or a proposal the caller decided; not archived. Every case-team tier silently leaves out a case whose subject employee is the
+caller and a case the caller submitted (named or anonymous): 404, not listed. Assigning the subject, or the submitter of a named case, is a
+400 on `investigatorEmployeeId` with one generic conflict-of-interest message (logged as AccessRefused); the submitter of an anonymous case
+is never checked (a refusal would reveal them) and simply cannot open the case.
+
+**Redaction.** Anonymous case: `submitter` null, `submitterLabel` "Anonymous", department null (reports: "Not disclosed"), history and
+messages show "Anonymous submitter" without ids. A submitter is never stored with a user or employee id (history, messages, files, access
+log); on a named case the case team sees the submitter's name and employee id resolved from `grv.CaseSubmitter`, and `actorUserId` stays
+null. The submitter's own view never shows notes, corrective actions, priority, assignments, CaseTeam or Restricted files, or a case-team
+name ("HR team"). Detail sections by tier: management everything; investigator no corrective actions and no Restricted files; reviewer only
+Finding and Recommendation notes, no messages, Shared files only, no corrective actions, no information-request text in the history.
+
+| Method and route | Policy | Notes |
+| --- | --- | --- |
+| `GET /options` | `grievance:View` | Active categories (sort order) and active departments. |
+| `GET /my` | `grievance:View` | Paged (`pageIndex`, `pageSize`, `sort` on `caseNo`, `subject`, `status`, `createdAtUtc`, `submittedAtUtc`, `lastUpdateAtUtc`; `search` on case number or subject; `status`); newest update first. |
+| `GET /my/dashboard`, `GET /my/{id}` | `grievance:View` | Never written to the access log: a submitter's own reads leave no trace. |
+| `GET /my/attachments/{id}` | `grievance:View` | Shared, not removed files of the caller's own cases. Always a download. |
+| `POST /my` (201), `PUT /my/{id}`, `DELETE /my/{id}` (204, body `{ rowVersion }`) | `grievance:Create` | Drafts may be unfinished (a subject is required); at most 5 open drafts per employee (400 otherwise; best effort, two simultaneous requests can both pass). Named or anonymous is fixed when the draft is created: `PUT` with another `isAnonymous` is a 400 on `isAnonymous` ("Start a new draft to change how you report."); a category change must still allow the draft's anonymity. Only a draft is ever deleted, with its files (under the case's file lock). Submit checks everything (content, category, declaration) before a case number is taken. The built-in administrator (no employee) gets 403. |
+| `POST /my/{id}/submit` | `grievance:Create` | `{ rowVersion, declarationAccepted }`; assigns `GRV-yyyy-nnnnn` (UTC year); needs the full minimum lengths. |
+| `POST /my/{id}/messages` | `grievance:Create` | `{ rowVersion, body, inReplyToId? }`. While AwaitingEmployeeResponse it is the response (rowVersion checked, the case returns to its previous status; management and the active investigators are notified); otherwise a plain message (rowVersion only format-checked, the case does not change). Not on Draft, Closed or archived cases (allowed on Rejected and Resolved). |
+| `POST /my/{id}/attachments` (201) | `grievance:Create` | Multipart `rowVersion` and `file`; the case is checked before the body is read; always Shared; never changes the case row (`caseRowVersion` comes back unchanged). At most 10 submitter files per case (409) and `Grievance:SubmitterDailyUploadBytes` per account and day (400). On an **anonymous** case the identifying metadata is removed before the file is stored: DOCX/XLSX document properties (`docProps/core.xml`, `app.xml` emptied, `custom.xml` dropped), JPEG APP1 (EXIF, XMP), APP13 (IPTC) and comments, PNG text, EXIF and time chunks; a file that cannot be followed is refused (400 on `file`); a **PDF is stored as it is** (no safe cleaning without a library: the screens warn). `sizeBytes` and the stored hash are those of the cleaned file. Rate limited. |
+| `POST /my/{id}/seen` (204) | `grievance:View` | Writes `grv.CaseSubmitter.SubmitterSeenAtUtc` only. |
+| `GET /cases/query` | `grievance-management:View` | Paged; filters `status`, `priority`, `categoryId`, `departmentId` (never matches an anonymous case), `isAnonymous`, `isEscalated`, `overdue`, `archived`, `investigatorEmployeeId`, `submittedFrom`, `submittedTo`; sort `caseNo`, `submittedAtUtc`, `targetResolutionDate`, `priority`, `status`, `categoryName`. |
+| `GET /investigations` | `grievance-investigation:View` | The caller's active assignments. |
+| `GET /reviews/pending` | `grievance-review:View` | Open escalated cases and pending proposals, oldest first. |
+| `GET /cases/{id}`, `GET /cases/{id}/history`, `GET /attachments/{id}` | `grievance-case-team` | Logged (ViewCase, ViewHistory, DownloadAttachment). A file only when the caller's tiers on the case may open its visibility. |
+| `GET /cases/{id}/audit` | `grievance-management:View` and `hr-administrator` | The access log of one case, newest first; filters `action`, `from`, `to` (business dates, inclusive). |
+| `GET /audit` | `grievance-management:View` and `hr-administrator` | The whole access log, newest first, same filters: entries without a case (exports) and entries of the cases in the caller's management scope (never a case the caller submitted or is the subject of). `caseId` and `caseNo` are null for an export. |
+| `GET /investigators?search=` | `grievance-management:Edit` | Employees holding `grievance-investigation:Edit`; never filtered per case. |
+| `GET /employees?search=` | `grievance-management:Edit` | At most 20 active employees `{ employeeId, employeeCode, displayName, departmentName, positionName }` for the triage subject picker (no `employees:View` needed). |
+| `POST /cases/{id}/acknowledge`, `start-review`, `assign`, `unassign`, `reject`, `close`, `reopen` | `grievance-management:Edit` | Reopening a Closed case also needs `grievance-review:Approve` (403 otherwise). Reopening ends every active assignment (one hidden `Unassign` history entry each, reason "Case reopened"), so HR assigns a Lead again from Reopened (the same person may be assigned). Acknowledging as Critical escalates only a case that is not escalated yet. Close and reject set `retentionUntil`. |
+| `POST /cases/{id}/start-investigation`, `request-info`, `propose-resolution`, `escalate` | `grievance-case-work` | Management Edit or an assigned investigator with Edit; a resolution is proposed by the Lead while UnderInvestigation and by management while UnderReview. |
+| `POST /cases/{id}/approve-resolution`, `reject-resolution` | `grievance-review:Approve` | Never by the proposer (403). |
+| `POST /cases/{id}/archive` | `grievance-management:Delete` | Closed or Rejected, not on legal hold. |
+| `PUT /cases/{id}/triage` | `grievance-management:Edit` | Category, priority, target date, subject employee, involved department, legal hold. `legalHold` is required (400 when missing). On a case that is no longer open only the legal hold may change (409 otherwise). Raising an open case to Critical escalates it at once. A subject employee who is actively assigned to the case is refused with the generic conflict-of-interest 400 on `subjectEmployeeId` (logged AccessRefused `assign:conflict`). |
+| `POST /cases/{id}/messages`, `POST /cases/{id}/notes` | `grievance-case-work` | A message (`{ rowVersion, body }`, never a reply to anything) moves the submitter's unread badge (the case row changes, rowVersion checked); a note does not change the case (rowVersion only format-checked). |
+| `POST /cases/{id}/attachments` (201) | `grievance-case-work` | Multipart `rowVersion`, `visibility` (Shared, CaseTeam, Restricted; Restricted is management's) and `file`. At most 20 case-team files per case, counted apart from the submitter's 10 (409). A Shared file moves the submitter's unread badge (rowVersion checked, 409 when stale); a CaseTeam or Restricted file leaves the case row as it is (rowVersion only format-checked). Rate limited. |
+| `POST /cases/{id}/actions` (201), `PUT /case-actions/{id}` | `grievance-management:Edit` | Corrective actions; the update uses the action's own rowVersion. |
+| `/categories` CRUD, `POST /categories/{id}/activate`, `deactivate` | `grievance-management:*` | The usual `MapCrud` routes. |
+| `GET /dashboard/hr` | `grievance-management:View` | See "Metrics". |
+| `GET /dashboard/review` | `grievance-review:View` | The review queue's aggregates and the caller's own decisions. |
+| `GET /reports/cases` | `grievance-management:View` | Paged rows; filters `submittedFrom`, `submittedTo`, `departmentId`, `categoryId`, `status`, `priority`, `investigatorEmployeeId`, `minResolutionDays`, `maxResolutionDays`, `overdue`; `search` on the case number only; sort `caseNo`, `categoryName`, `status`, `priority`, `departmentName`, `submittedOn`, `targetResolutionDate`, `resolvedOn`, `resolutionDays`, `ageDays`. |
+| `GET /reports/summary` | `grievance-insight` | Filters `submittedFrom`, `submittedTo`, `categoryId`, `priority` (no department filter). |
+
+**Metrics.** Counted: every non-Draft case, archived included. Overdue: open and the target date before today (business time zone).
+Resolution rate: (Resolved + Closed) / (counted - Rejected) x 100, 2 decimals, half away from zero, 0 when the divisor is 0. Resolution
+days: calendar days from the submission date to the resolution date (business time zone); the average is over the cases now Resolved or
+Closed, 1 decimal, null when there is none. Departments: the department copied at submission; anonymous (or none) is "Not disclosed";
+departments with fewer than 3 cases are merged into "Other / suppressed". Monthly trend: the last 12 months. Recent activity: the 10 latest
+history steps, case numbers only. Aggregates are the same for every viewer of a tier: they do not leave out the cases the caller submitted
+or is the subject of (comparing two users' totals would otherwise reveal a submitter). Report and export rows are case-level detail: like the case lists they leave out the cases whose subject employee is the caller, but they keep the cases the caller submitted (rows never show a submitter). Excel: module `grievance-cases`, export only, needs
+`excel:Export` and `grievance-management:View`; the report's columns, never the subject, description, notes or submitter; each export is
+written to `grv.AuditLog` (Export, the row count) and to no company-wide activity line.
+
+**Never logged:** the submitter, the subject, a description, a message or a file name; logs carry ids only.
+
+**Security notes for operators.**
+
+* **No statement links a person to an anonymous case.** The API never sends an employee or user id and a pseudonym (or the ids of the
+  cases a pseudonym found) in the same SQL statement: the named lookup and the pseudonym lookup are separate statements, the per-caller
+  facts (cases about the caller, their assignments, their decisions) are read one statement each, and the scope statements carry only
+  lists of case ids. Keep it that way in operations: **do not run statement-level traces or Extended Events sessions that capture
+  parameter values on the `grv` tables**, and keep Query Store parameter capture (and plan forcing with captured parameters) off for
+  them; a trace of several consecutive statements of one session could still be correlated by an administrator who sees both.
+* **Count differencing (residual risk).** Dashboard and summary figures are the same for every viewer, but a case-team list, the case
+  report and recent activity leave out the cases whose subject is the caller (and the lists also the cases the caller submitted). A user
+  who can compare totals with list lengths can learn that "some case is about me" or "one more case exists than I can open". HR
+  procedure: when a manager becomes the subject of a grievance (or files one), remove their `grievance-management` grant (Settings,
+  role permissions, or move them to a role without it) for the life of the case, and assign another manager.
+* **Small departments in the summary (residual risk, accepted).** The summary merges departments with fewer than 3 cases into "Other /
+  suppressed", but a reviewer can ask for a date range and for the same range plus one day and compare the two answers to recover a
+  small department's count for NAMED cases. Anonymous cases never contribute a department, so they are not exposed this way.
+* **Timing correlation (residual risk, accepted).** `RowVersion` is a database-wide counter, and the submitter's history, access-log and
+  notification rows carry `OccurredAtUtc`. Ordering these against the row versions of other tables or against sign-in times can narrow
+  down who an anonymous submitter is. This is no worse than the timestamps that are already visible; the UI help text tells submitters
+  about timing.
+* **No true separation of duties.** The seeded HR Administrator role holds every grievance grant, and any role can be given management,
+  investigation and review together. The API refuses deciding one's own proposal and deciding while assigned as an investigator, and
+  reopening a Closed case needs management Edit and review Approve, but one person holding all grants can still run a case alone.
+  Keep the review grant on a different role from management where the organization allows it, and review grants regularly.
+* **Database guards.** `grv.TR_Case_ClosedIsFinal`, `grv.TR_Case_SubmittedIsFixed` and `grv.TR_Attachment_Fixed` (THROW 51101 and
+  51102, answered as 409) refuse changing what submission, closing or archiving fixed, deleting anything but a draft, and changing or
+  deleting a stored file of a submitted case; the append-only tables deny UPDATE and DELETE to `hrms_api`.
 
 ## HTTP contract (dashboard, activity and notifications)
 

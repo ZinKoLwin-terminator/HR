@@ -77,7 +77,12 @@ public abstract class DatabaseTest : IAsyncLifetime
         }
         finally
         {
-            await TestRows.DeleteAsync(Tag);
+            // When the SQL Server tests cannot run here (no LocalDB, no dacpac, or HRMS_DACPAC pointing nowhere), no test wrote
+            // anything, so there is nothing to clean up and no connection is opened at all.
+            if (SqlServerEnvironment.UnavailableReason is null)
+            {
+                await TestRows.DeleteAsync(Tag);
+            }
         }
     }
 

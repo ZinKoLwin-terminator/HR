@@ -19,13 +19,17 @@ internal static partial class SqlConflicts
     private const int ConstraintConflict = 547;
 
     // THROW numbers raised by the payroll lock triggers in the database project (pay schema): an approved run and its
-    // payslips are locked, a paid run is final.
+    // payslips are locked, a paid run is final. 51101 is the grievance case lock, 51102 the grievance file lock (grv schema).
     private static readonly Dictionary<int, string> FinalityMessages = new Dictionary<int, string>
     {
         [51001] = "A paid payroll run is final, and an approved one can only be marked as paid or returned to draft.",
         [51002] = "Payslips of an approved or paid payroll run are locked.",
         [51003] = "Payslip lines of an approved or paid payroll run are locked.",
         [51004] = "Warnings of an approved or paid payroll run are locked.",
+        // grv.TR_Case_ClosedIsFinal and grv.TR_Case_SubmittedIsFixed: a closed or archived grievance case, and what submission
+        // fixes, cannot change. As for every SQL error, the trigger text is never copied into the answer.
+        [51101] = "This grievance case can no longer be changed this way. Reload it and try again.",
+        [51102] = "A file of a grievance case cannot be changed or removed.",
     };
 
     // Check constraints whose name does not end in the field they guard.
@@ -106,6 +110,12 @@ internal static partial class SqlConflicts
             "Overtime is already recorded for this employee on that date.",
             "date",
             "Already recorded for this date."),
+        ["UQ_Case_CaseNo"] = AppError.Conflict("That grievance case number is already in use. Try again."),
+        ["UQ_Assignment_CaseId_ActiveLead"] = AppError.Conflict("The case got a lead investigator in the meantime. Reload it and try again."),
+        ["UQ_Assignment_CaseId_InvestigatorEmployeeId_Active"] = AppError.Conflict("This investigator is already assigned to the case."),
+        ["UQ_ResolutionProposal_CaseId_Pending"] = AppError.Conflict("A resolution is already waiting for a decision on this case."),
+        ["CK_ResolutionProposal_NotOwnDecision"] = AppError.Conflict("You cannot decide a resolution you proposed."),
+        ["UQ_Escalation_CaseId_Open"] = AppError.Conflict("This case is already escalated."),
     };
 
     private static readonly AppError ReferenceViolation = AppError.Conflict(

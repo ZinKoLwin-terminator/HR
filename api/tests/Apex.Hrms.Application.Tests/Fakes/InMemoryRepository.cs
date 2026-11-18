@@ -14,6 +14,10 @@ internal sealed class InMemoryRepository<TEntity> : IRepository<TEntity>, IRecor
 {
     private static readonly System.Reflection.PropertyInfo IdProperty = typeof(Entity).GetProperty(nameof(Entity.Id))!;
     private static readonly System.Reflection.PropertyInfo RowVersionProperty = typeof(AuditedEntity).GetProperty(nameof(AuditedEntity.RowVersion))!;
+    private static readonly System.Reflection.PropertyInfo ConfidentialRowVersionProperty = typeof(ConfidentialEntity).GetProperty(nameof(ConfidentialEntity.RowVersion))!;
+    private static readonly System.Reflection.PropertyInfo ConfidentialModifiedProperty = typeof(ConfidentialEntity).GetProperty(nameof(ConfidentialEntity.ModifiedAtUtc))!;
+    private static readonly System.Reflection.PropertyInfo ConfidentialCreatedProperty = typeof(ConfidentialEntity).GetProperty(nameof(ConfidentialEntity.CreatedAtUtc))!;
+    private static long confidentialTicks = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc).Ticks;
 
     private readonly FakeDatabase database;
     private readonly List<TEntity> items = [];
@@ -70,6 +74,14 @@ internal sealed class InMemoryRepository<TEntity> : IRepository<TEntity>, IRecor
         {
             RowVersionProperty.SetValue(entity, database.NextRowVersion());
         }
+        else if (entity is ConfidentialEntity)
+        {
+            // Like the database and the audit interceptor: a row version, and increasing creation and modification times.
+            ConfidentialRowVersionProperty.SetValue(entity, database.NextRowVersion());
+            var now = NextConfidentialTime();
+            ConfidentialCreatedProperty.SetValue(entity, now);
+            ConfidentialModifiedProperty.SetValue(entity, now);
+        }
 
         items.Add(entity);
     }
@@ -84,11 +96,21 @@ internal sealed class InMemoryRepository<TEntity> : IRepository<TEntity>, IRecor
 
     public void MarkModified(TEntity entity) => changed.Add(entity);
 
+    private static DateTime NextConfidentialTime() => new(Interlocked.Add(ref confidentialTicks, TimeSpan.TicksPerSecond), DateTimeKind.Utc);
+
     void IVersionedStore.StampChanged()
     {
         foreach (var entity in changed)
         {
-            RowVersionProperty.SetValue(entity, database.NextRowVersion());
+            if (entity is ConfidentialEntity)
+            {
+                ConfidentialRowVersionProperty.SetValue(entity, database.NextRowVersion());
+                ConfidentialModifiedProperty.SetValue(entity, NextConfidentialTime());
+            }
+            else
+            {
+                RowVersionProperty.SetValue(entity, database.NextRowVersion());
+            }
         }
 
         changed.Clear();

@@ -485,3 +485,5 @@ $RECYCLE.BIN/
 App_Data/
 # KPI evidence files (HR records): never commit; see Kpi:EvidenceFolder in the README
 App_Data/kpi-evidence/
+# Grievance files (confidential HR records): never commit; see Grievance:FileFolder in the README
+App_Data/grievance-files/

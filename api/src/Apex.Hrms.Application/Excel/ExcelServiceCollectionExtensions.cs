@@ -22,6 +22,7 @@ internal static class ExcelServiceCollectionExtensions
         services.AddAttendanceExcel();
         services.AddPayrollExcel();
         services.AddKpiExcel();
+        services.AddScoped<IExcelModule, Grievances.Insights.GrievanceCasesExcelModule>();
         services.AddScoped<IExcelCatalogService, ExcelCatalogService>();
         services.AddScoped<IExcelImportService, ExcelImportService>();
         services.AddScoped<IExcelExportService, ExcelExportService>();

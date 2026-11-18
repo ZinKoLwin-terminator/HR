@@ -670,7 +670,11 @@ internal sealed class ExcelExportService(
         var extra = importLayout ? [] : module.ExtraSheets(rows.Value);
         var content = writer.BuildExport($"{info.Label} export", new ExportSheet(info.SheetName, columns, rows.Value), extra);
 
-        activity.Record(ActivityCategories.System, $"Exported {rows.Value.Count} {info.Label} record(s) to Excel");
+        if (module.RecordsActivity)
+        {
+            activity.Record(ActivityCategories.System, $"Exported {rows.Value.Count} {info.Label} record(s) to Excel");
+        }
+
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         if (saved.IsFailure)
         {
