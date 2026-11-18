@@ -55,6 +55,7 @@ internal static partial class TestRows
         await DeleteLeaveAsync(connection, pattern);
         await DeleteAttendanceOfEmployeesAsync(connection, pattern);
         await DeleteRecruitmentAsync(connection, pattern);
+        await DeleteGrievancesAsync(connection, pattern);
         await DeleteKpiAsync(connection, tag, pattern);
         await DeleteEmployeesAsync(connection, pattern);
         await DeleteShiftsAsync(connection, pattern);
@@ -82,6 +83,7 @@ internal static partial class TestRows
         await CountInto(counts, connection, "hr.Employee", "LOWER(WorkEmail) LIKE LOWER(@pattern)", pattern);
         await CountInto(counts, connection, "hr.EmployeeBlacklist", $"EmployeeId IN ({TaggedEmployees})", pattern);
         await CountPayrollInto(counts, connection, pattern);
+        await CountGrievancesInto(counts, connection, pattern);
         await CountInto(counts, connection, "lve.LeaveApplication", $"EmployeeId IN ({TaggedEmployees})", pattern);
         await CountInto(counts, connection, "lve.LeavePolicy", "Name LIKE @pattern", pattern);
         await CountInto(counts, connection, "lve.LeaveType", "Code LIKE @pattern", pattern);

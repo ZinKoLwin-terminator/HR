@@ -192,6 +192,113 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         });
     }
 
+    private static bool IsGrievanceRoute(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText!.StartsWith("/api/grievances", StringComparison.Ordinal);
+
+    private Dictionary<string, string[]> GrievancePolicies() => ApiEndpoints().Where(IsGrievanceRoute)
+        .ToDictionary(
+            endpoint => $"{endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single()} {endpoint.RoutePattern.RawText}",
+            endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(data => data.Policy).OfType<string>().Order(StringComparer.Ordinal).ToArray());
+
+    [Fact]
+    public void Grievances_map_fifty_four_endpoints_each_with_the_policy_of_who_may_use_it()
+    {
+        var policies = GrievancePolicies();
+        const string mine = "grievance:View";
+        const string write = "grievance:Create";
+        const string team = "grievance-case-team";
+        const string work = "grievance-case-work";
+        const string manageView = "grievance-management:View";
+        const string manageEdit = "grievance-management:Edit";
+        var expected = new Dictionary<string, string[]>
+        {
+            ["GET /api/grievances/categories/"] = [manageView],
+            ["GET /api/grievances/categories/query"] = [manageView],
+            ["GET /api/grievances/categories/{id:int}"] = [manageView],
+            ["POST /api/grievances/categories/"] = ["grievance-management:Create"],
+            ["PUT /api/grievances/categories/{id:int}"] = [manageEdit],
+            ["DELETE /api/grievances/categories/{id:int}"] = ["grievance-management:Delete"],
+            ["POST /api/grievances/categories/{id:int}/activate"] = [manageEdit],
+            ["POST /api/grievances/categories/{id:int}/deactivate"] = [manageEdit],
+            ["GET /api/grievances/options"] = [mine],
+            ["GET /api/grievances/my"] = [mine],
+            ["GET /api/grievances/my/dashboard"] = [mine],
+            ["GET /api/grievances/my/{id:int}"] = [mine],
+            ["GET /api/grievances/my/attachments/{id:int}"] = [mine],
+            ["POST /api/grievances/my/{id:int}/seen"] = [mine],
+            ["POST /api/grievances/my"] = [write],
+            ["PUT /api/grievances/my/{id:int}"] = [write],
+            ["DELETE /api/grievances/my/{id:int}"] = [write],
+            ["POST /api/grievances/my/{id:int}/submit"] = [write],
+            ["POST /api/grievances/my/{id:int}/messages"] = [write],
+            ["POST /api/grievances/my/{id:int}/attachments"] = [write],
+            ["GET /api/grievances/cases/query"] = [manageView],
+            ["GET /api/grievances/investigations"] = ["grievance-investigation:View"],
+            ["GET /api/grievances/reviews/pending"] = ["grievance-review:View"],
+            ["GET /api/grievances/cases/{id:int}"] = [team],
+            ["GET /api/grievances/cases/{id:int}/history"] = [team],
+            ["GET /api/grievances/attachments/{id:int}"] = [team],
+            ["GET /api/grievances/cases/{id:int}/audit"] = [manageView, "hr-administrator"],
+            ["GET /api/grievances/audit"] = [manageView, "hr-administrator"],
+            ["GET /api/grievances/investigators"] = [manageEdit],
+            ["GET /api/grievances/employees"] = [manageEdit],
+            ["POST /api/grievances/cases/{id:int}/acknowledge"] = [manageEdit],
+            ["POST /api/grievances/cases/{id:int}/start-review"] = [manageEdit],
+            ["POST /api/grievances/cases/{id:int}/assign"] = [manageEdit],
+            ["POST /api/grievances/cases/{id:int}/unassign"] = [manageEdit],
+            ["POST /api/grievances/cases/{id:int}/start-investigation"] = [work],
+            ["POST /api/grievances/cases/{id:int}/request-info"] = [work],
+            ["POST /api/grievances/cases/{id:int}/propose-resolution"] = [work],
+            ["POST /api/grievances/cases/{id:int}/approve-resolution"] = ["grievance-review:Approve"],
+            ["POST /api/grievances/cases/{id:int}/reject-resolution"] = ["grievance-review:Approve"],
+            ["POST /api/grievances/cases/{id:int}/reject"] = [manageEdit],
+            ["POST /api/grievances/cases/{id:int}/close"] = [manageEdit],
+            ["POST /api/grievances/cases/{id:int}/reopen"] = [manageEdit],
+            ["POST /api/grievances/cases/{id:int}/escalate"] = [work],
+            ["POST /api/grievances/cases/{id:int}/archive"] = ["grievance-management:Delete"],
+            ["PUT /api/grievances/cases/{id:int}/triage"] = [manageEdit],
+            ["POST /api/grievances/cases/{id:int}/messages"] = [work],
+            ["POST /api/grievances/cases/{id:int}/notes"] = [work],
+            ["POST /api/grievances/cases/{id:int}/attachments"] = [work],
+            ["POST /api/grievances/cases/{id:int}/actions"] = [manageEdit],
+            ["PUT /api/grievances/case-actions/{id:int}"] = [manageEdit],
+            ["GET /api/grievances/dashboard/hr"] = [manageView],
+            ["GET /api/grievances/dashboard/review"] = ["grievance-review:View"],
+            ["GET /api/grievances/reports/cases"] = [manageView],
+            ["GET /api/grievances/reports/summary"] = ["grievance-insight"],
+        };
+
+        Assert.Equal(54, policies.Count);
+        Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), policies.Keys.Order(StringComparer.Ordinal));
+        foreach (var (route, wanted) in expected)
+        {
+            Assert.True(wanted.Order(StringComparer.Ordinal).SequenceEqual(policies[route]), $"{route}: expected {string.Join(", ", wanted)} but found {string.Join(", ", policies[route])}");
+        }
+    }
+
+    [Fact]
+    public void Grievance_uploads_are_rate_limited_and_the_excel_export_is_export_only_with_the_management_view()
+    {
+        var uploads = ApiEndpoints().Where(IsGrievanceRoute)
+            .Where(endpoint => endpoint.RoutePattern.RawText!.EndsWith("/attachments", StringComparison.Ordinal))
+            .ToList();
+        Assert.Equal(2, uploads.Count);
+        Assert.All(uploads, endpoint => Assert.Equal(
+            Apex.Hrms.Api.Http.GrievanceUploadRateLimit.Policy,
+            endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName));
+
+        using var client = factory.CreateClient();
+        using var scope = factory.Services.CreateScope();
+        var module = Assert.Single(scope.ServiceProvider.GetServices<Apex.Hrms.Application.Excel.IExcelModule>(), candidate => candidate.Info.Code == "grievance-cases");
+        Assert.True(module.Info.CanExport);
+        Assert.False(module.Info.CanImport);
+        Assert.Equal(["grievance-management:View"], module.ExportPolicies);
+        Assert.False(module.RecordsActivity);
+        Assert.Equal(
+            ["caseNo", "category", "status", "priority", "department", "submittedOn", "targetResolutionDate", "resolvedOn", "resolutionDays", "isOverdue", "leadInvestigator", "isEscalated"],
+            module.Info.ExportColumns!.Select(column => column.Key));
+    }
+
     private static bool IsLeaveRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/leave", StringComparison.Ordinal);
 
@@ -274,7 +381,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void Six_organization_resources_map_eight_endpoints_each()
     {
         var endpoints = ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint) && !IsKpiRoute(endpoint))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint) && !IsKpiRoute(endpoint) && !IsGrievanceRoute(endpoint))
             .ToList();
 
         Assert.Equal(48, endpoints.Count);
@@ -372,6 +479,11 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
                 "employees:Create", "employees:Delete", "employees:Edit", "employees:EditBank", "employees:EditBlacklist", "employees:EditSensitive",
                 "employees:View", "employees:ViewBank", "employees:ViewBlacklist", "employees:ViewSensitive",
                 "excel:Export", "excel:Import", "excel:View",
+                "grievance-case-team", "grievance-case-work", "grievance-insight",
+                "grievance-investigation:View",
+                "grievance-management:Create", "grievance-management:Delete", "grievance-management:Edit", "grievance-management:View",
+                "grievance-review:Approve", "grievance-review:View",
+                "grievance:Create", "grievance:View",
                 "hr-administrator",
                 "kpi-setup:Create", "kpi-setup:Delete", "kpi-setup:Edit", "kpi-setup:View", "kpi:Approve", "kpi:Create", "kpi:View",
                 "leave:Approve", "leave:Create", "leave:Delete", "leave:Edit", "leave:View",
@@ -388,7 +500,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
         foreach (var endpoint in ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint) && !IsKpiRoute(endpoint)))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint) && !IsKpiRoute(endpoint) && !IsGrievanceRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);

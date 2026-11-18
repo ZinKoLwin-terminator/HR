@@ -83,7 +83,7 @@ internal static partial class TestRows
         await using var connection = new SqlConnection(SqlServerEnvironment.ConnectionString);
         await connection.OpenAsync();
         await using var command = new SqlCommand(
-            "SELECT COUNT(*) FROM sys.triggers WHERE is_disabled = 1 AND OBJECT_SCHEMA_NAME(parent_id) = 'pay'",
+            "SELECT COUNT(*) FROM sys.triggers WHERE is_disabled = 1 AND OBJECT_SCHEMA_NAME(parent_id) IN ('pay', 'grv')",
             connection);
         return (int)(await command.ExecuteScalarAsync())!;
     }

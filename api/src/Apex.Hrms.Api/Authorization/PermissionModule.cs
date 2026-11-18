@@ -81,7 +81,23 @@ internal sealed record PermissionModule(string Key, IReadOnlyList<Permission> Pe
     /// <summary>Performance: scorecards and the period picker. View, Create and Approve only (Approve reviews a scorecard); no Edit or Delete in the database seed. Sort order 12.</summary>
     public static readonly PermissionModule Kpi = new("kpi", [Permission.View, Permission.Create, Permission.Approve]);
 
-    public static IReadOnlyList<PermissionModule> All { get; } = [Organization, Employees, Leave, Attendance, Payroll, Recruitment, Dashboard, Activity, Settings, Excel, KpiSetup, Kpi];
+    /// <summary>Grievances, self-service: View and Create your own grievances (drafts, submit, messages, files). Sort order 13.</summary>
+    public static readonly PermissionModule Grievance = new("grievance", [Permission.View, Permission.Create]);
+
+    /// <summary>Investigating the grievance cases the caller is assigned to: View and Edit (notes, messages, proposals). Sort order 14.</summary>
+    public static readonly PermissionModule GrievanceInvestigation = new("grievance-investigation", [Permission.View, Permission.Edit]);
+
+    /// <summary>Managing every submitted grievance case and the categories; Delete archives a case. Sort order 15.</summary>
+    public static readonly PermissionModule GrievanceManagement = new("grievance-management", Standard);
+
+    /// <summary>Reviewing escalated cases and deciding proposed resolutions (Approve). Sort order 16.</summary>
+    public static readonly PermissionModule GrievanceReview = new("grievance-review", [Permission.View, Permission.Approve]);
+
+    public static IReadOnlyList<PermissionModule> All { get; } =
+    [
+        Organization, Employees, Leave, Attendance, Payroll, Recruitment, Dashboard, Activity, Settings, Excel, KpiSetup, Kpi,
+        Grievance, GrievanceInvestigation, GrievanceManagement, GrievanceReview,
+    ];
 
     public string PolicyName(Permission permission) => $"{Key}:{permission}";
 }

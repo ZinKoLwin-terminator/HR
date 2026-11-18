@@ -30,21 +30,56 @@ internal static class EvidenceUploadRateLimit
             ? configured
             : DefaultPermitsPerMinute;
 
-    public static void Add(RateLimiterOptions options, IConfiguration configuration)
+    public static void Add(RateLimiterOptions options, IConfiguration configuration) =>
+        PerAccountUploadLimit.Add(options, Policy, PermitsPerMinute(configuration));
+}
+
+/// <summary>
+/// The limiter shared by the KPI evidence and grievance uploads: a fixed window of a minute per signed-in account (the account id of the
+/// session; a request without one falls back to its client IP and is refused by authorization anyway), no queue. Each policy has its
+/// own counters.
+/// </summary>
+internal static class PerAccountUploadLimit
+{
+    public static void Add(RateLimiterOptions options, string policy, int permitsPerMinute)
     {
-        var permits = PermitsPerMinute(configuration);
-        options.AddPolicy(Policy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        ArgumentNullException.ThrowIfNull(options);
+        options.AddPolicy(policy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
             PartitionOf(httpContext),
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = permits,
+                PermitLimit = permitsPerMinute,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
     }
 
-    private static string PartitionOf(HttpContext httpContext) =>
+    public static string PartitionOf(HttpContext httpContext) =>
         httpContext.User is { Identity.IsAuthenticated: true } user && user.FindFirstValue(HrmsClaims.AccountId) is { Length: > 0 } account
             ? "user:" + account
             : "ip:" + (httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+}
+
+/// <summary>
+/// The rate limit of the grievance uploads (the submitter's <c>POST /api/grievances/my/{id}/attachments</c> and the case team's
+/// <c>POST /api/grievances/cases/{id}/attachments</c>): the same rule as the KPI evidence upload (per signed-in account, fixed window of a
+/// minute, no queue, every attempt counts), with its own counter and setting <see cref="PermitsPerMinuteKey"/>.
+/// </summary>
+internal static class GrievanceUploadRateLimit
+{
+    public const string Policy = "grievance-file-upload";
+
+    public const int DefaultPermitsPerMinute = 10;
+
+    public const string PermitsPerMinuteKey = "Grievance:FileUploadsPerMinute";
+
+    public const string RejectedMessage = "Too many file uploads. Wait a minute and try again.";
+
+    public static int PermitsPerMinute(IConfiguration configuration) =>
+        int.TryParse(configuration[PermitsPerMinuteKey], NumberStyles.None, CultureInfo.InvariantCulture, out var configured) && configured > 0
+            ? configured
+            : DefaultPermitsPerMinute;
+
+    public static void Add(RateLimiterOptions options, IConfiguration configuration) =>
+        PerAccountUploadLimit.Add(options, Policy, PermitsPerMinute(configuration));
 }

@@ -109,6 +109,7 @@ internal static class AuthenticationSetup
 
             // Per signed-in account (the rate limiter runs after authentication for this).
             EvidenceUploadRateLimit.Add(options, configuration);
+            GrievanceUploadRateLimit.Add(options, configuration);
 
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -122,9 +123,12 @@ internal static class AuthenticationSetup
                 {
                     Status = StatusCodes.Status429TooManyRequests,
                     Title = "Too many requests",
-                    Detail = policy == EvidenceUploadRateLimit.Policy
-                        ? EvidenceUploadRateLimit.RejectedMessage
-                        : "Too many attempts. Wait a minute and try again.",
+                    Detail = policy switch
+                    {
+                        EvidenceUploadRateLimit.Policy => EvidenceUploadRateLimit.RejectedMessage,
+                        GrievanceUploadRateLimit.Policy => GrievanceUploadRateLimit.RejectedMessage,
+                        _ => "Too many attempts. Wait a minute and try again.",
+                    },
                 };
                 problem.Extensions[ApiProblems.CodeKey] = ErrorType.Unknown.ToString();
                 context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;

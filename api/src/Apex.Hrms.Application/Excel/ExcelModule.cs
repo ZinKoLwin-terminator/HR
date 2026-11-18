@@ -37,6 +37,12 @@ public interface IExcelModule
         CancellationToken cancellationToken);
 
     IReadOnlyList<ExportSheet> ExtraSheets(IReadOnlyList<IReadOnlyDictionary<string, object?>> rows);
+
+    /// <summary>
+    /// Whether an export writes its line to the company-wide activity feed (the default). A confidential module (grievances) says no and
+    /// records the export in its own access log instead.
+    /// </summary>
+    bool RecordsActivity => true;
 }
 
 /// <summary>Applies the rows of one run. Every call that saves does so through the module's normal handlers.</summary>

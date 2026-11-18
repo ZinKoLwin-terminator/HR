@@ -132,13 +132,15 @@ public sealed class ExcelModulesHttpTests : PayrollTestBase, IDisposable
         var viewer = await SignedInAsRoleAsync("viewer", null, "excel:View", "excel:Export", "leave:View", "payroll:View");
         var limited = (await viewer.GetFromJsonAsync<ExcelCatalogDto>("/api/excel/modules", Json))!;
 
-        string[] codes = ["employees", "companies", "branches", "departments", "sections", "positions", "job-grades", "leave-applications", "leave-balances", "attendance-records", "shift-assignments", "salary-assignments", "kpi-scorecards", "kpi-ranking", "kpi-target-vs-actual"];
-        string[] exportOnly = ["leave-applications", "leave-balances", "attendance-records", "kpi-scorecards", "kpi-ranking", "kpi-target-vs-actual"];
+        string[] codes = ["employees", "companies", "branches", "departments", "sections", "positions", "job-grades", "leave-applications", "leave-balances", "attendance-records", "shift-assignments", "salary-assignments", "kpi-scorecards", "kpi-ranking", "kpi-target-vs-actual", "grievance-cases"];
+        string[] exportOnly = ["leave-applications", "leave-balances", "attendance-records", "kpi-scorecards", "kpi-ranking", "kpi-target-vs-actual", "grievance-cases"];
         Assert.Equal(codes.Order(StringComparer.Ordinal), all.Modules.Select(m => m.Code).Order(StringComparer.Ordinal));
         Assert.All(all.Modules.Where(m => !exportOnly.Contains(m.Code)), m => Assert.True(m.CanImport && m.CanExport, m.Code));
         Assert.All(all.Modules.Where(m => exportOnly.Contains(m.Code)), m => Assert.False(m.CanImport, m.Code));
         Assert.All(all.Modules.Where(m => m.Code.StartsWith("kpi-", StringComparison.Ordinal)), m => Assert.True(m.CanExport, m.Code));
         Assert.All(limited.Modules.Where(m => m.Code.StartsWith("kpi-", StringComparison.Ordinal)), m => Assert.False(m.CanExport, m.Code));
+        Assert.True(all.Modules.Single(m => m.Code == "grievance-cases").CanExport);
+        Assert.False(limited.Modules.Single(m => m.Code == "grievance-cases").CanExport);
         Assert.True(limited.Modules.Single(m => m.Code == "leave-applications").CanExport);
         Assert.False(limited.Modules.Single(m => m.Code == "salary-assignments").CanExport);
         Assert.False(limited.Modules.Single(m => m.Code == "companies").CanExport);

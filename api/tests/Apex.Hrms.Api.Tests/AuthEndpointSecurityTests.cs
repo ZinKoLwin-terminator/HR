@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Apex.Hrms.Api.Auth;
+using Apex.Hrms.Infrastructure.Security;
 using Apex.Hrms.TestSupport;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -40,6 +41,7 @@ public sealed class AuthEndpointSecurityTests(WebApplicationFactory<Program> fix
             builder.UseSetting("ConnectionStrings:Hrms", "Server=.;Database=Placeholder;Integrated Security=True");
             builder.UseSetting("AllowedHosts", "api.example.test");
             builder.UseSetting("https_port", "443");
+            builder.UseSetting(GrievancePseudonymSettings.KeyName, TestSecrets.NewPseudonymKey());
         });
 
     private static async Task<JsonElement> ReadAsync(HttpResponseMessage response) =>

@@ -3,6 +3,7 @@ using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.Attendance;
 using Apex.Hrms.Application.Employees;
 using Apex.Hrms.Application.Excel;
+using Apex.Hrms.Application.Grievances;
 using Apex.Hrms.Application.Leave;
 using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Application.Payroll;
@@ -31,6 +32,6 @@ public static class DependencyInjection
         services.AddSecurityScoping().AddOwnRecordScopes();
         services.TryAddSingleton(provider => new RoleGrantCache(provider.GetService<TimeProvider>() ?? TimeProvider.System));
         services.TryAddSingleton<IRoleGrantInvalidator>(provider => provider.GetRequiredService<RoleGrantCache>());
-        return services.AddOrganization().AddEmployees().AddLeave().AddPerformance().AddPayroll().AddAttendance().AddRecruitment().AddSettings().AddActivityAndDashboard().AddExcel();
+        return services.AddOrganization().AddEmployees().AddLeave().AddPerformance().AddPayroll().AddAttendance().AddRecruitment().AddGrievances().AddSettings().AddActivityAndDashboard().AddExcel();
     }
 }

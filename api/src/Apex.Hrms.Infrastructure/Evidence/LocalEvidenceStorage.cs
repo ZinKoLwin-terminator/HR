@@ -97,11 +97,15 @@ public static class EvidenceStorageExtensions
 
     public const string DefaultFolder = "App_Data/kpi-evidence";
 
-    public static string ResolveFolder(IConfiguration configuration, string contentRootPath)
+    public static string ResolveFolder(IConfiguration configuration, string contentRootPath) =>
+        ResolveFolder(configuration, FolderKey, DefaultFolder, contentRootPath);
+
+    /// <summary>The folder configured under <paramref name="key"/>, or <paramref name="defaultFolder"/>; a relative path starts at the content root.</summary>
+    internal static string ResolveFolder(IConfiguration configuration, string key, string defaultFolder, string contentRootPath)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        var configured = configuration[FolderKey];
-        return Path.GetFullPath(string.IsNullOrWhiteSpace(configured) ? DefaultFolder : configured.Trim(), contentRootPath);
+        var configured = configuration[key];
+        return Path.GetFullPath(string.IsNullOrWhiteSpace(configured) ? defaultFolder : configured.Trim(), contentRootPath);
     }
 
     public static IServiceCollection AddEvidenceStorage(this IServiceCollection services, IConfiguration configuration, string contentRootPath)

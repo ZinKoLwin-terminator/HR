@@ -36,6 +36,12 @@ internal sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Where the evidence files of this host are kept: a private temporary folder, removed with the host (never <c>App_Data</c>).</summary>
     public string EvidenceFolder { get; } = Path.Combine(Path.GetTempPath(), "hrms-it-evidence-" + Guid.NewGuid().ToString("N"));
 
+    /// <summary>Where the grievance files of this host are kept: a private temporary folder, removed with the host (never <c>App_Data</c>).</summary>
+    public string GrievanceFolder { get; } = Path.Combine(Path.GetTempPath(), "hrms-it-grievance-" + Guid.NewGuid().ToString("N"));
+
+    /// <summary>A random pseudonym key for this host only (48 random bytes in Base64): never the development placeholder, never a real secret.</summary>
+    public string PseudonymKey { get; } = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -45,6 +51,9 @@ internal sealed class ApiFactory : WebApplicationFactory<Program>
         // the app configuration of a test host is applied.
         builder.UseSetting("Email:DevelopmentFolder", MailFolder);
         builder.UseSetting("Kpi:EvidenceFolder", EvidenceFolder);
+        builder.UseSetting("Grievance:FileFolder", GrievanceFolder);
+        builder.UseSetting("Grievance:PseudonymKey", PseudonymKey);
+        builder.UseSetting("Grievance:FileUploadsPerMinute", evidenceUploadsPerMinute.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.UseSetting("Auth:RateLimit:PermitsPerMinute", loginPermitsPerMinute.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.UseSetting("Kpi:EvidenceUploadsPerMinute", evidenceUploadsPerMinute.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.UseSetting("Auth:PasswordResetUrl", "https://app.example.test/reset-password");
@@ -72,6 +81,11 @@ internal sealed class ApiFactory : WebApplicationFactory<Program>
         if (disposing && Directory.Exists(EvidenceFolder))
         {
             Directory.Delete(EvidenceFolder, recursive: true);
+        }
+
+        if (disposing && Directory.Exists(GrievanceFolder))
+        {
+            Directory.Delete(GrievanceFolder, recursive: true);
         }
 
         if (disposing && Directory.Exists(MailFolder))

@@ -1,4 +1,5 @@
 using System.Net;
+using Apex.Hrms.Infrastructure.Security;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
@@ -16,6 +17,7 @@ public sealed class ProductionHostingTests
             builder.UseEnvironment("Production");
             builder.UseSetting("ConnectionStrings:Hrms", "Server=.;Database=Placeholder;Integrated Security=True");
             builder.UseSetting("https_port", "443");
+            builder.UseSetting(GrievancePseudonymSettings.KeyName, TestSecrets.NewPseudonymKey());
             if (allowedHosts is not null)
             {
                 builder.UseSetting("AllowedHosts", allowedHosts);

@@ -92,6 +92,21 @@ internal sealed class TestHost : IDisposable
         services.AddSingleton(Logs);
         services.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(CapturingLogger<>));
         services.TryAddSingleton<Apex.Hrms.Application.Settings.IAccountLogins>(new FakeAccountLogins());
+
+        // The grievance ports (the grievance tests replace them with their own instances; the other tests only need them to resolve,
+        // for example for the grievance Excel module in the Excel catalog).
+        services.AddSingleton<IGrievancePseudonyms, FakeGrievancePseudonyms>();
+        services.AddSingleton<FakeGrievanceSubmitterDirectory>();
+        services.AddSingleton<IGrievanceSubmitterDirectory>(sp => sp.GetRequiredService<FakeGrievanceSubmitterDirectory>());
+        services.AddSingleton<FakeGrievanceAuditLog>();
+        services.AddSingleton<IGrievanceAuditLog>(sp => sp.GetRequiredService<FakeGrievanceAuditLog>());
+        services.AddSingleton<IGrievanceCaseNumberSequence, FakeGrievanceCaseNumbers>();
+        services.AddSingleton<IGrievanceFileStorage, FakeGrievanceFileStorage>();
+        services.AddSingleton<IPermissionHolders, FakePermissionHolders>();
+        services.AddSingleton<INotificationRecipients, FakeNotificationRecipients>();
+        services.AddSingleton<FakeNotificationWriter>();
+        services.AddSingleton<INotificationWriter>(sp => sp.GetRequiredService<FakeNotificationWriter>());
+        services.AddSingleton<IRecordCounter<Apex.Hrms.Domain.Grievances.GrievanceCase>>(sp => (InMemoryRepository<Apex.Hrms.Domain.Grievances.GrievanceCase>)sp.GetRequiredService<IRepository<Apex.Hrms.Domain.Grievances.GrievanceCase>>());
         services.AddApplication();
         configure?.Invoke(services);
         provider = services.BuildServiceProvider();
