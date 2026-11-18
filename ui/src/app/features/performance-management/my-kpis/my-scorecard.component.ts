@@ -146,7 +146,8 @@ function savedValues(card: ScorecardDetail | null): string {
  * The employee's working page for one scorecard: the KPIs with their targets and weights, an input
  * per KPI that fits its measurement type (yes/no, a rating on its scale, or a decimal), comments,
  * evidence files, Save draft and Submit. Only the scorecard's own employee works on it, while it is
- * Draft or Returned and the period is Active; otherwise the page is read-only and shows why.
+ * Draft or Returned and the period is Active (or Completed, for a Returned scorecard); otherwise
+ * the page is read-only and shows why.
  *
  * Every figure of a score is the server's answer; the line under an input while typing is a
  * labelled preview only. Every write sends the row version of the latest answer (evidence answers
@@ -562,7 +563,7 @@ export class MyScorecardComponent {
     this.detail.error() ? errorMessage(this.detail.error()) : '',
   );
 
-  /** Owner, Draft or Returned, Active period (UX only; the server enforces). */
+  /** Owner, Draft or Returned, period Active or (Returned) Completed. UX only; the server enforces. */
   protected readonly editable = computed(() => {
     const card = this.card();
     return !!card && canWorkOnScorecard(card, this.viewer());

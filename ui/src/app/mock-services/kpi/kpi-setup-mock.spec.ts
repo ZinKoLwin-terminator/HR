@@ -375,6 +375,25 @@ describe('KPI mock: master data', () => {
       );
     });
 
+    it('refuses to close while scorecards are in review or returned, with the count (M2)', async () => {
+      // Seeded period 2: EMP046 and EMP002 Submitted, EMP006 Under Review, EMP014 Returned block;
+      // the Draft and Planning ones do not.
+      const name = (await wait(periods.getById(2))).name;
+      await wait(periods.complete(2));
+      const error = await failure(wait(periods.close(2)));
+      expect(error.code).toBe('Conflict');
+      expect(error.message).toBe(
+        `Period "${name}" still has 4 scorecard(s) in review or returned to the employee. Finish them before closing.`,
+      );
+      expect((await wait(periods.getById(2))).status).toBe('Completed');
+      // The status is checked first: closing an Active period is the out-of-order message.
+      const created = await wait(newPeriod());
+      await wait(periods.activate(created.id));
+      expect((await failure(wait(periods.close(created.id)))).message).toContain(
+        'only a Completed period can be closed',
+      );
+    });
+
     it('refuses a command out of order and names the status', async () => {
       const created = await wait(newPeriod());
       const error = await failure(wait(periods.complete(created.id)));

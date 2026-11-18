@@ -77,8 +77,9 @@ export interface KpiDashboardItem {
 }
 
 /**
- * `isPending`: the scorecard is Draft or Returned and its period Active. `isOverdue`: pending and
- * today (business time zone) is after `dueDate`.
+ * `isPending`: the employee can still act on the scorecard: Draft or Returned and its period
+ * Active, or Returned and its period Completed (the period rule of results and submit).
+ * `isOverdue`: pending and today (business time zone) is after `dueDate`.
  */
 export interface KpiPendingSubmission {
   isPending: boolean;
@@ -123,8 +124,9 @@ export interface KpiEmployeeDashboard {
 
 /**
  * `GET /api/kpi/dashboard/manager`: the scorecards of the period of the caller's direct reports and
- * those naming the caller as reviewer, never the caller's own. `employees`: highest score first,
- * unscored last, then employee code.
+ * those naming the caller as reviewer, never the caller's own. `employees`: by employee code (then
+ * scorecard id), at most 200 rows (`KPI_MANAGER_EMPLOYEE_LIMIT`); `employeeCount` says how many
+ * there are in all.
  */
 export interface KpiManagerDashboard {
   period: KpiPeriodRef | null;
@@ -136,6 +138,10 @@ export interface KpiManagerDashboard {
   approvedOrFinalized: number;
   averageScore: number | null;
   employees: KpiEmployeeScore[];
+  /** Every team scorecard of the period, listed or not (the same number as `teamSize`). */
+  employeeCount: number;
+  /** True when `employees` stops short of `employeeCount` (the list is capped). */
+  employeesTruncated: boolean;
 }
 
 // ---- HR dashboard ------------------------------------------------------------------------------

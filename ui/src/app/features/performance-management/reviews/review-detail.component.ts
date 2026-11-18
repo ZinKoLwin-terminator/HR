@@ -661,6 +661,13 @@ export class ReviewDetailComponent {
       this.notesFirst().pipe(
         switchMap((latest) => command(latest.id, { rowVersion: latest.rowVersion, comment })),
       );
+    // Return needs only its reason: the server clears the review notes on return (the reviewer
+    // starts again on the resubmitted results), so unsaved notes are neither checked nor saved.
+    const sendWithoutNotes = (comment: string | null) =>
+      defer(() => {
+        const latest = this.card() ?? card;
+        return command(latest.id, { rowVersion: latest.rowVersion, comment });
+      });
     switch (kind) {
       case 'approve':
         return {
@@ -685,11 +692,11 @@ export class ReviewDetailComponent {
       case 'return':
         return {
           title: 'Return for revision?',
-          message: `The scorecard goes back to ${who} to correct and submit again; its score is cleared until then. Say what should change.`,
+          message: `The scorecard goes back to ${who} to correct and submit again; its score and the review notes are cleared until then. Say what should change.`,
           label: 'Reason',
           required: true,
           confirmText: 'Return',
-          send,
+          send: sendWithoutNotes,
         };
       case 'reject':
         return {
@@ -706,7 +713,8 @@ export class ReviewDetailComponent {
 
   protected decide(card: ScorecardDetail, kind: Decision): void {
     this.clearErrors();
-    if (!this.notesValid()) return;
+    // Return does not use the notes (see `decisionDialog`), so invalid ones do not hold it up.
+    if (kind !== 'return' && !this.notesValid()) return;
     const data = this.decisionDialog(card, kind);
     this.dialog
       .open<ReviewDecisionDialogComponent, ReviewDecisionData, ReviewDecisionResult>(
@@ -727,6 +735,8 @@ export class ReviewDetailComponent {
           return;
         }
         this.accept(result.card);
+        // The server cleared the notes on return: drop any typed but unsaved ones as well.
+        if (kind === 'return') this.form().group.reset();
         this.toast.success(this.decisionMessage(result.card, kind));
       });
   }

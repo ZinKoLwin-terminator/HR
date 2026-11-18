@@ -420,16 +420,17 @@ test.describe('KPI activity', () => {
     await expect(toast('Scorecard of EMP046 approved and finalized.')).toBeVisible();
 
     // The dashboard's activity card, newest first. Each line names the scorecard by employee code
-    // and period, shows the performance icon and the actor, and never a comment or a name.
+    // and period, shows the performance icon and the actor, and never a comment or a name. A
+    // review decision reads "was reviewed" whatever it was (approve, return), as in the API.
     // The main dashboard (Performance has a Dashboard link too).
     await nav(page).locator('a[href="/dashboard"]').click();
     await expect(page).toHaveURL(/\/dashboard$/);
     const card = page.getByRole('region', { name: 'Recent activities' });
     const entries = card.getByRole('listitem');
     const expected = [
-      'Scorecard of EMP046 for "2026 Q4" approved and finalized',
+      'Scorecard of EMP046 for "2026 Q4" was reviewed',
       'Review notes saved on the scorecard of EMP046 for "2026 Q4"',
-      'Scorecard of EMP006 for "2026 Q4" returned to the employee',
+      'Scorecard of EMP006 for "2026 Q4" was reviewed',
       'KPI plan of EMP019 for "2026 Q4" finalized',
       '1 KPI(s) assigned to EMP019 for "2026 Q4"',
     ];

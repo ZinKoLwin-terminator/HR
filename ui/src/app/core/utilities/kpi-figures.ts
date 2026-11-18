@@ -19,6 +19,8 @@ export const KPI_MEETS_EXPECTATIONS_FLOOR = 60;
 export const KPI_TOP_PERFORMER_COUNT = 5;
 /** At most this many rows in the HR dashboard's attention list (the count covers all). */
 export const KPI_ATTENTION_LIST_LIMIT = 50;
+/** At most this many rows in the manager dashboard's employee list (`employeeCount` covers all). */
+export const KPI_MANAGER_EMPLOYEE_LIMIT = 200;
 /** At most this many earlier scorecards in the employee dashboard's history. */
 export const KPI_HISTORY_LIMIT = 12;
 
@@ -29,6 +31,15 @@ const hundredths = (value: number): number => Math.round(value * 100);
 function divideRounded(numerator: number, denominator: number): number {
   const magnitude = Math.floor((2 * Math.abs(numerator) + denominator) / (2 * denominator));
   return numerator < 0 ? -magnitude : magnitude;
+}
+
+/**
+ * The mean of `count` values that add up to `sum` (at most 2 decimals), 2 decimals; null when the
+ * count is 0 (never 0), and a missing sum counts as 0. The API's `KpiFigures.Average(sum, count)`.
+ */
+export function kpiAverageOf(sum: number | null, count: number): number | null {
+  if (count <= 0) return null;
+  return divideRounded(hundredths(sum ?? 0), count) / 100;
 }
 
 /** The mean of the values, 2 decimals; null when there are none (never 0). */
@@ -83,8 +94,20 @@ export function kpiByStatus(statuses: readonly ScorecardStatus[]): KpiStatusCoun
   }));
 }
 
-/** Ordinal text order (as the database compares employee codes). */
+/**
+ * Ordinal text order: UTF-16 code units, case-sensitive (JavaScript `<`). The database orders
+ * employee codes by its collation instead; for codes of one case and fixed width (the sample
+ * `EMP###`) both give the same order.
+ */
 export const ordinal = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/** Employee code, then scorecard id: the order of the manager dashboard's employee list. */
+export function byCodeThenId(
+  a: { employeeCode: string; scorecardId: number },
+  b: { employeeCode: string; scorecardId: number },
+): number {
+  return ordinal(a.employeeCode, b.employeeCode) || a.scorecardId - b.scorecardId;
+}
 
 /** Highest score first, unscored last, then employee code, then scorecard id. */
 export function byScoreThenCode(

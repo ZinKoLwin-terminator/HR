@@ -79,7 +79,7 @@ import { scoreText } from './kpi-dashboard-views';
         />
         <app-kpi-bar-chart
           title="Employee comparison"
-          subtitle="Overall score, highest first"
+          subtitle="Overall score, by employee code"
           valueHeader="Overall score"
           labelHeader="Employee"
           [extraHeaders]="['Name', 'Status']"
@@ -91,10 +91,17 @@ import { scoreText } from './kpi-dashboard-views';
 
       <section class="card" aria-labelledby="team-heading">
         <div class="card__header"><h2 id="team-heading">Team scorecards</h2></div>
+        @if (d.employeesTruncated) {
+          <p class="note" data-testid="team-truncated">
+            Showing the first {{ d.employees.length }} of {{ d.employeeCount }} team scorecards, by
+            employee code. The figures above count all of them; see
+            <a routerLink="/performance/reports">KPI Reports</a> for the full list.
+          </p>
+        }
         <div class="scroll" role="region" aria-label="Team scorecards table" tabindex="0">
           <table class="simple-table">
             <caption class="cdk-visually-hidden">
-              Team scorecards, highest score first
+              Team scorecards, by employee code
             </caption>
             <thead>
               <tr>
@@ -144,6 +151,10 @@ import { scoreText } from './kpi-dashboard-views';
     .scroll {
       overflow-x: auto;
     }
+    .note {
+      margin: 0 0 12px;
+      font: var(--mat-sys-body-medium);
+    }
     a {
       font-weight: 600;
       color: var(--mat-sys-primary);
@@ -186,11 +197,19 @@ export class KpiManagerViewComponent {
       .join(', ')}.`;
   });
 
+  /** Text alternative of the comparison chart. The list is by employee code, so the highest is looked up. */
   protected readonly comparisonSummary = computed(() => {
-    const scored = this.dashboard().employees.filter((e) => e.overallScore !== null);
-    const top = scored[0];
+    const d = this.dashboard();
+    const scored = d.employees.filter((e) => e.overallScore !== null);
+    const top = scored.reduce<(typeof scored)[number] | null>(
+      (best, e) => (best === null || e.overallScore! > best.overallScore! ? e : best),
+      null,
+    );
+    const listed = d.employeesTruncated
+      ? ` (the first ${d.employees.length} of ${d.employeeCount} by employee code)`
+      : '';
     return top
-      ? `Bar chart of overall scores for ${scored.length} scored team member(s). Highest: ${top.employeeCode} with ${scoreText(top.overallScore)}. Switch to table view for every value.`
+      ? `Bar chart of overall scores for ${scored.length} scored team member(s)${listed}. Highest: ${top.employeeCode} with ${scoreText(top.overallScore)}. Switch to table view for every value.`
       : 'No team member has an overall score yet.';
   });
 }

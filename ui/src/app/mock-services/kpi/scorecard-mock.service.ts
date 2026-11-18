@@ -47,6 +47,8 @@ import {
   validateKpiWeights,
 } from '../../core/utilities/kpi-calculation';
 import { inspectEvidence, readFileBytes } from '../../core/utilities/kpi-evidence';
+import { employeeWorkRefusal, periodAllowsReview } from '../../core/utilities/kpi-period-rules';
+import { reviewVisibility, showsHistoryComment } from '../../core/utilities/kpi-review-visibility';
 import { ScorecardRecord, nextRowVersion } from '../../mock-data/kpi/kpi-records';
 import { MOCK_SCORECARDS } from '../../mock-data/kpi/scorecards.mock';
 import { todayIso } from '../../shared/utilities/date.util';
@@ -66,6 +68,8 @@ import {
 
 /** Same wording as the HTTP adapters use for a stale `rowVersion`. */
 const STALE_MESSAGE = 'The record changed. Reload and try again.';
+/** The API's refusal of a plan write on the caller's own scorecard, and the bulk skip reason. */
+const OWN_PLAN_MESSAGE = 'You cannot plan your own scorecard.';
 const COMMENT_MAX = 1000;
 const MAX_ASSIGNMENT_ITEMS = 50;
 const MAX_BULK_EMPLOYEES = 500;
@@ -278,15 +282,39 @@ export class ScorecardMockService implements ScorecardDataService {
     return period;
   }
 
-  /** `rowVersion` is required (400) and must be current (409). */
-  private checkVersion(current: string, given: string | null | undefined): void {
+  /**
+   * `rowVersion` is required (400) and must be current (409). `beforeStale` runs between the two,
+   * where the API checks a rule of its own (the own-plan refusal of a scorecard).
+   */
+  private checkVersion(
+    current: string,
+    given: string | null | undefined,
+    beforeStale?: () => void,
+  ): void {
     if (!given) {
       this.validation('The row version is required.', {
         rowVersion: 'The row version is required.',
       });
     }
+    beforeStale?.();
     if (given !== current) {
       this.conflict(STALE_MESSAGE);
+    }
+  }
+
+  /**
+   * Separation of duties: nobody plans (assigns, changes, removes, deletes or finalizes) the KPIs of
+   * their own scorecard (409). An account without a linked employee is never refused for this.
+   */
+  private ownPlanRefusal(employeeId: number): string | null {
+    const own = this.actor().employeeId;
+    return own !== null && own === employeeId ? OWN_PLAN_MESSAGE : null;
+  }
+
+  private refuseOwnPlan(employeeId: number): void {
+    const refusal = this.ownPlanRefusal(employeeId);
+    if (refusal !== null) {
+      this.conflict(refusal);
     }
   }
 
@@ -302,6 +330,22 @@ export class ScorecardMockService implements ScorecardDataService {
     const period = this.periodOf(record);
     if (!allowed.includes(period.status)) {
       this.conflict(`Period "${period.name}" is ${period.status}; ${what}.`);
+    }
+    return period;
+  }
+
+  /**
+   * The employee's work (results and submit, or evidence) needs an Active period, or a Completed
+   * one for a Returned scorecard (409 with the API's text otherwise).
+   */
+  private employeeWorkGate(
+    record: ScorecardRecord,
+    work: 'results' | 'evidence',
+  ): EvaluationPeriod {
+    const period = this.periodOf(record);
+    const refusal = employeeWorkRefusal(period, record.status, work);
+    if (refusal !== null) {
+      this.conflict(refusal);
     }
     return period;
   }
@@ -329,6 +373,14 @@ export class ScorecardMockService implements ScorecardDataService {
 
   private log(message: string): void {
     this.activity.record('performance', message);
+  }
+
+  /**
+   * Every review decision (approve, return, reject, the HR final review) reads the same, as in the
+   * API: anyone with `activity:View` reads the feed, so it never tells which decision, nor the score.
+   */
+  private logReviewed(record: ScorecardRecord, period: EvaluationPeriod): void {
+    this.log(`Scorecard of ${this.codeOf(record)} for "${period.name}" was reviewed`);
   }
 
   private activeBands(): { minScore: number; label: string }[] {
@@ -377,19 +429,31 @@ export class ScorecardMockService implements ScorecardDataService {
     };
   }
 
+  /**
+   * The scorecard as the caller may read it: every read and write answer goes through here, so the
+   * review visibility rule (`ReviewVisibility` in the API) narrows each one for the scorecard's own
+   * employee. Hidden fields are null.
+   */
   private detail(record: ScorecardRecord): ScorecardDetail {
     const period = this.periods.findById(record.periodId);
+    const sees = reviewVisibility(record.status, record.employeeId, this.actor().employeeId);
     return {
       ...this.summary(record),
       reviewedOn: record.reviewedOn,
       periodStatus: period?.status ?? 'Closed',
       requiresHrReview: period?.requiresHrReview ?? false,
       employeeComment: record.employeeComment,
-      managerRating: record.managerRating,
-      managerComment: record.managerComment,
-      hrComment: record.hrComment,
-      items: [...record.items].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id),
-      history: [...record.history],
+      managerRating: sees.managerReview ? record.managerRating : null,
+      managerComment: sees.managerReview ? record.managerComment : null,
+      hrComment: sees.hrComment ? record.hrComment : null,
+      items: [...record.items]
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+        .map((item) =>
+          sees.managerReview ? item : { ...item, managerRating: null, managerComment: null },
+        ),
+      history: record.history.map((entry) =>
+        showsHistoryComment(sees, entry.action) ? { ...entry } : { ...entry, comment: null },
+      ),
     };
   }
 
@@ -463,6 +527,11 @@ export class ScorecardMockService implements ScorecardDataService {
       const waiting = this.store().filter((r) => {
         if (r.employeeId === actor.employeeId) {
           return false; // never the caller's own scorecard
+        }
+        // Only periods that still allow a review step (Active or Completed).
+        const period = this.periods.findById(r.periodId);
+        if (!period || !periodAllowsReview(period.status)) {
+          return false;
         }
         if (MANAGER_STAGE.includes(r.status)) {
           return actor.hr || r.reviewerEmployeeId === actor.employeeId;
@@ -673,6 +742,7 @@ export class ScorecardMockService implements ScorecardDataService {
           employeeId: 'Choose an employee.',
         });
       }
+      this.refuseOwnPlan(employee.id);
       const problem = this.ineligible(employee, period);
       if (problem === 'left') {
         this.validation(
@@ -837,6 +907,11 @@ export class ScorecardMockService implements ScorecardDataService {
         }
         const skip = (reason: string) =>
           skipped.push({ employeeId: id, employeeCode: employee.employeeCode, reason });
+        const own = this.ownPlanRefusal(employee.id);
+        if (own !== null) {
+          skip(own);
+          continue;
+        }
         const problem = this.ineligible(employee, period);
         if (problem === 'left') {
           skip('Has left the company.');
@@ -966,6 +1041,7 @@ export class ScorecardMockService implements ScorecardDataService {
         this.validation('Please correct the highlighted fields.', errors);
       }
       this.checkVersion(item.rowVersion, changes.rowVersion);
+      this.refuseOwnPlan(record.employeeId);
       if (record.status !== 'Planning') {
         this.statusRefusal(record, 'its KPIs can only be changed while it is in Planning');
       }
@@ -1006,6 +1082,7 @@ export class ScorecardMockService implements ScorecardDataService {
     return this.respond(() => {
       const { record, item } = this.locateItem(itemId);
       this.checkVersion(item.rowVersion, rowVersion);
+      this.refuseOwnPlan(record.employeeId);
       if (record.status !== 'Planning') {
         this.statusRefusal(record, 'its KPIs can only be changed while it is in Planning');
       }
@@ -1019,7 +1096,7 @@ export class ScorecardMockService implements ScorecardDataService {
   deleteScorecard(id: number, rowVersion: string): Observable<void> {
     return this.respond(() => {
       const record = this.findRecord(id);
-      this.checkVersion(record.rowVersion, rowVersion);
+      this.checkVersion(record.rowVersion, rowVersion, () => this.refuseOwnPlan(record.employeeId));
       if (record.status !== 'Planning') {
         this.statusRefusal(record, 'it can only be deleted while it is in Planning');
       }
@@ -1036,7 +1113,7 @@ export class ScorecardMockService implements ScorecardDataService {
   finalizePlan(id: number, rowVersion: string): Observable<ScorecardDetail> {
     return this.respond(() => {
       const record = this.findRecord(id);
-      this.checkVersion(record.rowVersion, rowVersion);
+      this.checkVersion(record.rowVersion, rowVersion, () => this.refuseOwnPlan(record.employeeId));
       if (record.status !== 'Planning') {
         this.statusRefusal(record, 'its plan can only be finalized while it is in Planning');
       }
@@ -1128,11 +1205,7 @@ export class ScorecardMockService implements ScorecardDataService {
       if (record.status !== 'Draft' && record.status !== 'Returned') {
         this.statusRefusal(record, 'results can only be entered while it is Draft or Returned');
       }
-      const period = this.periodGate(
-        record,
-        ['Active'],
-        'results can only be entered and submitted while the period is Active',
-      );
+      const period = this.employeeWorkGate(record, 'results');
       this.checkRequestItems(record, request.items, 'results');
       const errors: Record<string, string> = {};
       request.items.forEach((entry: ResultItemInput, i) => {
@@ -1222,11 +1295,7 @@ export class ScorecardMockService implements ScorecardDataService {
       if (record.status !== 'Draft' && record.status !== 'Returned') {
         this.statusRefusal(record, 'only a Draft or Returned scorecard can be submitted');
       }
-      const period = this.periodGate(
-        record,
-        ['Active'],
-        'results can only be entered and submitted while the period is Active',
-      );
+      const period = this.employeeWorkGate(record, 'results');
       const { overall, items } = this.scoreOf(record);
       const again = record.status === 'Returned';
       const target: ScorecardStatus = again ? 'Resubmitted' : 'Submitted';
@@ -1251,9 +1320,8 @@ export class ScorecardMockService implements ScorecardDataService {
         rowVersion: nextRowVersion(record.rowVersion),
       };
       this.replace(saved);
-      this.log(
-        `Scorecard of ${this.codeOf(record)} for "${period.name}" ${again ? 'resubmitted' : 'submitted'}`,
-      );
+      // A resubmission reads like the first one: it would reveal an earlier return.
+      this.log(`Scorecard of ${this.codeOf(record)} for "${period.name}" submitted`);
       return this.detail(saved);
     });
   }
@@ -1432,9 +1500,7 @@ export class ScorecardMockService implements ScorecardDataService {
         rowVersion: nextRowVersion(record.rowVersion),
       };
       this.replace(saved);
-      this.log(
-        `Scorecard of ${this.codeOf(record)} for "${period.name}" approved${target === 'Finalized' ? ' and finalized' : ', waiting for the HR review'}`,
-      );
+      this.logReviewed(record, period);
       return this.detail(saved);
     });
   }
@@ -1483,6 +1549,9 @@ export class ScorecardMockService implements ScorecardDataService {
         reason,
         record.overallScore,
       );
+      // Return clears the score and, as the API does, the review draft (overall and per-KPI ratings
+      // and comments, and the HR comment): it was never a decision and the reviewer starts again on
+      // the resubmitted results. The reason lives in the history entry.
       const saved: ScorecardRecord =
         action === 'Return'
           ? {
@@ -1491,6 +1560,14 @@ export class ScorecardMockService implements ScorecardDataService {
               overallScore: null,
               ratingLabel: null,
               reviewedOn: null,
+              managerRating: null,
+              managerComment: null,
+              hrComment: null,
+              items: record.items.map((item) => ({
+                ...item,
+                managerRating: null,
+                managerComment: null,
+              })),
               history: [...record.history, entry],
               rowVersion: nextRowVersion(record.rowVersion),
             }
@@ -1501,11 +1578,7 @@ export class ScorecardMockService implements ScorecardDataService {
               rowVersion: nextRowVersion(record.rowVersion),
             };
       this.replace(saved);
-      this.log(
-        action === 'Return'
-          ? `Scorecard of ${this.codeOf(record)} for "${period.name}" returned to the employee`
-          : `Scorecard of ${this.codeOf(record)} for "${period.name}" rejected`,
-      );
+      this.logReviewed(record, period);
       return this.detail(saved);
     });
   }
@@ -1542,7 +1615,7 @@ export class ScorecardMockService implements ScorecardDataService {
         rowVersion: nextRowVersion(record.rowVersion),
       };
       this.replace(saved);
-      this.log(`Scorecard of ${this.codeOf(record)} for "${period.name}" finalized by HR`);
+      this.logReviewed(record, period);
       return this.detail(saved);
     });
   }
@@ -1563,11 +1636,7 @@ export class ScorecardMockService implements ScorecardDataService {
         'evidence can only be added or removed while it is Draft or Returned',
       );
     }
-    return this.periodGate(
-      record,
-      ['Active'],
-      'evidence can only be added or removed while the period is Active',
-    );
+    return this.employeeWorkGate(record, 'evidence');
   }
 
   uploadEvidence(itemId: number, rowVersion: string, file: File): Observable<EvidenceUploadResult> {

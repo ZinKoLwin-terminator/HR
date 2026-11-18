@@ -107,7 +107,7 @@ export function buildEvaluationPeriodsConfig(
         {
           title: 'Complete this period?',
           message: (p) =>
-            `"${p.name}" becomes Completed: results can no longer be entered or submitted and no KPIs can be assigned. Reviews can still be finished. It cannot be edited any more.`,
+            `"${p.name}" becomes Completed: results can no longer be entered or submitted (except on a scorecard a reviewer returns) and no KPIs can be assigned. Reviews can still be finished. It cannot be edited any more.`,
           confirmText: 'Complete',
         },
         'completed',
@@ -120,7 +120,7 @@ export function buildEvaluationPeriodsConfig(
         {
           title: 'Close this period?',
           message: (p) =>
-            `"${p.name}" becomes final: nothing in it can be changed or reviewed afterwards. This cannot be undone.`,
+            `"${p.name}" becomes final: nothing in it can be changed or reviewed afterwards. Every scorecard still in review or returned to the employee must be finished first. This cannot be undone.`,
           confirmText: 'Close period',
         },
         'closed',

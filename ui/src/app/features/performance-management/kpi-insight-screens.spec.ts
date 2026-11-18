@@ -97,6 +97,8 @@ const MANAGER_DASHBOARD: KpiManagerDashboard = {
       ratingLabel: 'Exceeds Expectations',
     },
   ],
+  employeeCount: 2,
+  employeesTruncated: true,
 };
 
 const HR_DASHBOARD: KpiHrDashboard = {
@@ -260,6 +262,20 @@ describe('KPI dashboard: views per role', () => {
     expect(insights.hrDashboard).not.toHaveBeenCalled();
     expect(el.textContent).toContain('Pending reviews');
     expect(el.textContent).toContain('EMP046');
+    // The server capped the list (1 of 2 here): the screen says so and points to the reports.
+    const note = el.querySelector('[data-testid="team-truncated"]');
+    expect(note?.textContent).toContain('Showing the first 1 of 2 team scorecards');
+    expect(note?.querySelector('a')?.getAttribute('href')).toBe('/performance/reports');
+  });
+
+  it('says nothing about a cap when the team list is complete', async () => {
+    configure(MANAGER);
+    insights.managerDashboard.mockReturnValue(
+      of({ ...MANAGER_DASHBOARD, teamSize: 1, employeeCount: 1, employeesTruncated: false }),
+    );
+    const { el } = await render(KpiDashboardComponent);
+    expect(el.textContent).toContain('EMP046');
+    expect(el.querySelector('[data-testid="team-truncated"]')).toBeNull();
   });
 
   it('gives HR three tabs, the HR overview first, with the threshold the server used', async () => {

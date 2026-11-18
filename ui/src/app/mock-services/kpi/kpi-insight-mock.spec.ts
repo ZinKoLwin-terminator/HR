@@ -9,6 +9,7 @@ import {
   ExcelModuleCatalogDataService,
 } from '../../core/services/data/excel-data.services';
 import {
+  EvaluationPeriodDataService,
   KpiInsightDataService,
   ScorecardDataService,
 } from '../../core/services/data/kpi-data.services';
@@ -16,6 +17,7 @@ import { MOCK_EVALUATION_PERIODS } from '../../mock-data/kpi/evaluation-periods.
 import { addDays } from '../../shared/utilities/date.util';
 import { EmployeeMockService } from '../employees/employee-mock.service';
 import { KpiInsightMockService } from './kpi-insight-mock.service';
+import { ScorecardMockService } from './scorecard-mock.service';
 import {
   EMPLOYEE_46,
   EMPLOYEE_56,
@@ -33,6 +35,7 @@ import {
 // EMP046, EMP017, EMP014, EMP019 and EMP023. Numbers below are counted by hand from that list.
 
 const NO_EMPLOYEE: CurrentUser = { ...EMPLOYEE_46, id: 45, employeeId: null };
+const EMPLOYEE_14: CurrentUser = { ...EMPLOYEE_46, id: 44, employeeId: 14, displayName: 'EMP014' };
 const request = (
   filters: Partial<KpiReportFilter> = {},
   extra: Partial<PageRequest<KpiReportFilter>> = {},
@@ -118,9 +121,42 @@ describe('KpiInsightMockService', () => {
       expect(d.pendingReviews).toBe(1); // EMP046, naming him reviewer
       expect(d.approvedOrFinalized).toBe(0);
       expect(d.employees.map((e) => e.employeeCode)).not.toContain('EMP056');
-      // Highest score first, unscored last.
-      expect(d.employees[0].employeeCode).toBe('EMP046');
-      expect(d.employees.slice(1).every((e) => e.overallScore === null)).toBe(true);
+      // By employee code, as the API lists them; all of them, so not truncated.
+      expect(d.employees.map((e) => e.employeeCode)).toEqual([
+        'EMP014',
+        'EMP017',
+        'EMP019',
+        'EMP046',
+      ]);
+      expect(d.employeeCount).toBe(4);
+      expect(d.employeesTruncated).toBe(false);
+    });
+
+    it('lists at most 200 employees by code, and counts them all (the API cap)', async () => {
+      as(MANAGER);
+      const scorecards = TestBed.inject(ScorecardMockService);
+      const { actor } = scorecards.scopeNow();
+      const seed = scorecards.records().find((r) => r.periodId === 2)!;
+      // 205 fictional scorecards naming the manager as reviewer, in reverse code order.
+      const many = Array.from({ length: 205 }, (_, i) => ({
+        ...seed,
+        id: 5000 - i,
+        employeeId: 1204 - i,
+        reviewerEmployeeId: actor.employeeId,
+      }));
+      vi.spyOn(scorecards, 'scopeNow').mockReturnValue({ actor, visible: many });
+
+      const d = await wait(insights.managerDashboard(2));
+      expect(d.teamSize).toBe(205);
+      expect(d.employeeCount).toBe(205);
+      expect(d.employeesTruncated).toBe(true);
+      expect(d.employees).toHaveLength(200);
+      const codes = d.employees.map((e) => e.employeeCode);
+      expect(codes[0]).toBe('#1000'); // no such employee: the code falls back to the id
+      expect(codes.at(-1)).toBe('#1199');
+      expect([...codes].sort()).toEqual(codes);
+      // The figures still cover every scorecard, not only the listed ones.
+      expect(d.byStatus.reduce((sum, s) => sum + s.count, 0)).toBe(205);
     });
 
     it('gives the team average of the Finalized scorecards of the chosen period', async () => {
@@ -165,6 +201,40 @@ describe('KpiInsightMockService', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it('shows the manager’s feedback only once the scorecard is final, never a draft', async () => {
+      // EMP046's period-2 scorecard (1) is Submitted; Daniel Carter saves review notes on it.
+      as(MANAGER);
+      const cards = TestBed.inject(ScorecardDataService);
+      const card = await wait(cards.getById(1));
+      await wait(
+        cards.saveReview(1, {
+          rowVersion: card.rowVersion,
+          managerRating: 3,
+          managerComment: 'Fictional draft feedback',
+          items: [],
+        }),
+      );
+      as(EMPLOYEE_46);
+      const draft = await wait(insights.employeeDashboard(2));
+      expect(draft.feedback).toEqual({ managerRating: null, managerComment: null });
+      // Period 1 is Finalized: the stored feedback shows.
+      expect((await wait(insights.employeeDashboard(1))).feedback?.managerRating).toBe(4);
+    });
+
+    it('keeps a Returned scorecard pending while the period is Completed, not a Draft one (M1)', async () => {
+      // EMP014's seeded scorecard of period 2 is Returned; EMP056's is Draft.
+      as(HR_ADMIN);
+      await wait(TestBed.inject(EvaluationPeriodDataService).complete(2));
+      as(EMPLOYEE_14);
+      const returned = await wait(insights.employeeDashboard(2));
+      expect(returned.scorecard?.status).toBe('Returned');
+      expect(returned.pending.isPending).toBe(true);
+      as(EMPLOYEE_56);
+      const draft = await wait(insights.employeeDashboard(2));
+      expect(draft.scorecard?.status).toBe('Draft');
+      expect(draft.pending).toMatchObject({ isPending: false, isOverdue: false });
     });
 
     it('is empty for an account without an employee', async () => {

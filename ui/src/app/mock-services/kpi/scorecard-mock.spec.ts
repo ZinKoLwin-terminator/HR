@@ -7,6 +7,7 @@ import {
   ScorecardDataService,
 } from '../../core/services/data/kpi-data.services';
 import { ActivityMockService } from '../activity/activity-mock.service';
+import { EvaluationPeriodMockService } from './kpi-setup-mock.services';
 import {
   EMPLOYEE_23,
   EMPLOYEE_46,
@@ -54,6 +55,38 @@ describe('KPI mock: scorecards', () => {
         endDate: '2032-12-31',
         submissionDueDate: null,
         requiresHrReview: true,
+        status: 'Draft',
+      }),
+    );
+    await wait(periods.activate(created.id));
+    return created.id;
+  }
+
+  /**
+   * Makes the mock read the period as Closed without the close command (which waits for every
+   * review, M2), the way direct database work could leave it.
+   */
+  function closeInStore(periodId: number): void {
+    const service = TestBed.inject(EvaluationPeriodMockService);
+    const real = service.findById.bind(service);
+    vi.spyOn(service, 'findById').mockImplementation((id) => {
+      const found = real(id);
+      return found && id === periodId ? { ...found, status: 'Closed' } : found;
+    });
+  }
+
+  /** Creates an Active yearly period without HR review, holding no scorecard yet. */
+  async function plainPeriod(): Promise<number> {
+    session.as(HR_ADMIN);
+    const created = await wait(
+      periods.create({
+        companyId: 1,
+        name: 'Test plain year',
+        periodType: 'Yearly',
+        startDate: '2033-01-01',
+        endDate: '2033-12-31',
+        submissionDueDate: null,
+        requiresHrReview: false,
         status: 'Draft',
       }),
     );
@@ -384,6 +417,64 @@ describe('KPI mock: scorecards', () => {
   });
 
   describe('plan', () => {
+    /** General plan (no department-only template), 100% in all. */
+    const GENERAL_ITEMS = [
+      { templateId: 1, weight: 40 },
+      { templateId: 5, weight: 25 },
+      { templateId: 7, weight: 20 },
+      { templateId: 6, weight: 15 },
+    ];
+
+    it('lets nobody plan their own scorecard; bulk assign skips the caller (separation of duties)', async () => {
+      const periodId = await plainPeriod();
+      const OWN = 'You cannot plan your own scorecard.';
+      // Su Myat Noe (HR_ADMIN) is EMP002.
+      session.as(HR_ADMIN);
+      const assign = await failure(
+        wait(cards.assign({ employeeId: 2, periodId, items: GENERAL_ITEMS })),
+      );
+      expect(assign).toMatchObject({ code: 'Conflict', message: OWN });
+
+      // Another HR person plans it; Su Myat Noe may still not change, remove, delete or finalize it.
+      session.as(HR_OFFICER);
+      const { scorecard } = await wait(
+        cards.assign({ employeeId: 2, periodId, items: GENERAL_ITEMS }),
+      );
+      const item = scorecard.items[0];
+      session.as(HR_ADMIN);
+      for (const attempt of [
+        cards.updateItem(item.id, {
+          rowVersion: item.rowVersion,
+          target: item.target,
+          weight: item.weight,
+          startDate: item.startDate,
+          endDate: item.endDate,
+        }),
+        cards.deleteItem(item.id, item.rowVersion),
+        cards.deleteScorecard(scorecard.id, scorecard.rowVersion),
+        cards.finalizePlan(scorecard.id, scorecard.rowVersion),
+      ]) {
+        expect(await failure(wait(attempt as never))).toMatchObject({
+          code: 'Conflict',
+          message: OWN,
+        });
+      }
+      expect((await wait(cards.getById(scorecard.id))).status).toBe('Planning');
+
+      // Bulk: the caller is skipped with the same reason, the others are assigned.
+      const bulk = await wait(
+        cards.bulkAssign({ periodId, employeeIds: [2, 23], items: [{ templateId: 3 }] }),
+      );
+      expect(bulk.skipped).toEqual([{ employeeId: 2, employeeCode: 'EMP002', reason: OWN }]);
+      expect(bulk.assigned.map((a) => a.employeeId)).toEqual([23]);
+
+      // HR_OFFICER finalizes it: allowed, it is not her own.
+      session.as(HR_OFFICER);
+      expect((await wait(cards.finalizePlan(scorecard.id, scorecard.rowVersion))).status).toBe(
+        'Draft',
+      );
+    });
+
     it('finalizes a plan at exactly 100% and sets the reviewer to the current manager', async () => {
       const { scorecard } = await assign(23);
       const draft = await wait(cards.finalizePlan(scorecard.id, scorecard.rowVersion));
@@ -674,6 +765,82 @@ describe('KPI mock: scorecards', () => {
         'evidence can only be added or removed while the period is Active',
       );
     });
+
+    it('lets a Returned scorecard be corrected, given evidence and resubmitted while the period is Completed (M1)', async () => {
+      const periodId = await plainPeriod();
+      const submitted = await submittedCard(periodId);
+      session.as(MANAGER);
+      const noted = await wait(
+        cards.saveReview(submitted.id, {
+          rowVersion: submitted.rowVersion,
+          managerRating: 3,
+          managerComment: 'Fictional draft note',
+          items: [{ id: submitted.items[0].id, managerRating: 3, managerComment: 'Item note' }],
+        }),
+      );
+      session.as(HR_ADMIN);
+      await wait(periods.complete(periodId));
+
+      // A reviewer may return it while the period is Completed; the review draft goes with the score.
+      session.as(MANAGER);
+      const returned = await wait(
+        cards.returnForRevision(noted.id, {
+          rowVersion: noted.rowVersion,
+          comment: 'Fictional reason',
+        }),
+      );
+      expect(returned).toMatchObject({
+        status: 'Returned',
+        overallScore: null,
+        managerRating: null,
+        managerComment: null,
+        hrComment: null,
+      });
+      expect(
+        returned.items.every((i) => i.managerRating === null && i.managerComment === null),
+      ).toBe(true);
+
+      // The employee corrects it, adds evidence and resubmits, all while the period is Completed.
+      session.as(EMPLOYEE_23);
+      const edited = await wait(
+        cards.saveResults(returned.id, {
+          rowVersion: returned.rowVersion,
+          items: [{ id: returned.items[1].id, actualValue: 100 }],
+        }),
+      );
+      const uploaded = await wait(
+        cards.uploadEvidence(edited.items[0].id, edited.rowVersion, pdfFile()),
+      );
+      const resubmitted = await wait(cards.submit(edited.id, uploaded.scorecardRowVersion));
+      expect(resubmitted.status).toBe('Resubmitted');
+      expect(resubmitted.history.at(-1)).toMatchObject({ step: 'Employee', action: 'Resubmit' });
+    });
+
+    it('refuses a Returned scorecard once the period is Closed, with the API text', async () => {
+      const periodId = await plainPeriod();
+      const submitted = await submittedCard(periodId);
+      session.as(MANAGER);
+      const returned = await wait(
+        cards.returnForRevision(submitted.id, {
+          rowVersion: submitted.rowVersion,
+          comment: 'Fictional reason',
+        }),
+      );
+      // Closing waits for it (M2), so close the period in the store the way a database change would.
+      closeInStore(periodId);
+      session.as(EMPLOYEE_23);
+      const refused = await failure(wait(cards.submit(returned.id, returned.rowVersion)));
+      expect(refused.code).toBe('Conflict');
+      expect(refused.message).toBe(
+        'Period "Test plain year" is Closed; a returned scorecard can only be changed and resubmitted while the period is Active or Completed.',
+      );
+      const evidence = await failure(
+        wait(cards.uploadEvidence(returned.items[0].id, returned.rowVersion, pdfFile())),
+      );
+      expect(evidence.message).toBe(
+        'Period "Test plain year" is Closed; evidence of a returned scorecard can only be added or removed while the period is Active or Completed.',
+      );
+    });
   });
 
   describe('review', () => {
@@ -709,6 +876,94 @@ describe('KPI mock: scorecards', () => {
       session.as(EMPLOYEE_23);
       const own = await wait(cards.getById(approved.id));
       expect(own.managerComment).toBe('Fictional feedback');
+    });
+
+    it('shows the employee the review only once it is final (review visibility, as the API)', async () => {
+      const periodId = await hrReviewPeriod();
+      const submitted = await submittedCard(periodId);
+      session.as(MANAGER);
+      const noted = await wait(
+        cards.saveReview(submitted.id, {
+          rowVersion: submitted.rowVersion,
+          managerRating: 4,
+          managerComment: 'Fictional draft',
+          items: [{ id: submitted.items[0].id, managerRating: 4.5, managerComment: 'Item note' }],
+        }),
+      );
+      const hidden = { managerRating: null, managerComment: null, hrComment: null };
+
+      // A draft review is the reviewer's: the employee reads nulls, everyone else the notes.
+      session.as(EMPLOYEE_23);
+      let own = await wait(cards.getById(noted.id));
+      expect(own).toMatchObject(hidden);
+      expect(own.items[0]).toMatchObject({ managerRating: null, managerComment: null });
+      session.as(HR_OFFICER);
+      expect((await wait(cards.getById(noted.id))).managerComment).toBe('Fictional draft');
+
+      // Approved: HR can still return it, so it stays hidden, the Approve comment too.
+      session.as(MANAGER);
+      const approved = await wait(
+        cards.approve(noted.id, { rowVersion: noted.rowVersion, comment: 'Approval note' }),
+      );
+      expect(approved.managerRating).toBe(4); // the reviewer's own answer
+      session.as(EMPLOYEE_23);
+      own = await wait(cards.getById(approved.id));
+      expect(own).toMatchObject({ status: 'Approved', ...hidden });
+      expect(own.history.find((h) => h.action === 'Approve')?.comment).toBeNull();
+
+      // Finalized: the employee reads all of it, the HR comment included.
+      session.as(HR_ADMIN);
+      await wait(
+        cards.finalize(approved.id, { rowVersion: approved.rowVersion, comment: 'HR note' }),
+      );
+      session.as(EMPLOYEE_23);
+      own = await wait(cards.getById(approved.id));
+      expect(own).toMatchObject({
+        status: 'Finalized',
+        managerRating: 4,
+        managerComment: 'Fictional draft',
+        hrComment: 'HR note',
+      });
+      expect(own.items[0]).toMatchObject({ managerRating: 4.5, managerComment: 'Item note' });
+      expect(own.history.find((h) => h.action === 'Approve')?.comment).toBe('Approval note');
+      expect(own.history.find((h) => h.action === 'Finalize')?.comment).toBe('HR note');
+    });
+
+    it('shows the employee a Return reason at once, and a Rejected review but no HR comment', async () => {
+      const submitted = await submittedCard();
+      session.as(MANAGER);
+      const returned = await wait(
+        cards.returnForRevision(submitted.id, {
+          rowVersion: submitted.rowVersion,
+          comment: 'Fictional reason',
+        }),
+      );
+      session.as(EMPLOYEE_23);
+      const own = await wait(cards.getById(returned.id));
+      expect(own.history.at(-1)).toMatchObject({ action: 'Return', comment: 'Fictional reason' });
+
+      const resubmitted = await wait(cards.submit(own.id, own.rowVersion));
+      session.as(MANAGER);
+      const noted = await wait(
+        cards.saveReview(resubmitted.id, {
+          rowVersion: resubmitted.rowVersion,
+          managerRating: 2,
+          managerComment: 'Fictional feedback',
+          items: [],
+        }),
+      );
+      await wait(
+        cards.reject(noted.id, { rowVersion: noted.rowVersion, comment: 'Fictional rejection' }),
+      );
+      session.as(EMPLOYEE_23);
+      const rejected = await wait(cards.getById(noted.id));
+      expect(rejected).toMatchObject({
+        status: 'Rejected',
+        managerRating: 2,
+        managerComment: 'Fictional feedback',
+        hrComment: null,
+      });
+      expect(rejected.history.at(-1)?.comment).toBe('Fictional rejection');
     });
 
     it('validates ratings and comments of a review draft', async () => {
@@ -911,16 +1166,34 @@ describe('KPI mock: scorecards', () => {
       expect(detail.history.filter((h) => h.action === 'Approve')).toHaveLength(1);
     });
 
-    it('reviews a Completed period but not a Closed one', async () => {
-      const submitted = await submittedCard();
-      await wait(periods.complete(ACTIVE_PERIOD));
+    it('reviews a Completed period, which closes only once the review is finished (M2)', async () => {
+      const periodId = await plainPeriod();
+      const submitted = await submittedCard(periodId);
+      session.as(HR_ADMIN);
+      await wait(periods.complete(periodId));
       session.as(MANAGER);
       const started = await wait(cards.startReview(submitted.id, submitted.rowVersion));
       expect(started.status).toBe('Under Review');
-      await wait(periods.close(ACTIVE_PERIOD));
-      const closed = await failure(
-        wait(cards.approve(started.id, { rowVersion: started.rowVersion })),
+
+      session.as(HR_ADMIN);
+      const blocked = await failure(wait(periods.close(periodId)));
+      expect(blocked.code).toBe('Conflict');
+      expect(blocked.message).toBe(
+        'Period "Test plain year" still has 1 scorecard(s) in review or returned to the employee. Finish them before closing.',
       );
+
+      session.as(MANAGER);
+      const approved = await wait(cards.approve(started.id, { rowVersion: started.rowVersion }));
+      expect(approved.status).toBe('Finalized');
+      session.as(HR_ADMIN);
+      expect((await wait(periods.close(periodId))).status).toBe('Closed');
+    });
+
+    it('refuses a review step in a Closed period', async () => {
+      // Seeded period 1 is Closed; card 8 (EMP046) is Finalized there. The period is checked first.
+      session.as(HR_ADMIN);
+      const card = await wait(cards.getById(8));
+      const closed = await failure(wait(cards.approve(card.id, { rowVersion: card.rowVersion })));
       expect(closed.code).toBe('Conflict');
       expect(closed.message).toContain(
         'a scorecard can only be reviewed while its period is Active or Completed',
@@ -940,9 +1213,40 @@ describe('KPI mock: scorecards', () => {
         .snapshot(50)
         .filter((a) => a.category === 'performance')
         .map((a) => a.message);
-      expect(lines.some((l) => l.includes('EMP023') && l.includes('submitted'))).toBe(true);
-      expect(lines.some((l) => l.includes('returned to the employee'))).toBe(true);
+      const period = (await wait(periods.getById(ACTIVE_PERIOD))).name;
+      expect(lines).toContain(`Scorecard of EMP023 for "${period}" submitted`);
+      // A decision never tells which one it was (the API's wording).
+      expect(lines[0]).toBe(`Scorecard of EMP023 for "${period}" was reviewed`);
+      expect(lines.some((l) => /returned|rejected|approved|resubmitted/.test(l))).toBe(false);
       expect(lines.some((l) => l.includes('Secret reason'))).toBe(false);
+    });
+
+    it('logs approve, reject, the HR final review and a resubmission without telling them apart', async () => {
+      const periodId = await hrReviewPeriod();
+      const first = await submittedCard(periodId);
+      session.as(MANAGER);
+      const returned = await wait(
+        cards.returnForRevision(first.id, { rowVersion: first.rowVersion, comment: 'Fictional' }),
+      );
+      session.as(EMPLOYEE_23);
+      const again = await wait(cards.submit(returned.id, returned.rowVersion));
+      session.as(MANAGER);
+      const approved = await wait(cards.approve(again.id, { rowVersion: again.rowVersion }));
+      session.as(HR_ADMIN);
+      await wait(cards.finalize(approved.id, { rowVersion: approved.rowVersion }));
+      const lines = TestBed.inject(ActivityMockService)
+        .snapshot(50)
+        .filter((a) => a.category === 'performance')
+        .map((a) => a.message);
+      const subject = `Scorecard of EMP023 for "Test HR-review year"`;
+      // Newest first: finalize, approve, resubmit, return, submit.
+      expect(lines.slice(0, 5)).toEqual([
+        `${subject} was reviewed`,
+        `${subject} was reviewed`,
+        `${subject} submitted`,
+        `${subject} was reviewed`,
+        `${subject} submitted`,
+      ]);
     });
   });
 
@@ -989,6 +1293,17 @@ describe('KPI mock: scorecards', () => {
 
       session.as(EMPLOYEE_46);
       expect((await wait(cards.pendingReviews(PAGE))).total).toBe(0);
+    });
+
+    it('queues only scorecards whose period still allows a review: Active or Completed (M2)', async () => {
+      session.as(HR_ADMIN);
+      const before = await wait(cards.pendingReviews(PAGE));
+      expect(before.items.some((c) => c.periodId === ACTIVE_PERIOD)).toBe(true);
+      await wait(periods.complete(ACTIVE_PERIOD));
+      expect((await wait(cards.pendingReviews(PAGE))).total).toBe(before.total);
+      closeInStore(ACTIVE_PERIOD);
+      const after = await wait(cards.pendingReviews(PAGE));
+      expect(after.items.filter((c) => c.periodId === ACTIVE_PERIOD)).toEqual([]);
     });
 
     it('searches, filters and sorts', async () => {

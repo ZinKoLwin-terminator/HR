@@ -365,6 +365,45 @@ describe('KPI HTTP adapters', () => {
       expect(error.message).toContain('only a Completed period can be closed');
     });
 
+    it('passes the server’s own 409 texts through unchanged (busy lock, close refused)', async () => {
+      const http = setup();
+      const periods = TestBed.inject(EvaluationPeriodDataService);
+      const busy =
+        'Another change to the evaluation periods of this company is in progress. Try again.';
+      const create = rejection(
+        firstValueFrom(
+          periods.create({
+            companyId: 1,
+            name: '2027 Q1',
+            periodType: 'Quarterly',
+            startDate: '2027-01-01',
+            endDate: '2027-03-31',
+            submissionDueDate: null,
+            requiresHrReview: false,
+            status: 'Draft',
+          }),
+        ),
+      );
+      http
+        .expectOne(`${KPI}/periods`)
+        .flush(
+          { title: 'Conflict', status: 409, detail: busy, code: 'Conflict' },
+          { status: 409, statusText: 'Conflict' },
+        );
+      expect(await create).toMatchObject({ code: 'Conflict', message: busy });
+
+      const blocked =
+        'Period "2027 Q1" still has 3 scorecard(s) in review or returned to the employee. Finish them before closing.';
+      const close = rejection(firstValueFrom(periods.close(7, 'p1')));
+      http
+        .expectOne(`${KPI}/periods/7/close`)
+        .flush(
+          { title: 'Conflict', status: 409, detail: blocked, code: 'Conflict' },
+          { status: 409, statusText: 'Conflict' },
+        );
+      expect(await close).toMatchObject({ code: 'Conflict', message: blocked });
+    });
+
     it('deletes with the row version in the body', async () => {
       const http = setup();
       const promise = firstValueFrom(TestBed.inject(EvaluationPeriodDataService).delete(7));
@@ -445,6 +484,27 @@ describe('KPI HTTP adapters', () => {
       const result = await added;
       expect(result.created).toBe(false);
       expect(result.scorecard.id).toBe(5);
+    });
+
+    it('passes the busy KPI plan lock 409 through with the server’s text', async () => {
+      const http = setup();
+      const busy = 'Another change to KPI plans is in progress. Try again.';
+      const promise = rejection(
+        firstValueFrom(
+          TestBed.inject(ScorecardDataService).assign({
+            employeeId: 46,
+            periodId: 2,
+            items: [{ templateId: 1 }],
+          }),
+        ),
+      );
+      http
+        .expectOne(`${KPI}/assignments`)
+        .flush(
+          { title: 'Conflict', status: 409, detail: busy, code: 'Conflict' },
+          { status: 409, statusText: 'Conflict' },
+        );
+      expect(await promise).toMatchObject({ code: 'Conflict', message: busy });
     });
 
     it('bulk assigns and returns the assigned and skipped lists', async () => {

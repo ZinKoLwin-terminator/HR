@@ -133,6 +133,15 @@ describe('scorecard rules: the employee works on their own scorecard only', () =
     expect(canWorkOnScorecard(card('Draft'), { ...OWNER, employeeId: null })).toBe(false);
   });
 
+  it('lets the owner correct a Returned scorecard while the period is Completed, not Closed (M1)', () => {
+    expect(canWorkOnScorecard(card('Returned', 'Completed'), OWNER)).toBe(true);
+    expect(canWorkOnScorecard(card('Returned', 'Closed'), OWNER)).toBe(false);
+    expect(canWorkOnScorecard(card('Returned', 'Draft'), OWNER)).toBe(false);
+    expect(canWorkOnScorecard(card('Returned', 'Completed'), REVIEWER)).toBe(false);
+    expect(employeeNote(card('Returned', 'Completed'), OWNER)).toBeNull();
+    expect(employeeNote(card('Returned', 'Closed'), OWNER)).toContain('is Closed');
+  });
+
   it('says why the page is read-only', () => {
     expect(employeeNote(card('Draft'), OWNER)).toBeNull();
     expect(employeeNote(card('Draft'), HR)).toContain('Only they can enter results');

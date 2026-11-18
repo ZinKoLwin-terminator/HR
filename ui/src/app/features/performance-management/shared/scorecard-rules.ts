@@ -1,7 +1,6 @@
 import {
   EVIDENCE_MAX_BYTES,
   EVIDENCE_MAX_PER_KPI,
-  EvaluationPeriodStatus,
   ReviewAction,
   Scorecard,
   ScorecardDetail,
@@ -14,6 +13,10 @@ import {
   inspectEvidence,
   readFileBytes,
 } from '../../../core/utilities/kpi-evidence';
+import {
+  periodAcceptsEmployeeWork,
+  periodAllowsReview,
+} from '../../../core/utilities/kpi-period-rules';
 
 /**
  * What the employee and reviewer screens show and offer. These are UX rules only: the server
@@ -67,7 +70,10 @@ export function overallText(row: Pick<Scorecard, 'overallScore' | 'ratingLabel'>
   return row.ratingLabel ? `${score} · ${row.ratingLabel}` : score;
 }
 
-/** The employee may enter results, submit and change evidence: own, Draft or Returned, period Active. */
+/**
+ * The employee may enter results, submit and change evidence: own, Draft or Returned, and the
+ * period Active (or Completed, for a Returned scorecard).
+ */
 export function canWorkOnScorecard(
   card: Pick<ScorecardDetail, 'employeeId' | 'status' | 'periodStatus'>,
   viewer: Pick<ScorecardViewer, 'employeeId' | 'canCreate'>,
@@ -76,7 +82,7 @@ export function canWorkOnScorecard(
     viewer.canCreate &&
     isOwnScorecard(card, viewer) &&
     (card.status === 'Draft' || card.status === 'Returned') &&
-    card.periodStatus === 'Active'
+    periodAcceptsEmployeeWork(card.periodStatus, card.status)
   );
 }
 
@@ -95,7 +101,7 @@ export function employeeNote(
   switch (card.status) {
     case 'Draft':
     case 'Returned':
-      return card.periodStatus !== 'Active'
+      return !periodAcceptsEmployeeWork(card.periodStatus, card.status)
         ? `Period ${card.periodName} is ${card.periodStatus}: results can no longer be entered or submitted.`
         : 'Your role cannot enter results.';
     case 'Submitted':
@@ -113,9 +119,8 @@ export function employeeNote(
   }
 }
 
-/** Review actions need an Active or Completed period. */
-export const periodAllowsReview = (status: EvaluationPeriodStatus): boolean =>
-  status === 'Active' || status === 'Completed';
+/** Review actions need an Active or Completed period (one definition, shared with the mock). */
+export { periodAllowsReview };
 
 /** The stage a scorecard waits in: the reviewer (manager) or HR's final review. */
 export function reviewStage(status: ScorecardStatus): 'Manager' | 'HR' | null {

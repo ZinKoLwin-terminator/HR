@@ -36,7 +36,9 @@ import { sumKpiWeights } from '../../core/utilities/kpi-calculation';
 import {
   KPI_ATTENTION_LIST_LIMIT,
   KPI_HISTORY_LIMIT,
+  KPI_MANAGER_EMPLOYEE_LIMIT,
   KPI_TOP_PERFORMER_COUNT,
+  byCodeThenId,
   byScoreThenCode,
   kpiAttentionThreshold,
   kpiAverage,
@@ -46,6 +48,8 @@ import {
   kpiDefaultPeriod,
   ordinal,
 } from '../../core/utilities/kpi-figures';
+import { isSubmissionPending } from '../../core/utilities/kpi-period-rules';
+import { reviewVisibilityForOwner } from '../../core/utilities/kpi-review-visibility';
 import { ScorecardRecord } from '../../mock-data/kpi/kpi-records';
 import { todayIso } from '../../shared/utilities/date.util';
 import { compareValues, matchesSearch, paginate } from '../../shared/utilities/query.util';
@@ -400,14 +404,13 @@ export class KpiInsightMockService implements KpiInsightDataService {
           overallScore: r.overallScore,
           ratingLabel: r.ratingLabel,
         }));
-      const pending =
-        !!current &&
-        (current.status === 'Draft' || current.status === 'Returned') &&
-        period.status === 'Active';
+      // Pending: the employee can still act on it (Active, or Completed for a Returned scorecard).
+      const pending = !!current && isSubmissionPending(period.status, current.status);
       const due = period.submissionDueDate;
       if (!current) return { ...empty, pending: { ...empty.pending, dueDate: due }, history };
 
       const record = current.record;
+      const own = reviewVisibilityForOwner(record.status);
       const reviewer =
         record.reviewerEmployeeId === null
           ? undefined
@@ -442,7 +445,11 @@ export class KpiInsightMockService implements KpiInsightDataService {
           dueDate: due,
           isOverdue: pending && due !== null && todayIso() > due,
         },
-        feedback: { managerRating: record.managerRating, managerComment: record.managerComment },
+        // Always the caller's own scorecard: the manager's review shows only once it is final.
+        feedback: {
+          managerRating: own.managerReview ? record.managerRating : null,
+          managerComment: own.managerReview ? record.managerComment : null,
+        },
         history,
       };
     });
@@ -470,6 +477,8 @@ export class KpiInsightMockService implements KpiInsightDataService {
             );
       const period = this.choosePeriod(periodId, this.periodsOf(team));
       const inPeriod = period ? team.filter((r) => r.period.id === period.id) : [];
+      // At most KPI_MANAGER_EMPLOYEE_LIMIT rows, by employee code; the count covers them all.
+      const listed = [...inPeriod].sort(byCodeThenId).slice(0, KPI_MANAGER_EMPLOYEE_LIMIT);
       return {
         period: this.periodRef(period),
         teamSize: inPeriod.length,
@@ -481,7 +490,9 @@ export class KpiInsightMockService implements KpiInsightDataService {
           (r) => r.status === 'Approved' || r.status === 'Finalized',
         ).length,
         averageScore: this.average(inPeriod),
-        employees: [...inPeriod].sort(byScoreThenCode).map((r) => this.score(r)),
+        employees: listed.map((r) => this.score(r)),
+        employeeCount: inPeriod.length,
+        employeesTruncated: inPeriod.length > listed.length,
       };
     });
   }

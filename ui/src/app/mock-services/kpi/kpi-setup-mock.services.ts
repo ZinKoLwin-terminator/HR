@@ -24,6 +24,10 @@ import {
   RatingBandDataService,
 } from '../../core/services/data/kpi-data.services';
 import { validateKpiRule } from '../../core/utilities/kpi-calculation';
+import {
+  KPI_STATUSES_BLOCKING_CLOSE,
+  periodCloseRefusal,
+} from '../../core/utilities/kpi-period-rules';
 import { MOCK_EVALUATION_PERIODS } from '../../mock-data/kpi/evaluation-periods.mock';
 import { MOCK_KPI_CATEGORIES } from '../../mock-data/kpi/kpi-categories.mock';
 import { nextRowVersion } from '../../mock-data/kpi/kpi-records';
@@ -536,6 +540,19 @@ export class EvaluationPeriodMockService
       this.conflictError(
         `Period "${period.name}" is ${period.status}; only a ${from} period can be ${verb}.`,
       );
+    }
+    if (command === 'close') {
+      // A Closed period refuses every scorecard write: one still in review or returned would be stuck.
+      const blocking = this.injector
+        .get(ScorecardMockService)
+        .records()
+        .filter(
+          (card) => card.periodId === id && KPI_STATUSES_BLOCKING_CLOSE.includes(card.status),
+        ).length;
+      const refusal = periodCloseRefusal(period.name, blocking);
+      if (refusal !== null) {
+        this.conflictError(refusal);
+      }
     }
     const moved: EvaluationPeriod = {
       ...period,

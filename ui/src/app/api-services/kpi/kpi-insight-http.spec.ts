@@ -54,8 +54,21 @@ describe('KPI insight HTTP adapter', () => {
     }
     expect(request).toHaveLength(1);
     expect(request[0].request.params.get('periodId')).toBe('3');
-    request[0].flush({ period: null, teamSize: 0, byStatus: [], pendingReviews: 0 });
-    expect((await promise).teamSize).toBe(0);
+    request[0].flush({
+      period: null,
+      teamSize: 250,
+      byStatus: [],
+      pendingReviews: 0,
+      employees: [],
+      employeeCount: 250,
+      employeesTruncated: true,
+    });
+    // The cap fields reach the screen as the server sent them.
+    expect(await promise).toMatchObject({
+      teamSize: 250,
+      employeeCount: 250,
+      employeesTruncated: true,
+    });
   });
 
   it('reads the three dashboards, sending only the ids that are set', async () => {

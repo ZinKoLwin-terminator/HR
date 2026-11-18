@@ -344,8 +344,9 @@ test.describe('KPI review and approval', () => {
   test('KPI-35: with an HR review the approver cannot finalize; another HR person does', async ({
     page,
   }) => {
-    test.setTimeout(150_000);
-    // A period of our own that asks for an HR final review, with a plan for Su Myat Noe.
+    test.setTimeout(180_000);
+    // A period of our own that asks for an HR final review, with a plan for Su Myat Noe. Nobody
+    // plans their own scorecard, so Ye Yint Naing (HR Officer) plans hers.
     await page.goto('/performance/periods');
     await page.getByRole('button', { name: 'Add evaluation period' }).click();
     await dialogFocused(page);
@@ -366,6 +367,7 @@ test.describe('KPI review and approval', () => {
     await dialog(page).getByRole('button', { name: 'Activate' }).click();
     await expect(toast(page, 'Period "2027 Q1" activated.')).toBeVisible();
 
+    await signInAs(page, YE_YINT);
     await openPerformance(page, 'Assignments');
     await page.getByRole('button', { name: 'Assign KPIs' }).click();
     await dialogFocused(page);
@@ -387,6 +389,7 @@ test.describe('KPI review and approval', () => {
     await expect(toast(page, 'Plan finalized for EMP002.')).toBeVisible();
 
     // Su Myat Noe enters her results and submits.
+    await signInAs(page, SU_MYAT);
     await openPerformance(page, 'My KPIs');
     await page.getByRole('link', { name: 'Open my scorecard for 2027 Q1' }).click();
     await page.getByLabel('Actual for ATTENDANCE-RATE').fill('96');

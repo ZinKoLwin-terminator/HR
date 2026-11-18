@@ -409,9 +409,11 @@ describe('Evaluation periods config', () => {
       actions.find((a) => a.id === id)!.confirm!.message(period(status));
     expect(message('activate', 'Draft')).toContain('can no longer be changed');
     expect(message('complete', 'Active')).toContain('can no longer be entered');
+    expect(message('complete', 'Active')).toContain('except on a scorecard a reviewer returns');
     const close = actions.find((a) => a.id === 'close')!;
     expect(close.destructive).toBe(true);
     expect(message('close', 'Completed')).toContain('becomes final');
+    expect(message('close', 'Completed')).toContain('returned to the employee must be finished');
   });
 
   it('runs a command with the period’s own rowVersion', () => {

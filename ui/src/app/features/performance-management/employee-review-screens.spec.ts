@@ -1,6 +1,11 @@
 import { Type, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of, throwError } from 'rxjs';
@@ -442,6 +447,39 @@ describe('Review detail', () => {
     expect(notesVersion).not.toBe(card.rowVersion);
     expect(result.status).toBe('Rejected');
     expect(result.managerRating).toBe(2);
+  });
+
+  it('returns with only a reason: unsaved notes are neither checked nor saved (the server clears them)', async () => {
+    configure(MANAGER);
+    const { fixture } = await render(ReviewDetailComponent, { id: '1' });
+    const page = internals<ReviewPage>(fixture);
+    const api = TestBed.inject(ScorecardDataService);
+    const saveReview = vi.spyOn(api, 'saveReview');
+    const returned = vi.spyOn(api, 'returnForRevision');
+    const open = vi
+      .spyOn(TestBed.inject(MatDialog), 'open')
+      .mockReturnValue({ afterClosed: () => of(undefined) } as never);
+    const card = page.card()!;
+    page.form().rating.setValue(9); // out of range: would stop Approve or Reject
+    page.form().group.markAsDirty();
+
+    page.decide(card, 'approve');
+    expect(open).not.toHaveBeenCalled();
+    page.decide(card, 'return');
+    expect(open).toHaveBeenCalledTimes(1);
+
+    const data = page.decisionDialog(card, 'return');
+    expect(data.message).toContain('review notes are cleared');
+    const result = await new Promise<ScorecardDetail>((resolve) =>
+      data.send('Fictional reason').subscribe(resolve),
+    );
+    expect(saveReview).not.toHaveBeenCalled();
+    expect(returned).toHaveBeenCalledWith(1, {
+      rowVersion: card.rowVersion,
+      comment: 'Fictional reason',
+    });
+    expect(result.status).toBe('Returned');
+    expect(result.managerRating).toBeNull();
   });
 
   it('keeps notes typed before Start review, still unsaved', async () => {

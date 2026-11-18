@@ -76,7 +76,10 @@ export abstract class EvaluationPeriodDataService extends CrudDataService<
   abstract activate(id: number, rowVersion?: string): Observable<EvaluationPeriod>;
   /** Active to Completed. */
   abstract complete(id: number, rowVersion?: string): Observable<EvaluationPeriod>;
-  /** Completed to Closed (final). */
+  /**
+   * Completed to Closed (final). A Conflict while any scorecard of the period is Submitted,
+   * Resubmitted, Under Review, Approved or Returned (the message gives the count).
+   */
   abstract close(id: number, rowVersion?: string): Observable<EvaluationPeriod>;
   /** The period picker: periods that are not Draft, newest start first. No setup permission needed. */
   abstract options(companyId?: number | null): Observable<EvaluationPeriodOption[]>;
@@ -93,7 +96,10 @@ export abstract class ScorecardDataService {
   abstract getById(id: number): Observable<ScorecardDetail>;
   /** The caller's own scorecards except Planning, newest period first. */
   abstract myScorecards(request: PageRequest<ScorecardFilter>): Observable<PagedResult<Scorecard>>;
-  /** Scorecards waiting for the caller's review, oldest submission first. */
+  /**
+   * Scorecards waiting for the caller's review, oldest submission first; only those whose period
+   * is Active or Completed.
+   */
   abstract pendingReviews(
     request: PageRequest<ScorecardFilter>,
   ): Observable<PagedResult<Scorecard>>;
@@ -107,7 +113,7 @@ export abstract class ScorecardDataService {
   /** Planning to Draft: the weights must add up to exactly 100%. */
   abstract finalizePlan(id: number, rowVersion: string): Observable<ScorecardDetail>;
 
-  // ---- Employee ----
+  // ---- Employee: period Active, or Completed for a Returned scorecard (results, submit, evidence) ----
   abstract saveResults(id: number, request: SaveResultsRequest): Observable<ScorecardDetail>;
   /** Draft to Submitted, Returned to Resubmitted. */
   abstract submit(id: number, rowVersion: string): Observable<ScorecardDetail>;
@@ -179,15 +185,24 @@ export abstract class KpiInsightDataService {
   ): Observable<PagedResult<KpiTargetVsActualRow>>;
 }
 
+/**
+ * Every method of {@link KpiInsightDataService}, once. `satisfies` makes the compiler refuse this
+ * object when a method of the contract is missing (or a name is not one), so the lazy binding can
+ * never forget a new method.
+ */
+const KPI_INSIGHT_METHOD_SET = {
+  employeeDashboard: true,
+  managerDashboard: true,
+  hrDashboard: true,
+  summaryReport: true,
+  employeeReport: true,
+  departmentReport: true,
+  rankingReport: true,
+  kpiAchievementReport: true,
+  targetVsActualReport: true,
+} as const satisfies Record<keyof KpiInsightDataService, true>;
+
 /** The method names of {@link KpiInsightDataService} (for the lazy binding). */
-export const KPI_INSIGHT_METHODS: readonly (keyof KpiInsightDataService)[] = [
-  'employeeDashboard',
-  'managerDashboard',
-  'hrDashboard',
-  'summaryReport',
-  'employeeReport',
-  'departmentReport',
-  'rankingReport',
-  'kpiAchievementReport',
-  'targetVsActualReport',
-];
+export const KPI_INSIGHT_METHODS = Object.keys(
+  KPI_INSIGHT_METHOD_SET,
+) as readonly (keyof KpiInsightDataService)[];

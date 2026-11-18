@@ -170,16 +170,16 @@ export const PERFORMANCE_GUIDE: readonly GuideBlock[] = [
           my: 'အမည်နှင့် Submission due date သာ။',
         },
         {
-          en: 'Complete: no more results or new KPIs; reviews can finish.',
-          my: 'Complete — ရလဒ်နှင့် KPI အသစ် ထပ်မထည့်ရ၊ Review များ ဆက်ပြီးနိုင်သည်။',
+          en: 'Complete: no more results or new KPIs, except on a scorecard a reviewer returns; reviews can finish.',
+          my: 'Complete — ရလဒ်နှင့် KPI အသစ် ထပ်မထည့်ရ (Reviewer က Return လုပ်သော Scorecard မှလွဲ၍)၊ Review များ ဆက်ပြီးနိုင်သည်။',
         },
       ],
       [
         same('Completed'),
         { en: 'Nothing (read-only).', my: 'ဘာမှမပြင်ရ (ဖတ်ရန်သာ)။' },
         {
-          en: 'Close: the period becomes final.',
-          my: 'Close — Period သည် အပြီးသတ် ဖြစ်သွားသည်။',
+          en: 'Close: the period becomes final. Refused while a scorecard is still in review or returned to the employee.',
+          my: 'Close — Period သည် အပြီးသတ် ဖြစ်သွားသည်။ Review လုပ်နေဆဲ သို့ ဝန်ထမ်းထံ Return ပြန်ထားသော Scorecard ရှိနေသရွေ့ Close မလုပ်ရပါ။',
         },
       ],
       [
@@ -318,8 +318,16 @@ export const PERFORMANCE_GUIDE: readonly GuideBlock[] = [
         my: 'Period ၏ Due date ကျော်ပြီး Submit လုပ်လျှင် လက်ခံပြီး Late ဟု မှတ်သည်။',
       },
       {
-        en: 'Returned: the reviewer’s reason is shown at the top. Correct your results and submit again; it comes back as Resubmitted.',
-        my: 'Returned — Reviewer ၏ အကြောင်းပြချက်ကို အပေါ်ဆုံးတွင် ပြသည်။ ရလဒ်ကို ပြင်ပြီး ထပ် Submit လုပ်ပါ — Resubmitted အဖြစ် ပြန်ရောက်သည်။',
+        en: 'Evidence files are checked for their type and size only; they are not scanned for malware. Attach only files you trust.',
+        my: 'Evidence ဖိုင်များကို အမျိုးအစားနှင့် အရွယ်အစားသာ စစ်ဆေးသည် — Malware အတွက် Scan မလုပ်ပါ။ ယုံကြည်ရသော ဖိုင်များကိုသာ တွဲပါ။',
+      },
+      {
+        en: 'In the demo build, evidence files are held in the browser’s memory only: they are lost when the page reloads (the file list may remain, without its content).',
+        my: 'Demo build တွင် Evidence ဖိုင်များကို Browser ၏ Memory ထဲတွင်သာ ထားသည် — စာမျက်နှာ Reload လုပ်လျှင် ပျောက်သွားသည် (ဖိုင်စာရင်း ကျန်နိုင်သော်လည်း ဖိုင်အကြောင်းအရာ မပါတော့ပါ)။',
+      },
+      {
+        en: 'Returned: the reviewer’s reason is shown at the top. Correct your results and submit again; it comes back as Resubmitted. You can do this even after the period is Completed, until it is Closed.',
+        my: 'Returned — Reviewer ၏ အကြောင်းပြချက်ကို အပေါ်ဆုံးတွင် ပြသည်။ ရလဒ်ကို ပြင်ပြီး ထပ် Submit လုပ်ပါ — Resubmitted အဖြစ် ပြန်ရောက်သည်။ Period က Completed ဖြစ်ပြီးနောက်တွင်လည်း Closed မဖြစ်မချင်း ဤသို့ လုပ်နိုင်သည်။',
       },
       {
         en: 'Finalized or Rejected: the page is read-only and shows the reviewer’s ratings and feedback and the HR comment.',
@@ -389,8 +397,8 @@ export const PERFORMANCE_GUIDE: readonly GuideBlock[] = [
         my: 'Approve လုပ်လျှင် Server က ရမှတ်ကို ပြန်တွက်သည်။ Period တွင် HR final review မလိုလျှင် Approve သည် Scorecard ကို ချက်ချင်း Finalize လုပ်သည် — အတည်ပြုချက်က ဘယ်ဟာဖြစ်မလဲ ပြောပြသည်။',
       },
       {
-        en: 'Return for revision and Reject need a reason (at most 1000 characters). Return clears the score until the employee resubmits; Reject is final.',
-        my: 'Return for revision နှင့် Reject တွင် အကြောင်းပြချက် လိုသည် (စာလုံး ၁၀၀၀ အထိ)။ Return သည် ဝန်ထမ်း ထပ် Submit မလုပ်မချင်း ရမှတ်ကို ရှင်းထားသည် — Reject သည် အပြီးသတ် ဖြစ်သည်။',
+        en: 'Return for revision and Reject need a reason (at most 1000 characters). Return clears the score and the review notes until the employee resubmits; Reject is final.',
+        my: 'Return for revision နှင့် Reject တွင် အကြောင်းပြချက် လိုသည် (စာလုံး ၁၀၀၀ အထိ)။ Return သည် ဝန်ထမ်း ထပ် Submit မလုပ်မချင်း ရမှတ်နှင့် Review notes ကို ရှင်းထားသည် — Reject သည် အပြီးသတ် ဖြစ်သည်။',
       },
       {
         en: 'Nobody reviews their own scorecard, whatever their role. The buttons only help: the server decides who may act and shows its message if a step is refused.',
@@ -467,8 +475,8 @@ export const PERFORMANCE_GUIDE: readonly GuideBlock[] = [
       [
         { en: 'Pending and overdue', my: 'Pending နှင့် Overdue' },
         {
-          en: 'Your submission is pending while your scorecard is Draft or Returned and the period is Active; it is overdue once the period’s submission due date has passed. A late submission is still accepted and marked Late.',
-          my: 'သင့် Scorecard သည် Draft သို့ Returned ဖြစ်ပြီး Period က Active ဖြစ်နေသရွေ့ Submit ရန် Pending ဖြစ်သည် — Period ၏ Submission due date ကျော်လျှင် Overdue ဖြစ်သည်။ နောက်ကျ Submit လုပ်လည်း လက်ခံပြီး Late ဟု မှတ်သည်။',
+          en: 'Your submission is pending while your scorecard is Draft or Returned and the period is Active, and a Returned one also while the period is Completed; it is overdue once the period’s submission due date has passed. A late submission is still accepted and marked Late.',
+          my: 'သင့် Scorecard သည် Draft သို့ Returned ဖြစ်ပြီး Period က Active ဖြစ်နေသရွေ့ (Returned ဖြစ်လျှင် Period က Completed ဖြစ်နေစဉ်လည်း) Submit ရန် Pending ဖြစ်သည် — Period ၏ Submission due date ကျော်လျှင် Overdue ဖြစ်သည်။ နောက်ကျ Submit လုပ်လည်း လက်ခံပြီး Late ဟု မှတ်သည်။',
         },
       ],
     ],
