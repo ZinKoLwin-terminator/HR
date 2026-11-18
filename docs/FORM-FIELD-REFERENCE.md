@@ -411,6 +411,93 @@ Stage ရွှေ့ပုံ: Applied → Screening → Interview → Selected
 
 ---
 
+## ၈။ Grievances
+
+Branch `feature/grievance` (UI) နဲ့ `feature/api-grievance` (API) မှာပဲ ရှိပါတယ်။ စည်းမျဉ်းအပြည့်က [FEATURES.md](FEATURES.md) ရဲ့ "Grievances"၊ Customer guide က [modules/grievance.md](modules/grievance.md)။ Demo build မှာ permission နဲ့ anonymity က simulation ပဲ (ဘာမှ မတားဆီး)။
+
+### Grievance form (`/grievances/my/new`၊ `/grievances/my/:id/edit`)
+
+`grievance:Create` လို။ Employee record မချိတ်ထားတဲ့ account (built-in admin) ဆို ဖောင်မပြဘဲ "No employee record is linked" ပြတယ်။ **Save draft** နဲ့ **Submit** ခလုတ် ၂ ခု — Draft က category နဲ့ subject ပဲ လို၊ Submit က အောက်က "Submit" စည်းမျဉ်းတွေပါ လို၊ confirm dialog မေးတယ်။
+
+| Field | ဆိုလိုတာ | * | စည်းမျဉ်း / ဥပမာ |
+|---|---|---|---|
+| Name / Job title | Named ဆို ကိုယ့်အမည်နဲ့ ရာထူး (ကြည့်ရုံ) | | Anonymous ဆို "HR will not see your name, department or position" ပြ။ Code၊ ဌာန၊ ရာထူးကို Submit လုပ်ချိန် employee record ကနေ ကူးယူ |
+| Category | အမျိုးအစား | * | Active category သာ။ Anonymous မခွင့်ပြုတာကို "(named only)" ပြ (ဥပမာ Salary and Compensation Issues)။ Anonymous draft ကို ပြင်ရင် အဲဒီ category တွေ ရွေးမရ |
+| Subject | ခေါင်းစဉ် | * | Draft: ဗလာမဖြစ်ရ၊ ≤ 200။ **Submit: ≥ 5**။ `Air conditioning not working in the server room` |
+| Description | ဖြစ်ရပ်အသေးစိတ် | Submit ဆို * | ≤ 4000။ **Submit: ≥ 20** |
+| Incident date | ဖြစ်တဲ့ရက် | | not in future |
+| Location | နေရာ | | ≤ 200 |
+| Person involved | ပါဝင်သူ (အမည် ဒါမှမဟုတ် ရာထူး) | | ≤ 200၊ free text (employee နဲ့ မချိတ်) |
+| Department involved | ပါဝင်တဲ့ ဌာန | | None ဒါမှမဟုတ် active department |
+| Report anonymously 🔒 | အမည်မဖော်ဘဲ တင်ပြမလား | | **Draft အသစ်မှာပဲ** toggle ပြ။ Category က ခွင့်မပြုရင် ပိတ်ပြီး off။ ပထမဆုံး save ပြီးရင် ပြောင်းမရ ("Start a new draft to change how you report.")။ "HR will see / will not see" နဲ့ "What can still identify you" စာရင်း ပြ |
+| Files | ဖိုင်တွဲ | | PDF၊ PNG၊ JPEG၊ .docx၊ .xlsx၊ ≤ 10 MB၊ case တစ်ခု ≤ 10 ဖိုင်၊ တစ်ရက် ≤ 100 MB (server)။ Draft မရှိသေးရင် save ပြီးမှ upload။ Anonymous ဆို PDF metadata မဖယ်ရှားကြောင်း၊ ဖိုင်အမည် HR မြင်ကြောင်း သတိပေး |
+| Declaration | မှန်ကန်ကြောင်း အတည်ပြု | Submit ဆို * | checkbox |
+
+- Employee တစ်ယောက်မှာ ဖွင့်ထားတဲ့ draft **၅ ခု** အထိ။ Submit ပြီးရင် ပြင်/ဖျက် မရ (Draft ကိုပဲ ဖျက်လို့ရ)။ Submit လုပ်ရင် Case နံပါတ် `GRV-yyyy-nnnnn` ရ။
+- **My grievance detail** (`/grievances/my/:id`): Message box (≤ 4000)။ HR က အချက်အလက်တောင်းထားရင် "Respond to HR's request" ဖြစ်ပြီး ပို့ရင် case က မူလ status ပြန်ရောက်။ Draft၊ Closed၊ Archived case မှာ message box မရှိ။
+
+### Case command dialogs (Case detail ရဲ့ action bar)
+
+ခလုတ်တွေကို `grievanceAvailableActions` က ဆုံးဖြတ်တယ် (UX ပဲ၊ server က ထပ်စစ်)။ Server က Conflict (409) ပြန်ရင် dialog ထဲမှာ "Reload the case" ခလုတ် ပေါ်တယ်။ Field error တွေကို သက်ဆိုင်ရာ field အောက်မှာ ပြ။
+
+| Command | Field များ | * | စည်းမျဉ်း |
+|---|---|---|---|
+| Acknowledge | Priority | * | Low / Medium / High / Critical၊ default Medium။ **Critical ဆို ချက်ချင်း Escalate ပြီး Reviewer တွေကို အကြောင်းကြား** |
+| | Target resolution date | | ယနေ့ထက် စောမရ။ Default = ယနေ့ + category ရဲ့ default target days၊ ဗလာထားရင် category default |
+| | Comment | | ≤ 1000 |
+| Start review / Start investigation / Close / Archive | Comment | | ≤ 1000။ Close က final (Reopen ဖို့ management + review နှစ်ခုလုံး လို)။ Archive ပြီးရင် ဖတ်ရုံသာ |
+| Reject / Reopen | Reason (shown to the employee) | * | ≤ 1000 |
+| Request information | Question for the employee | * | ≤ 1000 (history reason အဖြစ်လည်း သိမ်း) |
+| Propose resolution | Resolution summary | * | ≤ 4000 |
+| Approve resolution | Share the resolution summary with the employee | | toggle၊ default on |
+| | Comment | | ≤ 1000 |
+| Send proposal back | What needs to change | * | ≤ 1000။ Lead ရှိရင် Under Investigation၊ မရှိရင် Under Review |
+| Escalate | Reason | * | ≤ 1000။ Case တစ်ခု တစ်ကြိမ်ပဲ |
+| | Immediate | | checkbox (Reviewer တွေကို အကြောင်းကြား) |
+| Remove investigator (Member) | Reason | | ≤ 1000 |
+
+### Assign investigator dialog
+
+| Field | ဆိုလိုတာ | * | စည်းမျဉ်း |
+|---|---|---|---|
+| Investigator | ဘယ်သူ စုံစမ်းမလဲ | * | `grievance-investigation:Edit` ရှိသူ အားလုံး (ဖွင့်ထားတဲ့ case အရေအတွက်နဲ့)။ Case အလိုက် မစစ်ထုတ်။ Subject ဒါမှမဟုတ် named case ရဲ့ တိုင်ကြားသူဆို save လုပ်ချိန် "conflict of interest" ဆိုတဲ့ message တစ်ခုတည်းနဲ့ ပယ် |
+| Role | Lead investigator / Member | * | Lead မရှိသေးရင် default Lead |
+| Reason | အကြောင်းပြချက် | Lead အစားထိုးရင် * | ≤ 1000။ Assigned / Under Investigation / Awaiting Employee Response မှာ Lead အသစ်ရွေးရင် လို |
+
+### Triage panel (Case Management detail၊ `grievance-management:Edit`)
+
+| Field | ဆိုလိုတာ | * | စည်းမျဉ်း |
+|---|---|---|---|
+| Category | အမျိုးအစား | * | Active (လက်ရှိ category inactive ဖြစ်နေရင်လည်း ပြ)။ Anonymous case ကို anonymous မခွင့်ပြုတဲ့ category ပြောင်းမရ |
+| Priority | ဦးစားပေးအဆင့် | | Submitted မှာပဲ "Not set" ရွေးလို့ရ။ Critical ပြောင်းရင် save လုပ်တာနဲ့ Escalate |
+| Target resolution date | ပြီးရမယ့်ရက် | | ယနေ့ထက် စောမရ |
+| Subject employee | Grievance က ဘယ်သူ့အကြောင်းလဲ | | Code/အမည်နဲ့ ရှာ (လက်ရှိ ဝန်ထမ်း ≤ 20)။ အဲဒီသူ case ကို ဘယ်တော့မှ မမြင်ရ |
+| Department involved | ပါဝင်တဲ့ ဌာန | | None ဒါမှမဟုတ် department |
+| Legal hold | တရားဝင် ထိန်းထားမှု | | toggle။ On ဆို Archive မရ။ Case ပိတ်ပြီးသားဆို ဒီ field ပဲ ပြင်လို့ရ |
+
+### Notes၊ Corrective actions၊ Files (Case detail tabs)
+
+| Form | Field များ | စည်းမျဉ်း |
+|---|---|---|
+| Investigation note ("Add to the record") | Kind* (Note / Interview / Follow-up / Finding / Recommendation)၊ Text* ≤ 4000၊ Interview ဆို Interviewee (≤ 200၊ အမည်အပြည့်အစား role/initials) နဲ့ Interview date (not in future) | ဖွင့်ထားတဲ့၊ archive မလုပ်ရသေးတဲ့ case မှာပဲ။ ပြင်/ဖျက် မရ (append-only)။ Reviewer က Finding နဲ့ Recommendation ပဲ မြင် |
+| Corrective action | Type* ≤ 100 (ဥပမာ Training)၊ Responsible ≤ 200၊ Due date၊ Description* ≤ 1000၊ နောက်မှ Status (Proposed / Approved / Rejected / Implemented) နဲ့ Completed on (not in future) | Management Edit ပဲ။ Implemented ဆို Completed on လို |
+| Case-team file | Who may see the next file: Case team only / Shared with the employee / Restricted (HR management၊ management ပဲ) | Case တစ်ခု ≤ 20 ဖိုင် (တိုင်ကြားသူရဲ့ ၁၀ ဖိုင်နဲ့ သီးခြား)၊ အမျိုးအစားနဲ့ 10 MB က အထက်ကအတိုင်း |
+| Message to the employee | Text ≤ 4000 | Draft၊ Closed၊ Archived case မှာ မရ |
+
+### Grievance category (`/grievances/categories`)
+
+| Field | ဆိုလိုတာ | * | စည်းမျဉ်း / ဥပမာ |
+|---|---|---|---|
+| Code 🔒 | ကုဒ် | * | ≤ 20၊ unique၊ အကြီးစာလုံး/ဂဏန်း/`-`။ `HARASSMENT` |
+| Category name | အမည် | * | ≤ 100၊ unique |
+| Description | ရှင်းချက် | | ≤ 300 |
+| Anonymous reports allowed | Anonymous တင်ပြခွင့် | | toggle (default on)။ လစာလို ကိုယ်ရေးအချက်လိုတဲ့ category မှာ off |
+| Default target days | Acknowledge ကနေ target date အထိ ရက် | * | 1–365 (default 30) |
+| Sort order | ဖောင်မှာ စီပုံ | * | 0–9999 |
+| Status | Active / Inactive | * | Case သုံးပြီးသား category ကို ဖျက်မရ၊ Inactive လုပ် |
+
+---
+
 ## Holiday ဖောင် မရှိပါ
 
 Holiday (`date`၊ `name`၊ `type` = Public/Company) ဆိုတဲ့ data model ရှိပေမဲ့ ထည့်/ပြင်တဲ့ screen၊ route မရှိပါဘူး။

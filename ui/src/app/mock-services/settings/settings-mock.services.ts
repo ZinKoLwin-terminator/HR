@@ -281,6 +281,14 @@ export class RolePermissionMockService implements RolePermissionDataService {
     }, this.latency);
   }
 
+  /**
+   * For OTHER MOCK services only (the grievance mock decides a simulated user's tiers from these):
+   * the stored grants of a role, live. Simulation: nothing in the demo enforces them.
+   */
+  grantsNow(roleId: number): PermissionGrants {
+    return this.store().find((p) => p.roleId === roleId)?.grants ?? {};
+  }
+
   removeForRole(roleId: number): void {
     this.store.update((items) => items.filter((p) => p.roleId !== roleId));
   }

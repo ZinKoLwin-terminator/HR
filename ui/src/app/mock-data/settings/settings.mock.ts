@@ -1,5 +1,6 @@
 import {
   AppUser,
+  GRIEVANCE_PERMISSION_MODULE_KEYS,
   GeneralSettings,
   PERMISSION_MODULES,
   PermissionAction,
@@ -51,8 +52,12 @@ const merge = (...sets: PermissionGrants[]): PermissionGrants => {
   return result;
 };
 const all = PERMISSION_MODULES.map((m) => m.key);
+/** The grievance modules are confidential: never part of a blanket grant, listed per role below. */
+const notGrievance = all.filter((key) => !GRIEVANCE_PERMISSION_MODULE_KEYS.includes(key));
 /** The modules that existed before the KPI module: starter grants of KPI are listed per role below. */
-const beforeKpi = all.filter((key) => key !== 'kpi-setup' && key !== 'kpi');
+const beforeKpi = notGrievance.filter((key) => key !== 'kpi-setup' && key !== 'kpi');
+/** Every role may report a grievance of their own (the plan's starter grant). */
+const ownGrievances = (): PermissionGrants => ({ grievance: ['View', 'Create'] });
 
 const GRANT_SEED: PermissionGrants[] = [
   everything(),
@@ -66,26 +71,34 @@ const GRANT_SEED: PermissionGrants[] = [
     payroll: ['View', 'Approve'],
     'kpi-setup': ['View', 'Create', 'Edit', 'Delete'],
     kpi: ['View', 'Create', 'Approve'],
+    ...ownGrievances(),
+    // Investigates the grievances HR management assigns to them; no management or review rights.
+    'grievance-investigation': ['View', 'Edit'],
   }),
   merge(viewOnly(['dashboard', 'employees', 'organization', 'recruitment']), {
     attendance: ['View', 'Approve'],
     leave: ['View', 'Approve'],
     kpi: ['View', 'Create', 'Approve'],
+    ...ownGrievances(),
   }),
   merge(viewOnly(['dashboard', 'employees']), {
     payroll: ['View', 'Create', 'Edit', 'Approve'],
     kpi: ['View', 'Create'],
+    ...ownGrievances(),
   }),
   merge(viewOnly(['dashboard']), {
     recruitment: ['View', 'Create', 'Edit', 'Delete'],
     kpi: ['View', 'Create'],
+    ...ownGrievances(),
   }),
   merge(viewOnly(['dashboard', 'attendance']), {
     leave: ['View', 'Create'],
     attendance: ['View', 'Create'],
     kpi: ['View', 'Create'],
+    ...ownGrievances(),
   }),
-  viewOnly(all),
+  // Auditor (inactive): read-only, but no grievance module (confidential case data).
+  viewOnly(notGrievance),
 ];
 
 export const MOCK_ROLE_PERMISSIONS: RolePermissions[] = GRANT_SEED.map((grants, i) => ({

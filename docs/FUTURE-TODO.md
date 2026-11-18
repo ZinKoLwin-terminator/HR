@@ -223,6 +223,10 @@ Priority: **P1** = before real use, **P2** = next features, **P3** = nice to hav
 - [x] **P3** Stale doc comment in `api/src/Apex.Hrms.Application/Security/CallerPermissions.cs` ("an approver"): no longer present.
 - [x] **P3** Duplicate `App_Data/` rule in `api/.gitignore`: one rule left.
 - [x] **P3** The Api test project takes 4–8 minutes: speed-up merged. The new time is not measured here.
+- [ ] **P2** Error state on load failure (`ResourceValueError`): reading a failed `rxResource` value throws instead of
+      showing the screen's error state. Fixed for the grievance screens; the same pattern remains in other modules and
+      in the shared `CrudPageComponent` (which also affects the grievance Categories screen's error state). Proposed
+      priority.
 - [ ] **P3** Pin the CI actions by commit SHA (`.github/workflows/ci.yml` uses tags such as `actions/checkout@v4`).
       Proposed priority.
 

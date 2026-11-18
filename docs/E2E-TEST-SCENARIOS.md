@@ -1,6 +1,6 @@
 # End-to-End Test Scenarios: All Modules
 
-Playwright scenarios (`ui/e2e/`) for every module of APEX HRMS: sign-in and session, **Organization**, **Employees**, **Leave**, **Attendance**, **Recruitment**, **Settings**, **Dashboard** (with activity and notifications), **Excel** import and export, **Payroll** (with My Payslips), **printing** (section 15), the **do-not-rehire list** (section 16), **KPI and performance** (section 17), and cross-module (X) scenarios.
+Playwright scenarios (`ui/e2e/`) for every module of APEX HRMS: sign-in and session, **Organization**, **Employees**, **Leave**, **Attendance**, **Recruitment**, **Settings**, **Dashboard** (with activity and notifications), **Excel** import and export, **Payroll** (with My Payslips), **printing** (section 15), the **do-not-rehire list** (section 16), **KPI and performance** (section 17), **Grievances** (section 18), and cross-module (X) scenarios.
 Each scenario lists its example data, the steps and the expected result.
 
 - **Written for:** QA engineers who write and maintain the Playwright suite.
@@ -29,7 +29,8 @@ Scenario count per section. A count is the number of rows with a scenario ID in 
 | 15 | Printing | 0 | 13 | 13 | none |
 | 16 | Do-not-rehire list | 0 | 19 | 19 | none |
 | 17 | KPI and performance | 0 | 0 | 47 | KPI-01 to KPI-47 (added 2026-11-17; statuses below) |
-| | Total | 345 | 406 | 470 | 64 new |
+| 18 | Grievances | 0 | 0 | 39 | GRV-E2E-01 to 08, 10 to 22, 30 to 39, 40 to 47 (added 2026-11-18; statuses below) |
+| | Total | 345 | 406 | 509 | 103 new |
 
 Two updates on 2026-11-13. The first (406 rows) added X-19, AUTH-30, ATT-50, REC-36 to REC-40, SET-35, DSH-39 to DSH-41, XLS-29 to XLS-38, PAY-34 to PAY-40, PRN and BLK. The "before" column was counted row by row; the earlier table's figures were out of date. The second added the general settings rows (SET-36 to SET-43) and the Excel screen rows (XLS-39 to XLS-47), and moved XLS-29 to XLS-38 from "UI pending" to `Manual (API)`.
 
@@ -44,6 +45,16 @@ Section 17 status (updated 2026-11-18, from the KPI ids named in `ui/e2e/kpi-set
 | Manual (API) | KPI-27, KPI-34, KPI-37, KPI-46 | 4 |
 | New | KPI-06, KPI-08, KPI-16, KPI-18, KPI-20, KPI-47 | 6 |
 | | Total | 47 |
+
+On 2026-11-18 section 18 (Grievances, 39 rows) was added to the same column. Its status, from the ids named in `ui/e2e/grievance-submit.spec.ts`, `grievance-case-workflow.spec.ts`, `grievance-confidentiality.spec.ts` and `grievance-insights.spec.ts`:
+
+| Status | Rows | Count |
+|---|---|---|
+| Automated | GRV-E2E-01 to 08, 10 to 22, 30 to 33, 35 to 38, 40 to 47 | 37 |
+| Automated; failed before the error-state fix of the grievance screens (fixed since; re-run to confirm) | GRV-E2E-34, GRV-E2E-39 | 2 |
+| | Total | 39 |
+
+The grievance quality sweep (18.5) has no scenario ids and is not counted. The gaps are listed in 18.6.
 
 No row is `Pending` any more: the module is built (database branch `feature/schema-kpi`, API and UI on `feature/api-kpi`). EMP-E26 (team scoping) and PAY-32 (own-payslip scoping) were built in an earlier update and are **API** rows.
 
@@ -618,7 +629,7 @@ Confirm codes and names against `ui/src/app/mock-data/` before you hard-code the
 ## 6. Suggested run order
 
 1. **Smoke (about 15 minutes):** AUTH-01, AUTH-11, ORG-E01, ORG-E04, ORG-E07, EMP-E01, EMP-E13, EMP-E15, LV-E06, LV-E13, LV-E19, LV-E22, ATT-11, REC-13, SET-01, DSH-03, XLS-02, PAY-16.
-2. **Full run, safest first:** sign-in (section 8), Organization, Employees, Leave, Attendance (section 9), Recruitment (section 10), Settings (section 11), Dashboard, activity and notifications (section 12), Excel (section 13), Payroll (section 14), then printing (section 15). The do-not-rehire list (section 16) is API only, so it runs after the API build is up. KPI and performance (section 17) runs last: `kpi-setup.spec.ts` (17.1, 17.2), `kpi-workflow.spec.ts` (17.3, 17.4) and `kpi-insights.spec.ts` (17.5). Each KPI test starts from the seeded scorecards with the browser clock fixed at 2026-11-17, and a test that needs several people signs out and in inside the app instead of reloading. Each test starts from the seed, so the order does not change results. It helps reading failures: the first failing group points at the lowest module that broke. Each spec file runs its own `describe` blocks. Attendance and Recruitment rows can also run in API mode once the API and the UI are up; the order above does not change. The Dashboard, activity and notification rows marked **API** (DSH-13 to DSH-38) check the endpoints directly, so they do not need the UI. In API mode the dashboard, the activity card and the notification bell do call those endpoints too. The mock rows of section 12 still run in the Playwright suite.
+2. **Full run, safest first:** sign-in (section 8), Organization, Employees, Leave, Attendance (section 9), Recruitment (section 10), Settings (section 11), Dashboard, activity and notifications (section 12), Excel (section 13), Payroll (section 14), then printing (section 15). The do-not-rehire list (section 16) is API only, so it runs after the API build is up. KPI and performance (section 17) runs last: `kpi-setup.spec.ts` (17.1, 17.2), `kpi-workflow.spec.ts` (17.3, 17.4) and `kpi-insights.spec.ts` (17.5). Each KPI test starts from the seeded scorecards with the browser clock fixed at 2026-11-17, and a test that needs several people signs out and in inside the app instead of reloading. Grievances (section 18) run after it: `grievance-submit.spec.ts`, `grievance-case-workflow.spec.ts`, `grievance-confidentiality.spec.ts`, `grievance-insights.spec.ts` and `grievance-quality.spec.ts`, in the same way (seeded cases, sign-out and sign-in inside the app). Each test starts from the seed, so the order does not change results. It helps reading failures: the first failing group points at the lowest module that broke. Each spec file runs its own `describe` blocks. Attendance and Recruitment rows can also run in API mode once the API and the UI are up; the order above does not change. The Dashboard, activity and notification rows marked **API** (DSH-13 to DSH-38) check the endpoints directly, so they do not need the UI. In API mode the dashboard, the activity card and the notification bell do call those endpoints too. The mock rows of section 12 still run in the Playwright suite.
 3. **Cross-module:** X-01 to X-10 after the module tests pass. X-06 to X-10 depend on the attendance, payroll and recruitment tests. X-11 to X-17 are API rows: they need the API, a local database and the test roles of SET-25. X-18 runs in both builds; in the mock, add the holiday and start the leave application in the same session. X-19 needs the do-not-rehire rows (section 16) and the `feature/schema-blacklist` database.
 4. **API build:** rows marked **API** run in a separate job, once a test API and local database are available. They are not run by the Playwright mock suite. The dashboard, activity and notification API rows are API tests in `api/`, not Playwright tests. The do-not-rehire API rows (BLK) and the recruitment scoping rows (REC-36 to REC-40) are run the same way.
 
@@ -662,6 +673,7 @@ Confirm codes and names against `ui/src/app/mock-data/` before you hard-code the
   - The mock services do not check the `kpi-setup` or `kpi` permissions at all; the browser enforces nothing.
   - Evidence files are held **in memory** and are lost on reload (only the metadata persists when browser persistence is on). Office files are recognised by their entry names, a simpler check than the API's ZIP inspection. There is no upload rate limit and **no virus or malware scan** (the API has none either).
   - Otherwise the mock follows the API's rules and messages: nobody plans their own scorecard (409), the review visibility rule for the scorecard's own employee (`core/utilities/kpi-review-visibility.ts`, a mirror of the API's `ReviewVisibility`), the activity wording (every review decision reads `Scorecard of ... was reviewed`), a Returned scorecard can still be changed and resubmitted while its period is Completed, a period cannot be closed while a scorecard is in review or returned, and Return clears the review draft.
+- Grievances (section 18): the Playwright tests run the mock build only and check a **simulation** of the API's tiers, redaction and anonymity, never real security. A mock session of a sample account has no permission list, so every Grievances menu entry and route opens for everyone and only the grievance mock services refuse (GRV-E2E-34, GRV-E2E-39, which failed until the grievance screens' error-state fix). The demo pseudonym is a public hash. No grievance row runs against the API build yet; the uncovered behaviours are listed in 18.6.
 - Print: the Print action is on the CRUD lists, the payslip, the profile, the letters and the payroll review. The Employee list, attendance, leave balances and the payslip list have no Print button yet. Printing is not checked on a real printer (PRN-13).
 
 ---
@@ -1187,4 +1199,119 @@ Example scorecard: weights 40, 35 and 25 with achievements 85.00, 62.50 and 100.
 | KPI-45 | − | **API**. Employee role cannot use setup | Starter `Employee` role (`kpi:View,Create`, no `kpi-setup`). Open Performance > Templates; call `POST /api/kpi/templates` | Setup screens are hidden (the Performance group shows My KPIs, not Assignments, Templates, Evaluation Periods or Reviews) and the route goes to `/forbidden`; the call answers 403 | Partly automated: kpi-setup.spec › KPI setup permissions › a role without kpi-setup sees only My KPIs in Performance and is sent to /forbidden (the screens, mock build). The 403: Manual (API) |
 | KPI-46 | + | **API**. Starter grants on an existing database | Publish `feature/schema-kpi` to a database that already has roles. Open Settings > Permissions | KPI Setup and Performance are listed. HR Officer has `kpi-setup` all and `kpi:View,Create,Approve`; Department Manager `kpi:View,Create,Approve`; Employee, Payroll Officer and Recruiter `kpi:View,Create`; Auditor `kpi-setup:View` and `kpi:View`. The grants are added only because the publish inserts the two modules; a second publish does not re-add a grant that was removed | Manual (API) |
 | KPI-47 | − | Mock build does not enforce | Any user in the demo build | The sidebar, the route guards and the dashboard tabs follow the session's permission keys (convenience only). The mock services check no `kpi-setup` or `kpi` permission; HR, manager and own scope come from the session's role names. Section 7 lists the mock limits | New |
+
+## 18. Grievances
+
+The module is on branch `feature/grievance` (screens, mock services, HTTP adapters); its API is on `feature/api-grievance` and its database on `feature/schema-grievance` (Grievances in the sidebar, under `/grievances`). Playwright covers it in `ui/e2e/grievance-submit.spec.ts` (18.1), `grievance-case-workflow.spec.ts` (18.2), `grievance-confidentiality.spec.ts` (18.3), `grievance-insights.spec.ts` (18.4) and `grievance-quality.spec.ts` (18.5), with shared helpers in `grievance-helpers.ts`. The status column names the test. Rules: [FEATURES.md](FEATURES.md) "Grievances"; customer guide: [modules/grievance.md](modules/grievance.md).
+
+**These tests run the mock `e2e` build. They check what the mock simulates (the API's tiers, redaction and state machine), never real access control or real anonymity.** Two consequences:
+
+- A session of a sample account (signed in through the login screen, or written by the quality sweep) carries **no permission list**, so the sidebar and the route guards show every Grievances entry to everyone. Only the grievance mock services refuse, from the role's grants in Settings > Permissions (GRV-E2E-34, GRV-E2E-39). That is a simulation, not security; in API mode the server answers 403 or 404.
+- The mock's pseudonym is a public demo hash, so "anonymous" in the demo protects nothing.
+
+How the module works (short): an employee writes a draft and submits it (case number `GRV-yyyy-nnnnn`); HR management acknowledges it with a priority and a target date, reviews it or assigns a Lead investigator; the investigator records notes and may ask the employee for information; a resolution is proposed (by the Lead, or by management while Under Review) and decided by a reviewer who neither proposed it nor investigates the case; HR closes it and may reopen it with a reason. Anonymous reporting is allowed where the category allows it. Nobody on the case team sees a case they submitted or a case about them.
+
+Example data (sample accounts, demo password `Welcome@123` for all; every name and text is fictional):
+
+- **People:** Su Myat Noe (EMP002, HR Administrator: every grievance key, so management and review; the fixture's session), Ye Yint Naing (EMP009, HR Officer: `grievance-investigation` View and Edit, the investigator of the samples), Daniel Carter (EMP005, Employee: `grievance` View and Create). No starter role holds `grievance-review`, so the reviewer in these flows is Su Myat Noe; she never proposes and is never assigned in them.
+- **Seeded cases** (`ui/src/app/mock-data/grievance/grievance-cases.mock.ts`, 18 in all, 16 submitted): Daniel owns #1 and #2 (drafts, #2 anonymous "Comments made during team meetings"), #4 (anonymous, Submitted, "Overtime approvals withheld") and #10 (named, Awaiting Employee Response, "Allowance missing from two payslips"). #3 "On-call rota assigned unevenly" is Submitted and unassigned. #5 "Disagreement over test environment access" is Acknowledged and names Ye Yint Naing as its subject employee. #6 "Training places offered unequally" is Under Review without a Lead. #11 "Headsets not replaced" has a pending resolution proposed by Ye Yint Naing. Five submitted cases are anonymous (#4, #6, #9, #13, #17). Workplace Safety holds #7 "Blocked fire exit near the support desk" (named), #12 "Loose cabling under desks" and #17 (anonymous).
+- **Categories:** the 10 defaults; Salary and Compensation Issues is "named only". Working Conditions has a default target of 30 days.
+- **Flows needing several people** sign out and in inside the app (the in-memory data resets on a page load). Write flows run on desktop only (`test.skip` on mobile); the quality sweep runs on desktop and on a phone (Pixel 7).
+
+### 18.1 Submission (employee)
+
+| ID | Type | Scenario and steps | Example data | Expected result | Status |
+|---|---|---|---|---|---|
+| GRV-E2E-01 | − | A draft needs a category and a subject. As Daniel, My Grievances (4 rows) > New grievance > Save draft with nothing filled; then category and a 4-character subject | Category Working Conditions, subject `Lift` | Empty: "A draft needs a category and a subject.", "Category is required.", "Subject is required.". With both: "Draft saved. Nothing has been sent to HR yet." and the page becomes "Edit grievance draft" (`/grievances/my/{id}/edit`); the 5-character minimum applies only on submit | Automated: grievance-submit.spec › GRV-E2E-01 to 05: a draft needs category and subject; edit, files, then submit |
+| GRV-E2E-02 | + | Edit the draft; leave with unsaved edits | Description `Fictional: the lift`, location `Fictional block B`, then Back | "Discard unsaved changes?"; Keep editing stays on the edit page | Automated (same test) |
+| GRV-E2E-03 | + | Attach a PDF before saving, then save | `fictional-lift-notice.pdf`, 4 KB | Listed with "uploaded when you save"; after Save draft it has a Download button and the note is gone; after submitting it is under Shared files | Automated (same test) |
+| GRV-E2E-04 | − | Refused files | `fictional-tool.exe`; `fictional-big.pdf` of 10 MB + 1 byte | `"fictional-tool.exe" is not an allowed file type.`; `"fictional-big.pdf" is larger than 10 MB.`; only the valid PDF stays in the list | Automated (same test). The server's content check (a renamed file) is not covered |
+| GRV-E2E-05 | − / + | Submit rules, confirmation and case number | Subject `Lift`, 19-character description, declaration unticked; then subject `Lift out of order`, a longer description, declaration ticked; cancel once, then confirm | First: "Please complete the highlighted fields before submitting.", "Subject must be at least 5 characters.", "Description must be at least 20 characters.", "Please confirm the declaration to submit.", no dialog. Then "Submit this grievance?" / "HR will receive it with your name."; Cancel sends nothing. Confirm: toast "Grievance GRV-yyyy-nnnnn submitted.", the detail shows the number, "With your name", status Submitted and the timeline; no Edit draft or Delete draft; the list has 5 rows | Automated (same test) |
+| GRV-E2E-06 | − | A named-only category locks anonymity off | Salary and Compensation Issues (named only), then Workplace Harassment, then back | The "Report anonymously" switch is off and disabled with "This category does not accept anonymous grievances ..."; Workplace Harassment enables it; switching back turns it off and locks it again | Automated: grievance-submit.spec › GRV-E2E-06/08: anonymity is locked for Salary and Compensation and warns about files |
+| GRV-E2E-07 | − | Anonymity is read-only on an existing draft | The draft of GRV-E2E-01 (named); a new anonymous draft `Fictional remarks at stand-up`; seeded #2 | No switch on an existing draft: "You are reporting with your name." / "You are reporting anonymously." with "Start a new draft to change how you report.". On the anonymous draft the option "Salary and Compensation Issues (named only)" is disabled. #2 shows "Anonymously" and "Not submitted yet", and its edit page has no switch | Automated: both tests above |
+| GRV-E2E-08 | + | What anonymity does not hide | Workplace Harassment, switch on | "Who is reporting" says "Anonymous: HR will not see your name, department or position." and shows no Name field. The file note says "Files can identify you.", "details inside PDF files are NOT" removed and "File names are visible to HR"; the Anonymity card lists "What can still identify you". No note on a named grievance | Automated: grievance-submit.spec › GRV-E2E-06/08 |
+
+### 18.2 Case workflow across roles
+
+One test runs the whole lifecycle: grievance-case-workflow.spec › GRV-E2E-10 to 22: submit, acknowledge, assign, investigate, request info, respond, propose, approve, close, reopen. Daniel first submits `Fictional meeting room heating` (Working Conditions, named).
+
+| ID | Type | Scenario and steps | Example data | Expected result | Status |
+|---|---|---|---|---|---|
+| GRV-E2E-10 | + / − | Acknowledge. Su Myat Noe, Case Management, search the case number, open it | Default target, then yesterday, then priority High and today + 14 days | The submitter card shows "Daniel Carter (EMP005)". The dialog "Acknowledge GRV-…?" proposes today + 30 days ("The category’s default: 30 days from today."); a past date is refused on the field. Then "Acknowledge: done.", status Acknowledged, High in the summary | Automated (the lifecycle test) |
+| GRV-E2E-11 | − | Reject needs a reason | Empty reason; spaces only; Cancel | "Reason (shown to the employee) is required." / "... cannot be blank."; Cancel leaves the case Submitted | Automated (same test) |
+| GRV-E2E-12 | + | Assign the Lead | Ye Yint Naing (EMP009); first with no investigator chosen | "Investigator is required."; Lead investigator is preselected; "Investigator assigned.", status Assigned, "Ye Yint Naing · Lead" under Investigators and in Facts | Automated (same test) |
+| GRV-E2E-13 | + | The investigator starts, adds a note and asks for information. Ye Yint Naing, Investigations | Note `Fictional note: facilities confirmed ...`; question `Fictional question: which meeting rooms are affected?` | No Acknowledge, Assign investigator, Close or Reject in his workspace. Start investigation → Under Investigation. An empty note: "Text is required."; then "Added to the investigation record.". An empty question: "Question for the employee is required."; then Awaiting Employee Response | Automated (same test) |
+| GRV-E2E-14 | + | The employee answers and never sees the note. Daniel, My Grievances | Answer `Fictional answer: rooms 3 and 4 ...` | The question and "HR has asked you for more information." are shown; the note text is nowhere on the page. "Respond to HR's request" is disabled until text is typed; then "Your answer was sent to HR.", status back to Under Investigation, the button is gone and the timeline shows "Employee responded" | Automated (same test) |
+| GRV-E2E-15 | + / − | The Lead proposes and cannot decide | Summary `Fictional resolution: the heaters are repaired ...` | The answer is visible to him. "Propose resolution: done.", Resolution Proposed; no Approve resolution or Send proposal back for him | Automated (same test) |
+| GRV-E2E-16 | − | Reviewer queue; sending back needs a reason. Su Myat Noe, Reviews | Empty reason, then Cancel | The case is listed once as Resolution Proposed and opens under `/grievances/reviews/{id}` with no Messages tab; the proposal shows "Proposed by Ye Yint Naing". "What needs to change is required."; Cancel keeps Resolution Proposed | Automated (same test) |
+| GRV-E2E-17 | + | Approve and share | "Share the resolution summary with the employee" (on by default) | "Approve resolution: done.", status Resolved | Automated (same test) |
+| GRV-E2E-18 | + | Close; the history. Case Management | | "Shared with the employee." shown. The Close dialog says "Closing is final"; "Close: done.", Closed. The history lists Submitted, Acknowledged, Investigator assigned, Investigation started, Information requested, Employee responded, Resolution proposed, Resolution approved and Closed, names Daniel Carter (named case) and holds the question | Automated (same test) |
+| GRV-E2E-19 | + | The employee reads the resolution. Daniel | | Status Closed; the Resolution card holds the summary; the timeline shows "Resolution approved" but not "Resolution proposed" | Automated (same test) |
+| GRV-E2E-20 | − | No investigator name, no reply on a Closed case | | The timeline does not name Ye Yint Naing; "Messages with HR" has no text box | Automated (same test) |
+| GRV-E2E-21 | − | Reopen needs a reason. Su Myat Noe | Empty reason | "Reason (shown to the employee) is required." | Automated (same test) |
+| GRV-E2E-22 | + | Reopen | `Fictional reason: the heater failed again.` | "Reopen: done.", Reopened; the history shows Reopened with the reason; Daniel's timeline shows the reason and status Reopened | Automated (same test) |
+
+### 18.3 Confidentiality and tiers (simulated)
+
+| ID | Type | Scenario and steps | Example data | Expected result | Status |
+|---|---|---|---|---|---|
+| GRV-E2E-30 | + | An anonymous submission. Daniel, Discrimination, switch on, submit | Subject `Fictional comments about accents` | The confirmation says "HR will receive it without your name."; the detail shows "Anonymously", status Submitted | Automated: grievance-confidentiality.spec › GRV-E2E-30/31: an anonymous grievance shows "Anonymous" in the list, the detail and the history |
+| GRV-E2E-31 | − | Nobody on the case team sees who. Su Myat Noe, Case Management, search the subject; open it; History; then seeded #4 | | List row: "Anonymous" and "Not disclosed". Detail: "Anonymous" in the summary and the submitter card, "Department not disclosed", "The employee reported this anonymously.", no Position. History: "Anonymous submitter". "Daniel Carter" and "EMP005" appear nowhere on the list, the detail, the history or #4's row | Automated (same test) |
+| GRV-E2E-32 | − | The employee never sees investigation material. Daniel opens #10 | | Status Awaiting Employee Response; HR's question "Please tell us which two months are concerned." is shown; no tabs, no "Investigation notes", no "Ye Yint Naing"; the timeline shows "Information requested" | Automated: grievance-confidentiality.spec › GRV-E2E-32 |
+| GRV-E2E-33 | − | An investigator sees only his assigned cases. Ye Yint Naing, Investigations | Search `On-call rota` (#3), `test environment access` (#5), `Headsets` (#11) | Every listed row names him as Lead. #3 (not assigned) and #5 (he is its subject) give "No case is assigned to you" and no rows; #11 gives one row | Automated: grievance-confidentiality.spec › GRV-E2E-33 |
+| GRV-E2E-34 | − | A role without the case-team keys. Ye Yint Naing opens Case Management and Reviews from the sidebar | | The sidebar shows both entries (no permission list in a mock session). Each page shows its heading, "The cases could not be loaded" and "You do not have permission to do this." instead of an empty list; no console errors | Automated, failed before the error-state fix (fixed since; re-run to confirm): grievance-confidentiality.spec › GRV-E2E-34 |
+| GRV-E2E-35 | − | Conflict of interest. Su Myat Noe opens #5 (Acknowledged, subject Ye Yint Naing), Assign investigator | Ye Yint Naing (EMP009) | Refused on the field with the one generic message "This person cannot be assigned to this case (conflict of interest)."; after Cancel the case stays Acknowledged with "Nobody is assigned yet." | Automated: grievance-confidentiality.spec › GRV-E2E-35 |
+| GRV-E2E-36 | − | The reviewer workspace. Reviews > #11 | | Tabs exactly Findings, Proposal and escalations, History (the proposal opened first, "Proposed by Ye Yint Naing"); no Messages, Files, Corrective actions or Access log tab and no message box. Findings shows "Sample finding" with no Add note. Commands: Approve resolution and Send proposal back only (no Close, Reject, Assign investigator, Request information) | Automated: grievance-confidentiality.spec › GRV-E2E-36 |
+| GRV-E2E-37 | − | The proposer cannot decide. Su Myat Noe proposes on #6 (Under Review, no Lead) | Summary `Fictional: publish training criteria.` | Resolution Proposed with "You proposed this resolution, so another reviewer has to approve or send it back." in Case Management and in Reviews; no Approve resolution or Send proposal back | Automated: grievance-confidentiality.spec › GRV-E2E-37 |
+| GRV-E2E-38 | − | An active investigator cannot decide. Su Myat Noe adds herself to #11 as Member, then opens it in Reviews | Su Myat Noe (EMP002), Member preselected | "Su Myat Noe · Member"; in Reviews the case shows no Approve resolution or Send proposal back | Automated: grievance-confidentiality.spec › GRV-E2E-38 |
+| GRV-E2E-39 | − | A case outside the scope, opened by address | Ye Yint Naing: `/grievances/investigations/3` and `/5`; Daniel: `/grievances/cases/10` (his own case in the case-team workspace) and `/grievances/my/3` | "This case could not be opened" with "Grievance case #3 was not found." (and #5), no endless loading; #10's question text is not shown; `/my/3` says "This grievance could not be opened"; no console errors | Automated, failed before the error-state fix (fixed since; re-run to confirm): grievance-confidentiality.spec › GRV-E2E-39 |
+
+### 18.4 Dashboard, reports, categories and access log
+
+All as Su Myat Noe (the fixture's session).
+
+| ID | Type | Scenario and steps | Example data | Expected result | Status |
+|---|---|---|---|---|---|
+| GRV-E2E-40 | + | HR dashboard. `/grievances/dashboard` | | "Grievance dashboard" with 12 key figures: Total, New, Under review, Under investigation, Awaiting the employee, Pending resolution, Resolved, Closed, Overdue, Escalated, Resolution rate, Average resolution. Total 16 (drafts not counted); the rate ends with %. Five charts (Monthly trend, By category, By department, By priority, By status), each a canvas with a text alternative. Recent activity links are case numbers only | Automated: grievance-insights.spec › GRV-E2E-40/41 |
+| GRV-E2E-41 | − | Anonymous departments | By department, Table view | The chart's text alternative and the table have one "Not disclosed" row with 5 | Automated (same test) |
+| GRV-E2E-42 | + | Report filters. `/grievances/reports` | Category Workplace Safety, then Status Resolved | 3 rows, all Workplace Safety, one "Not disclosed"; no subject ("Blocked fire exit") anywhere. Then 2 rows, all Resolved | Automated: grievance-insights.spec › GRV-E2E-42/43 |
+| GRV-E2E-43 | + | Excel export of the filtered rows | Export > Export to Excel | Dialog "Export Grievance cases to Excel"; file `grievance-cases-export-<yyyymmdd>-<hhmm>.xlsx`, sheet "Grievance cases", 12 headers (Case No, Category, Status, Priority, Department, Submitted, Target, Resolved, Days, Overdue, Lead Investigator, Escalated, as in the API module), the header plus 2 rows, "Not disclosed" present; no subject, submitter or description text | Automated (same test) |
+| GRV-E2E-44 | + | Print the report | Category Workplace Safety; "Print the grievance report" | The browser print is called once; the print view "Grievance case report" holds 3 rows and the filter | Automated: grievance-insights.spec › GRV-E2E-44 |
+| GRV-E2E-45 | + / − | Category create, edit, validation, delete an unused one | Code empty, then `bad code`, then `REMOTE-WORK`, name `Fictional Remote Work`; edit: anonymity off, target 366 then 10 | 10 categories, Salary and Compensation "Named only". "Code is required.", "Use upper-case letters, numbers and dashes only."; created (11). Edit: the code is disabled; "Default target days must be between 1 and 365."; saved shows "Named only" and 10. Deleting it works (back to 10) | Automated: grievance-insights.spec › GRV-E2E-45/46 |
+| GRV-E2E-46 | − | Delete a category in use | Workplace Safety | `"Workplace Safety" cannot be deleted because it is used by 3 grievance case(s). Deactivate it instead.`; the row stays | Automated (same test) |
+| GRV-E2E-47 | + | The access log records the export | Export from Reports, then the "Access log" link | `/grievances/access-log`, "Grievance access log"; with Action = Export every row is an Export, the newest by Su Myat Noe | Automated: grievance-insights.spec › GRV-E2E-47 |
+
+### 18.5 Quality sweep (desktop and phone)
+
+`grievance-quality.spec.ts` runs the automated checks of the quality sweep on the grievance screens that are not in the sidebar, on the desktop and the mobile (Pixel 7) projects: exactly one h1, every visible button and link named, every visible field labelled, images with alt text, no sideways scroll, a page language, and no console or runtime errors. The sidebar screens (Overview, My Grievances, Dashboard, Case Management, Investigations, Reviews, Review Summary, Reports, Categories) are swept by `quality.spec.ts`, which covers every route in `NAVIGATION`. Screens and states of the grievance sweep:
+
+| Who (written session) | Screen | Also audited |
+|---|---|---|
+| Daniel Carter (employee) | `/grievances/my/new` | The anonymous variant (Workplace Harassment, switch on, file warning) |
+| Daniel Carter | `/grievances/my/2/edit`, `/grievances/my/10`, `/grievances/my/4` | |
+| Su Myat Noe (HR) | `/grievances/cases/9` | Every tab: Messages, Investigation notes, Proposal and escalations, Files, Corrective actions, History, Access log |
+| Su Myat Noe | `/grievances/cases/3` | The Acknowledge dialog open |
+| Su Myat Noe | `/grievances/reviews/11` | Findings, Proposal and escalations, History |
+| Su Myat Noe | `/grievances/access-log` | |
+| Ye Yint Naing (investigator) | `/grievances/investigations/10` | Messages, Investigation notes, Proposal and escalations, Files, History |
+
+Status: Automated (grievance-quality.spec › grievance quality: {route} ({who})). The suite has no axe-core: this is partial and does not replace a manual review with a screen reader and contrast tooling.
+
+### 18.6 Not covered by Playwright yet
+
+No grievance scenario runs against the API build yet (the API has its own xUnit and integration tests, see [TEST-SCENARIOS.md](TEST-SCENARIOS.md) 13.1). These behaviours have no E2E test:
+
+- Triage edits (category, priority, target date, subject employee, involved department) and the "only the legal hold" rule on a case that is no longer open.
+- Corrective actions (add, status change, completed date).
+- Escalation, and the automatic escalation of a Critical case at acknowledgement or triage.
+- Archive and legal hold (archive refused under hold; archived cases read-only and only under the Archived filter).
+- Removing a Member investigator, and replacing the Lead (reason required).
+- Interview notes (interviewee, interview date) and the other note kinds.
+- Case-team messages to the employee and case-team uploads with a visibility.
+- The content of the Review Summary and the employee Overview.
+- Sorting, paging and the date filters of the lists and the report.
+- Deleting a draft.
+- Quotas: 5 open drafts, 10 submitter and 20 case-team files per case, the daily submitter upload bytes, the upload rate limit (API only).
+- The server's content check (a renamed file), and metadata removal from anonymous uploads (API only).
+- Stale-data conflicts (409 with "Reload the case") from two sessions.
 

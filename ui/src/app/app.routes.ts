@@ -90,6 +90,14 @@ export const routes: Routes = [
           ),
       },
       {
+        // Each screen carries its own key: `grievance:*` for the employee's own cases, and the
+        // `grievance-*` case-team keys for HR (see grievance.routes.ts).
+        path: 'grievances',
+        data: { breadcrumb: 'Grievances' },
+        loadChildren: () =>
+          import('./features/grievances/grievance.routes').then((m) => m.GRIEVANCE_ROUTES),
+      },
+      {
         path: 'recruitment',
         data: { breadcrumb: 'Recruitment', permission: 'recruitment:View' },
         canActivate: [permissionGuard],

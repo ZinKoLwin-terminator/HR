@@ -167,6 +167,7 @@ public sealed class SchemaMappingTests : IDisposable
         // ON DELETE CASCADE exists in the database only for the rows an employee owns, for the rows an identity user
         // owns (claims, logins, tokens), for the grants of a role, for the issues of an import batch and for the rows a payroll
         // structure, run or payslip owns, for the items of a scorecard and the attachments of an item (a KPI item cascades from its scorecard, not from the template or category it names).
+        // A grievance draft takes its submitter row and its files with it (only a draft is ever deleted: TR_Case_SubmittedIsFixed).
         var cascading = new[]
         {
             typeof(EmployeeBankAccount), typeof(EmployeeDocument), typeof(EmploymentHistoryEntry), typeof(Apex.Hrms.Domain.Attendance.ShiftWorkDay),
@@ -174,6 +175,7 @@ public sealed class SchemaMappingTests : IDisposable
             typeof(RoleGrant), typeof(Apex.Hrms.Domain.Excel.ImportIssue),
             typeof(Apex.Hrms.Domain.Payroll.SalaryStructureComponent), typeof(Apex.Hrms.Domain.Payroll.PayrollRunWarning), typeof(Apex.Hrms.Domain.Payroll.PayslipLine),
             typeof(Apex.Hrms.Domain.Performance.ScorecardItem), typeof(Apex.Hrms.Domain.Performance.KpiAttachment),
+            typeof(Apex.Hrms.Domain.Grievances.GrievanceCaseSubmitter), typeof(Apex.Hrms.Domain.Grievances.GrievanceAttachment),
         };
         foreach (var type in context.Model.GetEntityTypes().Where(type => !type.IsOwned()))
         {
@@ -182,6 +184,7 @@ public sealed class SchemaMappingTests : IDisposable
                 cascading.Contains(type.ClrType)
                     && (type.ClrType != typeof(Apex.Hrms.Domain.Payroll.SalaryStructureComponent) || key.PrincipalEntityType.ClrType == typeof(Apex.Hrms.Domain.Payroll.SalaryStructure))
                     && (type.ClrType != typeof(Apex.Hrms.Domain.Performance.ScorecardItem) || key.PrincipalEntityType.ClrType == typeof(Apex.Hrms.Domain.Performance.Scorecard))
+                    && (type.ClrType != typeof(Apex.Hrms.Domain.Grievances.GrievanceCaseSubmitter) || key.PrincipalEntityType.ClrType == typeof(Apex.Hrms.Domain.Grievances.GrievanceCase))
                     ? DeleteBehavior.Cascade
                     : DeleteBehavior.NoAction,
                 key.DeleteBehavior));
@@ -206,7 +209,7 @@ public sealed class SchemaMappingTests : IDisposable
         // SQL Server maintains the temporal history tables; the model must not know them.
         Assert.DoesNotContain(
             context.Model.GetEntityTypes(),
-            type => type.GetTableName() is { } name && name.EndsWith("History", StringComparison.Ordinal) && type.ClrType != typeof(EmploymentHistoryEntry));
+            type => type.GetTableName() is { } name && name.EndsWith("History", StringComparison.Ordinal) && type.ClrType != typeof(EmploymentHistoryEntry) && type.ClrType != typeof(Apex.Hrms.Domain.Grievances.GrievanceStatusHistoryEntry));
         Assert.Null(employee.FindProperty("ValidFromUtc"));
         AssertUnique<Employee>("UQ_Employee_EmployeeCode", "EmployeeCode");
         AssertUnique<Employee>("UQ_Employee_WorkEmail", "WorkEmail");

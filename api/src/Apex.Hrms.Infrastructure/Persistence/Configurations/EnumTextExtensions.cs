@@ -15,6 +15,14 @@ internal static class EnumTextExtensions
             .HasMaxLength(maxLength)
             .IsUnicode(false);
 
+    /// <summary>The same for an optional enum: NULL stays NULL, a value is stored as its text.</summary>
+    public static PropertyBuilder<TEnum?> HasTextConversion<TEnum>(this PropertyBuilder<TEnum?> property, TextMap<TEnum> map, int maxLength = 30)
+        where TEnum : struct, Enum =>
+        property
+            .HasConversion(new ValueConverter<TEnum, string>(value => map.ToText(value), text => map.Parse(text)))
+            .HasMaxLength(maxLength)
+            .IsUnicode(false);
+
     /// <summary>The audit columns and the rowversion concurrency token every audited table has.</summary>
     public static void ConfigureAudit<TEntity>(this EntityTypeBuilder<TEntity> builder)
         where TEntity : AuditedEntity

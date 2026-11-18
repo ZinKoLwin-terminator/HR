@@ -35,7 +35,7 @@ Settings = User / Role / Permission          Data Exchange = Excel Import / Expo
 
 ## 2. Module တစ်ခုချင်းစီ
 
-အသေးစိတ် Module စာမျက်နှာများ: [Organization](modules/organization.md) · [Payroll](modules/payroll.md) (ကျန် Module များကို ဆက်ရေးမည်)
+အသေးစိတ် Module စာမျက်နှာများ: [Organization](modules/organization.md) · [Payroll](modules/payroll.md) · [Performance](modules/performance.md) · [Grievances](modules/grievance.md) (ကျန် Module များကို ဆက်ရေးမည်)
 
 ### 2.1 Dashboard — ခေါင်းဆောင်များအတွက် တစ်မျက်နှာတည်း အကျဉ်းချုပ်
 
@@ -131,6 +131,20 @@ Settings = User / Role / Permission          Data Exchange = Excel Import / Expo
   - **Permissions:** Module × Action (View/Create/Edit/Delete…) Matrix
 - **ကာကွယ်မှု:** ကိုယ့် Account ကိုယ် မဖျက်နိုင်/ အဆင့်မလျှော့နိုင်၊ အသုံးပြုသူရှိသော Role ကို မဖျက်နိုင်။
 
+### 2.10 Grievances — ဝန်ထမ်း တိုင်ကြားချက်
+
+- **ဘာလုပ်ပေးသလဲ:** ဝန်ထမ်း တိုင်ကြားချက်ကို တင်ပြခြင်းမှ ဖြေရှင်းပြီး ပိတ်သည်အထိ Case နံပါတ် (`GRV-yyyy-nnnnn`)၊ တာဝန်ခံ၊ Target date နှင့် ပြင်၍မရသော History ဖြင့် ခြေရာခံသည်။
+- **ပါဝင်သည်များ:**
+  - **My Grievances:** Draft သိမ်း → Declaration ဖြင့် Submit၊ Status Timeline၊ HR နှင့် Message၊ ဖိုင်တွဲ
+  - **Case Management:** Acknowledge (Priority + Target date)၊ Triage၊ Investigator Assign၊ Corrective action
+  - **Investigations:** Note၊ Interview၊ Finding၊ Recommendation၊ ဝန်ထမ်းထံ အချက်အလက် ထပ်တောင်း၊ ဖြေရှင်းချက် အဆိုပြု
+  - **Reviews:** အဆိုပြုသူ မဟုတ်သော Reviewer က ဖြေရှင်းချက်ကို Approve သို့ ပြန်ပို့
+  - **Dashboard / Reports:** Category၊ ဌာန၊ လအလိုက် ကိန်းဂဏန်း၊ Excel Export (Export သာ)၊ Print/PDF
+- **အရေးကြီး စည်းမျဉ်း:** Category ခွင့်ပြုလျှင် **အမည်မဖော်ဘဲ** တင်ပြနိုင်သည် (Salary and Compensation မှလွဲ၍)။ Case team သည် ကိုယ်တိုင် တင်ပြခဲ့သော သို့ ကိုယ့်အကြောင်း Case ကို မမြင်ရ။ Report နှင့် Export တွင် Subject၊ ဖော်ပြချက်၊ တိုင်ကြားသူ မပါ။ Company-wide Activity တွင် မပြ၊ ကိုယ်ပိုင် Access Log သာ။
+- **ရိုးသားစွာ ပြောရန်:** အမည်မဖော်မှုသည် အချိန်၊ ရေးသားပုံ၊ ဖိုင်အမည်၊ PDF Metadata၊ ဌာနငယ် စသည်ဖြင့် ဖော်ထုတ်ခံရနိုင်သေးသည်။ Demo Build တွင် Simulation သာ — **API ကသာ ကာကွယ်သည်**။ Virus စစ်ဆေးမှု မပါသေး။ အသေးစိတ်: [modules/grievance.md](modules/grievance.md)။
+- **ဘယ်သူ သုံးသလဲ:** ဝန်ထမ်းအားလုံး (တင်ပြ)၊ HR Officer (Investigator)၊ HR Management နှင့် Reviewer (Settings တွင် ခွင့်ပြုရ)။
+- **အကျိုးကျေးဇူး:** တိုင်ကြားချက် မပျောက်၊ တာဝန်ခံ ရှင်းလင်း၊ တိုင်ကြားသူကို ကာကွယ်၍ ယုံကြည်မှု တိုး။
+
 ---
 
 ## 3. Demo ပြသရာတွင် အကြံပြုသော အစီအစဉ် (၂၀ မိနစ်)
@@ -195,3 +209,4 @@ Customer ကို မမှန်သော မျှော်လင့်ချ
 | Recruitment | Job Opening → Hire Pipeline | HR / Hiring Manager |
 | Data Exchange | Excel Import / Export | HR Admin |
 | Settings | Users၊ Roles၊ Permissions၊ General | System Admin |
+| Grievances | တိုင်ကြားချက် တင်ပြ → စုံစမ်း → ဖြေရှင်း (အမည်မဖော်ခွင့်ပါ) | ဝန်ထမ်း / HR / Reviewer |

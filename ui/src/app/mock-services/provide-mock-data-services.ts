@@ -41,6 +41,16 @@ import {
   RatingBandDataService,
   ScorecardDataService,
 } from '../core/services/data/kpi-data.services';
+import {
+  GRIEVANCE_CASE_METHODS,
+  GRIEVANCE_CATEGORY_METHODS,
+  GRIEVANCE_INSIGHT_METHODS,
+  GRIEVANCE_MY_METHODS,
+  GrievanceCaseDataService,
+  GrievanceCategoryDataService,
+  GrievanceInsightDataService,
+  MyGrievanceDataService,
+} from '../core/services/data/grievance-data.services';
 import { lazyDataService } from '../core/services/data/lazy-data-service';
 import {
   LeaveApplicationDataService,
@@ -224,6 +234,42 @@ export function provideMockDataServices(options: MockDataOptions = {}): Environm
         KPI_INSIGHT_METHODS,
       ),
     },
+    // Grievances (a browser simulation that enforces nothing): every contract loads on first use.
+    {
+      provide: GrievanceCategoryDataService,
+      useFactory: lazyDataService(
+        () =>
+          import('./grievance/grievance-category-mock.service').then(
+            (m) => m.GrievanceCategoryMockService,
+          ),
+        GRIEVANCE_CATEGORY_METHODS,
+      ),
+    },
+    {
+      provide: MyGrievanceDataService,
+      useFactory: lazyDataService(
+        () => import('./grievance/my-grievance-mock.service').then((m) => m.MyGrievanceMockService),
+        GRIEVANCE_MY_METHODS,
+      ),
+    },
+    {
+      provide: GrievanceCaseDataService,
+      useFactory: lazyDataService(
+        () =>
+          import('./grievance/grievance-case-mock.service').then((m) => m.GrievanceCaseMockService),
+        GRIEVANCE_CASE_METHODS,
+      ),
+    },
+    {
+      provide: GrievanceInsightDataService,
+      useFactory: lazyDataService(
+        () =>
+          import('./grievance/grievance-insight-mock.service').then(
+            (m) => m.GrievanceInsightMockService,
+          ),
+        GRIEVANCE_INSIGHT_METHODS,
+      ),
+    },
     bind(PayrollRunDataService, PayrollRunMockService),
     bind(PayslipDataService, PayslipMockService),
     bind(MyPayslipDataService, MyPayslipMockService),
@@ -256,6 +302,18 @@ export function provideMockDataServices(options: MockDataOptions = {}): Environm
         return () =>
           import('./excel/modules/kpi-excel.modules').then((m) =>
             m.kpiExcelRegistrations(injector),
+          );
+      },
+    },
+    // The grievance case export (export only) loads with its data on first use, like KPI's.
+    {
+      provide: LAZY_EXCEL_MODULES,
+      multi: true,
+      useFactory: (): ExcelModuleLoader => {
+        const injector = inject(Injector);
+        return () =>
+          import('./excel/modules/grievance-excel.modules').then((m) =>
+            m.grievanceExcelRegistrations(injector),
           );
       },
     },

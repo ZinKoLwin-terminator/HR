@@ -261,6 +261,79 @@ export const NAVIGATION: NavItem[] = [
       },
     ],
   },
+  // Grievances: the employee's own entries need `grievance:View`; the case-team entries (later
+  // slices) name their own `grievance-*` keys.
+  {
+    label: 'Grievances',
+    permission: 'grievance:View',
+    icon: 'gavel',
+    section: 'PEOPLE',
+    children: [
+      {
+        label: 'Overview',
+        icon: 'space_dashboard',
+        route: '/grievances/overview',
+        group: 'My grievances',
+      },
+      {
+        label: 'My Grievances',
+        icon: 'report',
+        route: '/grievances/my',
+        group: 'My grievances',
+      },
+      // Case team: each entry names its own key, so an investigator-only or reviewer-only role
+      // still sees the group (a group shows when any child is visible).
+      {
+        label: 'Dashboard',
+        icon: 'monitoring',
+        route: '/grievances/dashboard',
+        permission: 'grievance-management:View',
+        group: 'Case team',
+      },
+      {
+        label: 'Case Management',
+        icon: 'folder_shared',
+        route: '/grievances/cases',
+        permission: 'grievance-management:View',
+        group: 'Case team',
+      },
+      {
+        label: 'Investigations',
+        icon: 'manage_search',
+        route: '/grievances/investigations',
+        permission: 'grievance-investigation:View',
+        group: 'Case team',
+      },
+      {
+        label: 'Reviews',
+        icon: 'fact_check',
+        route: '/grievances/reviews',
+        permission: 'grievance-review:View',
+        group: 'Case team',
+      },
+      {
+        label: 'Review Summary',
+        icon: 'insights',
+        route: '/grievances/review-summary',
+        permission: 'grievance-review:View',
+        group: 'Case team',
+      },
+      {
+        label: 'Reports',
+        icon: 'query_stats',
+        route: '/grievances/reports',
+        permission: 'grievance-management:View',
+        group: 'Report',
+      },
+      {
+        label: 'Categories',
+        icon: 'category',
+        route: '/grievances/categories',
+        permission: 'grievance-management:View',
+        group: 'Setup',
+      },
+    ],
+  },
   {
     label: 'Payroll',
     permission: 'payroll:View',

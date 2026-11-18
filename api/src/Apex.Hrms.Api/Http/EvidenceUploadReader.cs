@@ -33,6 +33,16 @@ internal static class EvidenceUploadReader
 
     public static async Task<Result<EvidenceUploadRequest>> ReadAsync(HttpRequest request, CancellationToken cancellationToken)
     {
+        var form = await ReadFormAsync(request, extraField: null, cancellationToken);
+        return form.IsFailure ? Result.Failure<EvidenceUploadRequest>(form.Error) : Result.Success(form.Value.Upload);
+    }
+
+    /// <summary>
+    /// Like <see cref="ReadAsync"/>, with one more short text part named <paramref name="extraField"/> (the grievance upload's
+    /// <c>visibility</c>), read at most once and cut at 256 characters like the row version. Other text parts are ignored.
+    /// </summary>
+    public static async Task<Result<EvidenceUploadForm>> ReadFormAsync(HttpRequest request, string? extraField, CancellationToken cancellationToken)
+    {
         if (!MediaTypeHeaderValue.TryParse(request.ContentType, out var mediaType)
             || !string.Equals(mediaType.MediaType.Value, "multipart/form-data", StringComparison.OrdinalIgnoreCase))
         {
@@ -60,6 +70,7 @@ internal static class EvidenceUploadReader
         try
         {
             return await ReadSectionsAsync(
+                extraField,
                 new MultipartReader(boundary, request.Body)
                 {
                     HeadersCountLimit = 8,
@@ -74,9 +85,10 @@ internal static class EvidenceUploadReader
         }
     }
 
-    private static async Task<Result<EvidenceUploadRequest>> ReadSectionsAsync(MultipartReader reader, CancellationToken cancellationToken)
+    private static async Task<Result<EvidenceUploadForm>> ReadSectionsAsync(string? extraField, MultipartReader reader, CancellationToken cancellationToken)
     {
         string? rowVersion = null;
+        string? extra = null;
         string? fileName = null;
         byte[]? content = null;
         var sections = 0;
@@ -111,6 +123,15 @@ internal static class EvidenceUploadReader
 
                 rowVersion = await ReadTextAsync(section.Body, cancellationToken);
             }
+            else if (extraField is not null && name == extraField)
+            {
+                if (extra is not null)
+                {
+                    return Refuse(Malformed);
+                }
+
+                extra = await ReadTextAsync(section.Body, cancellationToken);
+            }
             else if (name == FileField)
             {
                 return Refuse(OneFile);
@@ -119,7 +140,7 @@ internal static class EvidenceUploadReader
 
         return content is null
             ? Refuse(OneFile)
-            : Result.Success(new EvidenceUploadRequest(rowVersion, fileName, content));
+            : Result.Success(new EvidenceUploadForm(new EvidenceUploadRequest(rowVersion, fileName, content), extra));
     }
 
     /// <summary>
@@ -160,8 +181,8 @@ internal static class EvidenceUploadReader
         return new string(text, 0, length);
     }
 
-    private static Result<EvidenceUploadRequest> Refuse(string message) =>
-        Result.Failure<EvidenceUploadRequest>(AppError.Validation(message, FileField, message));
+    private static Result<EvidenceUploadForm> Refuse(string message) =>
+        Result.Failure<EvidenceUploadForm>(AppError.Validation(message, FileField, message));
 
     private static BadHttpRequestException TooLarge() =>
         new("The request body is too large.", StatusCodes.Status413PayloadTooLarge);
@@ -210,3 +231,6 @@ internal static class EvidenceUploadReader
         }
     }
 }
+
+/// <summary>A read upload: the file with its row version and name, and the optional extra text part.</summary>
+internal sealed record EvidenceUploadForm(EvidenceUploadRequest Upload, string? Extra);

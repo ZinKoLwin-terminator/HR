@@ -2,6 +2,7 @@ using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Activity;
 using Apex.Hrms.Application.Dashboard;
 using Apex.Hrms.Application.Excel;
+using Apex.Hrms.Application.Grievances;
 using Apex.Hrms.Infrastructure.Excel;
 using Apex.Hrms.Application.Notifications;
 using Apex.Hrms.Application.Security;
@@ -51,6 +52,8 @@ public static class DependencyInjection
         services.AddScoped<IActivityRecorder>(provider => provider.GetRequiredService<EfActivityRecorder>());
         services.AddScoped<IActivityLogStore, EfActivityLogStore>();
         services.AddScoped<INotificationStore, EfNotificationStore>();
+        services.AddScoped<INotificationWriter, EfNotificationWriter>();
+        services.AddScoped<INotificationRecipients, EfNotificationRecipients>();
         services.AddScoped<IDashboardSource, EfDashboardSource>();
         services.AddScoped<IReadModel, EfReadModel>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
@@ -67,6 +70,12 @@ public static class DependencyInjection
         services.AddScoped<IEmployeeCodeSequence, EfEmployeeCodeSequence>();
         services.AddScoped<ILeaveApplicationNumberSequence, EfLeaveApplicationNumberSequence>();
         services.AddScoped<IJobOpeningCodeSequence, EfJobOpeningCodeSequence>();
+        services.AddScoped<IGrievanceCaseNumberSequence, EfGrievanceCaseNumberSequence>();
+        services.AddScoped<IGrievanceSubmitterDirectory, EfGrievanceSubmitterDirectory>();
+        services.AddScoped<IGrievanceAuditLog, EfGrievanceAuditLog>();
+        services.AddSingleton(new GrievanceSettings(
+            configuration.GetValue(GrievanceSettings.RetentionYearsKey, GrievanceSettings.DefaultRetentionYears),
+            configuration.GetValue(GrievanceSettings.SubmitterDailyUploadBytesKey, GrievanceSettings.DefaultSubmitterDailyUploadBytes)));
         services.AddSingleton<IBusinessWeek>(ConfiguredBusinessWeek.From(
             configuration.GetSection(ConfiguredBusinessWeek.ConfigurationKey).Get<string[]>()));
 
@@ -76,6 +85,7 @@ public static class DependencyInjection
         services.AddScoped<IPermissionStore, EfPermissionStore>();
         services.AddScoped<ITeamDirectory, EfTeamDirectory>();
         services.AddScoped<IRecruitmentDirectory, EfRecruitmentDirectory>();
+        services.AddScoped<IPermissionHolders, EfPermissionHolders>();
 
         // Fails closed (refuses to send) until the host registers a real sender with AddEmailSender.
         services.TryAddSingleton<IEmailSender>(new SmtpEmailSender(SmtpSettings.From(configuration)));
