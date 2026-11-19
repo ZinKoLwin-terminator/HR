@@ -40,3 +40,9 @@ android/app/google-services.json
 .flutter-plugins
 .flutter-plugins-dependencies
 .metadata
+
+# Golden-test failure diffs, written on every mismatched run
+test/screenshots/failures/
+
+# Stray local images
+/image.png
