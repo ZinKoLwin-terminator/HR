@@ -1,4 +1,5 @@
-﻿import 'package:material_ui/material_ui.dart';
+import 'package:hr_employee_app/app/theme/app_colors.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Converts the API's `#RRGGBB` colour strings into [Color].
 ///
@@ -38,7 +39,7 @@ abstract final class ColorUtils {
   /// colours the API may send.
   static Color onColor(Color background) {
     return background.computeLuminance() > 0.5
-        ? const Color(0xFF101828)
+        ? AppColors.textPrimary
         : Colors.white;
   }
 }

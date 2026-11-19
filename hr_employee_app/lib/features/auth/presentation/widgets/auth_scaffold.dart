@@ -100,7 +100,7 @@ class _AuthScaffoldState extends ConsumerState<AuthScaffold>
       // light regardless of the app's theme.
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        body: _AuthBackdrop(
+        body: AuthBackdrop(
           child: SafeArea(
             child: Column(
               children: <Widget>[
@@ -202,7 +202,8 @@ class _AuthScaffoldState extends ConsumerState<AuthScaffold>
   }
 }
 
-/// The gradient wash the screens sit on, plus its ornaments.
+/// The gradient wash the signed-out screens and the splash sit on, plus its
+/// ornaments.
 ///
 /// Three layers, cheapest first: the auth gradient, a single painter that
 /// draws the grid, glows, rings and sheen in one pass, and a scrim that
@@ -210,8 +211,8 @@ class _AuthScaffoldState extends ConsumerState<AuthScaffold>
 /// composed from blurred widgets because a `BackdropFilter` would cost a
 /// full-screen blur on every frame of the entry animation for the same
 /// result.
-class _AuthBackdrop extends StatelessWidget {
-  const _AuthBackdrop({required this.child});
+class AuthBackdrop extends StatelessWidget {
+  const AuthBackdrop({required this.child, super.key});
 
   final Widget child;
 
@@ -383,16 +384,12 @@ class _BrandLockup extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Container(
-          padding: EdgeInsets.all(AppSpacing.sm),
+          padding: EdgeInsets.all(AppSpacing.xs),
+          // The launcher icon in miniature: an opaque navy tile, so the
+          // mark's hairline hexagon reads against one flat colour instead
+          // of the busy gradient, and nothing shows through from behind.
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[
-                onBrand.withValues(alpha: 0.26),
-                onBrand.withValues(alpha: 0.08),
-              ],
-            ),
+            color: AppColors.apexNavy,
             borderRadius: BorderRadius.circular(AppRadius.xl),
             border: Border.all(color: onBrand.withValues(alpha: 0.28)),
             boxShadow: <BoxShadow>[
@@ -404,7 +401,7 @@ class _BrandLockup extends StatelessWidget {
               ),
             ],
           ),
-          child: const AppLogo(size: 44, isOnDark: true),
+          child: const AppLogo(size: 52, isOnDark: true),
         ),
         Gap.wMd,
         Flexible(

@@ -5,6 +5,7 @@ import 'package:hr_employee_app/features/attendance/presentation/screens/attenda
 import 'package:hr_employee_app/features/attendance/presentation/screens/attendance_screen.dart';
 import 'package:hr_employee_app/features/auth/presentation/providers/auth_controller.dart';
 import 'package:hr_employee_app/features/auth/presentation/providers/auth_state.dart';
+import 'package:hr_employee_app/features/auth/presentation/providers/splash_gate.dart';
 import 'package:hr_employee_app/features/auth/presentation/screens/change_password_screen.dart';
 import 'package:hr_employee_app/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:hr_employee_app/features/auth/presentation/screens/login_screen.dart';
@@ -49,6 +50,10 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
     refreshNotifier.update(next.value);
   }, fireImmediately: true);
 
+  ref.listen<bool>(splashGateProvider, (bool? previous, bool next) {
+    refreshNotifier.updateSplash(isFinished: next);
+  }, fireImmediately: true);
+
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: RoutePaths.splash,
@@ -57,6 +62,7 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
     redirect: (BuildContext context, GoRouterState state) => resolveRedirect(
       location: state.matchedLocation,
       authState: refreshNotifier.authState,
+      isSplashFinished: refreshNotifier.isSplashFinished,
     ),
     routes: <RouteBase>[
       GoRoute(
@@ -273,7 +279,15 @@ const String _forcedPasswordChangePath =
 String? resolveRedirect({
   required String location,
   required AuthState? authState,
+  bool isSplashFinished = true,
 }) {
+  // The logo reveal is still playing. Stay on the splash until it has
+  // finished, even if the session is already known; anywhere else, carry on
+  // as normal.
+  if (location == RoutePaths.splash && !isSplashFinished) {
+    return null;
+  }
+
   // The session has not been resolved yet. Hold on the splash screen; the
   // refresh listener re-runs this the moment it is known.
   if (authState == null || authState.isUnknown) {
@@ -312,6 +326,18 @@ class _AuthRefreshNotifier extends ChangeNotifier {
   AuthState? _authState;
 
   AuthState? get authState => _authState;
+
+  bool _isSplashFinished = false;
+
+  bool get isSplashFinished => _isSplashFinished;
+
+  void updateSplash({required bool isFinished}) {
+    if (_isSplashFinished == isFinished) {
+      return;
+    }
+    _isSplashFinished = isFinished;
+    notifyListeners();
+  }
 
   void update(AuthState? next) {
     if (_authState == next) {

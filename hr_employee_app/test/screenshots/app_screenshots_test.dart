@@ -71,16 +71,32 @@ void main() {
     // visible only while the stored session is being read, and with
     // in-memory storage that finishes within the first frame. Pumping the
     // real app would always land on the screen *after* it.
+    // Reduce Motion is on, so the splash shows the finished logo (its last
+    // frame) rather than whichever frame of the reveal the clock lands on.
     await tester.pumpWidget(
-      ScreenUtilInit(
-        designSize: logicalSize,
-        builder: (BuildContext context, Widget? child) => const MaterialApp(
-          debugShowCheckedModeBanner: false,
-          home: SplashScreen(),
+      ProviderScope(
+        child: ScreenUtilInit(
+          designSize: logicalSize,
+          builder: (BuildContext context, Widget? child) => MaterialApp(
+            debugShowCheckedModeBanner: false,
+            builder: (BuildContext context, Widget? child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: child!,
+            ),
+            home: const SplashScreen(),
+          ),
         ),
       ),
     );
-    await tester.pump(const Duration(milliseconds: 300));
+
+    // The Lottie file is read and parsed off the fake-async clock; give the
+    // real load time to finish, then let the composition paint.
+    for (int i = 0; i < 5; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     await _capture(tester, outputDirectory, '01-splash');
   });

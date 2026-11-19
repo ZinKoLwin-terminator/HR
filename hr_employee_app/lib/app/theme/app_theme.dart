@@ -227,7 +227,7 @@ abstract final class AppTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: isDark
             ? AppColors.darkSurfaceMuted
-            : const Color(0xFF1D2939),
+            : AppColors.ink,
         contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
         shape: RoundedRectangleBorder(borderRadius: AppRadius.field),
         insetPadding: EdgeInsets.all(AppSpacing.lg),

@@ -47,6 +47,7 @@ dependencies:
   # Formatting
   intl: ^0.20.0
   material_ui: ^1.11.1
+  lottie: ^3.8.2
 
 dev_dependencies:
   flutter_test:
@@ -61,3 +62,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/animations/

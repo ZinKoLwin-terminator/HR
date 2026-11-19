@@ -6,25 +6,37 @@ import 'package:material_ui/material_ui.dart';
 /// [AppPalette] theme extension. Widgets must not hold literal colour values,
 /// so that a brand change is a single-file edit.
 abstract final class AppColors {
-  // --- Brand ----------------------------------------------------------
-  /// Primary corporate blue. Used for primary actions and active states.
+  // --- Apex HRMS brand sheet -----------------------------------------
+  // The theme colours from the brand sheet. Everything below derives from
+  // these, so the UI and the logo are one palette rather than two blues
+  // that nearly match.
+  static const Color apexNavy = Color(0xFF0B3B66);
+  static const Color summitTeal = Color(0xFF14B8A6);
+  static const Color summitTealBright = Color(0xFF2DD4BF);
+  static const Color steelBlue = Color(0xFF4F86B8);
+  static const Color mistBlue = Color(0xFFA5C4DD);
+  static const Color ink = Color(0xFF0F172A);
+  static const Color cloud = Color(0xFFF8FAFC);
+
+  // --- Brand roles ----------------------------------------------------
+  /// Primary actions and active states: Apex Navy.
   ///
   /// The two stops of the brand gradient: [primary] is its top and
   /// [primaryDark] its bottom, so a filled button and the header it sits
-  /// under are the same colour rather than two blues that nearly match.
-  static const Color primary = Color(0xFF0F4C75);
-  static const Color primaryDark = Color(0xFF1A2C4A);
-  static const Color primaryLight = Color(0xFF3282B8);
+  /// under are the same colour.
+  static const Color primary = apexNavy;
+  static const Color primaryDark = Color(0xFF072845);
+  static const Color primaryLight = steelBlue;
 
-  /// Very light blue used for selected rows and icon backplates.
-  static const Color primarySurface = Color(0xFFE8F1F8);
+  /// Mist Blue at a whisper, for selected rows and icon backplates.
+  static const Color primarySurface = Color(0xFFEAF1F7);
 
-  /// Secondary accent, used sparingly for highlights.
-  static const Color accent = Color(0xFF0EA5E9);
+  /// Summit Teal, used sparingly for highlights.
+  static const Color accent = summitTeal;
 
   /// The pale end of the accent, for text and strokes that have to stay
   /// legible on the dark auth ground where [accent] itself goes muddy.
-  static const Color accentLight = Color(0xFF67E8F9);
+  static const Color accentLight = Color(0xFF5EEAD4);
 
   /// The brand gradient, painted top to bottom behind a screen header.
   ///
@@ -42,19 +54,19 @@ abstract final class AppColors {
   /// stop, so it is the same identity at a lower key rather than a second
   /// palette.
   static const List<Color> authGradient = <Color>[
-    Color(0xFF0A1F2E),
+    Color(0xFF06223D),
     primary,
-    Color(0xFF051219),
+    Color(0xFF031426),
   ];
 
   // --- Neutrals -------------------------------------------------------
-  static const Color scaffoldBackground = Color(0xFFF6F7F9);
+  static const Color scaffoldBackground = cloud;
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceMuted = Color(0xFFF2F4F7);
   static const Color border = Color(0xFFE4E7EC);
   static const Color divider = Color(0xFFEDEFF2);
 
-  static const Color textPrimary = Color(0xFF101828);
+  static const Color textPrimary = ink;
   static const Color textSecondary = Color(0xFF475467);
   static const Color textTertiary = Color(0xFF98A2B3);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
@@ -87,17 +99,17 @@ abstract final class AppColors {
   /// header have to stay the brightest things on the screen, which a
   /// full-strength brand gradient would not allow.
   static const List<Color> darkBrandGradient = <Color>[
-    Color(0xFF0A1F2E),
-    Color(0xFF051219),
+    Color(0xFF06223D),
+    Color(0xFF031426),
   ];
 
   /// Shadow used by raised cards. Kept very soft: the design brief calls for
   /// subtle elevation rather than heavy drop shadows.
-  static const Color shadow = Color(0x14101828);
+  static const Color shadow = Color(0x140F172A);
 
   /// Shadow for a surface that floats on the brand gradient rather than on
   /// the neutral scaffold, where [shadow] is too faint to separate the two.
-  static const Color shadowRaised = Color(0x33101828);
+  static const Color shadowRaised = Color(0x330F172A);
 
   /// Shadow for a card that overlaps a coloured header.
   ///
@@ -105,7 +117,7 @@ abstract final class AppColors {
   /// the band, while [shadowRaised] - tuned for a panel on a full-screen
   /// gradient - reads as a hard shelf under a card that is mostly sitting
   /// on the neutral page.
-  static const Color shadowLift = Color(0x1C101828);
+  static const Color shadowLift = Color(0x1C0F172A);
 }
 
 /// Semantic colours that have no slot in [ColorScheme].

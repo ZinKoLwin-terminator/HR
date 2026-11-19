@@ -10,3 +10,7 @@
 tags:
   screenshots:
     skip: "Run explicitly: flutter test test/screenshots --update-goldens"
+  # Writes the launcher icons and favicon from the app's own logo painter.
+  #   flutter test test/tool --run-skipped
+  brand-icons:
+    skip: "Run explicitly: flutter test test/tool --run-skipped"

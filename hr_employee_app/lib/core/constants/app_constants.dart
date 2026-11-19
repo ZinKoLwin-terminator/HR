@@ -1,6 +1,6 @@
 /// Values that are fixed for the whole application.
 abstract final class AppConstants {
-  static const String appName = 'HR Employee';
+  static const String appName = 'Apex HRMS';
 
   /// Scheme used by notification deep links, e.g. `hrapp://leave/lr-5501`.
   static const String deepLinkScheme = 'hrapp';

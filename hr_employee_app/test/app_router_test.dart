@@ -168,6 +168,51 @@ void main() {
       });
     });
 
+    group('splash animation still playing', () {
+      test('holds on the splash even once the session is known', () {
+        for (final AuthState state in <AuthState>[signedOut, signedIn]) {
+          expect(
+            resolveRedirect(
+              location: RoutePaths.splash,
+              authState: state,
+              isSplashFinished: false,
+            ),
+            isNull,
+          );
+        }
+      });
+
+      test('moves on once it finishes, whichever comes later', () {
+        expect(
+          resolveRedirect(
+            location: RoutePaths.splash,
+            authState: signedOut,
+            isSplashFinished: true,
+          ),
+          RoutePaths.login,
+        );
+        expect(
+          resolveRedirect(
+            location: RoutePaths.splash,
+            authState: unknown,
+            isSplashFinished: true,
+          ),
+          isNull,
+        );
+      });
+
+      test('does not affect any other location', () {
+        expect(
+          resolveRedirect(
+            location: RoutePaths.dashboard,
+            authState: signedOut,
+            isSplashFinished: false,
+          ),
+          RoutePaths.login,
+        );
+      });
+    });
+
     group('signed out', () {
       test('protected screens redirect to login', () {
         for (final String path in <String>[

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Apex Navy (AppColors.apexNavy), the Flutter splash ground, so the native launch window
+         hands over to the Flutter splash without a white flash. -->
+    <color name="splash_background">#0B3B66</color>
+</resources>
