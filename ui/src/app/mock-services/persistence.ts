@@ -8,9 +8,10 @@ import { WritableSignal, effect, signal } from '@angular/core';
  * creates or edits survive a page reload. {@link resetPersistedData} puts everything back to the
  * seed data. Off by default, so unit tests always start from the seed.
  *
- * Change `STORAGE_PREFIX` when a model changes shape: old saved data is then ignored.
+ * Change `STORAGE_PREFIX` when a model changes shape or the seed mode changes: old saved data is
+ * then ignored (left in storage, never read). v2: the full sample data replaced the empty start.
  */
-const STORAGE_PREFIX = 'hrms.data.v1.';
+const STORAGE_PREFIX = 'hrms.data.v2.';
 
 interface Entry {
   value: WritableSignal<unknown>;

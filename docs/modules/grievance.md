@@ -193,7 +193,7 @@ Sidebar Group **Grievances**၊ Route များ `/grievances` အောက်
 
 | | Demo Build (Mock) | API Build (`npm run start:api`) |
 |---|---|---|
-| ဒေတာ | Browser ထဲတွင်သာ (`hrms.data.v1.grievance_*`)၊ နမူနာ Case ၁၈ ခု (Anonymous ၆ ခု) — Sample data Build တွင်သာ | SQL Server (`grv` Schema) |
+| ဒေတာ | Browser ထဲတွင်သာ (`hrms.data.v2.grievance_*`)၊ နမူနာ Case ၁၈ ခု (Anonymous ၆ ခု) — Sample data Build တွင်သာ | SQL Server (`grv` Schema) |
 | Permission / Scope | Settings ရှိ Simulated session ၏ Grant ဖြင့် API ၏ စည်းမျဉ်းကို **ပုံတူ ပြရုံသာ — ဘာမှ မတားဆီး** | Request တိုင်းတွင် Server က စစ်သည် |
 | Pseudonym | Key ပုံသေ FNV-1a Hash — **လျှို့ဝှက်ချက် မဟုတ်၊ Bundle မှ မည်သူမဆို ပြန်တွက်နိုင်** | HMACSHA256 + Secret key |
 | ဖိုင် | Memory ထဲတွင်သာ (Reload လျှင် ပျောက်)၊ Metadata **မဖယ်ရှား**၊ Rate limit မရှိ | Folder တွင် အမြဲ သိမ်း၊ Anonymous ဖိုင်၏ Metadata ဖယ်ရှား၊ Rate limit |

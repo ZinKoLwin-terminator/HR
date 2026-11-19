@@ -15,8 +15,8 @@ Run all npm commands from `ui/`. First time only: `npx playwright install chromi
 
 E2E tests start their own dev server with `ng serve --configuration e2e` on port **4300**. That
 configuration swaps `src/app/mock-data-options.ts` for `mock-data-options.e2e.ts`, so tests always run
-on the **sample data without persistence**, whatever the app itself uses (the `feature/empty-data`
-branch starts empty and keeps data in the browser). A normal `npm start` on port 4200 is never reused
+on the **sample data without persistence**, whatever the app itself uses (`npm start` loads the same sample data but keeps
+changes in the browser). A normal `npm start` on port 4200 is never reused
 by the tests. If a server is already running on 4300 it is reused locally.
 
 Locally Playwright uses at most 3 workers: more overload the dev server on Windows (blank pages,

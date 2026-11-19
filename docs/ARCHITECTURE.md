@@ -112,9 +112,9 @@ the same shape (`api-services/http-error.mapper.ts`), so no screen changes betwe
 - `provideMockDataServices({ emptyData, persist })` changes that. `emptyData: true` starts every
   business list empty (roles, permissions, settings, reference data such as the grievance categories and one
   built-in administrator remain, see `BUILT_IN_ADMIN_EMPLOYEE_ID`). `persist: true` keeps created and edited records in
-  `localStorage` (`hrms.data.v1.*`, see `mock-services/persistence.ts`); Settings > General has a
+  `localStorage` (`hrms.data.v2.*`, see `mock-services/persistence.ts`); Settings > General has a
   **Reset data** button (`DemoDataDataService`) that clears only that data. The options come from
-  `ui/src/app/mock-data-options.ts` (currently both on); the E2E build swaps in `mock-data-options.e2e.ts` (full sample
+  `ui/src/app/mock-data-options.ts` (currently full sample data with persistence on); the E2E build swaps in `mock-data-options.e2e.ts` (full sample
   data, no persistence). Bump the storage prefix when a model changes shape; a browser that saved data before a new
   module (for example its role permissions) needs **Reset data**. All of this is mock-only; in API mode the data is
   in SQL Server.

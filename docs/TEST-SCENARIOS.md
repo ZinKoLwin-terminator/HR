@@ -508,7 +508,7 @@ The integration test suite (`Apex.Hrms.IntegrationTests`, every module) last ran
 [E2E-TEST-SCENARIOS.md section 18](E2E-TEST-SCENARIOS.md#18-grievances): submission (18.1), the case workflow across
 roles (18.2), confidentiality and tiers (18.3), dashboard, reports, export, categories and access log (18.4), and a
 quality sweep on desktop and phone (18.5). GRV-E2E-34 and GRV-E2E-39 failed until the error-state fix of the
-grievance screens (fixed since; re-run to confirm). They test the mock's **simulation** of the API's rules, not real security. Not yet covered end to end: see
+grievance screens and pass since (2026-11-18 run: 35 passed, 17 skipped on mobile, 0 failed). They test the mock's **simulation** of the API's rules, not real security. Not yet covered end to end: see
 18.6 (triage, corrective actions, escalation, archive and legal hold, quotas, stale-data conflicts and more).
 
 
@@ -971,4 +971,4 @@ Build တိုင်းပြီးနောက် ဤအရာများက�
 
 အင်္ဂလိပ်ဘာသာပိုင်း ၁၃ ကိုကြည့်ပါ (ဖိုင်အမည်များ တူညီသည်)။ မ automate ရသေးသည်များ: calendar popup (DT-01 မှ DT-13, DT-16, DT-20), time-zone စစ်ဆေးမှု, browser matrix, Recruitment/Payroll/Settings screen component များ။ ရှိပြီးသား e2e က ISO စာသားကို ရိုက်ထည့်ခြင်းသာလုပ်သည်။
 
-**Grievances (၁၃.၁):** UI unit test (Vitest) ဖိုင် ၁၂ ခု (test ~၁၇၀) နှင့် API xUnit test (~၁၆၀၊ Integration test တွင် Local SQL Server လို) ရှိသည် — Workflow golden file၊ Scope၊ Redaction၊ Anonymity (Pseudonym၊ Metadata ဖယ်ရှားခြင်း)၊ Access log၊ Notification၊ ဖိုင် ကန့်သတ်ချက်များကို ဖုံးသည်။ ဇယားအပြည့်ကို အင်္ဂလိပ်ပိုင်း ၁၃.၁ တွင် ကြည့်ပါ။ E2E (Playwright၊ Mock build သာ) Scenario ၃၉ ခု (GRV-E2E-01 မှ 47) ကို [E2E-TEST-SCENARIOS.md အပိုင်း ၁၈](E2E-TEST-SCENARIOS.md#18-grievances) တွင် ကြည့်ပါ — API ၏ စည်းမျဉ်းကို Simulation အဖြစ်သာ စစ်ပြီး တကယ့် Security မဟုတ်ပါ။ GRV-E2E-34 နှင့် 39 သည် Grievance Screen များ၏ Error-state bug ကြောင့် Fail ဖြစ်ခဲ့ပြီး ယခု ပြင်ပြီးဖြစ်သည် (ပြန် Run၍ အတည်ပြုရန်)။ Integration test (Module အားလုံး) ၅၃၅ ခု LocalDB တွင် Pass ဖြစ်သည်။
+**Grievances (၁၃.၁):** UI unit test (Vitest) ဖိုင် ၁၂ ခု (test ~၁၇၀) နှင့် API xUnit test (~၁၆၀၊ Integration test တွင် Local SQL Server လို) ရှိသည် — Workflow golden file၊ Scope၊ Redaction၊ Anonymity (Pseudonym၊ Metadata ဖယ်ရှားခြင်း)၊ Access log၊ Notification၊ ဖိုင် ကန့်သတ်ချက်များကို ဖုံးသည်။ ဇယားအပြည့်ကို အင်္ဂလိပ်ပိုင်း ၁၃.၁ တွင် ကြည့်ပါ။ E2E (Playwright၊ Mock build သာ) Scenario ၃၉ ခု (GRV-E2E-01 မှ 47) ကို [E2E-TEST-SCENARIOS.md အပိုင်း ၁၈](E2E-TEST-SCENARIOS.md#18-grievances) တွင် ကြည့်ပါ — API ၏ စည်းမျဉ်းကို Simulation အဖြစ်သာ စစ်ပြီး တကယ့် Security မဟုတ်ပါ။ GRV-E2E-34 နှင့် 39 သည် Grievance Screen များ၏ Error-state bug ကြောင့် Fail ဖြစ်ခဲ့ပြီး ယခု ပြင်ပြီး Pass ဖြစ်သည် (၂၀၂၆-၁၁-၁၈ Run: Pass ၃၅၊ Mobile တွင် Skip ၁၇၊ Fail ၀)။ Integration test (Module အားလုံး) ၅၃၅ ခု LocalDB တွင် Pass ဖြစ်သည်။
