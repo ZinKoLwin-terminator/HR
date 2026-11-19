@@ -22,7 +22,7 @@
 | --- | --- | --- |
 | UI | `ui/` (Angular, Material/CDK) | Demo build on GitHub Pages (deployed on every push to `main`); API build for local work |
 | API | `api/` (.NET 10, Clean Architecture: Domain, Application, Infrastructure, Api) | Minimal API endpoints, use-case handlers, FluentValidation, `Result`/`AppError`; ASP.NET Core Identity cookie sessions, `module:Action` permissions checked on every request, row scope in the queries. See `api/README.md` |
-| Database | SSDT project in a separate repository (`HR DBPJ`), one schema per module | Published by a human, to a local database only for now. EF Core maps onto it and never migrates. See [DEPLOYMENT.md](DEPLOYMENT.md) |
+| Database | SSDT project in the `HR DBPJ/` folder (`HR DBPJ.sqlproj`), one schema per module | Published by a human, to a local database only for now. EF Core maps onto it and never migrates. See [DEPLOYMENT.md](DEPLOYMENT.md) |
 
 Integration branches: every module before KPI on `integrate/all-features`; KPI on `feature/api-kpi`; grievances on
 `feature/grievance` (UI) and `feature/api-grievance` (API). None is on `main` yet (see

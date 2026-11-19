@@ -16,7 +16,8 @@ internal static class SqlServerEnvironment
     /// <summary>Overrides the location of the database project's dacpac.</summary>
     public const string DacpacVariable = "HRMS_DACPAC";
 
-    private const string DefaultDacpacPath = @"D:\New folder\HR DBPJ\HR DBPJ\bin\Debug\HR DBPJ.dacpac";
+    /// <summary>The dacpac a Debug build of the repository's <c>HR DBPJ</c> project produces, found by walking up from the test binaries.</summary>
+    private static readonly string DefaultDacpacPath = FindDefaultDacpacPath();
 
     private static readonly Lazy<string?> UnavailableReasonValue = new(DetectUnavailableReason);
 
@@ -74,5 +75,19 @@ internal static class SqlServerEnvironment
         {
             return $"LocalDB instance {Server} is not available: {exception.Message}";
         }
+    }
+
+    private static string FindDefaultDacpacPath()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            var project = Path.Combine(directory.FullName, "HR DBPJ");
+            if (File.Exists(Path.Combine(project, "HR DBPJ.sqlproj")))
+            {
+                return Path.Combine(project, "bin", "Debug", "HR DBPJ.dacpac");
+            }
+        }
+
+        return Path.Combine("HR DBPJ", "bin", "Debug", "HR DBPJ.dacpac");
     }
 }
