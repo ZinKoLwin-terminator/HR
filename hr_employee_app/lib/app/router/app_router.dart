@@ -12,8 +12,12 @@ import 'package:hr_employee_app/features/auth/presentation/screens/login_screen.
 import 'package:hr_employee_app/features/auth/presentation/screens/reset_password_screen.dart';
 import 'package:hr_employee_app/features/auth/presentation/screens/splash_screen.dart';
 import 'package:hr_employee_app/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:hr_employee_app/features/grievance/presentation/screens/grievance_detail_screen.dart';
+import 'package:hr_employee_app/features/grievance/presentation/screens/grievance_form_screen.dart';
+import 'package:hr_employee_app/features/grievance/presentation/screens/my_grievances_screen.dart';
 import 'package:hr_employee_app/features/leave/presentation/screens/apply_leave_screen.dart';
 import 'package:hr_employee_app/features/leave/presentation/screens/leave_detail_screen.dart';
+import 'package:hr_employee_app/features/leave/presentation/screens/leave_requests_screen.dart';
 import 'package:hr_employee_app/features/leave/presentation/screens/leave_screen.dart';
 import 'package:hr_employee_app/features/notifications/presentation/screens/notification_detail_screen.dart';
 import 'package:hr_employee_app/features/notifications/presentation/screens/notifications_screen.dart';
@@ -184,7 +188,16 @@ final StatefulShellRoute _mainShellRoute = StatefulShellRoute.indexedStack(
               name: RouteNames.applyLeave,
               parentNavigatorKey: _rootNavigatorKey,
               builder: (BuildContext context, GoRouterState state) =>
-                  const ApplyLeaveScreen(),
+                  ApplyLeaveScreen(
+                    initialLeaveTypeId:
+                        state.uri.queryParameters[RouteParams.leaveTypeId],
+                  ),
+            ),
+            GoRoute(
+              path: RoutePaths.leaveRequests,
+              name: RouteNames.leaveRequests,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const LeaveRequestsScreen(),
             ),
             GoRoute(
               path: RoutePaths.leaveDetail,
@@ -247,6 +260,47 @@ final StatefulShellRoute _mainShellRoute = StatefulShellRoute.indexedStack(
                     state.uri.queryParameters['forced'] == 'true';
                 return ChangePasswordScreen(isForced: isForced);
               },
+            ),
+            GoRoute(
+              path: RoutePaths.grievances,
+              name: RouteNames.grievances,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const MyGrievancesScreen(),
+              routes: <RouteBase>[
+                // Before the id route, so `new` is never read as an id.
+                GoRoute(
+                  path: RoutePaths.newGrievance,
+                  name: RouteNames.newGrievance,
+                  parentNavigatorKey: _rootNavigatorKey,
+                  builder: (BuildContext context, GoRouterState state) =>
+                      const GrievanceFormScreen(),
+                ),
+                GoRoute(
+                  path: RoutePaths.grievanceDetail,
+                  name: RouteNames.grievanceDetail,
+                  parentNavigatorKey: _rootNavigatorKey,
+                  builder: (BuildContext context, GoRouterState state) =>
+                      GrievanceDetailScreen(
+                        grievanceId: int.tryParse(
+                          state.pathParameters[RouteParams.grievanceId] ?? '',
+                        ) ?? 0,
+                      ),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: RoutePaths.editGrievance,
+                      name: RouteNames.editGrievance,
+                      parentNavigatorKey: _rootNavigatorKey,
+                      builder: (BuildContext context, GoRouterState state) =>
+                          GrievanceFormScreen(
+                            grievanceId: int.tryParse(
+                              state.pathParameters[RouteParams.grievanceId] ??
+                                  '',
+                            ),
+                          ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),

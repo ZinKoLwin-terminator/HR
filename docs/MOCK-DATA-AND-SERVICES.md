@@ -71,7 +71,7 @@ grievance contracts (the same way, with the `GRIEVANCE_*_METHODS` lists) and the
 | `KpiInsightMockService`                   | KPI dashboards, reports and the rows of the three KPI exports (read only)              |
 | `GrievanceCategoryMockService`            | Category CRUD with `grievance-management` checks; a used category cannot be deleted    |
 | `MyGrievanceMockService`                  | The submitter's drafts, submission, messages and response, Shared files, unread badge  |
-| `GrievanceCaseMockService`                | Case-team lists per tier, trimmed detail, every command, triage, notes, files, corrective actions, access log (see below) |
+| `GrievanceCaseMockService`                | Case-team lists per tier, trimmed detail, every command, triage, notes, files, corrective actions, access log, HR intake (`recordForEmployee`) (see below) |
 | `GrievanceInsightMockService`             | Grievance dashboards, report, summary and the `grievance-cases` export rows (read only) |
 | `NotificationMockService`                 | Seeded notifications for everyone; `add()` (for other mocks only) addresses one per recipient user |
 
@@ -135,6 +135,13 @@ nothing, including anonymity.
   saved; case-team files on open cases only; reopen ending every active assignment; 5 open drafts; file type by content, 10 MB, 10 submitter and 20 case-team files per case, the 100 MB daily submitter
   quota (in memory); the access log (submitter reads and drafts not logged, submitter actions without a user id);
   figures identical for every viewer (`grievance-metrics.ts`).
+- **HR intake** (`GrievanceCaseMockService.recordForEmployee`, `grievance-management:Create`): the API's rules and
+  messages (current employee other than the caller, active category and department, submission lengths, incident date,
+  channel, declaration); creates a Submitted named case linked to that employee (`linkSubmitter`), one Submit history
+  row by the HR user with the "Recorded by HR on behalf of the employee (received …)." reason, the access-log detail
+  `intake:Draft>Submitted`, and the notifications "a grievance was recorded by HR" (management) and "HR recorded a
+  grievance for you" (the employee). `MyGrievanceMockService.options` also accepts `grievance-management:Create`, and
+  `employeeOptions` management Edit or Create.
 - **Notifications per recipient:** the grievance mocks call `NotificationMockService.add()` (an internal method, not on
   the contract) with one recipient user id per notification; the recipient is kept in a private map
   (`notification_recipients`) and only that user's list shows it. The titles, texts, events and recipients are the

@@ -17,6 +17,7 @@ abstract final class RouteNames {
   static const String leave = 'leave';
   static const String applyLeave = 'applyLeave';
   static const String leaveDetail = 'leaveDetail';
+  static const String leaveRequests = 'leaveRequests';
 
   static const String payslip = 'payslip';
   static const String payslipDetail = 'payslipDetail';
@@ -24,6 +25,11 @@ abstract final class RouteNames {
   static const String profile = 'profile';
   static const String editProfile = 'editProfile';
   static const String changePassword = 'changePassword';
+
+  static const String grievances = 'grievances';
+  static const String newGrievance = 'newGrievance';
+  static const String grievanceDetail = 'grievanceDetail';
+  static const String editGrievance = 'editGrievance';
 
   static const String notifications = 'notifications';
   static const String notificationDetail = 'notificationDetail';
@@ -59,6 +65,9 @@ abstract final class RoutePaths {
   /// Relative to [leave].
   static const String leaveDetail = 'request/:leaveRequestId';
 
+  /// Relative to [leave]. Every request for a year, grouped by month.
+  static const String leaveRequests = 'requests';
+
   static const String payslip = '/payslip';
 
   /// Relative to [payslip].
@@ -71,14 +80,30 @@ abstract final class RoutePaths {
 
   /// Relative to [profile].
   static const String changePassword = 'change-password';
+
+  /// Relative to [profile]. The employee's own grievances.
+  static const String grievances = 'grievances';
+
+  /// Relative to [grievances].
+  static const String newGrievance = 'new';
+
+  /// Relative to [grievances].
+  static const String grievanceDetail = ':grievanceId';
+
+  /// Relative to [grievanceDetail].
+  static const String editGrievance = 'edit';
 }
 
 /// Path parameter names, so the router and the screens cannot disagree.
 abstract final class RouteParams {
   static const String attendanceId = 'attendanceId';
   static const String leaveRequestId = 'leaveRequestId';
+
+  /// Query parameter preselecting a leave type on the apply form.
+  static const String leaveTypeId = 'type';
   static const String payslipId = 'payslipId';
   static const String notificationId = 'notificationId';
+  static const String grievanceId = 'grievanceId';
 
   /// Query parameter carrying the email through the password reset flow.
   static const String email = 'email';

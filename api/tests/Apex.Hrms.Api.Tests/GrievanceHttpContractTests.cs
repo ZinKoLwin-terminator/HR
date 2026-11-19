@@ -40,6 +40,17 @@ public sealed class GrievanceHttpContractTests : IClassFixture<WebApplicationFac
     private static HttpClient Client(WebApplicationFactory<Program> host) => BrowserHandler.CreateClient(host.Server.CreateHandler(), out _);
 
     [Fact]
+    public async Task Recording_a_grievance_for_an_employee_needs_management_create()
+    {
+        using var host = Host("grievance-management:View", "grievance-management:Edit");
+        using var client = Client(host);
+
+        var response = await client.PostAsJsonAsync("/api/grievances/cases", new { employeeId = 5, categoryId = 1, receivedVia = "InPerson", declarationAccepted = true });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task A_submitters_upload_reaches_the_service_with_the_row_version_the_name_and_the_exact_bytes()
     {
         using var host = Host("grievance:View", "grievance:Create");

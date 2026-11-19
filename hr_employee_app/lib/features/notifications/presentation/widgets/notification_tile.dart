@@ -1,8 +1,8 @@
 import 'package:hr_employee_app/app/theme/app_spacing.dart';
 import 'package:hr_employee_app/app/theme/app_theme.dart';
 import 'package:hr_employee_app/core/utils/date_formatter.dart';
-import 'package:hr_employee_app/core/widgets/app_card.dart';
 import 'package:hr_employee_app/features/notifications/domain/entities/app_notification.dart';
+import 'package:hr_employee_app/features/notifications/presentation/widgets/notification_links.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// One notification row.
@@ -16,17 +16,25 @@ class NotificationTile extends StatelessWidget {
     required this.onTap,
     super.key,
     this.isCompact = false,
+    this.onOpenLink,
   });
 
   final AppNotification notification;
   final VoidCallback onTap;
   final bool isCompact;
 
+  /// Follows the notification's deep link — "View request ›". Offered only
+  /// in the inbox, and only when the link leads somewhere the app has.
+  final void Function(NotificationDestination destination)? onOpenLink;
+
   @override
   Widget build(BuildContext context) {
     final AppPalette palette = context.palette;
     final TextTheme textStyles = Theme.of(context).textTheme;
-    final (IconData icon, Color tint, Color surface) = _appearance(palette);
+    final (IconData icon, Color tint, Color surface) = notificationAppearance(
+      palette,
+      notification.type,
+    );
     final bool isUnread = notification.isUnread;
 
     final Widget content = Row(
@@ -117,48 +125,207 @@ class NotificationTile extends StatelessWidget {
       );
     }
 
-    return AppCard(
+    return _InboxRow(
+      notification: notification,
+      icon: icon,
+      tint: tint,
+      surface: surface,
       onTap: onTap,
-      backgroundColor: isUnread
-          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.04)
-          : null,
-      child: content,
+      onOpenLink: onOpenLink,
     );
   }
+}
 
-  /// Icon and colours for the notification type.
-  (IconData, Color, Color) _appearance(AppPalette palette) {
-    return switch (notification.type) {
-      NotificationType.leaveApproval => (
-        Icons.event_available_rounded,
-        palette.success,
-        palette.successSurface,
+/// One notification in the inbox, as a row inside a grouped card: a teal dot
+/// and a faint tint while unread, the type's icon, title and time, two lines
+/// of body, and a link when the notification leads somewhere.
+class _InboxRow extends StatelessWidget {
+  const _InboxRow({
+    required this.notification,
+    required this.icon,
+    required this.tint,
+    required this.surface,
+    required this.onTap,
+    required this.onOpenLink,
+  });
+
+  final AppNotification notification;
+  final IconData icon;
+  final Color tint;
+  final Color surface;
+  final VoidCallback onTap;
+  final void Function(NotificationDestination destination)? onOpenLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette palette = context.palette;
+    final TextTheme textStyles = Theme.of(context).textTheme;
+    final bool isUnread = notification.isUnread;
+    final NotificationDestination? destination = onOpenLink == null
+        ? null
+        : notificationDestination(notification);
+
+    return Semantics(
+      button: true,
+      label:
+          '${isUnread ? 'Unread. ' : ''}${notification.title}. '
+          '${notification.body}',
+      child: Material(
+        color: isUnread
+            ? Color.alphaBlend(
+                AppColors.summitTeal.withValues(alpha: 0.05),
+                AppColors.surface,
+              )
+            : AppColors.surface,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                // The unread marker, in its own gutter so read and unread
+                // rows line up.
+                SizedBox(
+                  width: 12,
+                  child: isUnread
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 14),
+                          child: Container(
+                            height: 6,
+                            width: 6,
+                            decoration: const BoxDecoration(
+                              color: AppColors.summitTeal,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        )
+                      : null,
+                ),
+                Container(
+                  height: 36,
+                  width: 36,
+                  decoration: BoxDecoration(
+                    color: surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: Icon(icon, size: AppSizes.iconMd, color: tint),
+                ),
+                Gap.wMd,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              notification.title,
+                              style: textStyles.titleSmall?.copyWith(
+                                // Weight carries the unread state, so it
+                                // does not depend on colour alone.
+                                fontWeight: isUnread
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
+                                color: isUnread
+                                    ? palette.textPrimary
+                                    : palette.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Gap.wSm,
+                          Text(
+                            DateFormatter.relative(notification.createdAt),
+                            style: textStyles.labelSmall?.copyWith(
+                              color: palette.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Gap.xxs,
+                      Text(
+                        notification.body,
+                        style: textStyles.bodySmall?.copyWith(
+                          color: isUnread
+                              ? palette.textSecondary
+                              : palette.textTertiary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (destination != null) ...<Widget>[
+                        Gap.xs,
+                        InkWell(
+                          onTap: () => onOpenLink!(destination),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              '${destination.label} ›',
+                              style: textStyles.labelLarge?.copyWith(
+                                color: AppColors.link,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-      NotificationType.leaveRejection => (
-        Icons.event_busy_rounded,
-        palette.danger,
-        palette.dangerSurface,
-      ),
-      NotificationType.attendance => (
-        Icons.schedule_rounded,
-        palette.warning,
-        palette.warningSurface,
-      ),
-      NotificationType.payslip => (
-        Icons.receipt_long_rounded,
-        palette.info,
-        palette.infoSurface,
-      ),
-      NotificationType.announcement => (
-        Icons.campaign_rounded,
-        palette.info,
-        palette.infoSurface,
-      ),
-      NotificationType.general || NotificationType.unknown => (
-        Icons.notifications_rounded,
-        palette.textSecondary,
-        palette.surfaceMuted,
-      ),
-    };
+    );
   }
+}
+
+/// Icon, ink and backplate for a notification type — shared by the inbox
+/// and the detail screen so a type looks the same in both.
+(IconData, Color, Color) notificationAppearance(
+  AppPalette palette,
+  NotificationType type,
+) {
+  return switch (type) {
+    NotificationType.leaveApproval => (
+      Icons.event_available_rounded,
+      palette.success,
+      palette.successSurface,
+    ),
+    NotificationType.leaveRejection => (
+      Icons.event_busy_rounded,
+      palette.danger,
+      palette.dangerSurface,
+    ),
+    NotificationType.attendance => (
+      Icons.schedule_rounded,
+      palette.warning,
+      palette.warningSurface,
+    ),
+    NotificationType.payslip => (
+      Icons.receipt_long_rounded,
+      AppColors.apexNavy,
+      AppColors.primarySurface,
+    ),
+    NotificationType.announcement => (
+      Icons.campaign_rounded,
+      AppColors.violet,
+      AppColors.violet.withValues(alpha: 0.12),
+    ),
+    NotificationType.general || NotificationType.unknown => (
+      Icons.notifications_rounded,
+      palette.textSecondary,
+      palette.surfaceMuted,
+    ),
+  };
 }

@@ -142,6 +142,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
             AuthPrimaryButton(
               label: 'Update password',
+              loadingLabel: 'Updating…',
               isSubmitting: submission.isSubmitting,
               onPressed: _submit,
             ),
@@ -172,6 +173,7 @@ class _InvalidLink extends StatelessWidget {
         Gap.xl,
         AuthPrimaryButton(
           label: 'Request a new link',
+          loadingLabel: 'Sending…',
           isSubmitting: false,
           onPressed: onRequestNew,
         ),

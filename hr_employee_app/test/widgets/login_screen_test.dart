@@ -89,7 +89,7 @@ void main() {
       expect(find.text('Welcome back'), findsOneWidget);
       expect(find.text('Sign in'), findsOneWidget);
       expect(find.text('Forgot password?'), findsOneWidget);
-      expect(find.text('Remember me'), findsOneWidget);
+      expect(find.text('Keep me signed in'), findsOneWidget);
 
       // The required-field labels are built with `Text.rich` so the asterisk
       // can be coloured, so they are matched through rich text rather than

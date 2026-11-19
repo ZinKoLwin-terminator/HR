@@ -1,13 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hr_employee_app/core/errors/result.dart';
-import 'package:hr_employee_app/core/providers/paginated_list_notifier.dart';
 import 'package:hr_employee_app/features/dashboard/presentation/providers/dashboard_controller.dart';
+import 'package:hr_employee_app/features/leave/domain/entities/leave_overview.dart';
 import 'package:hr_employee_app/features/leave/domain/entities/leave_request.dart';
-import 'package:hr_employee_app/features/leave/domain/entities/leave_status.dart';
 import 'package:hr_employee_app/features/leave/domain/entities/leave_type.dart';
 import 'package:hr_employee_app/features/leave/presentation/providers/leave_providers.dart';
 import 'package:hr_employee_app/shared/models/paginated_response.dart';
-import 'package:hr_employee_app/shared/models/paginated_state.dart';
 import 'package:hr_employee_app/shared/models/submission_state.dart';
 
 /// The selectable leave types, for the apply form.
@@ -29,49 +27,45 @@ final leaveBalancesProvider = FutureProvider.family<List<LeaveBalance>, int>((
   return result.valueOrThrow();
 });
 
-/// The status filter applied to the request list.
+/// Every request the employee has made, newest first.
 ///
-/// A `Notifier` rather than local widget state so the list controller can
-/// watch it and reload itself when it changes.
-class LeaveStatusFilter extends Notifier<LeaveStatus?> {
-  @override
-  LeaveStatus? build() => null;
+/// Loaded whole rather than a page at a time: the leave screen needs the
+/// pending ones wherever they fall, and the all-requests screen groups by
+/// month and counts every status, neither of which works on one page. An
+/// employee files a few dozen requests a year, so this stays small. The
+/// loop is capped so a server that never reports a last page cannot spin.
+final leaveRequestHistoryProvider = FutureProvider<List<LeaveRequest>>((
+  Ref ref,
+) async {
+  const int pageSize = 50;
+  const int maxPages = 20;
+  final List<LeaveRequest> all = <LeaveRequest>[];
+  PageRequest page = const PageRequest(pageSize: pageSize);
 
-  /// Null clears the filter and shows everything.
-  void set(LeaveStatus? status) => state = status;
-}
-
-final NotifierProvider<LeaveStatusFilter, LeaveStatus?>
-leaveStatusFilterProvider = NotifierProvider<LeaveStatusFilter, LeaveStatus?>(
-  LeaveStatusFilter.new,
-);
-
-/// Paginated leave requests, newest first, honouring the status filter.
-class LeaveRequestsController extends PaginatedListNotifier<LeaveRequest> {
-  @override
-  Future<Result<PaginatedResponse<LeaveRequest>>> fetchPage(PageRequest page) {
-    // Watched, not read: changing the filter rebuilds this provider, which
-    // reloads from page 1 — exactly the right behaviour for a filter change.
-    final LeaveStatus? status = ref.watch(leaveStatusFilterProvider);
-    return ref.read(getLeaveRequestsUseCaseProvider)(
-      page: page,
-      status: status,
-    );
+  for (int i = 0; i < maxPages; i++) {
+    final Result<PaginatedResponse<LeaveRequest>> result = await ref.read(
+      getLeaveRequestsUseCaseProvider,
+    )(page: page);
+    final PaginatedResponse<LeaveRequest> response = result.valueOrThrow();
+    all.addAll(response.items);
+    if (!response.hasNextPage) {
+      break;
+    }
+    page = page.next();
   }
+  return all;
+});
 
-  @override
-  Object identityOf(LeaveRequest item) => item.id;
-}
-
-final AsyncNotifierProvider<
-  LeaveRequestsController,
-  PaginatedState<LeaveRequest>
->
-leaveRequestsControllerProvider =
-    AsyncNotifierProvider<
-      LeaveRequestsController,
-      PaginatedState<LeaveRequest>
-    >(LeaveRequestsController.new);
+/// The requests for one year, with status counts and month groups.
+final leaveRequestYearProvider = FutureProvider.family<LeaveRequestYear, int>((
+  Ref ref,
+  int year,
+) async {
+  final List<LeaveRequest> all = await ref.watch(
+    leaveRequestHistoryProvider.future,
+  );
+  return LeaveRequestYear(year: year, all: all);
+});
 
 /// A single leave request, for the detail screen.
 final leaveRequestDetailProvider = FutureProvider.family<LeaveRequest, String>((
@@ -137,10 +131,10 @@ class ApplyLeaveController extends Notifier<ApplyLeaveUiState> {
 
   void reset() => state = const ApplyLeaveUiState();
 
-  /// Pushes the new request into the list and refreshes the balances it
+  /// Reloads the request history and the balances the new request
   /// consumed, so returning to the leave screen shows it immediately.
   void _onApplied(LeaveRequest request) {
-    ref.read(leaveRequestsControllerProvider.notifier).prependItem(request);
+    ref.invalidate(leaveRequestHistoryProvider);
 
     // Pending days have moved, and the server owns that arithmetic.
     ref.invalidate(leaveBalancesProvider);
@@ -194,10 +188,10 @@ class CancelLeaveController extends Notifier<SubmissionState> {
     )(id, current: current);
 
     return result.fold(
-      onSuccess: (LeaveRequest updated) {
-        // Patch the row in place, then let the detail screen and balances
-        // reconcile with the server.
-        ref.read(leaveRequestsControllerProvider.notifier).replaceItem(updated);
+      onSuccess: (LeaveRequest _) {
+        // Reconcile the lists, the detail screen and the balances with the
+        // server.
+        ref.invalidate(leaveRequestHistoryProvider);
         ref.invalidate(leaveRequestDetailProvider(id));
         ref.invalidate(leaveBalancesProvider);
         ref.invalidate(dashboardControllerProvider);

@@ -1,7 +1,8 @@
 # HR Employee App
 
-An HR mobile application for employees: attendance, leave, payslips, profile
-and notifications. Flutter, Clean Architecture, feature-first.
+An HR mobile application for employees: attendance, leave, payslips, profile,
+notifications and their own grievances. Flutter, Clean Architecture,
+feature-first.
 
 > **The app currently runs on local fixtures, not a backend.** No API
 > contract was supplied, so `docs/api_contracts.md` proposes one and the app
@@ -86,7 +87,9 @@ immediately rather than at the first request.
 `*MockDataSource` backed by `lib/shared/helpers/mock_fixtures.dart`. The
 fixtures are a single shared store, so the screens agree with each other:
 checking in on the dashboard changes the attendance screen, and applying for
-leave changes the balance.
+leave changes the balance. Grievances are the one exception: they share no
+records with other screens, so their fixtures live in the feature
+(`lib/features/grievance/data/datasources/grievance_mock_store.dart`).
 
 Mock sign-in accepts **`EMP-00421` / `Password1`**; anything else returns the
 same validation error the API would, so the failure path is exercised too.
@@ -235,6 +238,7 @@ lib/
     providers/               DI roots and PaginatedListNotifier
   features/
     auth/ dashboard/ attendance/ leave/ payslip/ profile/ notifications/
+    grievance/
       data/                  models, data sources, repository impls
       domain/                entities, repository contracts, use cases
       presentation/          providers, controllers, screens, widgets
@@ -255,6 +259,7 @@ test/                        unit, provider and widget tests
 | **Payslip** | Monthly list, full earnings/deductions breakdown, PDF download to app-private storage, masked amounts |
 | **Profile** | Full employee record, self-editable contact and emergency contact, photo upload, change password |
 | **Notifications** | Inbox with unread filter, mark one/all read, deep links into leave, attendance and payslips |
+| **Grievances** | The employee's own grievances only (HR's case screens stay on the web): list with status filter and unread dot, new/edit draft with category rules and an honest anonymity explanation, submit with a declaration, detail with status history (HR's reasons included), message thread and "Respond" when HR asks a question, delete a draft. Opened from Profile → My grievances. Written against the real API, see `docs/api_contracts.md` §10 |
 
 ## Security
 
@@ -336,6 +341,9 @@ is what ships. To enable push:
 * **Leave attachments cannot be downloaded** from the detail screen. The
   contract exposes `downloadUrl` but the endpoint is unconfirmed, and an
   action that might fail is worse than one that is plainly absent.
+* **Grievance files are web-only.** The mobile detail lists a case's shared
+  files but cannot add or download them yet (`POST /grievances/my/{id}/attachments`
+  and `GET /grievances/my/attachments/{id}` are not wired).
 * **No localisation.** Strings are inline English. The app is structured so a
   `flutter_localizations` pass is mechanical.
 * **Launcher icons and the logo are placeholders.** `AppLogo` draws the mark

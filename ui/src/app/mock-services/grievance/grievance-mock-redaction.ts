@@ -34,7 +34,10 @@ import { GrievanceCategoryMockService } from './grievance-category-mock.service'
 import { GrievanceMockStore } from './grievance-mock-store';
 import { isGrievanceOpen } from '../../core/utilities/grievance-workflow';
 
-/** Reasons the submitter may read on their timeline. */
+/**
+ * Reasons the submitter may read on their timeline. Also the reason of a Submit taken by management
+ * (HR recorded the grievance for them), as the API does.
+ */
 const SUBMITTER_REASONS: readonly GrievanceHistoryAction[] = ['Reject', 'Reopen', 'RequestInfo'];
 
 /** Reasons a reviewer-only caller may read in the history (the proposal and its decisions). */
@@ -198,7 +201,11 @@ export class GrievanceMockRedaction {
           toStatus: h.toStatus,
           action: h.action,
           actor: asMyActor(h.actorRole),
-          reason: SUBMITTER_REASONS.includes(h.action) ? h.reason : null,
+          reason:
+            SUBMITTER_REASONS.includes(h.action) ||
+            (h.action === 'Submit' && h.actorRole === 'Management')
+              ? h.reason
+              : null,
           occurredAtUtc: h.occurredAtUtc,
         })),
       messages: record.communications.map((m) => ({

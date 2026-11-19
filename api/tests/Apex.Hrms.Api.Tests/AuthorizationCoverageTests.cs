@@ -201,7 +201,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
             endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(data => data.Policy).OfType<string>().Order(StringComparer.Ordinal).ToArray());
 
     [Fact]
-    public void Grievances_map_fifty_four_endpoints_each_with_the_policy_of_who_may_use_it()
+    public void Grievances_map_fifty_five_endpoints_each_with_the_policy_of_who_may_use_it()
     {
         var policies = GrievancePolicies();
         const string mine = "grievance:View";
@@ -220,7 +220,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
             ["DELETE /api/grievances/categories/{id:int}"] = ["grievance-management:Delete"],
             ["POST /api/grievances/categories/{id:int}/activate"] = [manageEdit],
             ["POST /api/grievances/categories/{id:int}/deactivate"] = [manageEdit],
-            ["GET /api/grievances/options"] = [mine],
+            ["GET /api/grievances/options"] = ["grievance-options"],
             ["GET /api/grievances/my"] = [mine],
             ["GET /api/grievances/my/dashboard"] = [mine],
             ["GET /api/grievances/my/{id:int}"] = [mine],
@@ -241,7 +241,8 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
             ["GET /api/grievances/cases/{id:int}/audit"] = [manageView, "hr-administrator"],
             ["GET /api/grievances/audit"] = [manageView, "hr-administrator"],
             ["GET /api/grievances/investigators"] = [manageEdit],
-            ["GET /api/grievances/employees"] = [manageEdit],
+            ["GET /api/grievances/employees"] = ["grievance-employee-picker"],
+            ["POST /api/grievances/cases"] = ["grievance-management:Create"],
             ["POST /api/grievances/cases/{id:int}/acknowledge"] = [manageEdit],
             ["POST /api/grievances/cases/{id:int}/start-review"] = [manageEdit],
             ["POST /api/grievances/cases/{id:int}/assign"] = [manageEdit],
@@ -268,7 +269,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
             ["GET /api/grievances/reports/summary"] = ["grievance-insight"],
         };
 
-        Assert.Equal(54, policies.Count);
+        Assert.Equal(55, policies.Count);
         Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), policies.Keys.Order(StringComparer.Ordinal));
         foreach (var (route, wanted) in expected)
         {

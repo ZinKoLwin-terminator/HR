@@ -19,7 +19,8 @@ import 'package:material_ui/material_ui.dart';
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
-  static const String animationAsset = 'assets/animations/apex_hrms_splash.json';
+  static const String animationAsset =
+      'assets/animations/apex_hrms_splash.json';
 
   @override
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
@@ -60,10 +61,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final double logoWidth = (MediaQuery.sizeOf(context).width *
-            _logoWidthFraction)
-        .clamp(0, _maxLogoWidth)
-        .toDouble();
+    final double logoWidth =
+        (MediaQuery.sizeOf(context).width * _logoWidthFraction)
+            .clamp(0, _maxLogoWidth)
+            .toDouble();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,

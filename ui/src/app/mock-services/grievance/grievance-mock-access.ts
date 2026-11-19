@@ -319,6 +319,26 @@ export class GrievanceMockAccess {
   }
 
   /**
+   * A grievance HR recorded on behalf of an employee: every other user with
+   * `grievance-management:View` ("a grievance was recorded by HR", the acting user left out), and the
+   * employee's active user ("HR recorded a grievance for you", linking their own case).
+   */
+  notifyIntake(record: GrievanceCaseRecord, employeeId: number): void {
+    this.send(
+      record,
+      'a grievance was recorded by HR',
+      `/grievances/cases/${record.id}`,
+      this.usersWith('grievance-management', 'View').map((u) => u.id),
+    );
+    const user = this.userOfEmployee(employeeId);
+    if (user) {
+      this.send(record, 'HR recorded a grievance for you', `/grievances/my/${record.id}`, [
+        user.id,
+      ]);
+    }
+  }
+
+  /**
    * Every user with `grievance-review:Approve`: "a resolution was proposed" or "it was escalated as
    * urgent" (an immediate escalation only).
    */

@@ -2,6 +2,7 @@ import 'package:hr_employee_app/app/theme/app_spacing.dart';
 import 'package:hr_employee_app/app/theme/app_theme.dart';
 import 'package:hr_employee_app/core/constants/app_constants.dart';
 import 'package:hr_employee_app/core/services/file_picker_service.dart';
+import 'package:hr_employee_app/core/widgets/dashed_border.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Picks and lists the files attached to a leave request.
@@ -48,6 +49,14 @@ class AttachmentPicker extends StatelessWidget {
                     TextSpan(
                       text: ' *',
                       style: TextStyle(color: palette.danger),
+                    )
+                  else
+                    TextSpan(
+                      text: ' (optional)',
+                      style: TextStyle(
+                        color: palette.textTertiary,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                 ],
               ),
@@ -55,7 +64,7 @@ class AttachmentPicker extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              '${files.length}/${UploadLimits.maxLeaveAttachments}',
+              '${files.length} / ${UploadLimits.maxLeaveAttachments}',
               style: textStyles.labelSmall?.copyWith(
                 color: palette.textTertiary,
               ),
@@ -63,13 +72,6 @@ class AttachmentPicker extends StatelessWidget {
           ],
         ),
         Gap.xs,
-        Text(
-          'Up to ${UploadLimits.maxLeaveAttachments} files, '
-          '${UploadLimits.maxLeaveAttachmentBytes ~/ (1024 * 1024)} MB each '
-          '(${UploadLimits.leaveAttachmentExtensions.join(', ')}).',
-          style: textStyles.bodySmall?.copyWith(color: palette.textTertiary),
-        ),
-        Gap.sm,
 
         for (final PickedFile file in files) ...<Widget>[
           _AttachmentRow(
@@ -80,13 +82,9 @@ class AttachmentPicker extends StatelessWidget {
         ],
 
         if (canAddMore)
-          OutlinedButton.icon(
-            onPressed: isEnabled ? onAdd : null,
-            icon: const Icon(Icons.attach_file_rounded, size: 18),
-            label: Text(files.isEmpty ? 'Add attachment' : 'Add another'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, AppSizes.minTouchTarget),
-            ),
+          _DropZone(
+            label: files.isEmpty ? 'Add attachment' : 'Add another',
+            onTap: isEnabled ? onAdd : null,
           ),
 
         if (errorText != null) ...<Widget>[
@@ -97,6 +95,85 @@ class AttachmentPicker extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// The dashed "add a file" slot.
+class _DropZone extends StatelessWidget {
+  const _DropZone({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette palette = context.palette;
+    final TextTheme textStyles = Theme.of(context).textTheme;
+
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: label,
+      child: ExcludeSemantics(
+        child: CustomPaint(
+          foregroundPainter: DashedBorderPainter(
+            color: palette.textTertiary.withValues(alpha: 0.55),
+            radius: AppRadius.md,
+          ),
+          child: Material(
+            color: AppColors.cloud,
+            borderRadius: AppRadius.field,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      height: 36,
+                      width: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.summitTeal.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+                      ),
+                      child: const Icon(
+                        Icons.attach_file_rounded,
+                        size: 18,
+                        color: AppColors.summitTeal,
+                      ),
+                    ),
+                    Gap.wMd,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            label,
+                            style: textStyles.labelLarge?.copyWith(
+                              color: palette.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            'PDF, JPG or PNG · up to '
+                            '${UploadLimits.maxLeaveAttachmentBytes ~/ (1024 * 1024)}'
+                            ' MB each',
+                            style: textStyles.bodySmall?.copyWith(
+                              color: palette.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -118,8 +195,9 @@ class _AttachmentRow extends StatelessWidget {
         vertical: AppSpacing.sm,
       ),
       decoration: BoxDecoration(
-        color: palette.surfaceMuted,
+        color: AppColors.cloud,
         borderRadius: AppRadius.field,
+        border: Border.all(color: palette.border),
       ),
       child: Row(
         children: <Widget>[

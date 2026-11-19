@@ -66,6 +66,29 @@ Reopened (Resolved / Rejected / Closed မှ အကြောင်းပြခ�
 - Submit သည် Draft ကို အရင် စစ်ပြီးမှ Case နံပါတ် ယူသည်။ Critical ဖြင့် Acknowledge လုပ်လျှင် Escalate **တစ်ကြိမ်သာ** ဖြစ်သည် (နှစ်ကြိမ် မဖြစ်)။
 - **Reopen လုပ်လျှင် Active Assignment အားလုံး ပြီးဆုံးသွားသည်** (တိုင်ကြားသူ မမြင်ရသော "Case reopened" Unassign မှတ်တမ်းများ)။ HR က Lead ကို ပြန် Assign လုပ်ရသည် (လူတူကို ပြန်ရွေးနိုင်သည်)။
 
+### HR က ဝန်ထမ်းကိုယ်စား မှတ်တမ်းတင်ခြင်း (Record grievance)
+
+ဝန်ထမ်းအချို့က System ကို မသုံးဘဲ HR ထံ လူကိုယ်တိုင်၊ ဖုန်း၊ Email သို့ စာဖြင့် တင်ပြသည်။ `grievance-management:Create` ရှိသော HR က Case Management ရှိ **Record grievance** (`/grievances/cases/new`) ဖြင့် ထို Grievance ကို မှတ်တမ်းတင်နိုင်သည်။
+
+- API: `POST /api/grievances/cases` (201၊ Body `GrievanceIntakeRequest`၊ အဖြေ `GrievanceCaseDetail`)။ Contract method `GrievanceCaseDataService.recordForEmployee`။
+- ရလဒ်: **Submitted** ဖြစ်ပြီးသော **Named** Case (Anonymous ဘယ်တော့မှ မဟုတ်)၊ Case နံပါတ် `GRV-yyyy-nnnnn`၊ Submit ရက် နှင့် Declaration ရက် = ယခု၊ **တိုင်ကြားသူ = ရွေးထားသော ဝန်ထမ်း** (၎င်း၏ My Grievances တွင် ပေါ်ပြီး Unread ဖြစ်သည်)၊ ကုမ္ပဏီ/ဌာနခွဲ/ဌာန/ရာထူး ကို ထိုဝန်ထမ်း၏ Record မှ ကူးသည် (Named Submit ကဲ့သို့)။
+- History **တစ်ကြောင်းတည်း**: `Submit`၊ Draft → Submitted၊ လုပ်ဆောင်သူ = HR User (Role `Management`)၊ အကြောင်းပြချက် `Recorded by HR on behalf of the employee (received in person / by phone / by email / by letter / another way).`၊ တိုင်ကြားသူ မြင်ရသည် (Timeline တွင် လုပ်ဆောင်သူ "HR team" နှင့် ဤအကြောင်းပြချက်ကိုပါ ပြသည်၊ HR User အမည်ကို မပြပါ)။
+- Access log: `StatusChange`၊ Detail `intake:Draft>Submitted`။ Notification: `grievance-management:View` ရှိသူများ ("a grievance was recorded by HR"၊ မှတ်တမ်းတင်သူ ကိုယ်တိုင် မပါ) နှင့် ထိုဝန်ထမ်း၏ Active User ("HR recorded a grievance for you"၊ Link `/grievances/my/{id}`)။
+- Form: ဝန်ထမ်း (`GET /api/grievances/employees` Autocomplete — Management Edit **သို့** Create)၊ ဘယ်လိုရရှိသလဲ (In person / Phone / Email / Letter / Other)၊ Category (Description ပြ)၊ Subject၊ Description၊ Incident date၊ Location၊ Person involved၊ Department involved၊ Declaration။ Category နှင့် ဌာန ရွေးချယ်စရာ = `GET /api/grievances/options` (`grievance:View` **သို့** `grievance-management:Create`)။ ဖိုင်များကို Case ဖွင့်ပြီးမှ Case detail မှ ထည့်သည်။ အောင်မြင်လျှင် `Grievance GRV-… recorded.` ပြပြီး `/grievances/cases/{id}` သို့ သွားသည်။
+
+| Field | စည်းမျဉ်း (400၊ Field error) |
+|---|---|
+| `employeeId` | ရှိပြီး လက်ရှိ (Active / Probation / On Leave / Suspended) ဝန်ထမ်း — "Choose an active employee."။ ကိုယ့်ကိုယ်ကို မရ — "Use My Grievances to raise your own grievance." |
+| `categoryId` | Active Category — "Choose an active category." |
+| `subject` / `description` | Trim ပြီး 5–200 / 20–4000 (Submit စည်းမျဉ်းနှင့် တူ) |
+| `incidentDate` | `yyyy-MM-dd`၊ ယနေ့ထက် မကျော်ရ — "The incident date cannot be in the future." |
+| `location` / `involvedPersonText` | 200 အထိ |
+| `involvedDepartmentId` | ပါလျှင် Active ဌာန — "Choose an active department." |
+| `receivedVia` | `InPerson`၊ `Phone`၊ `Email`၊ `Letter`၊ `Other` — "Choose how the grievance was received." |
+| `declarationAccepted` | `true` ဖြစ်ရ — "Confirm that the employee gave this account and agreed that HR records it." |
+
+Permission မရှိလျှင် 403။ Demo (Mock) တွင် စည်းမျဉ်းတူ စစ်သော်လည်း ဘာမျှ မကာကွယ်ပါ။
+
 ## 3. Screen တစ်ခုချင်းစီ
 
 Sidebar Group **Grievances**၊ Route များ `/grievances` အောက်တွင်။ Route တိုင်းတွင် ကိုယ်ပိုင် Permission ရှိသည် (UI တွင် UX သာ၊ Server က တူညီသော Key ဖြင့် ထပ်စစ်သည်)။
@@ -77,6 +100,7 @@ Sidebar Group **Grievances**၊ Route များ `/grievances` အောက်
 | **New / Edit draft** | `/grievances/my/new`၊ `/my/:id/edit` | `grievance:Create` | တင်ပြချက် ဖောင် (မသိမ်းရသေးလျှင် ထွက်ခါနီး မေးသည်) |
 | **Dashboard** | `/grievances/dashboard` | `grievance-management:View` | HR ကိန်းဂဏန်းများ နှင့် Chart များ |
 | **Case Management** | `/grievances/cases`၊ `/cases/:id` | `grievance-management:View` | Submit ပြီးသော Case အားလုံး၊ Triage၊ Assignment၊ Corrective action၊ Command အားလုံး |
+| **Record grievance** | `/grievances/cases/new` | `grievance-management:Create` | ဝန်ထမ်းက HR ထံ နှုတ်ဖြင့်၊ ဖုန်း၊ Email သို့ စာဖြင့် တင်ပြသော Grievance ကို HR က ထိုဝန်ထမ်း၏ အမည်ဖြင့် မှတ်တမ်းတင်သည် (Case list ရှိ "Record grievance" ခလုတ်၊ Sidebar တွင် မပါ၊ မသိမ်းရသေးလျှင် ထွက်ခါနီး မေးသည်) |
 | **Investigations** | `/grievances/investigations`၊ `/:id` | `grievance-investigation:View` | ကိုယ့်ကို Assign ထားသော Case များ |
 | **Reviews** | `/grievances/reviews`၊ `/:id` | `grievance-review:View` | Escalated Case များ နှင့် ဆုံးဖြတ်ရမည့် Proposal များ |
 | **Review Summary** | `/grievances/review-summary` | `grievance-review:View` | Review Queue ကိန်းဂဏန်း နှင့် Summary (Case စာရင်း၊ အမည် မပါ) |
@@ -151,6 +175,8 @@ Sidebar Group **Grievances**၊ Route များ `/grievances` အောက်
 | ဘယ်သူ ကြည့်နိုင်သလဲ | Case တစ်ခု၏ Log နှင့် Module တစ်ခုလုံး၏ Log — `grievance-management:View` **နှင့်** HR Administrator Role (ကိုယ် Submit လုပ်ခဲ့သော / ကိုယ့်အကြောင်း Case မပါ) |
 | **Notification** | **In-app သာ** (Email မရှိ)။ Title `Grievance GRV-…`၊ စာသား `Grievance GRV-…: <ဖြစ်ရပ်>.` သာ (Category၊ Subject၊ အမည် မပါ)။ Demo (Mock) တွင်လည်း တူညီ |
 | "a new grievance was submitted" | `grievance-management:View` ရှိသူများ |
+| "a grievance was recorded by HR" | `grievance-management:View` ရှိသူများ (မှတ်တမ်းတင်သူ ကိုယ်တိုင် မပါ) |
+| "HR recorded a grievance for you" | HR က ကိုယ်စား မှတ်တမ်းတင်ပေးသော ဝန်ထမ်း (Link `/grievances/my/{id}`) |
 | "the employee responded" | `grievance-management:View` ရှိသူများ နှင့် ထို Case ၏ Active Investigator များ |
 | "you were assigned to investigate it" | Assign ခံရသော Investigator |
 | "a resolution was proposed"၊ "it was escalated as urgent" (Immediate escalation သာ) | `grievance-review:Approve` ရှိသူများ |

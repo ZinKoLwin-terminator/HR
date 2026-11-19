@@ -25,7 +25,15 @@ class MainShell extends ConsumerWidget {
         children: <Widget>[
           if (config.useMockData)
             const SafeArea(bottom: false, child: MockDataBanner(compact: true)),
-          Expanded(child: shell),
+          // The banner has taken the status-bar inset; without this every tab
+          // whose header pads for the status bar would pad for it twice.
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: config.useMockData,
+              child: shell,
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: _BottomNavigation(
@@ -78,22 +86,121 @@ class _BottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: context.palette.border)),
-      ),
-      child: NavigationBar(
-        selectedIndex: currentIndex,
-        onDestinationSelected: onSelect,
-        destinations: <Widget>[
-          for (final _NavItem item in _items)
-            NavigationDestination(
-              label: item.label,
-              icon: Icon(item.icon, size: AppSizes.iconLg),
-              selectedIcon: Icon(item.selectedIcon, size: AppSizes.iconLg),
-              tooltip: item.label,
+    // A floating Apex Navy pill rather than a full-width bar. It sits on
+    // the scaffold's own colour, so the margin around it reads as page.
+    return ColoredBox(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SafeArea(
+        top: false,
+        minimum: EdgeInsets.only(bottom: AppSpacing.sm),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.xs,
+            AppSpacing.lg,
+            AppSpacing.xs,
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.apexNavy,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: AppColors.apexNavy.withValues(alpha: 0.28),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-        ],
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Row(
+                children: <Widget>[
+                  for (int i = 0; i < _items.length; i++)
+                    Expanded(
+                      // The selected tab takes more room for its label.
+                      flex: i == currentIndex ? 2 : 1,
+                      child: _NavButton(
+                        item: _items[i],
+                        isSelected: i == currentIndex,
+                        onTap: () => onSelect(i),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One tab: icon only, or icon and label in a lighter pill when selected.
+class _NavButton extends StatelessWidget {
+  const _NavButton({
+    required this.item,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final _NavItem item;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const Color onBrand = AppColors.textOnPrimary;
+
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: item.label,
+      child: ExcludeSemantics(
+        child: Tooltip(
+          message: item.label,
+          child: Material(
+            color: isSelected
+                ? onBrand.withValues(alpha: 0.14)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              child: SizedBox(
+                height: AppSizes.minTouchTarget,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Icon(
+                      isSelected ? item.selectedIcon : item.icon,
+                      size: AppSizes.iconMd + 2,
+                      color: isSelected
+                          ? onBrand
+                          : onBrand.withValues(alpha: 0.66),
+                    ),
+                    if (isSelected) ...<Widget>[
+                      Gap.wXs,
+                      Flexible(
+                        child: Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.fade,
+                          softWrap: false,
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: onBrand,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

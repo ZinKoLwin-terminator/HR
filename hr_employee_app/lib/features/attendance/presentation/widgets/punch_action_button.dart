@@ -39,6 +39,7 @@ class PunchActionButton extends StatelessWidget {
       case CheckInAvailability.canCheckIn:
         return AppButton(
           label: 'Check in',
+          loadingLabel: 'Checking in…',
           icon: Icons.login_rounded,
           isLoading: isPunching,
           onPressed: onCheckIn,
@@ -47,6 +48,7 @@ class PunchActionButton extends StatelessWidget {
       case CheckInAvailability.canCheckOut:
         return AppButton.secondary(
           label: 'Check out',
+          loadingLabel: 'Checking out…',
           icon: Icons.logout_rounded,
           isLoading: isPunching,
           onPressed: onCheckOut,

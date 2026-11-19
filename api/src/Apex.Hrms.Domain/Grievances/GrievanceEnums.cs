@@ -116,6 +116,19 @@ public enum CorrectiveActionStatus
     Implemented,
 }
 
+/// <summary>
+/// How an employee's grievance reached HR when HR records it for them (<c>GrievanceCase.RecordForEmployee</c>). Not a column: the
+/// channel is written into the reason of the Submit history entry.
+/// </summary>
+public enum GrievanceIntakeChannel
+{
+    InPerson,
+    Phone,
+    Email,
+    Letter,
+    Other,
+}
+
 /// <summary>What the grievance access log records (CK_AuditLog_Action).</summary>
 public enum GrievanceAuditAction
 {
@@ -163,6 +176,8 @@ public static class GrievanceText
     public static readonly TextMap<CorrectiveActionStatus> CorrectiveActionStatus = NameMap<CorrectiveActionStatus>();
 
     public static readonly TextMap<GrievanceAuditAction> AuditAction = NameMap<GrievanceAuditAction>();
+
+    public static readonly TextMap<GrievanceIntakeChannel> IntakeChannel = NameMap<GrievanceIntakeChannel>();
 
     private static TextMap<TEnum> NameMap<TEnum>()
         where TEnum : struct, Enum =>

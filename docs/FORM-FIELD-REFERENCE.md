@@ -436,6 +436,23 @@ Branch `feature/grievance` (UI) နဲ့ `feature/api-grievance` (API) မှ�
 - Employee တစ်ယောက်မှာ ဖွင့်ထားတဲ့ draft **၅ ခု** အထိ။ Submit ပြီးရင် ပြင်/ဖျက် မရ (Draft ကိုပဲ ဖျက်လို့ရ)။ Submit လုပ်ရင် Case နံပါတ် `GRV-yyyy-nnnnn` ရ။
 - **My grievance detail** (`/grievances/my/:id`): Message box (≤ 4000)။ HR က အချက်အလက်တောင်းထားရင် "Respond to HR's request" ဖြစ်ပြီး ပို့ရင် case က မူလ status ပြန်ရောက်။ Draft၊ Closed၊ Archived case မှာ message box မရှိ။
 
+### Record grievance (`/grievances/cases/new`၊ `grievance-management:Create`)
+
+ဝန်ထမ်းက HR ကို လူကိုယ်တိုင်၊ ဖုန်း၊ Email ဒါမှမဟုတ် စာနဲ့ ပြောတဲ့ grievance ကို HR က အဲဒီဝန်ထမ်းရဲ့ အမည်နဲ့ မှတ်တမ်းတင်တာ။ Case Management list ရဲ့ **Record grievance** ခလုတ် (Create ရှိမှ ပြ)။ **Record grievance** နှိပ်တာနဲ့ Submitted (named) case ဖြစ်ပြီး `Grievance GRV-… recorded.` ပြ၊ case detail ကို ဖွင့်တယ်။ Anonymous toggle နဲ့ ဖိုင် မရှိ (ဖိုင်ကို case detail ကနေ နောက်မှ ထည့်)။ မသိမ်းရသေးရင် ထွက်ခါနီး မေးတယ်။ Server error တွေကို သက်ဆိုင်ရာ field အောက်မှာ ပြ။
+
+| Field | ဆိုလိုတာ | * | စည်းမျဉ်း / ဥပမာ |
+|---|---|---|---|
+| Employee | ဘယ်ဝန်ထမ်းက တင်ပြတာလဲ | * | Code/အမည် ၂ လုံးနဲ့အထက် ရိုက်ရှာ (လက်ရှိ ဝန်ထမ်း ≤ 20)၊ စာရင်းထဲက ရွေးရ ("Choose an employee from the list.")။ ကိုယ့်ကိုယ်ကို မရ ("Use My Grievances to raise your own grievance.") |
+| How it was received | ဘယ်လို ရောက်လာလဲ | * | In person / Phone / Email / Letter / Other |
+| Category | အမျိုးအစား | * | Active category သာ၊ description ကို hint အဖြစ် ပြ |
+| Subject | ခေါင်းစဉ် | * | 5–200 |
+| Description | ဝန်ထမ်းပြောပြတဲ့ ဖြစ်ရပ် | * | 20–4000 (counter ပါ) |
+| Incident date | ဖြစ်တဲ့ရက် | | not in future |
+| Location | နေရာ | | ≤ 200 |
+| Person involved | ပါဝင်သူ | | ≤ 200 |
+| Department involved | ပါဝင်တဲ့ ဌာန | | None ဒါမှမဟုတ် active department |
+| Declaration | ဝန်ထမ်းကိုယ်တိုင် ပြောပြပြီး HR မှတ်တမ်းတင်တာကို သဘောတူကြောင်း | * | checkbox |
+
 ### Case command dialogs (Case detail ရဲ့ action bar)
 
 ခလုတ်တွေကို `grievanceAvailableActions` က ဆုံးဖြတ်တယ် (UX ပဲ၊ server က ထပ်စစ်)။ Server က Conflict (409) ပြန်ရင် dialog ထဲမှာ "Reload the case" ခလုတ် ပေါ်တယ်။ Field error တွေကို သက်ဆိုင်ရာ field အောက်မှာ ပြ။

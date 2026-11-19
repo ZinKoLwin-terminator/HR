@@ -38,6 +38,14 @@ abstract final class AppColors {
   /// legible on the dark auth ground where [accent] itself goes muddy.
   static const Color accentLight = Color(0xFF5EEAD4);
 
+  /// Inline text links on white ("Forgot password?"). A deeper Steel Blue:
+  /// the brand value itself is under 4.5:1 on white at body size.
+  static const Color link = Color(0xFF2563C9);
+
+  /// Section accent for personal details on the profile, where the other
+  /// sections already use navy, teal and the danger red.
+  static const Color violet = Color(0xFF7C3AED);
+
   /// The brand gradient, painted top to bottom behind a screen header.
   ///
   /// Two stops, both from the brand family and both dark enough to carry

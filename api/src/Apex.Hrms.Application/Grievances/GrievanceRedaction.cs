@@ -47,8 +47,8 @@ internal sealed record MyGrievanceBundle(
 /// <item>Named case: the history and messages record the submitter as "Submitter" with no ids; the case team sees the submitter's name and
 /// employee id resolved through grv.CaseSubmitter (never a user id).</item>
 /// <item>Submitter's view: never notes, corrective actions, priority, assignments, CaseTeam or Restricted files, or any case-team member's
-/// name ("HR team"); the timeline only has the steps marked visible to the submitter, with a reason only for reject, reopen and
-/// information requests; the rejection reason only when Rejected; the resolution only when Resolved or Closed and made visible.</item>
+/// name ("HR team"); the timeline only has the steps marked visible to the submitter, with a reason only for reject, reopen,
+/// information requests and HR's intake (a Submit by management); the rejection reason only when Rejected; the resolution only when Resolved or Closed and made visible.</item>
 /// <item>Case team, by tier on the case: management sees everything; an investigator no corrective actions and no Restricted files; a
 /// reviewer only Finding and Recommendation notes, no messages, only Shared files, no corrective actions, no assignment or escalation
 /// reasons, and no history reasons except why a proposal was sent back (its decision comment). Several tiers see the union.</item>
@@ -64,6 +64,14 @@ internal static class GrievanceRedaction
 
     private static readonly GrievanceHistoryAction[] ReasonsShownToSubmitter =
         [GrievanceHistoryAction.Reject, GrievanceHistoryAction.Reopen, GrievanceHistoryAction.RequestInfo];
+
+    /// <summary>
+    /// Reject, reopen and information requests; and the Submit step HR took when it recorded the grievance for the employee (its reason
+    /// says so and how it was received, never who in HR did it: the actor is still "HR team").
+    /// </summary>
+    private static bool ShowsReasonToSubmitter(GrievanceStatusHistoryEntry entry) =>
+        ReasonsShownToSubmitter.Contains(entry.Action)
+        || (entry.Action == GrievanceHistoryAction.Submit && entry.ActorRole == GrievanceActorRole.Management);
 
     // ---- Submitter view ----
 
@@ -144,7 +152,7 @@ internal static class GrievanceRedaction
                     GrievanceText.Status.ToText(entry.ToStatus),
                     GrievanceText.HistoryAction.ToText(entry.Action),
                     MyActor(entry.ActorRole),
-                    ReasonsShownToSubmitter.Contains(entry.Action) ? entry.Reason : null,
+                    ShowsReasonToSubmitter(entry) ? entry.Reason : null,
                     entry.OccurredAtUtc))],
             [.. bundle.Messages
                 .OrderBy(message => message.CreatedAtUtc).ThenBy(message => message.Id)

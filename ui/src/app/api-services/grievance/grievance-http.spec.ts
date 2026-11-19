@@ -368,6 +368,40 @@ describe('grievance HTTP adapters', () => {
       });
     });
 
+    it('records a grievance for an employee with POST /cases and maps its field errors', async () => {
+      const body = {
+        employeeId: 5,
+        categoryId: 1,
+        subject: 'Raised by phone',
+        description: 'Sample account given by phone to HR.',
+        incidentDate: null,
+        location: null,
+        involvedPersonText: null,
+        involvedDepartmentId: null,
+        receivedVia: 'Phone' as const,
+        declarationAccepted: true,
+      };
+      const created = firstValueFrom(api.recordForEmployee(body));
+      const post = http.expectOne({ method: 'POST', url: `${G}/cases` });
+      expect(post.request.body).toEqual(body);
+      post.flush({ id: 40, caseNo: 'GRV-2026-00040' }, { status: 201, statusText: 'Created' });
+      expect(await created).toMatchObject({ id: 40, caseNo: 'GRV-2026-00040' });
+
+      const refused = firstValueFrom(api.recordForEmployee({ ...body, employeeId: 2 }));
+      http.expectOne(`${G}/cases`).flush(
+        {
+          title: 'One or more validation errors occurred.',
+          errors: { EmployeeId: ['Use My Grievances to raise your own grievance.'] },
+        },
+        { status: 400, statusText: 'Bad Request' },
+      );
+      const error = await rejection(refused);
+      expect(error.code).toBe('Validation');
+      expect(error.fieldErrors).toEqual({
+        employeeId: 'Use My Grievances to raise your own grievance.',
+      });
+    });
+
     it('triages with PUT and posts messages and notes', () => {
       const triage = {
         rowVersion: 'r',

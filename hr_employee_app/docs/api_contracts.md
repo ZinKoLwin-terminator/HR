@@ -604,3 +604,91 @@ ships a **no-op** push service; see `core/services/push_notification_service.dar
 5. What is the maximum page size the API will honour?
 6. Which push provider — FCM, APNs direct, or Azure Notification Hubs?
 7. Is multi-tenancy in play (does the client need to send a tenant header)?
+
+---
+
+## 10. Grievances — self-service (REAL API, not a proposal)
+
+Unlike §2–§8, this section describes an API that exists:
+`api/src/Apex.Hrms.Api/Endpoints/GrievanceEndpoints.cs` (`MapSelf`), DTOs in
+`Apex.Hrms.Application/Grievances/GrievanceModels.cs`, rules in
+`Apex.Hrms.Domain/Grievances/GrievanceCase.cs` and
+`Apex.Hrms.Application/Grievances/MyGrievanceService.cs`. Only the employee's
+own grievances are on mobile; HR's case-team endpoints are not used.
+
+It departs from §1 in three ways, absorbed by
+`GrievanceRemoteDataSourceImpl` (no shared code changed):
+
+| Topic | §1 proposal | Grievance API |
+|---|---|---|
+| Root | `/api/v1` | `/api` (so `API_BASE_URL` must point at `…/api` for these calls) |
+| Body | `{ success, data }` envelope | bare object (an envelope is still unwrapped if present) |
+| Page | `pageNumber` 1-based; `items, totalCount, totalPages…` | `pageIndex` **0-based**, `pageSize`, `search`; `{ items, total, pageIndex, pageSize }` |
+| IDs | string GUID | `int` |
+| Errors | `{ message, errors }` | RFC 7807 problem details: `title` generic, human text in `detail`, `errors` per field, `code` |
+
+Enums are their exact texts. Dates are `yyyy-MM-dd`; `…AtUtc` are UTC instants;
+`rowVersion` is base64 and every write sends the one last read (stale → `409`
+"The record was changed or deleted by someone else. Reload it and try again.").
+
+### Endpoints (paths relative to `/api`)
+
+| Method & path | Body | Answer |
+|---|---|---|
+| GET `/grievances/options` | — | `{ categories: [{ id, code, name, description, allowsAnonymous, defaultTargetDays }], departments: [{ id, name }] }` (active only) |
+| GET `/grievances/my?pageIndex=0&pageSize=20&status=Draft&search=…` | — | page of `MyGrievanceDto` |
+| GET `/grievances/my/{id}` | — | `MyGrievanceDetailDto` |
+| POST `/grievances/my` (201) | `{ categoryId, subject, description, incidentDate, location, involvedPersonText, involvedDepartmentId, isAnonymous }` | `MyGrievanceDetailDto` (a Draft) |
+| PUT `/grievances/my/{id}` | same + `rowVersion` | `MyGrievanceDetailDto` |
+| DELETE `/grievances/my/{id}` (204) | `{ rowVersion }` | — |
+| POST `/grievances/my/{id}/submit` | `{ rowVersion, declarationAccepted }` | `MyGrievanceDetailDto` (now `Submitted`, with `caseNo`) |
+| POST `/grievances/my/{id}/messages` | `{ rowVersion, body, inReplyToId }` | `MyGrievanceDetailDto` |
+| POST `/grievances/my/{id}/seen` (204) | — | clears `hasUnreadUpdate` |
+| GET `/grievances/my/dashboard`, POST `/grievances/my/{id}/attachments`, GET `/grievances/my/attachments/{id}` | | **not used on mobile yet** |
+
+**`MyGrievanceDto`**: `id, caseNo (null for a draft), categoryId, categoryName,
+subject, status, isAnonymous, createdAtUtc, submittedAtUtc,
+targetResolutionDate, lastUpdateAtUtc, hasUnreadUpdate, rowVersion`.
+
+**`MyGrievanceDetailDto`**: the above plus `description, incidentDate, location,
+involvedPersonText, involvedDepartmentId, involvedDepartmentName,
+declarationAcceptedAtUtc, acknowledgedAtUtc, resolvedAtUtc, closedAtUtc,
+rejectionReason` (Rejected only), `resolutionSummary` (Resolved/Closed and
+shared by HR only), `timeline[] { fromStatus, toStatus, action, actor, reason,
+occurredAtUtc }`, `messages[] { id, direction (FromSubmitter|ToSubmitter), kind
+(Message|InfoRequest|InfoResponse), body, actor, inReplyToId, createdAtUtc }`,
+`attachments[] { id, fileName, contentType, sizeBytes, uploadedBy,
+uploadedAtUtc }`. `actor` is "You", "HR team" or "System", never a name.
+
+**Statuses**: `Draft` · `Submitted` · `Acknowledged` · `UnderReview` ·
+`Assigned` · `UnderInvestigation` · `AwaitingEmployeeResponse` ·
+`ResolutionProposed` · `Resolved` · `Closed` · `Rejected` · `Reopened`.
+
+### Rules (checked in the app first, with the API's wording; the server decides)
+
+* **Draft**: category required ("Choose a category."), subject required and
+  ≤ 200 ("Subject is required."), description ≤ 4000, location and person
+  involved ≤ 200, incident date not after today ("The incident date cannot be
+  in the future."), active category ("Choose an active category."), active
+  department ("Choose an active department.").
+* **At most 5 open drafts**: "You already have 5 unfinished drafts. Submit or
+  delete one before you start another."
+* **Submit**: subject 5–200, description 20–4000 ("The description must be 20
+  to 4000 characters."), declaration ("Confirm the declaration to submit the
+  grievance."); a draft only (`409` otherwise).
+* **Anonymity**: only where the category allows it ("This category cannot be
+  raised anonymously."), and fixed once the draft exists ("Start a new draft to
+  change how you report.").
+* **Edit / delete**: drafts only (`409` "The case is Submitted; only a draft
+  can be changed or deleted.").
+* **Messages**: 1–4000 characters; not on a Draft or a Closed case. While the
+  status is `AwaitingEmployeeResponse` the message **is the response**: the
+  row version is checked, it is stored as `InfoResponse` (in reply to the
+  latest information request) and the case returns to the status it had
+  before HR asked. Otherwise it is a plain message and the row version does
+  not change.
+* **Recorded by HR**: HR can record a grievance on the employee's behalf
+  (`POST /grievances/cases`). The employee sees a normal submitted case whose
+  first history entry has `actor: "HR team"` and a reason such as "Recorded by
+  HR on behalf of the employee (received by phone)."; the detail screen shows
+  history reasons for that reason.

@@ -29,6 +29,9 @@ class PaginatedListView<T> extends StatefulWidget {
     this.emptyTitle = 'Nothing here yet',
     this.emptyMessage,
     this.emptyIcon = Icons.inbox_outlined,
+    this.emptyActionLabel,
+    this.emptyActionIcon,
+    this.onEmptyAction,
     this.separator,
     this.padding,
     this.header,
@@ -54,6 +57,11 @@ class PaginatedListView<T> extends StatefulWidget {
   final String emptyTitle;
   final String? emptyMessage;
   final IconData emptyIcon;
+
+  /// The action that would fill the empty list, such as "Apply leave".
+  final String? emptyActionLabel;
+  final IconData? emptyActionIcon;
+  final VoidCallback? onEmptyAction;
 
   final Widget? separator;
   final EdgeInsetsGeometry? padding;
@@ -110,6 +118,9 @@ class _PaginatedListViewState<T> extends State<PaginatedListView<T>> {
                 title: widget.emptyTitle,
                 message: widget.emptyMessage,
                 icon: widget.emptyIcon,
+                actionLabel: widget.emptyActionLabel,
+                actionIcon: widget.emptyActionIcon,
+                onAction: widget.onEmptyAction,
               ),
             ),
           ],

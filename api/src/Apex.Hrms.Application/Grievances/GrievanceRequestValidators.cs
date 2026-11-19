@@ -41,6 +41,20 @@ internal sealed class GrievanceDraftUpdateRequestValidator : GrievanceDraftValid
     public GrievanceDraftUpdateRequestValidator() => RuleForText(x => x.RowVersion).RequiredRowVersion();
 }
 
+internal sealed class GrievanceIntakeRequestValidator : GrievanceDraftValidator<GrievanceIntakeRequest>
+{
+    public const string ChooseChannel = "Choose how the grievance was received.";
+
+    public const string ConfirmDeclaration = "Confirm that the employee gave this account and agreed that HR records it.";
+
+    public GrievanceIntakeRequestValidator()
+    {
+        RuleFor(x => x.EmployeeId).GreaterThan(0).WithMessage("Choose an employee.");
+        RuleFor(x => x.ReceivedVia).OneOf(GrievanceText.IntakeChannel, ChooseChannel);
+        RuleFor(x => x.DeclarationAccepted).Equal(true).WithMessage(ConfirmDeclaration);
+    }
+}
+
 internal sealed class SubmitGrievanceRequestValidator : RequestValidator<SubmitGrievanceRequest>
 {
     public SubmitGrievanceRequestValidator() => RuleForText(x => x.RowVersion).RequiredRowVersion();

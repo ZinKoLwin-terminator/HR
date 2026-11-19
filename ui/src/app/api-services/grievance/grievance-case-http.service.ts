@@ -24,6 +24,7 @@ import {
   GrievanceCorrectiveActionUpdate,
   GrievanceEmployeeOption,
   GrievanceHistoryEntry,
+  GrievanceIntakeRequest,
   GrievanceInvestigatorOption,
   GrievanceNoteRequest,
   GrievanceReasonCommand,
@@ -126,6 +127,14 @@ export class GrievanceCaseHttpService implements GrievanceCaseDataService {
   employeeOptions(search: string): Observable<GrievanceEmployeeOption[]> {
     return this.http
       .get<GrievanceEmployeeOption[]>(`${this.url}/employees`, { params: searchParams(search) })
+      .pipe(catchError((e) => failGrievance(e)));
+  }
+
+  // ---- Intake -------------------------------------------------------------------------------
+
+  recordForEmployee(request: GrievanceIntakeRequest): Observable<GrievanceCaseDetail> {
+    return this.http
+      .post<GrievanceCaseDetail>(`${this.url}/cases`, request)
       .pipe(catchError((e) => failGrievance(e)));
   }
 

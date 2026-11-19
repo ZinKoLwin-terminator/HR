@@ -36,6 +36,9 @@ abstract class LeaveBalance with _$LeaveBalance {
     required String leaveTypeName,
     required int year,
 
+    /// Short type code, e.g. `AL`, when the server sends one.
+    String? code,
+
     /// Totals are decimals because half-days are allowed.
     @Default(0) double entitledDays,
     @Default(0) double usedDays,

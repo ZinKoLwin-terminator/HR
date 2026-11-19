@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hr_employee_app/app/config/app_config.dart';
 import 'package:hr_employee_app/app/router/route_names.dart';
 import 'package:hr_employee_app/app/theme/app_spacing.dart';
+import 'package:hr_employee_app/app/theme/app_theme.dart';
 import 'package:hr_employee_app/core/errors/failure.dart';
 import 'package:hr_employee_app/core/providers/core_providers.dart';
 import 'package:hr_employee_app/core/validators/validators.dart';
@@ -183,8 +184,7 @@ class _LoginFields extends StatelessWidget {
         AppTextField(
           label: 'Employee ID or email',
           controller: userNameController,
-          hint: 'EMP-00421',
-          isRequired: true,
+          hint: 'EMP-00421 or name@company.com',
           prefixIcon: Icons.person_outline_rounded,
           keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.next,
@@ -200,6 +200,8 @@ class _LoginFields extends StatelessWidget {
           label: 'Password',
           controller: passwordController,
           focusNode: passwordFocus,
+          hint: 'Enter your password',
+          isRequired: false,
           isEnabled: !isBusy,
           textInputAction: TextInputAction.done,
           validator: Validators.loginPassword,
@@ -226,6 +228,12 @@ class _LoginFields extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.link,
+                    textStyle: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                  ),
                   onPressed: isBusy
                       ? null
                       : () => context.pushNamed(RouteNames.forgotPassword),
@@ -238,10 +246,11 @@ class _LoginFields extends StatelessWidget {
             ),
           ],
         ),
-        Gap.lg,
+        Gap.xl,
 
         AuthPrimaryButton(
           label: 'Sign in',
+          loadingLabel: 'Signing in…',
           isSubmitting: isBusy,
           onPressed: onSubmit,
         ),
@@ -253,7 +262,7 @@ class _LoginFields extends StatelessWidget {
 
         if (onUseDemo != null) ...<Widget>[
           Gap.xl,
-          const AuthOrDivider(label: 'Or try it out'),
+          const AuthOrDivider(label: 'or explore first'),
           Gap.lg,
           MockCredentialsHint(onUseDemo: isBusy ? null : onUseDemo),
         ],
@@ -293,15 +302,15 @@ class _RememberMeToggle extends StatelessWidget {
                     : null,
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                // Shape and border come from the panel's theme rather than
-                // from here: they belong to the glass surface this sits on,
-                // not to the remember-me control.
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
               ),
             ),
             Gap.wSm,
             Flexible(
               child: Text(
-                'Remember me',
+                'Keep me signed in',
                 style: Theme.of(context).textTheme.bodyMedium,
                 overflow: TextOverflow.ellipsis,
               ),

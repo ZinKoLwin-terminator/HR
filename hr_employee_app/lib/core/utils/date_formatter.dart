@@ -13,10 +13,13 @@ abstract final class DateFormatter {
   static final DateFormat _dayMonth = DateFormat('d MMM');
   static final DateFormat _weekdayDayMonth = DateFormat('EEE, d MMM');
   static final DateFormat _fullDate = DateFormat('EEEE, d MMMM yyyy');
+  static final DateFormat _weekdayDayMonthLong = DateFormat('EEEE, d MMMM');
+  static final DateFormat _weekdayShort = DateFormat('EEE');
   static final DateFormat _monthYear = DateFormat('MMMM yyyy');
   static final DateFormat _shortMonthYear = DateFormat('MMM yyyy');
   static final DateFormat _time = DateFormat('h:mm a');
   static final DateFormat _dateTime = DateFormat('d MMM yyyy, h:mm a');
+  static final DateFormat _dayMonthTime = DateFormat('d MMM, h:mm a');
 
   /// `2026-03-14` — the wire format for date-only fields.
   static String toApiDate(DateTime date) => _apiDate.format(date);
@@ -49,6 +52,13 @@ abstract final class DateFormatter {
   /// `Saturday, 14 March 2026`
   static String fullDate(DateTime date) => _fullDate.format(date);
 
+  /// `Thursday, 19 November` — the dashboard clock's date line.
+  static String weekdayDayMonthLong(DateTime date) =>
+      _weekdayDayMonthLong.format(date);
+
+  /// `Wed`.
+  static String weekdayShort(DateTime date) => _weekdayShort.format(date);
+
   /// `March 2026`
   static String monthYear(DateTime date) => _monthYear.format(date);
 
@@ -59,6 +69,11 @@ abstract final class DateFormatter {
   static String time(DateTime instant) => _time.format(instant.toLocal());
 
   /// `14 Mar 2026, 9:02 AM`, converted to the device timezone.
+  /// `5 Nov, 8:30 AM` — for recent events, where the year goes without
+  /// saying.
+  static String dayMonthTime(DateTime instant) =>
+      _dayMonthTime.format(instant.toLocal());
+
   static String dateTime(DateTime instant) =>
       _dateTime.format(instant.toLocal());
 

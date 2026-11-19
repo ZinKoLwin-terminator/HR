@@ -496,8 +496,8 @@ export const MODULE_GUIDE: readonly GuideModule[] = [
         label: 'Case Management',
         route: '/grievances/cases',
         text: {
-          en: 'Every submitted case with filters: acknowledge, triage, assign investigators, message the employee, add corrective actions and close.',
-          my: 'Filter များဖြင့် Submit လုပ်ပြီးသော Case အားလုံး — Acknowledge၊ Triage၊ Investigator Assign၊ ဝန်ထမ်းထံ Message၊ Corrective action ထည့်ခြင်းနှင့် Close။',
+          en: 'Every submitted case with filters: acknowledge, triage, assign investigators, message the employee, add corrective actions and close. Record grievance files one an employee raised in person, by phone, email or letter.',
+          my: 'Filter များဖြင့် Submit လုပ်ပြီးသော Case အားလုံး — Acknowledge၊ Triage၊ Investigator Assign၊ ဝန်ထမ်းထံ Message၊ Corrective action ထည့်ခြင်းနှင့် Close။ Record grievance ဖြင့် ဝန်ထမ်းက လူကိုယ်တိုင်၊ ဖုန်း၊ Email သို့ စာဖြင့် တင်ပြသော Grievance ကို မှတ်တမ်းတင်သည်။',
         },
       },
       {

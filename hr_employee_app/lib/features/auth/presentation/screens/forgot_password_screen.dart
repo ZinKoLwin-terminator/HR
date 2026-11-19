@@ -112,6 +112,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             Gap.xl,
             AuthPrimaryButton(
               label: 'Send reset link',
+              loadingLabel: 'Sending…',
               isSubmitting: submission.isSubmitting,
               onPressed: _submit,
             ),

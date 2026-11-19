@@ -48,7 +48,7 @@ internal static class GrievanceEndpoints
 
         group.MapGet("/options", async (IMyGrievanceService my, CancellationToken cancellationToken) =>
             (await my.OptionsAsync(cancellationToken)).ToOk())
-            .RequireAuthorization(view);
+            .RequireAuthorization(AuthorizationSetup.GrievanceOptionsPolicy);
 
         group.MapGet(
             "/my",
@@ -162,10 +162,10 @@ internal static class GrievanceEndpoints
             (await cases.InvestigatorsAsync(search, cancellationToken)).ToOk())
             .RequireAuthorization(Management.PolicyName(Permission.Edit));
 
-        // The subject-employee picker of triage: grievance managers need no employees:View for it.
+        // The employee picker of triage (the subject) and of HR's intake (the employee): grievance managers need no employees:View for it.
         group.MapGet("/employees", async ([FromQuery] string? search, IGrievanceCaseReader cases, CancellationToken cancellationToken) =>
             (await cases.EmployeeOptionsAsync(search, cancellationToken)).ToOk())
-            .RequireAuthorization(Management.PolicyName(Permission.Edit));
+            .RequireAuthorization(AuthorizationSetup.GrievanceEmployeePickerPolicy);
 
         group.MapGet("/attachments/{id:int}", async (int id, IGrievanceCaseReader cases, CancellationToken cancellationToken) =>
             (await cases.DownloadAttachmentAsync(id, cancellationToken)).ToAttachmentFile())
@@ -183,6 +183,12 @@ internal static class GrievanceEndpoints
         var manage = Management.PolicyName(Permission.Edit);
         var work = AuthorizationSetup.GrievanceCaseWorkPolicy;
         var decide = Review.PolicyName(Permission.Approve);
+
+        // HR records a grievance an employee raised outside the system: a submitted, named case (management Create).
+        group.MapPost("", async ([FromBody] GrievanceIntakeRequest? body, IGrievanceIntake intake, CancellationToken cancellationToken) =>
+            (await intake.RecordAsync(body ?? new GrievanceIntakeRequest(0, 0, null, null, null, null, null, null, null, false), cancellationToken))
+                .ToCreated(created => $"{Root}/cases/{created.Id}"))
+            .RequireAuthorization(Management.PolicyName(Permission.Create));
 
         Command<AcknowledgeBody, AcknowledgeGrievanceCommand>(group, "acknowledge", manage, (id, body) =>
             new AcknowledgeGrievanceCommand(id, body?.RowVersion, body?.Priority, body?.TargetResolutionDate, body?.Comment));

@@ -13,10 +13,14 @@ import 'package:material_ui/material_ui.dart';
 /// `useMockData` to false in production builds, so this can never ship to an
 /// employee.
 class MockDataBanner extends StatelessWidget {
-  const MockDataBanner({super.key, this.compact = false});
+  const MockDataBanner({super.key, this.compact = false, this.message});
 
   /// A slimmer variant for screens that are already dense.
   final bool compact;
+
+  /// Replaces the default wording, for screens with their own voice (the
+  /// sign-in screens say "development build").
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +44,11 @@ class MockDataBanner extends StatelessWidget {
           Gap.wSm,
           Flexible(
             child: Text(
-              compact
-                  ? 'Sample data - not from the HR system'
-                  : 'Sample data for development. These figures are made up '
-                        'and do not come from the HR system.',
+              message ??
+                  (compact
+                      ? 'Sample data - not from the HR system'
+                      : 'Sample data for development. These figures are made up '
+                            'and do not come from the HR system.'),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: palette.warning,
                 fontWeight: FontWeight.w700,

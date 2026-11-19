@@ -213,7 +213,12 @@ export class MyGrievanceMockService implements MyGrievanceDataService {
 
   options(): Observable<GrievanceOptions> {
     return this.respond(() => {
-      this.actorWith('View');
+      // Also the HR intake form's options (`grievance-management:Create`).
+      this.access.require(
+        this.access.actor(),
+        ['grievance', 'View'],
+        ['grievance-management', 'Create'],
+      );
       return {
         categories: this.categories
           .records()

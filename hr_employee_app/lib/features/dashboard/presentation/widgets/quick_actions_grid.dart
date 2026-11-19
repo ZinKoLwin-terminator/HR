@@ -1,7 +1,5 @@
 import 'package:hr_employee_app/app/theme/app_spacing.dart';
 import 'package:hr_employee_app/app/theme/app_theme.dart';
-import 'package:hr_employee_app/core/extensions/context_extensions.dart';
-import 'package:hr_employee_app/core/widgets/app_card.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// One entry in the quick-action grid.
@@ -25,11 +23,9 @@ class QuickAction {
   final Color? tint;
 }
 
-/// Shortcuts to the actions an employee takes most often.
-///
-/// Laid out as a wrap rather than a `GridView` so it sizes to its content
-/// inside the dashboard's scroll view, and so the tile count can change
-/// without a fixed row count to maintain.
+/// Shortcuts to the actions an employee takes most often: one row of white
+/// cards, icon above label, each icon in its own tint so the row can be
+/// scanned by colour once it is familiar.
 class QuickActionsGrid extends StatelessWidget {
   const QuickActionsGrid({required this.actions, super.key});
 
@@ -37,31 +33,15 @@ class QuickActionsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Two columns on the narrowest phones, four otherwise, so a label is
-    // never clipped.
-    final int columns = context.isCompactWidth ? 2 : 4;
-
-    return AppSectionCard(
-      title: 'Quick actions',
-      icon: Icons.bolt_rounded,
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final double spacing = AppSpacing.sm;
-          final double tileWidth =
-              (constraints.maxWidth - spacing * (columns - 1)) / columns;
-
-          return Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
-            children: <Widget>[
-              for (final QuickAction action in actions)
-                SizedBox(
-                  width: tileWidth,
-                  child: _QuickActionTile(action: action),
-                ),
-            ],
-          );
-        },
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          for (int i = 0; i < actions.length; i++) ...<Widget>[
+            Expanded(child: _QuickActionTile(action: actions[i])),
+            if (i < actions.length - 1) SizedBox(width: AppSpacing.sm),
+          ],
+        ],
       ),
     );
   }
@@ -76,48 +56,48 @@ class _QuickActionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppPalette palette = context.palette;
     final Color tint = action.tint ?? Theme.of(context).colorScheme.primary;
-
-    // A wash of the tile's own colour rather than the neutral muted grey:
-    // the alpha is low enough that four tiles side by side still read as one
-    // control group. Lifted on the dark theme, where a light wash vanishes.
-    final Color background = tint.withValues(
-      alpha: context.isDarkMode ? 0.18 : 0.12,
-    );
+    final BorderRadius radius = BorderRadius.circular(AppRadius.lg);
 
     return Semantics(
       button: true,
       label: action.label,
       child: ExcludeSemantics(
-        child: Material(
-          color: background,
-          borderRadius: AppRadius.field,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: action.onTap,
-            child: Container(
-              // Keeps the whole tile above the minimum touch target, not just
-              // the icon.
-              constraints: const BoxConstraints(
-                minHeight: AppSizes.minTouchTarget + 32,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            boxShadow: const <BoxShadow>[
+              BoxShadow(
+                color: AppColors.shadow,
+                blurRadius: 14,
+                offset: Offset(0, 4),
               ),
-              padding: EdgeInsets.symmetric(
-                vertical: AppSpacing.md,
-                horizontal: AppSpacing.xs,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Icon(action.icon, size: AppSizes.iconLg, color: tint),
-                  Gap.sm,
-                  Text(
-                    action.label,
-                    style: Theme.of(context).textTheme.labelSmall
-                        ?.copyWith(color: palette.textPrimary),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+            ],
+          ),
+          child: Material(
+            color: AppColors.surface,
+            borderRadius: radius,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: action.onTap,
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Icon(action.icon, size: AppSizes.iconLg, color: tint),
+                    Gap.md,
+                    Text(
+                      action.label,
+                      style: Theme.of(context).textTheme.labelMedium
+                          ?.copyWith(
+                            color: palette.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

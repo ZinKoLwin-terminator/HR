@@ -63,3 +63,13 @@ flutter:
   assets:
     - assets/images/
     - assets/animations/
+
+  # Brand display serif, for the auth headings and the APEX wordmark only.
+  # SIL Open Font License; see assets/fonts/OFL-CormorantGaramond.txt.
+  fonts:
+    - family: CormorantGaramond
+      fonts:
+        - asset: assets/fonts/CormorantGaramond-600.ttf
+          weight: 600
+        - asset: assets/fonts/CormorantGaramond-700.ttf
+          weight: 700

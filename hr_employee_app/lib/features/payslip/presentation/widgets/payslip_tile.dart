@@ -1,14 +1,12 @@
 import 'package:hr_employee_app/app/theme/app_spacing.dart';
-import 'package:hr_employee_app/app/theme/app_text_styles.dart';
 import 'package:hr_employee_app/app/theme/app_theme.dart';
-import 'package:hr_employee_app/core/extensions/context_extensions.dart';
 import 'package:hr_employee_app/core/utils/date_formatter.dart';
-import 'package:hr_employee_app/core/widgets/app_card.dart';
 import 'package:hr_employee_app/features/payslip/domain/entities/payslip.dart';
 import 'package:hr_employee_app/shared/helpers/currency_formatter.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// One payslip row.
+/// One payslip as a row inside the grouped "Earlier" card: a month block,
+/// the period and pay date, the net pay, and a download action.
 ///
 /// The net pay is masked unless the user has revealed amounts; see
 /// `salaryMaskedProvider` for why that is the default.
@@ -35,78 +33,123 @@ class PayslipTile extends StatelessWidget {
     final AppPalette palette = context.palette;
     final TextTheme textStyles = Theme.of(context).textTheme;
 
-    return AppCard(
+    return InkWell(
       onTap: onTap,
-      child: Row(
-        children: <Widget>[
-          Container(
-            padding: EdgeInsets.all(AppSpacing.md),
-            // Brand-tinted like the section icons elsewhere, rather than a
-            // grey plate that left the list looking colourless.
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(
-                alpha: context.isDarkMode ? 0.22 : 0.1,
-              ),
-              borderRadius: AppRadius.field,
-            ),
-            child: Icon(
-              Icons.receipt_long_outlined,
-              size: AppSizes.iconLg,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          Gap.wMd,
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  payslip.periodLabel ??
-                      DateFormatter.monthYear(payslip.period),
-                  style: textStyles.titleSmall,
-                ),
-                Gap.xxs,
-                Text(
-                  payslip.payDate == null
-                      ? 'Pay date not published'
-                      : 'Paid ${DateFormatter.dayMonthYear(payslip.payDate!)}',
-                  style: textStyles.bodySmall,
-                ),
-                Gap.xs,
-                Text(
-                  CurrencyFormatter.formatMaskable(
-                    payslip.netPay,
-                    payslip.currencyCode,
-                    isMasked: isMasked,
-                  ),
-                  style: AppTextStyles.numeric.copyWith(
-                    color: isMasked
-                        ? palette.textTertiary
-                        : palette.textPrimary,
-                  ),
-                  // Keeps the row readable for a screen reader without
-                  // announcing a masked value as dots.
-                  semanticsLabel: isMasked
-                      ? 'Net pay hidden'
-                      : 'Net pay ${CurrencyFormatter.format(payslip.netPay, payslip.currencyCode)}',
-                ),
-              ],
-            ),
-          ),
-          if (payslip.isPdfAvailable)
-            IconButton(
-              onPressed: isDownloading ? null : onDownload,
-              tooltip: 'Open PDF',
-              icon: isDownloading
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.2),
-                    )
-                  : Icon(
-                      Icons.picture_as_pdf_outlined,
-                      color: Theme.of(context).colorScheme.primary,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm + 2,
+          AppSpacing.xs,
+          AppSpacing.sm + 2,
+        ),
+        child: Row(
+          children: <Widget>[
+            PayslipMonthBlock(period: payslip.period),
+            Gap.wMd,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    payslip.periodLabel ??
+                        DateFormatter.monthYear(payslip.period),
+                    style: textStyles.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    payslip.payDate == null
+                        ? 'Pay date not published'
+                        : 'Paid ${DateFormatter.dayMonthYear(payslip.payDate!)}',
+                    style: textStyles.bodySmall?.copyWith(
+                      color: palette.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
             ),
+            Gap.wSm,
+            Text(
+              CurrencyFormatter.formatMaskable(
+                payslip.netPay,
+                payslip.currencyCode,
+                isMasked: isMasked,
+              ),
+              style: textStyles.labelLarge?.copyWith(
+                color: isMasked ? palette.textTertiary : palette.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+              ),
+              // Keeps the row readable for a screen reader without
+              // announcing a masked value as dots.
+              semanticsLabel: isMasked
+                  ? 'Net pay hidden'
+                  : 'Net pay ${CurrencyFormatter.format(payslip.netPay, payslip.currencyCode)}',
+            ),
+            if (payslip.isPdfAvailable)
+              IconButton(
+                onPressed: isDownloading ? null : onDownload,
+                tooltip: 'Download PDF',
+                icon: isDownloading
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        Icons.download_rounded,
+                        size: AppSizes.iconMd,
+                        color: palette.textPrimary,
+                      ),
+              )
+            else
+              SizedBox(width: AppSpacing.md),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// `SEP / 2026` in a muted rounded block.
+class PayslipMonthBlock extends StatelessWidget {
+  const PayslipMonthBlock({required this.period, super.key});
+
+  final DateTime period;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette palette = context.palette;
+    final TextTheme textStyles = Theme.of(context).textTheme;
+
+    return Container(
+      width: 44,
+      padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.primarySurface,
+        borderRadius: AppRadius.field,
+      ),
+      child: Column(
+        children: <Widget>[
+          Text(
+            DateFormatter.shortMonthYear(period).split(' ').first.toUpperCase(),
+            style: textStyles.labelSmall?.copyWith(
+              fontSize: 9,
+              letterSpacing: 0.6,
+              fontWeight: FontWeight.w800,
+              color: AppColors.apexNavy,
+              height: 1.2,
+            ),
+          ),
+          Text(
+            '${period.year}',
+            style: textStyles.labelSmall?.copyWith(
+              fontSize: 10,
+              color: palette.textSecondary,
+              height: 1.2,
+            ),
+          ),
         ],
       ),
     );

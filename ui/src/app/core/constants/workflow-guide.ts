@@ -713,8 +713,8 @@ export const WORKFLOWS: readonly Workflow[] = [
         module: 'Grievances',
         title: { en: 'The employee reports', my: 'ဝန်ထမ်းက တင်ပြသည်' },
         text: {
-          en: 'In My Grievances: a category, what happened, files if any, named or anonymous (where the category allows it), the declaration, then Submit. The case gets its number and HR is told.',
-          my: 'My Grievances တွင် — Category၊ ဖြစ်ရပ်၊ ရှိလျှင် ဖိုင်များ၊ အမည်ဖြင့် သို့ အမည်မဖော် (Category ခွင့်ပြုလျှင်)၊ Declaration ပြီးမှ Submit။ Case နံပါတ်ရပြီး HR ကို အကြောင်းကြားသည်။',
+          en: 'In My Grievances: a category, what happened, files if any, named or anonymous (where the category allows it), the declaration, then Submit. The case gets its number and HR is told. When an employee tells HR in person, by phone, email or letter, HR can record it in their name with Record grievance in Case Management.',
+          my: 'My Grievances တွင် — Category၊ ဖြစ်ရပ်၊ ရှိလျှင် ဖိုင်များ၊ အမည်ဖြင့် သို့ အမည်မဖော် (Category ခွင့်ပြုလျှင်)၊ Declaration ပြီးမှ Submit။ Case နံပါတ်ရပြီး HR ကို အကြောင်းကြားသည်။ ဝန်ထမ်းက HR ထံ နှုတ်ဖြင့် သို့ စာဖြင့် တင်ပြလျှင် HR က Case Management ရှိ Record grievance ဖြင့် ၎င်း၏ အမည်ဖြင့် မှတ်တမ်းတင်နိုင်သည်။',
         },
         route: '/grievances/my',
       },

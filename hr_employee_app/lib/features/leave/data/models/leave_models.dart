@@ -48,6 +48,10 @@ abstract class LeaveBalanceModel with _$LeaveBalanceModel {
     required String leaveTypeId,
     required String leaveTypeName,
     int? year,
+
+    /// Short type code, e.g. `AL`. Decides which types the leave screen's
+    /// headline total adds up.
+    String? code,
     @Default(0) num entitledDays,
     @Default(0) num usedDays,
     @Default(0) num pendingDays,
@@ -66,6 +70,7 @@ abstract class LeaveBalanceModel with _$LeaveBalanceModel {
     leaveTypeId: leaveTypeId,
     leaveTypeName: leaveTypeName,
     year: year ?? fallbackYear ?? DateTime.now().year,
+    code: code,
     entitledDays: entitledDays.toDouble(),
     usedDays: usedDays.toDouble(),
     pendingDays: pendingDays.toDouble(),

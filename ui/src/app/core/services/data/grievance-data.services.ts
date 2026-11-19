@@ -24,6 +24,7 @@ import {
   GrievanceDraftUpdate,
   GrievanceHistoryEntry,
   GrievanceEmployeeOption,
+  GrievanceIntakeRequest,
   GrievanceInvestigatorOption,
   GrievanceNoteRequest,
   GrievanceOptions,
@@ -71,7 +72,10 @@ export abstract class GrievanceCategoryDataService extends CrudDataService<
  * caller's pseudonym, so they appear here like any other.
  */
 export abstract class MyGrievanceDataService {
-  /** `GET /options`: active categories (sort order) and departments for the form. */
+  /**
+   * `GET /options` (`grievance:View` or `grievance-management:Create`): active categories (sort
+   * order) and departments for the form (also the HR intake form).
+   */
   abstract options(): Observable<GrievanceOptions>;
   /** `GET /my`: the caller's cases, drafts included, newest update first by default. */
   abstract query(request: PageRequest<MyGrievanceFilter>): Observable<PagedResult<MyGrievance>>;
@@ -159,10 +163,18 @@ export abstract class GrievanceCaseDataService {
    */
   abstract investigators(search?: string | null): Observable<GrievanceInvestigatorOption[]>;
   /**
-   * `GET /employees?search=` (`grievance-management:Edit`): current employees matching a code or
-   * name, by name, at most `GRIEVANCE_EMPLOYEE_OPTIONS_MAX` (the triage "subject employee" picker).
+   * `GET /employees?search=` (`grievance-management:Edit` or `:Create`): current employees matching
+   * a code or name, by name, at most `GRIEVANCE_EMPLOYEE_OPTIONS_MAX` (the triage "subject employee"
+   * picker and the intake "employee" picker).
    */
   abstract employeeOptions(search: string): Observable<GrievanceEmployeeOption[]>;
+
+  // ---- Intake ----
+  /**
+   * `POST /cases` (201, `grievance-management:Create`): HR records a grievance on behalf of another
+   * employee, as a Submitted named case (see {@link GrievanceIntakeRequest}).
+   */
+  abstract recordForEmployee(request: GrievanceIntakeRequest): Observable<GrievanceCaseDetail>;
 
   // ---- State machine (management Edit unless stated) ----
   /** Submitted to Acknowledged. */
@@ -315,6 +327,7 @@ const GRIEVANCE_CASE_METHOD_SET = {
   auditLog: true,
   investigators: true,
   employeeOptions: true,
+  recordForEmployee: true,
   acknowledge: true,
   startReview: true,
   assign: true,

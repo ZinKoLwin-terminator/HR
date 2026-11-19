@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:hr_employee_app/features/attendance/domain/entities/attendance_status.dart';
+import 'package:hr_employee_app/features/leave/domain/entities/leave_overview.dart';
 import 'package:hr_employee_app/features/leave/domain/entities/leave_type.dart';
 import 'package:hr_employee_app/features/notifications/domain/entities/app_notification.dart';
 
@@ -30,11 +31,11 @@ abstract class DashboardSummary with _$DashboardSummary {
 
   const DashboardSummary._();
 
-  /// Total days left across every leave type, for the headline figure.
-  double get totalRemainingLeaveDays => leaveBalances.fold<double>(
-    0,
-    (double sum, LeaveBalance balance) => sum + balance.remainingDays,
-  );
+  /// Days left for the headline figure: the everyday types only, the same
+  /// figure as the leave screen's donut. Adding Maternity's 98 days in would
+  /// make it meaningless.
+  double get totalRemainingLeaveDays =>
+      LeaveSummary.fromBalances(leaveBalances).left;
 
   bool get hasUnreadNotifications => unreadNotificationCount > 0;
 }

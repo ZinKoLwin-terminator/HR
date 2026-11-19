@@ -30,6 +30,18 @@ internal static class AuthorizationSetup
     public const string GrievanceInsightPolicy = "grievance-insight";
 
     /// <summary>
+    /// The grievance form options (active categories and departments): <c>grievance:View</c> for the submitter's own form, or
+    /// <c>grievance-management:Create</c> for HR recording a grievance for an employee.
+    /// </summary>
+    public const string GrievanceOptionsPolicy = "grievance-options";
+
+    /// <summary>
+    /// The case-team employee picker: <c>grievance-management:Edit</c> (the subject at triage) or <c>grievance-management:Create</c>
+    /// (the employee HR records a grievance for).
+    /// </summary>
+    public const string GrievanceEmployeePickerPolicy = "grievance-employee-picker";
+
+    /// <summary>
     /// Registers one named policy per module and action (<c>employees:ViewBank</c>), each a <see cref="PermissionRequirement"/>
     /// checked against sec.RolePermission by <see cref="PermissionHandler"/>, the administrator policy, the signed-in policy
     /// and the fallback policy. The same policy names are used by the endpoints and by code that asks the authorization
@@ -56,6 +68,12 @@ internal static class AuthorizationSetup
                 options.AddPolicy(
                     GrievanceInsightPolicy,
                     policy => policy.RequireAuthenticatedUser().AddRequirements(new AnyPermissionRequirement("grievance-management", "View", "grievance-review:View")));
+                options.AddPolicy(
+                    GrievanceOptionsPolicy,
+                    policy => policy.RequireAuthenticatedUser().AddRequirements(new AnyPermissionRequirement("grievance", "View", "grievance-management:Create")));
+                options.AddPolicy(
+                    GrievanceEmployeePickerPolicy,
+                    policy => policy.RequireAuthenticatedUser().AddRequirements(new AnyPermissionRequirement("grievance-management", "Edit", "grievance-management:Create")));
 
                 foreach (var module in PermissionModule.All)
                 {

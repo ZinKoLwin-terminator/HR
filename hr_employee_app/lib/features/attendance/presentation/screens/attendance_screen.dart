@@ -1,13 +1,15 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hr_employee_app/app/router/route_names.dart';
 import 'package:hr_employee_app/app/theme/app_spacing.dart';
+import 'package:hr_employee_app/app/theme/app_theme.dart';
 import 'package:hr_employee_app/core/errors/failure.dart';
 import 'package:hr_employee_app/core/widgets/app_snackbar.dart';
 import 'package:hr_employee_app/core/widgets/async_value_view.dart';
-import 'package:hr_employee_app/core/widgets/brand_app_bar.dart';
 import 'package:hr_employee_app/core/widgets/paginated_list_view.dart';
 import 'package:hr_employee_app/features/attendance/domain/entities/attendance_record.dart';
+import 'package:hr_employee_app/features/attendance/domain/entities/attendance_status.dart';
 import 'package:hr_employee_app/features/attendance/domain/usecases/punch_attendance_usecase.dart';
 import 'package:hr_employee_app/features/attendance/presentation/providers/attendance_controllers.dart';
 import 'package:hr_employee_app/features/attendance/presentation/providers/attendance_providers.dart';
@@ -32,6 +34,8 @@ class AttendanceScreen extends ConsumerStatefulWidget {
 class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   /// Which month the summary shows. Local because it is pure view state.
   AttendancePeriod _period = AttendancePeriod.current();
+
+  _HistoryFilter _filter = _HistoryFilter.all;
 
   Future<void> _punch(PunchDirection direction) async {
     final bool succeeded = await ref
@@ -98,65 +102,113 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       attendanceHistoryControllerProvider,
     );
 
-    return Scaffold(
-      appBar: const BrandAppBar(title: Text('Attendance')),
-      body: SafeArea(
-        top: false,
-        child: AsyncValueView<PaginatedState<AttendanceRecord>>(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        body: AsyncValueView<PaginatedState<AttendanceRecord>>(
           value: history,
+          loadingMessages: const <String>[
+            'Fetching your records…',
+            'Checking your shifts…',
+            'Adding up your hours…',
+          ],
           loading: const PaginatedListSkeleton(lines: 3),
           onRetry: () => ref.invalidate(attendanceHistoryControllerProvider),
-          data: (PaginatedState<AttendanceRecord> state) =>
-              PaginatedListView<AttendanceRecord>(
-                items: state.items,
-                hasMore: state.hasMore,
-                isLoadingMore: state.isLoadingMore,
-                loadMoreFailure: state.loadMoreFailure,
-                onRefresh: _refreshAll,
-                onLoadMore: () => ref
-                    .read(attendanceHistoryControllerProvider.notifier)
-                    .loadMore(),
-                emptyTitle: 'No attendance yet',
-                emptyMessage:
-                    'Your check-ins will appear here once you start '
-                    'recording them.',
-                emptyIcon: Icons.schedule_outlined,
-                header: _Header(
-                  period: _period,
-                  onPreviousMonth: () =>
-                      setState(() => _period = _period.previous()),
-                  onNextMonth: () => setState(() => _period = _period.next()),
-                  onCheckIn: () => _punch(PunchDirection.checkIn),
-                  onCheckOut: () => _punch(PunchDirection.checkOut),
-                ),
-                itemBuilder:
-                    (
-                      BuildContext context,
-                      AttendanceRecord record,
-                      int index,
-                    ) => AttendanceHistoryTile(
-                      record: record,
-                      onTap: () => context.pushNamed(
-                        RouteNames.attendanceDetail,
-                        pathParameters: <String, String>{
-                          RouteParams.attendanceId: record.id,
-                        },
-                      ),
-                    ),
+          data: (PaginatedState<AttendanceRecord> state) {
+            final List<AttendanceRecord> visible = state.items
+                .where(_filter.matches)
+                .toList(growable: false);
+            final bool isFiltered =
+                _filter != _HistoryFilter.all && state.items.isNotEmpty;
+
+            return PaginatedListView<AttendanceRecord>(
+              items: visible,
+              hasMore: state.hasMore,
+              isLoadingMore: state.isLoadingMore,
+              loadMoreFailure: state.loadMoreFailure,
+              onRefresh: _refreshAll,
+              onLoadMore: () => ref
+                  .read(attendanceHistoryControllerProvider.notifier)
+                  .loadMore(),
+              padding: EdgeInsets.only(bottom: AppSpacing.xxxl),
+              separator: SizedBox(height: AppSpacing.sm + 2),
+              emptyTitle: isFiltered ? 'No matching days' : 'No attendance yet',
+              emptyMessage: isFiltered
+                  ? 'Nothing loaded so far matches this filter.'
+                  : 'Your check-ins will appear here once you start '
+                        'recording them.',
+              emptyIcon: Icons.schedule_outlined,
+              emptyActionLabel: isFiltered ? 'Show all days' : null,
+              onEmptyAction: isFiltered
+                  ? () => setState(() => _filter = _HistoryFilter.all)
+                  : null,
+              header: _Header(
+                period: _period,
+                filter: _filter,
+                visibleCount: visible.length,
+                onFilterChanged: (_HistoryFilter filter) =>
+                    setState(() => _filter = filter),
+                onPreviousMonth: () =>
+                    setState(() => _period = _period.previous()),
+                onNextMonth: () => setState(() => _period = _period.next()),
+                onCheckIn: () => _punch(PunchDirection.checkIn),
+                onCheckOut: () => _punch(PunchDirection.checkOut),
               ),
+              itemBuilder:
+                  (BuildContext context, AttendanceRecord record, int index) =>
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                        ),
+                        child: AttendanceHistoryTile(
+                          record: record,
+                          onTap: () => context.pushNamed(
+                            RouteNames.attendanceDetail,
+                            pathParameters: <String, String>{
+                              RouteParams.attendanceId: record.id,
+                            },
+                          ),
+                        ),
+                      ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-/// The punch panel and monthly summary, scrolling above the history list.
+/// Which loaded days the history list shows. Applied to the pages already
+/// fetched, not sent to the server.
+enum _HistoryFilter {
+  all('All'),
+  present('Present'),
+  late('Late'),
+  weeklyOff('Weekly off');
+
+  const _HistoryFilter(this.label);
+
+  final String label;
+
+  bool matches(AttendanceRecord record) => switch (this) {
+    _HistoryFilter.all => true,
+    _HistoryFilter.present => record.status.isAttended,
+    _HistoryFilter.late => record.isLateArrival,
+    _HistoryFilter.weeklyOff => record.status == AttendanceStatus.weeklyOff,
+  };
+}
+
+/// Month header, stat tiles, today's card and the history heading,
+/// scrolling above the history list.
 ///
 /// A `ConsumerWidget` of its own so a punch rebuilds only this header, not
 /// the entire history list below it.
 class _Header extends ConsumerWidget {
   const _Header({
     required this.period,
+    required this.filter,
+    required this.visibleCount,
+    required this.onFilterChanged,
     required this.onPreviousMonth,
     required this.onNextMonth,
     required this.onCheckIn,
@@ -164,6 +216,9 @@ class _Header extends ConsumerWidget {
   });
 
   final AttendancePeriod period;
+  final _HistoryFilter filter;
+  final int visibleCount;
+  final ValueChanged<_HistoryFilter> onFilterChanged;
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
   final VoidCallback onCheckIn;
@@ -178,33 +233,144 @@ class _Header extends ConsumerWidget {
       attendanceSummaryProvider(period),
     );
     final bool isPunching = ref.watch(punchControllerProvider).isSubmitting;
+    final TextTheme textStyles = Theme.of(context).textTheme;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        CheckInOutPanel(
-          record: today.value,
-          isLoading: today.isLoading && !today.hasValue,
-          isPunching: isPunching,
-          onCheckIn: onCheckIn,
-          onCheckOut: onCheckOut,
-        ),
-        SizedBox(height: AppSpacing.cardGap),
-        MonthlySummaryCard(
+        AttendanceMonthHeader(
           period: period,
           summary: summary.value,
           onPreviousMonth: onPreviousMonth,
           onNextMonth: onNextMonth,
         ),
-        SizedBox(height: AppSpacing.xl),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'History',
-            style: Theme.of(context).textTheme.titleMedium,
+        // The stat tiles straddle the header's foot: a navy strip behind
+        // their top edge continues the band, so they sit half on it. Done
+        // with a strip rather than a negative offset, which would leave a
+        // matching gap at the bottom of the header.
+        Stack(
+          children: <Widget>[
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: AttendanceMonthHeader.overlap,
+              child: ColoredBox(color: AppColors.apexNavy),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: AttendanceStatTiles(summary: summary.value),
+            ),
+          ],
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.xs,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              CheckInOutPanel(
+                record: today.value,
+                isLoading: today.isLoading && !today.hasValue,
+                isPunching: isPunching,
+                onCheckIn: onCheckIn,
+                onCheckOut: onCheckOut,
+              ),
+              SizedBox(height: AppSpacing.xl),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      'History',
+                      style: textStyles.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    visibleCount == 1 ? '1 day' : '$visibleCount days',
+                    style: textStyles.labelSmall?.copyWith(
+                      color: context.palette.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+              Gap.sm,
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                child: Row(
+                  children: <Widget>[
+                    for (final _HistoryFilter option
+                        in _HistoryFilter.values) ...<Widget>[
+                      _FilterPill(
+                        label: option.label,
+                        isSelected: option == filter,
+                        onTap: () => onFilterChanged(option),
+                      ),
+                      Gap.wSm,
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: AppSpacing.md),
       ],
+    );
+  }
+}
+
+/// A filter option: navy when selected, white with a hairline otherwise.
+class _FilterPill extends StatelessWidget {
+  const _FilterPill({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette palette = context.palette;
+
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      child: Material(
+        color: isSelected ? AppColors.apexNavy : AppColors.surface,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: isSelected ? AppColors.apexNavy : palette.border,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm,
+            ),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: isSelected
+                    ? AppColors.textOnPrimary
+                    : palette.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

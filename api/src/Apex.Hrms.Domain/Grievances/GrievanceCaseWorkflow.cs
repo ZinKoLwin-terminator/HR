@@ -104,19 +104,85 @@ public sealed partial class GrievanceCase
             return Fail(submittable);
         }
 
-        return Move(GrievanceHistoryAction.Submit, GrievanceStatus.Submitted, actor, null, visible: true, occurredAtUtc, step =>
-        {
-            CaseNo = caseNo;
-            SubmittedAtUtc = occurredAtUtc;
-            DeclarationAcceptedAtUtc = occurredAtUtc;
-            var copied = IsAnonymous ? null : placement;
-            CompanyId = copied?.CompanyId;
-            BranchId = copied?.BranchId;
-            DepartmentId = copied?.DepartmentId;
-            PositionId = copied?.PositionId;
-            return step;
-        });
+        return Move(GrievanceHistoryAction.Submit, GrievanceStatus.Submitted, actor, null, visible: true, occurredAtUtc, MarkSubmitted(caseNo, placement, occurredAtUtc));
     }
+
+    /// <summary>
+    /// HR management records a grievance an employee raised outside the system (in person, by phone, by email, by letter): Draft to
+    /// Submitted, as <see cref="Submit"/>, but taken by a signed-in management user on a NAMED case only (the caller has already linked
+    /// the employee as its submitter). The declaration is HR's confirmation that the employee gave this account and agreed that HR
+    /// records it. The Submit entry names the HR user, says how the grievance was received and is visible to the employee.
+    /// </summary>
+    public Result<GrievanceStep> RecordForEmployee(
+        GrievanceCategory category,
+        bool declarationAccepted,
+        string caseNo,
+        GrievancePlacement placement,
+        GrievanceIntakeChannel receivedVia,
+        GrievanceActor actor,
+        DateOnly today,
+        DateTime occurredAtUtc)
+    {
+        RequireTeamUser(actor);
+        ArgumentNullException.ThrowIfNull(placement);
+        if (actor.Role != GrievanceActorRole.Management)
+        {
+            throw new ArgumentException("Only HR management records a grievance for an employee.", nameof(actor));
+        }
+
+        if (IsAnonymous)
+        {
+            throw new InvalidOperationException("A grievance HR records for an employee is never anonymous.");
+        }
+
+        if (!IsValidCaseNo(caseNo))
+        {
+            throw new ArgumentException("A case number is GRV-yyyy-nnnnn.", nameof(caseNo));
+        }
+
+        var submittable = CheckSubmission(category, declarationAccepted, today);
+        if (submittable.IsFailure)
+        {
+            return Fail(submittable);
+        }
+
+        return Move(
+            GrievanceHistoryAction.Submit,
+            GrievanceStatus.Submitted,
+            actor,
+            IntakeReason(receivedVia),
+            visible: true,
+            occurredAtUtc,
+            MarkSubmitted(caseNo, placement, occurredAtUtc));
+    }
+
+    /// <summary>The reason of the Submit entry of a grievance HR recorded: who recorded it is the entry's actor, this says how it came in.</summary>
+    public static string IntakeReason(GrievanceIntakeChannel receivedVia)
+    {
+        var how = receivedVia switch
+        {
+            GrievanceIntakeChannel.InPerson => "in person",
+            GrievanceIntakeChannel.Phone => "by phone",
+            GrievanceIntakeChannel.Email => "by email",
+            GrievanceIntakeChannel.Letter => "by letter",
+            GrievanceIntakeChannel.Other => "another way",
+            _ => throw new ArgumentOutOfRangeException(nameof(receivedVia)),
+        };
+        return $"Recorded by HR on behalf of the employee (received {how}).";
+    }
+
+    private Func<GrievanceStep, GrievanceStep> MarkSubmitted(string caseNo, GrievancePlacement? placement, DateTime occurredAtUtc) => step =>
+    {
+        CaseNo = caseNo;
+        SubmittedAtUtc = occurredAtUtc;
+        DeclarationAcceptedAtUtc = occurredAtUtc;
+        var copied = IsAnonymous ? null : placement;
+        CompanyId = copied?.CompanyId;
+        BranchId = copied?.BranchId;
+        DepartmentId = copied?.DepartmentId;
+        PositionId = copied?.PositionId;
+        return step;
+    };
 
     /// <summary>
     /// Everything <see cref="Submit"/> checks, without changing anything: a draft (409 otherwise), still valid with the full minimum

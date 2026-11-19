@@ -88,6 +88,14 @@ class MockFixtures {
     return _todayRecord;
   }
 
+  /// Where the seeded history was punched from: the office.
+  static const GeoLocationModel _officeLocation = GeoLocationModel(
+    latitude: 16.8259,
+    longitude: 96.1259,
+    accuracyMeters: 12,
+    address: 'Yangon HQ',
+  );
+
   /// Sixty days of history, newest first, excluding today.
   ///
   /// Generated rather than hand-written so weekends fall on real weekends
@@ -147,6 +155,8 @@ class MockFixtures {
           checkOutAt: MockSupport.at(day, outHour, 10),
           shiftStartAt: MockSupport.at(day, 9, 0),
           shiftEndAt: MockSupport.at(day, 18, 0),
+          checkInLocation: _officeLocation,
+          checkOutLocation: _officeLocation,
           isLateArrival: isLate,
           lateByMinutes: isLate ? inMinute : 0,
           isEarlyDeparture: isEarly,
@@ -206,28 +216,60 @@ class MockFixtures {
 
   // --- Leave ----------------------------------------------------------
 
+  // Eight types, so the leave screen's horizontal tiles and its "View all"
+  // sheet are exercised, with one of each balance state: plenty left,
+  // pending, almost used up, used up, and no balance at all (unpaid).
   static const List<LeaveTypeModel> leaveTypes = <LeaveTypeModel>[
     LeaveTypeModel(
       id: 'lt-annual',
       name: 'Annual Leave',
       code: 'AL',
       maxConsecutiveDays: 14,
-      colorHex: '#2563EB',
+      colorHex: '#0D9488',
     ),
     LeaveTypeModel(
       id: 'lt-medical',
       name: 'Medical Leave',
       code: 'ML',
       requiresAttachment: true,
-      maxConsecutiveDays: 30,
-      colorHex: '#D92D20',
+      maxConsecutiveDays: 10,
+      colorHex: '#DB2777',
     ),
     LeaveTypeModel(
       id: 'lt-casual',
       name: 'Casual Leave',
       code: 'CL',
       maxConsecutiveDays: 3,
-      colorHex: '#F79009',
+      colorHex: '#2563EB',
+    ),
+    LeaveTypeModel(
+      id: 'lt-maternity',
+      name: 'Maternity Leave',
+      code: 'MAT',
+      requiresAttachment: true,
+      maxConsecutiveDays: 98,
+      colorHex: '#9333EA',
+    ),
+    LeaveTypeModel(
+      id: 'lt-paternity',
+      name: 'Paternity Leave',
+      code: 'PAT',
+      maxConsecutiveDays: 15,
+      colorHex: '#4F46E5',
+    ),
+    LeaveTypeModel(
+      id: 'lt-compassionate',
+      name: 'Compassionate Leave',
+      code: 'CPL',
+      maxConsecutiveDays: 3,
+      colorHex: '#B45309',
+    ),
+    LeaveTypeModel(
+      id: 'lt-study',
+      name: 'Study Leave',
+      code: 'SL',
+      maxConsecutiveDays: 5,
+      colorHex: '#0891B2',
     ),
     LeaveTypeModel(
       id: 'lt-unpaid',
@@ -241,40 +283,74 @@ class MockFixtures {
     LeaveBalanceModel(
       leaveTypeId: 'lt-annual',
       leaveTypeName: 'Annual Leave',
+      code: 'AL',
       year: DateTime.now().year,
       entitledDays: 14,
       usedDays: 5,
       pendingDays: _pendingDaysFor('lt-annual'),
       remainingDays: 14 - 5 - _pendingDaysFor('lt-annual'),
-      colorHex: '#2563EB',
+      colorHex: '#0D9488',
     ),
     LeaveBalanceModel(
       leaveTypeId: 'lt-medical',
       leaveTypeName: 'Medical Leave',
+      code: 'ML',
       year: DateTime.now().year,
       entitledDays: 10,
       usedDays: 2,
-      remainingDays: 8,
-      colorHex: '#D92D20',
+      pendingDays: _pendingDaysFor('lt-medical'),
+      remainingDays: 10 - 2 - _pendingDaysFor('lt-medical'),
+      colorHex: '#DB2777',
     ),
     LeaveBalanceModel(
       leaveTypeId: 'lt-casual',
       leaveTypeName: 'Casual Leave',
+      code: 'CL',
       year: DateTime.now().year,
       entitledDays: 6,
       usedDays: 5.5,
-      remainingDays: 0.5,
-      colorHex: '#F79009',
+      pendingDays: _pendingDaysFor('lt-casual'),
+      remainingDays: 0.5 - _pendingDaysFor('lt-casual'),
+      colorHex: '#2563EB',
+    ),
+    _untouched('lt-maternity', 'Maternity Leave', 'MAT', 98, '#9333EA'),
+    _untouched('lt-paternity', 'Paternity Leave', 'PAT', 15, '#4F46E5'),
+    _untouched('lt-compassionate', 'Compassionate Leave', 'CPL', 3, '#B45309'),
+    LeaveBalanceModel(
+      leaveTypeId: 'lt-study',
+      leaveTypeName: 'Study Leave',
+      code: 'SL',
+      year: DateTime.now().year,
+      entitledDays: 5,
+      usedDays: 5,
+      colorHex: '#0891B2',
     ),
     LeaveBalanceModel(
       leaveTypeId: 'lt-unpaid',
       leaveTypeName: 'Unpaid Leave',
+      code: 'UL',
       year: DateTime.now().year,
-      entitledDays: 0,
-      remainingDays: 0,
       colorHex: '#667085',
     ),
   ];
+
+  /// A balance nothing has been taken from yet, apart from anything pending.
+  LeaveBalanceModel _untouched(
+    String id,
+    String name,
+    String code,
+    num entitled,
+    String colorHex,
+  ) => LeaveBalanceModel(
+    leaveTypeId: id,
+    leaveTypeName: name,
+    code: code,
+    year: DateTime.now().year,
+    entitledDays: entitled,
+    pendingDays: _pendingDaysFor(id),
+    remainingDays: entitled - _pendingDaysFor(id),
+    colorHex: colorHex,
+  );
 
   /// Requests submitted during this session, newest first, followed by the
   /// seeded history.
@@ -369,40 +445,45 @@ class MockFixtures {
         (double sum, LeaveRequestModel r) => sum + r.totalDays.toDouble(),
       );
 
-  /// Seeded history, covering every status so the list and its filters can be
-  /// reviewed.
+  /// Seeded history: seven requests covering every status, spread over three
+  /// months so the all-requests screen's month groups and filters can be
+  /// reviewed. Dates are relative to today, so the fixture never goes stale.
+  ///
+  /// The approved days here do not add up to every balance's used figure:
+  /// the balances also stand for leave taken before this history starts.
   final List<LeaveRequestModel> _seededRequests = <LeaveRequestModel>[
     LeaveRequestModel(
       id: 'mock-lr-1',
       leaveTypeId: 'lt-annual',
       leaveTypeName: 'Annual Leave',
       startDate: DateFormatter.toApiDate(
-        MockSupport.today.add(const Duration(days: 16)),
+        MockSupport.today.add(const Duration(days: 5)),
       ),
       endDate: DateFormatter.toApiDate(
-        MockSupport.today.add(const Duration(days: 17)),
+        MockSupport.today.add(const Duration(days: 6)),
       ),
       status: 'Pending',
       appliedAt: MockSupport.daysAgo(1).toUtc(),
       totalDays: 2,
       reason: 'Family matters out of town, returning on the Sunday.',
+      approverName: 'Ma Myat Gyi',
+      colorHex: '#0D9488',
       contactDuringLeave: '+95 9 123 456 789',
-      colorHex: '#2563EB',
     ),
     LeaveRequestModel(
       id: 'mock-lr-2',
       leaveTypeId: 'lt-medical',
       leaveTypeName: 'Medical Leave',
-      startDate: DateFormatter.toApiDate(MockSupport.daysAgo(17)),
-      endDate: DateFormatter.toApiDate(MockSupport.daysAgo(16)),
+      startDate: DateFormatter.toApiDate(MockSupport.daysAgo(16)),
+      endDate: DateFormatter.toApiDate(MockSupport.daysAgo(15)),
       status: 'Approved',
-      appliedAt: MockSupport.daysAgo(20).toUtc(),
+      appliedAt: MockSupport.daysAgo(17).toUtc(),
       totalDays: 2,
       reason: 'Seasonal flu, advised two days of rest by the clinic.',
-      decidedAt: MockSupport.daysAgo(19).toUtc(),
-      approverName: 'U Myint Soe',
+      decidedAt: MockSupport.daysAgo(16).toUtc(),
+      approverName: 'Ma Myat Gyi',
       decisionRemark: 'Get well soon.',
-      colorHex: '#D92D20',
+      colorHex: '#DB2777',
       attachments: <LeaveAttachmentModel>[
         const LeaveAttachmentModel(
           id: 'mock-at-1',
@@ -416,30 +497,71 @@ class MockFixtures {
       id: 'mock-lr-3',
       leaveTypeId: 'lt-casual',
       leaveTypeName: 'Casual Leave',
-      startDate: DateFormatter.toApiDate(MockSupport.daysAgo(34)),
-      endDate: DateFormatter.toApiDate(MockSupport.daysAgo(34)),
-      status: 'Rejected',
-      appliedAt: MockSupport.daysAgo(38).toUtc(),
-      dayPortion: 'FirstHalf',
-      totalDays: 0.5,
-      reason: 'Personal appointment in the morning, back by midday.',
-      decidedAt: MockSupport.daysAgo(37).toUtc(),
-      approverName: 'U Myint Soe',
-      decisionRemark: 'Month-end close; please reschedule.',
-      colorHex: '#F79009',
+      startDate: DateFormatter.toApiDate(MockSupport.daysAgo(29)),
+      endDate: DateFormatter.toApiDate(MockSupport.daysAgo(29)),
+      status: 'Approved',
+      appliedAt: MockSupport.daysAgo(32).toUtc(),
+      totalDays: 1,
+      reason: 'Moving house; the movers only come on a weekday.',
+      decidedAt: MockSupport.daysAgo(31).toUtc(),
+      approverName: 'Ma Myat Gyi',
+      colorHex: '#2563EB',
     ),
     LeaveRequestModel(
       id: 'mock-lr-4',
+      leaveTypeId: 'lt-casual',
+      leaveTypeName: 'Casual Leave',
+      startDate: DateFormatter.toApiDate(MockSupport.daysAgo(36)),
+      endDate: DateFormatter.toApiDate(MockSupport.daysAgo(36)),
+      status: 'Cancelled',
+      appliedAt: MockSupport.daysAgo(40).toUtc(),
+      dayPortion: 'FirstHalf',
+      totalDays: 0.5,
+      reason: 'Personal appointment in the morning, back by midday.',
+      decidedAt: MockSupport.daysAgo(38).toUtc(),
+      colorHex: '#2563EB',
+    ),
+    LeaveRequestModel(
+      id: 'mock-lr-5',
       leaveTypeId: 'lt-annual',
       leaveTypeName: 'Annual Leave',
-      startDate: DateFormatter.toApiDate(MockSupport.daysAgo(55)),
-      endDate: DateFormatter.toApiDate(MockSupport.daysAgo(53)),
+      startDate: DateFormatter.toApiDate(MockSupport.daysAgo(44)),
+      endDate: DateFormatter.toApiDate(MockSupport.daysAgo(40)),
       status: 'Approved',
-      appliedAt: MockSupport.daysAgo(62).toUtc(),
-      totalDays: 3,
+      appliedAt: MockSupport.daysAgo(60).toUtc(),
+      totalDays: 5,
       reason: 'Short trip booked with family over the long weekend.',
-      decidedAt: MockSupport.daysAgo(60).toUtc(),
-      approverName: 'U Myint Soe',
+      decidedAt: MockSupport.daysAgo(58).toUtc(),
+      approverName: 'Ma Myat Gyi',
+      colorHex: '#0D9488',
+    ),
+    LeaveRequestModel(
+      id: 'mock-lr-6',
+      leaveTypeId: 'lt-compassionate',
+      leaveTypeName: 'Compassionate Leave',
+      startDate: DateFormatter.toApiDate(MockSupport.daysAgo(79)),
+      endDate: DateFormatter.toApiDate(MockSupport.daysAgo(79)),
+      status: 'Rejected',
+      appliedAt: MockSupport.daysAgo(79).toUtc(),
+      totalDays: 1,
+      reason: "Attending a relative's funeral in the morning.",
+      decidedAt: MockSupport.daysAgo(78).toUtc(),
+      approverName: 'Ma Myat Gyi',
+      decisionRemark: 'Please apply at least 1 day ahead.',
+      colorHex: '#B45309',
+    ),
+    LeaveRequestModel(
+      id: 'mock-lr-7',
+      leaveTypeId: 'lt-casual',
+      leaveTypeName: 'Casual Leave',
+      startDate: DateFormatter.toApiDate(MockSupport.daysAgo(72)),
+      endDate: DateFormatter.toApiDate(MockSupport.daysAgo(71)),
+      status: 'Approved',
+      appliedAt: MockSupport.daysAgo(92).toUtc(),
+      totalDays: 2,
+      reason: 'Renewing my passport at the regional office.',
+      decidedAt: MockSupport.daysAgo(90).toUtc(),
+      approverName: 'Ma Myat Gyi',
       colorHex: '#2563EB',
     ),
   ];
@@ -589,13 +711,22 @@ class MockFixtures {
 
   // --- Notifications --------------------------------------------------
 
+  /// The newest payslip's month: last month, as [payslips] starts there.
+  static DateTime get _lastPayPeriod {
+    final DateTime now = DateTime.now();
+    return DateTime(now.year, now.month - 1);
+  }
+
   late final List<AppNotificationModel> _notifications = <AppNotificationModel>[
     AppNotificationModel(
       id: 'mock-n-1',
       title: 'Leave approved',
+      // The dates and approver of mock-lr-2, so the message and the request
+      // it links to agree.
       body:
-          'Your medical leave has been approved by U Myint Soe. '
-          'Get well soon.',
+          'Your medical leave for '
+          '${DateFormatter.dateRange(MockSupport.daysAgo(16), MockSupport.daysAgo(15))} '
+          'has been approved by Ma Myat Gyi. Get well soon.',
       type: 'LeaveApproval',
       createdAt: DateTime.now().toUtc().subtract(const Duration(hours: 3)),
       deepLink: 'hrapp://leave/mock-lr-2',
@@ -603,8 +734,13 @@ class MockFixtures {
     AppNotificationModel(
       id: 'mock-n-2',
       title: 'Payslip available',
-      body: 'Your payslip for last month is ready to view.',
+      // Names the month, and links to that month's payslip.
+      body:
+          'Your ${DateFormatter.monthYear(_lastPayPeriod)} payslip is ready '
+          'to view.',
       type: 'Payslip',
+      deepLink:
+          'hrapp://payslip/mock-ps-${_lastPayPeriod.year}-${_lastPayPeriod.month}',
       createdAt: DateTime.now().toUtc().subtract(
         const Duration(days: 1, hours: 2),
       ),
@@ -625,6 +761,7 @@ class MockFixtures {
           'No check-out was recorded on your last working day. Contact '
           'HR if this is incorrect.',
       type: 'Attendance',
+      deepLink: 'hrapp://attendance/mock-att-4',
       createdAt: DateTime.now().toUtc().subtract(const Duration(days: 4)),
       isRead: true,
       readAt: DateTime.now().toUtc().subtract(const Duration(days: 3)),

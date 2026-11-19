@@ -238,6 +238,7 @@ section). Full contract: `api/README.md`, "HTTP contract (grievances)". Customer
 | New grievance, Edit draft | `/grievances/my/new`, `/my/:id/edit` | `grievance:Create` | The submission form (unsaved-changes guard) |
 | Dashboard | `/grievances/dashboard` | `grievance-management:View` | HR figures and charts |
 | Case Management | `/grievances/cases`, `/:id` | `grievance-management:View` | Every submitted case; triage, assignment, corrective actions, every command |
+| Record grievance | `/grievances/cases/new` | `grievance-management:Create` | HR files a grievance an employee raised in person, by phone, email or letter, in that employee's name ("Record grievance" on the case list; unsaved-changes guard) |
 | Investigations | `/grievances/investigations`, `/:id` | `grievance-investigation:View` | Cases with the caller's active assignment |
 | Reviews | `/grievances/reviews`, `/:id` | `grievance-review:View` | Escalated cases and proposals to decide |
 | Review Summary | `/grievances/review-summary` | `grievance-review:View` | Review-queue figures and the summary (aggregates only, no case list, no names) |
@@ -304,6 +305,23 @@ employee. **Named or anonymous is fixed when the draft is first saved** (`PUT` w
 a new draft); a category change must still allow the draft's anonymity. Submitting copies a named submitter's company,
 branch, department and position; an anonymous case keeps no placement.
 
+**Recording a grievance for an employee (HR intake).** `POST /api/grievances/cases` (201, `grievance-management:Create`,
+body `GrievanceIntakeRequest`, answer `GrievanceCaseDetail`; contract `GrievanceCaseDataService.recordForEmployee`).
+HR records a grievance an employee raised outside the system. The result is a **Submitted, named** case (never
+anonymous) whose submitter is that employee: it appears in their My Grievances (unread) and in Case Management. Case
+number, submission and declaration time are set now, and the placement is copied from the employee as a named submit
+does. One history row: `Submit`, Draft to Submitted, by the HR user (role `Management`), reason `Recorded by HR on
+behalf of the employee (received in person | by phone | by email | by letter | another way).`, visible to the
+submitter (their timeline shows "HR team"). Access log `StatusChange` with detail `intake:Draft>Submitted`.
+Validation (`400` with field errors): `employeeId` a current employee ("Choose an active employee.") and not the
+caller's own ("Use My Grievances to raise your own grievance."); an active category ("Choose an active category.");
+subject 5 to 200 and description 20 to 4000 after trimming; incident date not after today; location and involved
+person at most 200; involved department, when given, active ("Choose an active department."); `receivedVia` one of
+`InPerson`, `Phone`, `Email`, `Letter`, `Other` ("Choose how the grievance was received."); `declarationAccepted` true
+("Confirm that the employee gave this account and agreed that HR records it."). The form loads its categories and
+departments from `GET /options` (`grievance:View` **or** `grievance-management:Create`) and its employee picker from
+`GET /employees` (management Edit **or** Create). No files on the form: they are added from the case afterwards.
+
 **Anonymity (keyed pseudonym).** An anonymous case stores `HMACSHA256(Grievance:PseudonymKey,
 "apex-hrms:grievance-submitter:<employee id>")` in `grv.CaseSubmitter.SubmitterPseudonym`, never the employee id; the
 key is not in the database. "My grievances" matches the caller's employee id or their pseudonym. The category
@@ -355,6 +373,8 @@ malware scan.**
   | Event | Recipients |
   | --- | --- |
   | "a new grievance was submitted" | Holders of `grievance-management:View` |
+  | "a grievance was recorded by HR" | Holders of `grievance-management:View`, except the HR user who recorded it |
+  | "HR recorded a grievance for you" | The employee HR recorded it for (links `/grievances/my/{id}`) |
   | "the employee responded" | Holders of `grievance-management:View`, and the case's active investigators (link `/grievances/investigations/{id}`) |
   | "you were assigned to investigate it" | The assigned investigator |
   | "a resolution was proposed"; "it was escalated as urgent" (immediate escalations only) | Holders of `grievance-review:Approve` |

@@ -679,7 +679,21 @@ internal sealed class MyGrievanceService(
     }
 
     /// <summary>The chosen category (400 when it does not exist) and involved department (400 when missing or inactive).</summary>
-    private async Task<Result<GrievanceCategory>> ReferencesAsync(IGrievanceDraftFields fields, CancellationToken cancellationToken)
+    private Task<Result<GrievanceCategory>> ReferencesAsync(IGrievanceDraftFields fields, CancellationToken cancellationToken) =>
+        GrievanceDraftReferences.CheckAsync(categories, departments, fields, cancellationToken);
+
+    private static GrievanceDraftDetails Details(IGrievanceDraftFields fields) => GrievanceDraftReferences.Details(fields);
+}
+
+/// <summary>What a submitter's draft and HR's intake share: the references the fields point at, and the fields as domain details.</summary>
+internal static class GrievanceDraftReferences
+{
+    /// <summary>The chosen category (400 when it does not exist) and involved department (400 when missing or inactive).</summary>
+    public static async Task<Result<GrievanceCategory>> CheckAsync(
+        IRepository<GrievanceCategory> categories,
+        IRepository<Department> departments,
+        IGrievanceDraftFields fields,
+        CancellationToken cancellationToken)
     {
         var category = await categories.FindAsync(fields.CategoryId, cancellationToken);
         var violations = new Violations().AddIf(category is null, "categoryId", "Choose an active category.");
@@ -692,7 +706,7 @@ internal sealed class MyGrievanceService(
         return violations.Any ? Result.Failure<GrievanceCategory>(violations.ToError()) : Result.Success(category!);
     }
 
-    private static GrievanceDraftDetails Details(IGrievanceDraftFields fields) => new(
+    public static GrievanceDraftDetails Details(IGrievanceDraftFields fields) => new(
         fields.CategoryId,
         fields.Subject ?? string.Empty,
         fields.Description ?? string.Empty,

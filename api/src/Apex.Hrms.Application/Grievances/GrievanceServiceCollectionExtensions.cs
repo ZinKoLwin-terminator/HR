@@ -38,6 +38,7 @@ internal static class GrievanceServiceCollectionExtensions
         services.AddScoped<IMyGrievanceService, MyGrievanceService>();
         services.AddScoped<IGrievanceCaseReader, GrievanceCaseReader>();
         services.AddScoped<IGrievanceCaseWork, GrievanceCaseWork>();
+        services.AddScoped<IGrievanceIntake, GrievanceIntake>();
 
         services.AddScoped<Insights.GrievanceInsightSource>();
         services.AddScoped<Insights.GrievanceInsights>();

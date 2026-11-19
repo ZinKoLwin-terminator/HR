@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hr_employee_app/app/theme/app_spacing.dart';
 import 'package:hr_employee_app/core/errors/failure.dart';
 import 'package:hr_employee_app/core/widgets/app_error_view.dart';
 import 'package:hr_employee_app/core/widgets/app_loading_indicator.dart';
+import 'package:hr_employee_app/core/widgets/app_page_loader.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Renders the three states of an [AsyncValue] consistently.
@@ -26,6 +28,7 @@ class AsyncValueView<T> extends StatelessWidget {
     super.key,
     this.onRetry,
     this.loading,
+    this.loadingMessages,
     this.error,
     this.showRefreshOverlay = true,
     this.keepDataOnError = true,
@@ -39,8 +42,13 @@ class AsyncValueView<T> extends StatelessWidget {
   /// Invoked by the error state's retry button. Omit to hide the button.
   final VoidCallback? onRetry;
 
-  /// Overrides the default spinner, typically with a skeleton layout.
+  /// The page's skeleton, shown blurred behind the [AppPageLoader] on first
+  /// load. A generic stack of skeleton cards when omitted.
   final Widget? loading;
+
+  /// What the loader says, step by step — "Fetching your records…". The
+  /// loader's generic lines when omitted.
+  final List<String>? loadingMessages;
 
   /// Overrides the default error view.
   final Widget Function(Failure failure)? error;
@@ -67,7 +75,10 @@ class AsyncValueView<T> extends StatelessWidget {
 
     // Loading for the first time.
     if (value.isLoading && !hasPrevious) {
-      return loading ?? const AppLoadingIndicator();
+      return AppPageLoader(
+        background: loading ?? const _GenericSkeleton(),
+        messages: loadingMessages ?? AppPageLoader.defaultMessages,
+      );
     }
 
     // From here on there is a value to render, possibly a stale one.
@@ -134,4 +145,24 @@ Failure asFailure(Object? error) {
     return error;
   }
   return const UnexpectedFailure();
+}
+
+/// A page-shaped stack of skeleton cards, for screens without their own.
+class _GenericSkeleton extends StatelessWidget {
+  const _GenericSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: AppSpacing.screenPadding,
+      children: <Widget>[
+        const AppSkeletonCard(lines: 4),
+        SizedBox(height: AppSpacing.cardGap),
+        const AppSkeletonCard(),
+        SizedBox(height: AppSpacing.cardGap),
+        const AppSkeletonCard(lines: 2),
+      ],
+    );
+  }
 }

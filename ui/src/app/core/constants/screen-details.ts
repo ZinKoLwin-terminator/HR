@@ -543,6 +543,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'A case: the commands its status allows (acknowledge with priority and target date, review, assign, request information, propose, reject, close, reopen, escalate, archive), triage, investigators, messages, notes, files with who may see them, corrective actions, the proposal and escalations, and the history. Administrators also see the access log.',
       'Case တစ်ခု — ၎င်း၏ Status ခွင့်ပြုသော Command များ (Priority နှင့် Target date ဖြင့် Acknowledge၊ Review၊ Assign၊ အချက်အလက်တောင်း၊ Propose၊ Reject၊ Close၊ Reopen၊ Escalate၊ Archive)၊ Triage၊ Investigator၊ Message၊ Note၊ မြင်ခွင့်ရှိသူပါ ဖိုင်များ၊ Corrective action၊ Proposal နှင့် Escalation နှင့် History။ Administrator များက Access log ကိုလည်း မြင်ရသည်။',
     ),
+    b(
+      'Record grievance (Create permission): HR files a grievance an employee raised in person, by phone, email or letter. It is submitted at once in that employee’s name, never anonymously, and appears under their My Grievances.',
+      'Record grievance (Create ခွင့်ပြုချက်) — ဝန်ထမ်းက လူကိုယ်တိုင်၊ ဖုန်း၊ Email သို့ စာဖြင့် တင်ပြသော Grievance ကို HR က မှတ်တမ်းတင်သည်။ ထိုဝန်ထမ်း၏ အမည်ဖြင့် ချက်ချင်း Submit ဖြစ်ပြီး (အမည်မဖော်ဘဲ ဘယ်တော့မှ မဟုတ်) ၎င်း၏ My Grievances တွင် ပေါ်သည်။',
+    ),
   ],
   '/grievances/investigations': [
     b(

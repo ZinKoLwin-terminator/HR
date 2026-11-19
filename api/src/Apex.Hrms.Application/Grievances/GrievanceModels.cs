@@ -513,6 +513,33 @@ public sealed record GrievanceCorrectiveActionUpdateRequest(
 /// <summary>The answer to a case-team upload: the attachment and the case's row version now.</summary>
 public sealed record GrievanceAttachmentUploadResult(GrievanceAttachmentDto Attachment, byte[] CaseRowVersion);
 
+/// <summary>
+/// <c>POST /api/grievances/cases</c> (201, management Create): HR records a grievance an employee raised outside the system. The case
+/// is submitted at once and named (never anonymous): the employee becomes its submitter and sees it under My Grievances.
+/// <see cref="ReceivedVia"/> is a <see cref="GrievanceIntakeChannel"/> text; <see cref="DeclarationAccepted"/> confirms that the
+/// employee gave this account and agreed that HR records it.
+/// </summary>
+public sealed record GrievanceIntakeRequest(
+    int EmployeeId,
+    int CategoryId,
+    string? Subject,
+    string? Description,
+    DateOnly? IncidentDate,
+    string? Location,
+    string? InvolvedPersonText,
+    int? InvolvedDepartmentId,
+    string? ReceivedVia,
+    bool DeclarationAccepted) : IGrievanceDraftFields
+{
+    bool IGrievanceDraftFields.IsAnonymous => false;
+}
+
+/// <summary>HR records a grievance for an employee (see <see cref="GrievanceIntakeRequest"/>).</summary>
+public interface IGrievanceIntake
+{
+    Task<Result<GrievanceCaseDetailDto>> RecordAsync(GrievanceIntakeRequest request, CancellationToken cancellationToken);
+}
+
 /// <summary>The case work that is not a workflow command: files and corrective actions.</summary>
 public interface IGrievanceCaseWork
 {

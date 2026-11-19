@@ -71,10 +71,7 @@ class ApexMarkPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final double side = size.shortestSide;
-    canvas.translate(
-      (size.width - side) / 2,
-      (size.height - side) / 2,
-    );
+    canvas.translate((size.width - side) / 2, (size.height - side) / 2);
 
     switch (style) {
       case ApexMarkStyle.onLight:
@@ -127,10 +124,7 @@ class ApexMarkPainter extends CustomPainter {
       );
     }
     canvas
-      ..drawPath(
-        _chevron(unit, 17.7, 46.2, 35.4),
-        _stroke(base, 2.6 * unit),
-      )
+      ..drawPath(_chevron(unit, 17.7, 46.2, 35.4), _stroke(base, 2.6 * unit))
       ..drawPath(
         _chevron(unit, 21.4, 38.9, 30.6),
         _stroke(AppColors.summitTeal, 2.6 * unit),

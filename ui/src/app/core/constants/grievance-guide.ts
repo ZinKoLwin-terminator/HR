@@ -37,6 +37,10 @@ export const GRIEVANCE_GUIDE: readonly GuideBlock[] = [
     type: 'list',
     items: [
       {
+        en: 'When an employee raises a grievance in person, by phone, email or letter, HR (with the Create permission of case management) can record it with Record grievance. It is submitted at once in that employee’s name, never anonymously, and the employee follows it under My Grievances. Nobody can record their own grievance this way.',
+        my: 'ဝန်ထမ်းက Grievance ကို လူကိုယ်တိုင်၊ ဖုန်း၊ Email သို့ စာဖြင့် တင်ပြလျှင် HR (Case management ၏ Create ခွင့်ပြုချက်ရှိသူ) က Record grievance ဖြင့် မှတ်တမ်းတင်နိုင်သည်။ ထိုဝန်ထမ်း၏ အမည်ဖြင့် ချက်ချင်း Submit ဖြစ်ပြီး အမည်မဖော်ဘဲ ဘယ်တော့မှ မဟုတ်၊ ဝန်ထမ်းက My Grievances တွင် ဆက်ကြည့်နိုင်သည်။ ကိုယ့် Grievance ကို ဤနည်းဖြင့် မှတ်တမ်းမတင်ရ။',
+      },
+      {
         en: 'HR can reject a case while it is Submitted, Acknowledged or Under Review; the employee sees the reason.',
         my: 'Case သည် Submitted၊ Acknowledged သို့ Under Review ဖြစ်နေစဉ် HR က Reject လုပ်နိုင်သည် — ဝန်ထမ်းက အကြောင်းပြချက်ကို မြင်ရသည်။',
       },

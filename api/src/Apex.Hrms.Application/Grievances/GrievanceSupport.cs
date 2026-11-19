@@ -182,7 +182,11 @@ internal sealed class GrievanceNotifications(
     }
 
     /// <summary>The named submitter, about a change they may see. Nothing for an anonymous case.</summary>
-    public async Task<Result> ToNamedSubmitterAsync(GrievanceCase grievance, CancellationToken cancellationToken)
+    public Task<Result> ToNamedSubmitterAsync(GrievanceCase grievance, CancellationToken cancellationToken) =>
+        ToNamedSubmitterAsync(grievance, "there is an update on your grievance", cancellationToken);
+
+    /// <summary>The named submitter, told what happened. Nothing for an anonymous case.</summary>
+    public async Task<Result> ToNamedSubmitterAsync(GrievanceCase grievance, string happened, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(grievance);
         if (grievance.IsAnonymous)
@@ -201,7 +205,7 @@ internal sealed class GrievanceNotifications(
 
         var account = await recipients.UserIdOfEmployeeAsync(employeeId, cancellationToken);
         return account is { } userId
-            ? writer.Add([userId], Content(grievance, "there is an update on your grievance", $"/grievances/my/{grievance.Id}"))
+            ? writer.Add([userId], Content(grievance, happened, $"/grievances/my/{grievance.Id}"))
             : Result.Success();
     }
 

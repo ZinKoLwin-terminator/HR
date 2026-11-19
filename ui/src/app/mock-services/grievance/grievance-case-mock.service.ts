@@ -12,6 +12,7 @@ import {
   GRIEVANCE_CASE_SORT_KEYS,
   GRIEVANCE_CORRECTIVE_ACTION_STATUSES,
   GRIEVANCE_EMPLOYEE_OPTIONS_MAX,
+  GRIEVANCE_INTAKE_CHANNELS,
   GRIEVANCE_LIMITS,
   GRIEVANCE_NOTE_KINDS,
   GRIEVANCE_PRIORITIES,
@@ -31,6 +32,8 @@ import {
   GrievanceCorrectiveActionUpdate,
   GrievanceEmployeeOption,
   GrievanceHistoryEntry,
+  GrievanceIntakeChannel,
+  GrievanceIntakeRequest,
   GrievanceInvestigatorOption,
   GrievanceNoteRequest,
   GrievanceReasonCommand,
@@ -45,6 +48,7 @@ import { inspectEvidence, readFileBytes } from '../../core/utilities/kpi-evidenc
 import {
   GrievanceCaseRecord,
   GrievanceCorrectiveActionRecord,
+  grievanceCaseNo,
   nextGrievanceRowVersion,
 } from '../../mock-data/grievance/grievance-records';
 import { todayIso } from '../../shared/utilities/date.util';
@@ -54,6 +58,7 @@ import {
   paginate,
   sortItems,
 } from '../../shared/utilities/query.util';
+import { EmployeeMockService } from '../employees/employee-mock.service';
 import { mockError, mockResponse } from '../mock-response';
 import { DepartmentMockService } from '../organization/organization-mock.services';
 import { UserMockService } from '../settings/settings-mock.services';
@@ -91,6 +96,7 @@ import {
 type Permission = [GrievanceModule, 'View' | 'Create' | 'Edit' | 'Delete' | 'Approve'];
 
 const MANAGEMENT_EDIT: Permission = ['grievance-management', 'Edit'];
+const MANAGEMENT_CREATE: Permission = ['grievance-management', 'Create'];
 const INVESTIGATION_EDIT: Permission = ['grievance-investigation', 'Edit'];
 const REVIEW_APPROVE: Permission = ['grievance-review', 'Approve'];
 const ANY_VIEW: Permission[] = [
@@ -98,6 +104,18 @@ const ANY_VIEW: Permission[] = [
   ['grievance-investigation', 'View'],
   ['grievance-review', 'View'],
 ];
+
+const INTAKE_CHANNEL_TEXT: Readonly<Record<GrievanceIntakeChannel, string>> = {
+  InPerson: 'in person',
+  Phone: 'by phone',
+  Email: 'by email',
+  Letter: 'by letter',
+  Other: 'another way',
+};
+
+/** The history reason of a grievance HR recorded for an employee (the API's text). */
+export const grievanceIntakeReason = (channel: GrievanceIntakeChannel): string =>
+  `Recorded by HR on behalf of the employee (received ${INTAKE_CHANNEL_TEXT[channel]}).`;
 
 /**
  * Where the case team may add files: an open case that is not archived (the API's
@@ -124,6 +142,7 @@ export class GrievanceCaseMockService implements GrievanceCaseDataService {
   private readonly categories = inject(GrievanceCategoryMockService);
   private readonly departments = inject(DepartmentMockService);
   private readonly users = inject(UserMockService);
+  private readonly employees = inject(EmployeeMockService);
 
   private respond<R>(work: () => R): Observable<R> {
     return mockResponse(work, this.latency);
@@ -488,9 +507,173 @@ export class GrievanceCaseMockService implements GrievanceCaseDataService {
 
   employeeOptions(search: string): Observable<GrievanceEmployeeOption[]> {
     return this.respond(() => {
-      this.endpoint(MANAGEMENT_EDIT);
+      // The triage picker (Edit) and the intake picker (Create).
+      this.endpoint(MANAGEMENT_EDIT, MANAGEMENT_CREATE);
       return this.redaction.employeeOptions(search ?? '', GRIEVANCE_EMPLOYEE_OPTIONS_MAX);
     });
+  }
+
+  // ---- Intake ---------------------------------------------------------------------------------
+
+  /**
+   * `POST /cases` (`grievance-management:Create`): a grievance HR records for an employee who
+   * raised it in person, by phone, email or letter. A Submitted named case whose submitter is that
+   * employee, with the placement copied from their record, and one Submit step by the HR user.
+   */
+  recordForEmployee(request: GrievanceIntakeRequest): Observable<GrievanceCaseDetail> {
+    return this.respond(() => {
+      const actor = this.endpoint(MANAGEMENT_CREATE);
+      const intake = this.cleanIntake(request, actor);
+      const employee = this.employees.findById(intake.employeeId)!;
+      const id = this.store.nextCaseId();
+      const now = this.now();
+      const record: GrievanceCaseRecord = {
+        id,
+        caseNo: grievanceCaseNo(Number(todayIso().slice(0, 4)), this.store.nextCaseSequence()),
+        categoryId: intake.categoryId,
+        subject: intake.subject,
+        description: intake.description,
+        incidentDate: intake.incidentDate,
+        location: intake.location,
+        involvedPersonText: intake.involvedPersonText,
+        involvedDepartmentId: intake.involvedDepartmentId,
+        subjectEmployeeId: null,
+        isAnonymous: false,
+        status: 'Submitted',
+        priority: null,
+        targetResolutionDate: null,
+        returnStatus: null,
+        isEscalated: false,
+        // The named submitter's placement, as a named submission copies it.
+        companyId: employee.companyId,
+        branchId: employee.branchId,
+        departmentId: employee.departmentId,
+        positionId: employee.positionId,
+        createdAtUtc: now,
+        declarationAcceptedAtUtc: now,
+        submittedAtUtc: now,
+        acknowledgedAtUtc: null,
+        resolvedAtUtc: null,
+        closedAtUtc: null,
+        resolutionSummary: null,
+        resolutionVisibleToSubmitter: false,
+        rejectionReason: null,
+        archivedAtUtc: null,
+        retentionUntil: null,
+        legalHold: false,
+        // A step the employee may see, so their list shows it as unread.
+        lastSubmitterUpdateAtUtc: now,
+        rowVersion: nextGrievanceRowVersion(undefined),
+        assignments: [],
+        notes: [],
+        communications: [],
+        attachments: [],
+        correctiveActions: [],
+        proposals: [],
+        escalations: [],
+        history: [
+          {
+            id: this.store.nextChildId('history'),
+            fromStatus: 'Draft',
+            toStatus: 'Submitted',
+            action: 'Submit',
+            actorRole: 'Management',
+            actorUserId: actor.userId,
+            actorEmployeeId: actor.employeeId,
+            actorName: this.actorName(actor),
+            reason: grievanceIntakeReason(intake.receivedVia),
+            visibleToSubmitter: true,
+            occurredAtUtc: now,
+          },
+        ],
+      };
+      this.store.save(record);
+      this.store.linkSubmitter(id, intake.employeeId, false);
+      this.store.audit(id, 'StatusChange', actor.userId, 'Management', 'intake:Draft>Submitted');
+      this.access.notifyIntake(record, intake.employeeId);
+      return this.detail(record, actor);
+    });
+  }
+
+  /** The intake body's rules (400), in the API's order. */
+  private cleanIntake(
+    request: GrievanceIntakeRequest,
+    actor: GrievanceMockActor,
+  ): Omit<GrievanceIntakeRequest, 'declarationAccepted'> {
+    if (!request) {
+      validation('The request body is required.', 'body');
+    }
+    const employeeId = request.employeeId;
+    if (
+      typeof employeeId !== 'number' ||
+      !Number.isInteger(employeeId) ||
+      !this.access.isCurrentEmployee(employeeId)
+    ) {
+      validation('Choose an active employee.', 'employeeId');
+    }
+    if (employeeId === actor.employeeId) {
+      validation('Use My Grievances to raise your own grievance.', 'employeeId');
+    }
+    const category = this.categories.findById(request.categoryId);
+    if (!category || category.status !== 'Active') {
+      validation('Choose an active category.', 'categoryId');
+    }
+    const subject = requiredText(
+      request.subject,
+      'subject',
+      'Subject',
+      GRIEVANCE_LIMITS.subjectMax,
+      GRIEVANCE_LIMITS.subjectMin,
+    );
+    const description = requiredText(
+      request.description,
+      'description',
+      'Description',
+      GRIEVANCE_LIMITS.descriptionMax,
+      GRIEVANCE_LIMITS.descriptionMin,
+    );
+    const incidentDate = isoDate(request.incidentDate, 'incidentDate', 'Incident date', false);
+    if (incidentDate !== null && incidentDate > todayIso()) {
+      validation('The incident date cannot be in the future.', 'incidentDate');
+    }
+    const location = text(
+      request.location,
+      'location',
+      'Location',
+      GRIEVANCE_LIMITS.shortTextMax,
+      false,
+    );
+    const involvedPersonText = text(
+      request.involvedPersonText,
+      'involvedPersonText',
+      'Person involved',
+      GRIEVANCE_LIMITS.shortTextMax,
+      false,
+    );
+    const departmentId = request.involvedDepartmentId ?? null;
+    if (departmentId !== null && this.departments.findById(departmentId)?.status !== 'Active') {
+      validation('Choose an active department.', 'involvedDepartmentId');
+    }
+    if (!GRIEVANCE_INTAKE_CHANNELS.includes(request.receivedVia)) {
+      validation('Choose how the grievance was received.', 'receivedVia');
+    }
+    if (request.declarationAccepted !== true) {
+      validation(
+        'Confirm that the employee gave this account and agreed that HR records it.',
+        'declarationAccepted',
+      );
+    }
+    return {
+      employeeId,
+      categoryId: category.id,
+      subject,
+      description,
+      incidentDate,
+      location,
+      involvedPersonText,
+      involvedDepartmentId: departmentId,
+      receivedVia: request.receivedVia,
+    };
   }
 
   // ---- State machine --------------------------------------------------------------------------

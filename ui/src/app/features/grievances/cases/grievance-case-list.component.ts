@@ -23,6 +23,7 @@ import {
   GrievanceCaseDataService,
   MyGrievanceDataService,
 } from '../../../core/services/data/grievance-data.services';
+import { PermissionService } from '../../../core/services/permission.service';
 import { errorMessage } from '../../../core/services/ui-notification.service';
 import { CellTemplateDirective } from '../../../shared/components/data-table/cell-template.directive';
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
@@ -144,6 +145,11 @@ const yesNo = (value: boolean | undefined): YesNo =>
   ],
   template: `
     <app-page-header [title]="text().title" [description]="text().description">
+      @if (canRecord()) {
+        <a pageActions mat-flat-button routerLink="/grievances/cases/new">
+          <mat-icon>add</mat-icon>Record grievance
+        </a>
+      }
       <ng-container pageSearch>
         <app-search-field
           label="Search by case number, subject or category"
@@ -387,6 +393,7 @@ export class GrievanceCaseListComponent {
   private readonly mine = inject(MyGrievanceDataService);
   private readonly router = inject(Router);
   private readonly appConfig = inject(APP_CONFIG);
+  private readonly permissions = inject(PermissionService);
 
   protected readonly columns = GRIEVANCE_CASE_COLUMNS;
   protected readonly statuses = GRIEVANCE_STATUSES.filter((s) => s !== 'Draft');
@@ -394,6 +401,10 @@ export class GrievanceCaseListComponent {
   protected readonly priorities = GRIEVANCE_PRIORITIES;
   protected readonly pageSizeOptions = this.appConfig.pageSizeOptions;
   protected readonly text = computed(() => TEXT[this.workspace()]);
+  /** HR records a grievance an employee raised outside the system (Case management only). */
+  protected readonly canRecord = computed(
+    () => this.workspace() === 'management' && this.permissions.can('grievance-management:Create'),
+  );
   protected readonly rowLabel = (row: GrievanceCase) => `Case ${row.caseNo}`;
 
   protected readonly query = new ListQuery<GrievanceCaseFilter>({

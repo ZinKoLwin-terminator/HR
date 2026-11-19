@@ -14,6 +14,7 @@ import {
   GrievanceCategoryDataService,
 } from '../../core/services/data/grievance-data.services';
 import { RolePermissionDataService } from '../../core/services/data/settings-data.services';
+import { PermissionService } from '../../core/services/permission.service';
 import {
   grievanceAvailableActions,
   grievanceStateOf,
@@ -28,6 +29,7 @@ import {
 import { provideMockDataServices } from '../../mock-services/provide-mock-data-services';
 import { GrievanceCaseDetailComponent } from './cases/grievance-case-detail.component';
 import { GrievanceCaseListComponent } from './cases/grievance-case-list.component';
+import { GrievanceIntakeComponent } from './cases/grievance-intake.component';
 import { buildGrievanceCategoriesConfig } from './categories/grievance-categories.config';
 import { GRIEVANCE_ROUTES } from './grievance.routes';
 import { GrievanceAssignDialogComponent } from './shared/grievance-assign-dialog.component';
@@ -378,5 +380,126 @@ describe('grievance categories', () => {
     }
     expect(refusal).toMatchObject({ code: 'Conflict' });
     expect((refusal as { message: string }).message).toContain('cannot be deleted');
+  });
+});
+
+describe('record a grievance for an employee', () => {
+  const permissionsHeld = (held: string[]) => ({
+    provide: PermissionService,
+    useValue: { can: (key: string) => held.includes(key) },
+  });
+
+  it('routes cases/new before the case detail, with the Create permission', () => {
+    const children = GRIEVANCE_ROUTES.find((r) => r.path === 'cases')!.children!;
+    const paths = children.map((c) => c.path);
+    expect(paths.indexOf('new')).toBeGreaterThan(-1);
+    expect(paths.indexOf('new')).toBeLessThan(paths.indexOf(':id'));
+    const route = children.find((c) => c.path === 'new')!;
+    expect(route.title).toBe('Record Grievance');
+    expect(route.data).toMatchObject({
+      breadcrumb: 'Record',
+      permission: 'grievance-management:Create',
+    });
+    expect(route.canDeactivate?.length).toBe(1);
+    // Only Case management records grievances.
+    for (const other of ['investigations', 'reviews']) {
+      const kids = GRIEVANCE_ROUTES.find((r) => r.path === other)!.children!;
+      expect(kids.map((c) => c.path)).not.toContain('new');
+    }
+  });
+
+  it('shows Record grievance in Case management with grievance-management:Create only', async () => {
+    configure(HR_ADMIN, [
+      permissionsHeld(['grievance-management:View', 'grievance-management:Create']),
+    ]);
+    const withCreate = await render(GrievanceCaseListComponent, { workspace: 'management' });
+    const link = withCreate.el.querySelector('a[href="/grievances/cases/new"]');
+    expect(link?.textContent).toContain('Record grievance');
+    TestBed.resetTestingModule();
+
+    configure(HR_ADMIN, [permissionsHeld(['grievance-management:View'])]);
+    const viewOnly = await render(GrievanceCaseListComponent, { workspace: 'management' });
+    expect(viewOnly.el.querySelector('a[href="/grievances/cases/new"]')).toBeNull();
+    TestBed.resetTestingModule();
+
+    configure(HR_ADMIN, [
+      permissionsHeld(['grievance-review:View', 'grievance-management:Create']),
+    ]);
+    const review = await render(GrievanceCaseListComponent, { workspace: 'review' });
+    expect(review.el.querySelector('a[href="/grievances/cases/new"]')).toBeNull();
+  });
+
+  it('records the grievance, then opens the new case', async () => {
+    configure(HR_ADMIN);
+    const service = TestBed.inject(GrievanceCaseDataService);
+    const record = vi.spyOn(service, 'recordForEmployee');
+    const { fixture, el } = await render(GrievanceIntakeComponent);
+    const component = fixture.componentInstance;
+    expect(text(el)).toContain('The grievance is recorded as submitted by this employee.');
+    component.form.setValue({
+      employee: {
+        employeeId: 5,
+        employeeCode: 'EMP005',
+        displayName: 'Daniel Carter',
+        departmentName: null,
+        positionName: null,
+      },
+      receivedVia: 'InPerson',
+      categoryId: 1,
+      subject: 'Raised in person with HR',
+      description: 'Sample account given in person, long enough for the rule.',
+      incidentDate: null,
+      location: '',
+      involvedPersonText: '',
+      involvedDepartmentId: null,
+      declaration: true,
+    });
+    component.form.markAsDirty();
+    expect(component.hasUnsavedChanges()).toBe(true);
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        employeeId: 5,
+        receivedVia: 'InPerson',
+        location: null,
+        declarationAccepted: true,
+      }),
+    );
+    const navigate = vi.mocked(TestBed.inject(Router).navigate);
+    expect(navigate).toHaveBeenCalledWith(['/grievances/cases', expect.any(Number)]);
+    const id = navigate.mock.calls[0][0][1] as number;
+    expect(await detailOf(id)).toMatchObject({ status: 'Submitted', isAnonymous: false });
+    expect(component.hasUnsavedChanges()).toBe(false);
+  });
+
+  it('puts the server’s refusal on the employee field', async () => {
+    configure(HR_ADMIN);
+    const { fixture, el } = await render(GrievanceIntakeComponent);
+    const component = fixture.componentInstance;
+    component.form.setValue({
+      employee: {
+        employeeId: 2,
+        employeeCode: 'EMP002',
+        displayName: 'Su Myat Noe',
+        departmentName: null,
+        positionName: null,
+      },
+      receivedVia: 'Email',
+      categoryId: 1,
+      subject: 'My own grievance',
+      description: 'Sample text long enough to pass the description rule.',
+      incidentDate: null,
+      location: '',
+      involvedPersonText: '',
+      involvedDepartmentId: null,
+      declaration: true,
+    });
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    expect(component.form.controls.employee.errors).toEqual({
+      server: 'Use My Grievances to raise your own grievance.',
+    });
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
   });
 });

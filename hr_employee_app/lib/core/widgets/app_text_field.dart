@@ -36,6 +36,7 @@ class AppTextField extends StatelessWidget {
     this.autofillHints,
     this.focusNode,
     this.onTap,
+    this.showOptional = false,
   });
 
   final String label;
@@ -70,6 +71,9 @@ class AppTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final VoidCallback? onTap;
 
+  /// Adds a quiet "(optional)" after the label.
+  final bool showOptional;
+
   @override
   Widget build(BuildContext context) {
     final AppPalette palette = context.palette;
@@ -83,6 +87,7 @@ class AppTextField extends StatelessWidget {
           isRequired: isRequired,
           style: textStyles.labelMedium,
           requiredColor: palette.danger,
+          optionalColor: showOptional ? palette.textTertiary : null,
         ),
         Gap.xs,
         TextFormField(
@@ -309,6 +314,7 @@ class _FieldLabel extends StatelessWidget {
     required this.isRequired,
     required this.requiredColor,
     this.style,
+    this.optionalColor,
   });
 
   final String label;
@@ -316,8 +322,26 @@ class _FieldLabel extends StatelessWidget {
   final Color requiredColor;
   final TextStyle? style;
 
+  /// When set, "(optional)" follows the label in this colour.
+  final Color? optionalColor;
+
   @override
   Widget build(BuildContext context) {
+    final Color? optional = optionalColor;
+    if (!isRequired && optional != null) {
+      return Text.rich(
+        TextSpan(
+          children: <InlineSpan>[
+            TextSpan(text: label),
+            TextSpan(
+              text: ' (optional)',
+              style: TextStyle(color: optional, fontWeight: FontWeight.w400),
+            ),
+          ],
+        ),
+        style: style,
+      );
+    }
     if (!isRequired) {
       return Text(label, style: style);
     }

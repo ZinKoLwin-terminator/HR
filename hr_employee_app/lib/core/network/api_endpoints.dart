@@ -59,6 +59,18 @@ abstract final class ApiEndpoints {
   static const String myEmergencyContact = '/employees/me/emergency-contact';
   static const String myPhoto = '/employees/me/photo';
 
+  // --- Grievances (the employee's own; see docs/api_contracts.md §10) --
+  static const String grievanceOptions = '/grievances/options';
+  static const String myGrievances = '/grievances/my';
+
+  static String myGrievanceById(int id) => '/grievances/my/$id';
+
+  static String submitMyGrievance(int id) => '/grievances/my/$id/submit';
+
+  static String myGrievanceMessages(int id) => '/grievances/my/$id/messages';
+
+  static String markMyGrievanceSeen(int id) => '/grievances/my/$id/seen';
+
   // --- Notifications --------------------------------------------------
   static const String notifications = '/notifications';
   static const String unreadNotificationCount = '/notifications/unread-count';

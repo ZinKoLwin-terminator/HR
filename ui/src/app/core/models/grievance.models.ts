@@ -310,7 +310,7 @@ export interface GrievanceDepartmentOption {
   name: string;
 }
 
-/** `GET /api/grievances/options` (`grievance:View`). */
+/** `GET /api/grievances/options` (`grievance:View` or `grievance-management:Create`). */
 export interface GrievanceOptions {
   categories: GrievanceCategoryOption[];
   departments: GrievanceDepartmentOption[];
@@ -437,6 +437,41 @@ export interface GrievanceDraftUpdate extends GrievanceDraftInput {
 /** Draft to Submitted. `declarationAccepted` must be true. The case number is assigned now. */
 export interface SubmitGrievanceRequest {
   rowVersion: string;
+  declarationAccepted: boolean;
+}
+
+/** How HR received a grievance it records on behalf of an employee. */
+export const GRIEVANCE_INTAKE_CHANNELS = ['InPerson', 'Phone', 'Email', 'Letter', 'Other'] as const;
+export type GrievanceIntakeChannel = (typeof GRIEVANCE_INTAKE_CHANNELS)[number];
+
+export const GRIEVANCE_INTAKE_CHANNEL_LABELS: Readonly<Record<GrievanceIntakeChannel, string>> = {
+  InPerson: 'In person',
+  Phone: 'Phone',
+  Email: 'Email',
+  Letter: 'Letter',
+  Other: 'Other',
+};
+
+/**
+ * Body of `POST /api/grievances/cases` (201, `grievance-management:Create`): HR records a grievance
+ * an employee raised in person, by phone, email or letter. The result is a Submitted, named case
+ * whose submitter is that employee (never anonymous), with one Submit history step by the HR user.
+ * Validation: `employeeId` a current employee other than the caller; an active category and, when
+ * given, an active involved department; the submission rules of `GRIEVANCE_LIMITS`; an incident
+ * date not after today; `receivedVia` one of `GRIEVANCE_INTAKE_CHANNELS`; `declarationAccepted`
+ * true.
+ */
+export interface GrievanceIntakeRequest {
+  employeeId: number;
+  categoryId: number;
+  subject: string;
+  description: string;
+  /** `yyyy-MM-dd`, not after today. */
+  incidentDate: string | null;
+  location: string | null;
+  involvedPersonText: string | null;
+  involvedDepartmentId: number | null;
+  receivedVia: GrievanceIntakeChannel;
   declarationAccepted: boolean;
 }
 

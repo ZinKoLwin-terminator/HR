@@ -27,6 +27,13 @@ class GetDashboardSummaryUseCase {
             LeaveBalance a,
             LeaveBalance b,
           ) {
+            // Types with no entitlement at all (unpaid) say nothing about
+            // what is running low, so they go last.
+            final bool aNone = a.entitledDays <= 0;
+            final bool bNone = b.entitledDays <= 0;
+            if (aNone != bNone) {
+              return aNone ? 1 : -1;
+            }
             final int byRemaining = a.remainingDays.compareTo(b.remainingDays);
             // Stable tie-break so the order does not shuffle between loads.
             return byRemaining != 0

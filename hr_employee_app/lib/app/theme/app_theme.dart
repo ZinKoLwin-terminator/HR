@@ -112,8 +112,10 @@ abstract final class AppTheme {
           minimumSize: Size(double.infinity, AppSizes.buttonHeight),
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
-          disabledBackgroundColor: colorScheme.primary.withValues(alpha: 0.4),
-          disabledForegroundColor: colorScheme.onPrimary.withValues(alpha: 0.8),
+          // Grey rather than a faded primary: a pale navy reads as "loading",
+          // and the two states must not be confused.
+          disabledBackgroundColor: palette.border,
+          disabledForegroundColor: palette.textTertiary,
           textStyle: textTheme.labelLarge,
           shape: RoundedRectangleBorder(borderRadius: AppRadius.button),
         ),
@@ -146,6 +148,10 @@ abstract final class AppTheme {
           vertical: AppSpacing.md,
         ),
         hintStyle: textTheme.bodyMedium?.copyWith(color: palette.textTertiary),
+        // Quiet icons: the label and hint carry the meaning, the icon only
+        // marks the kind of field.
+        prefixIconColor: palette.textTertiary,
+        suffixIconColor: palette.textSecondary,
         labelStyle: textTheme.labelMedium,
         errorStyle: textTheme.bodySmall?.copyWith(color: palette.danger),
         border: OutlineInputBorder(

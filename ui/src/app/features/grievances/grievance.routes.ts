@@ -76,7 +76,18 @@ export const GRIEVANCE_ROUTES: Routes = [
       },
     ],
   },
-  ...caseTeamRoutes('cases', 'Case Management', 'Case', 'management', 'grievance-management:View'),
+  ...caseTeamRoutes('cases', 'Case Management', 'Case', 'management', 'grievance-management:View', [
+    {
+      // HR records a grievance an employee raised outside the system (before `:id`).
+      path: 'new',
+      title: 'Record Grievance',
+      data: { breadcrumb: 'Record', permission: 'grievance-management:Create' },
+      canActivate: [permissionGuard],
+      canDeactivate: [unsavedChangesGuard],
+      loadComponent: () =>
+        import('./cases/grievance-intake.component').then((m) => m.GrievanceIntakeComponent),
+    },
+  ]),
   ...caseTeamRoutes(
     'investigations',
     'My Investigations',
@@ -138,6 +149,7 @@ export const GRIEVANCE_ROUTES: Routes = [
 /**
  * A case-team list and its case detail. One list and one detail component serve the three tiers;
  * the route's `workspace` (bound as an input) chooses the service call, the texts and the commands.
+ * `extraChildren` adds screens to one workspace only (Case management's "Record grievance").
  */
 function caseTeamRoutes(
   path: string,
@@ -145,6 +157,8 @@ function caseTeamRoutes(
   detailTitle: string,
   workspace: 'management' | 'investigation' | 'review',
   permission: string,
+  /** Extra child routes of this workspace only, matched before the case detail (`:id`). */
+  extraChildren: Routes = [],
 ): Routes {
   return [
     {
@@ -160,6 +174,7 @@ function caseTeamRoutes(
               (m) => m.GrievanceCaseListComponent,
             ),
         },
+        ...extraChildren,
         {
           path: ':id',
           title: detailTitle,

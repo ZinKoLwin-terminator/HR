@@ -110,6 +110,12 @@ void main() {
       ..devicePixelRatio = pixelRatio;
     addTearDown(tester.view.reset);
 
+    // Reduce Motion, as for the splash: the dashboard's punch button pulses
+    // forever otherwise, and pumpAndSettle would never return.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+
     final ProviderContainer container = ProviderContainer(
       // Element type inferred: Riverpod 3 does not export `Override`.
       overrides: [
@@ -208,8 +214,13 @@ void main() {
     await _goto(tester, router, RoutePaths.leave);
     await _capture(tester, outputDirectory, '09-leave-balances');
 
-    await tester.tap(find.text('Requests'));
+    await tester.tap(find.text('View all 8'));
     await _settle(tester);
+    await _capture(tester, outputDirectory, '09b-leave-types-sheet');
+    await tester.tapAt(const Offset(20, 120));
+    await _settle(tester);
+
+    await _goto(tester, router, '${RoutePaths.leave}/requests');
     await _capture(tester, outputDirectory, '10-leave-requests');
 
     await _goto(tester, router, '${RoutePaths.leave}/apply');
@@ -350,6 +361,14 @@ Future<void> _loadRealFonts() async {
   final FontLoader icons = FontLoader('MaterialIcons')
     ..addFont(load('materialicons-regular.otf'));
   await icons.load();
+
+  // The bundled brand serif, from the project's own assets.
+  Future<ByteData> asset(String path) async =>
+      ByteData.view((await File(path).readAsBytes()).buffer);
+  final FontLoader display = FontLoader('CormorantGaramond')
+    ..addFont(asset('assets/fonts/CormorantGaramond-600.ttf'))
+    ..addFont(asset('assets/fonts/CormorantGaramond-700.ttf'));
+  await display.load();
 }
 
 /// A location service that always succeeds, so the attendance screens show a

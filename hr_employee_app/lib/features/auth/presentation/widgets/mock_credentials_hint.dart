@@ -1,5 +1,6 @@
 import 'package:hr_employee_app/app/theme/app_spacing.dart';
 import 'package:hr_employee_app/app/theme/app_theme.dart';
+import 'package:hr_employee_app/core/widgets/dashed_border.dart';
 import 'package:hr_employee_app/shared/helpers/mock_support.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -9,9 +10,8 @@ import 'package:material_ui/material_ui.dart';
 /// a production build. The password it displays guards nothing — it exists so
 /// the fixture login has both a success and a failure path to demonstrate.
 ///
-/// It names no backend state of its own: the banner at the top of the screen
-/// already says the data is sample data, so this row only has to answer "what
-/// do I type?" — and [onUseDemo] answers it by typing for the user.
+/// Drawn with a dashed border on purpose: it is scaffolding around the form,
+/// not part of it, and should look provisional next to the real controls.
 class MockCredentialsHint extends StatelessWidget {
   const MockCredentialsHint({super.key, this.onUseDemo});
 
@@ -22,107 +22,80 @@ class MockCredentialsHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final TextTheme textStyles = Theme.of(context).textTheme;
-    const Color onBrand = AppColors.textOnPrimary;
+    final AppPalette palette = context.palette;
 
-    return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: onBrand.withValues(alpha: 0.06),
-        borderRadius: AppRadius.card,
-        border: Border.all(color: onBrand.withValues(alpha: 0.14)),
+    return CustomPaint(
+      foregroundPainter: DashedBorderPainter(
+        color: palette.textTertiary.withValues(alpha: 0.55),
+        radius: AppRadius.lg,
       ),
-      // Title and action on one line, credentials on their own below them:
-      // side by side, the chips are squeezed into a column narrow enough to
-      // stack them, which reads as two unrelated values rather than as one
-      // pair to type.
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                height: AppSizes.avatarSm,
-                width: AppSizes.avatarSm,
-                decoration: BoxDecoration(
-                  color: AppColors.accentLight.withValues(alpha: 0.18),
-                  borderRadius: AppRadius.field,
-                  border: Border.all(
-                    color: AppColors.accentLight.withValues(alpha: 0.32),
+      child: Container(
+        padding: EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.cloud,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        child: Row(
+          children: <Widget>[
+            Container(
+              height: AppSizes.avatarSm + 4,
+              width: AppSizes.avatarSm + 4,
+              decoration: BoxDecoration(
+                color: AppColors.summitTeal.withValues(alpha: 0.12),
+                borderRadius: AppRadius.field,
+              ),
+              child: Icon(
+                Icons.science_outlined,
+                size: AppSizes.iconMd,
+                color: AppColors.summitTeal,
+              ),
+            ),
+            Gap.wMd,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    'Demo workspace',
+                    style: textStyles.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                child: Icon(
-                  Icons.science_outlined,
-                  size: AppSizes.iconMd,
-                  color: AppColors.accentLight,
-                ),
+                  Gap.xxs,
+                  // Shown as code: these are meant to be typed verbatim.
+                  SelectableText(
+                    '${MockSupport.employeeId} · ${MockSupport.acceptedPassword}',
+                    style: textStyles.bodySmall?.copyWith(
+                      color: palette.textSecondary,
+                      letterSpacing: 0.4,
+                      fontFeatures: const <FontFeature>[
+                        FontFeature.tabularFigures(),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              Gap.wSm,
-              Expanded(
-                child: Text(
-                  'Demo workspace',
-                  style: textStyles.titleSmall?.copyWith(color: onBrand),
-                  overflow: TextOverflow.ellipsis,
-                ),
+            ),
+            Gap.wSm,
+            OutlinedButton(
+              onPressed: onUseDemo,
+              style: OutlinedButton.styleFrom(
+                // The app's outlined button is a full-width form control;
+                // this one sits at the end of a row, so it sets its own
+                // metrics rather than inheriting that minimum width.
+                minimumSize: const Size(0, AppSizes.minTouchTarget),
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.ink,
+                side: BorderSide(color: palette.border),
+                textStyle: textStyles.labelLarge,
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.field),
               ),
-              Gap.wSm,
-              OutlinedButton(
-                onPressed: onUseDemo,
-                style: OutlinedButton.styleFrom(
-                  // The app's outlined button is a full-width form control;
-                  // this one sits at the end of a row, so it sets its own
-                  // metrics rather than inheriting that minimum width.
-                  minimumSize: const Size(0, AppSizes.minTouchTarget),
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  foregroundColor: onBrand,
-                  disabledForegroundColor: onBrand.withValues(alpha: 0.4),
-                  side: BorderSide(color: onBrand.withValues(alpha: 0.28)),
-                  textStyle: textStyles.labelMedium,
-                  shape: RoundedRectangleBorder(borderRadius: AppRadius.chip),
-                ),
-                child: const Text('Use demo'),
-              ),
-            ],
-          ),
-          Gap.sm,
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
-            children: const <Widget>[
-              _CredentialChip(value: MockSupport.employeeId),
-              _CredentialChip(value: MockSupport.acceptedPassword),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One fixture value, shown as code because it is meant to be typed verbatim.
-class _CredentialChip extends StatelessWidget {
-  const _CredentialChip({required this.value});
-
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    const Color onBrand = AppColors.textOnPrimary;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xxs,
-      ),
-      decoration: BoxDecoration(
-        color: onBrand.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: onBrand.withValues(alpha: 0.14)),
-      ),
-      child: SelectableText(
-        value,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: onBrand.withValues(alpha: 0.86),
-          fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+              child: const Text('Use demo'),
+            ),
+          ],
         ),
       ),
     );
