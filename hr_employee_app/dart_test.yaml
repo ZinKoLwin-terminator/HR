@@ -1,0 +1,12 @@
+# Test configuration.
+#
+# The `screenshots` tag marks the capture harness in `test/screenshots/`. It
+# renders every screen to PNG rather than asserting anything, so it is
+# excluded from the default run — a deliberate UI change should not fail the
+# build, and regenerating images is an explicit action.
+#
+#   flutter test                                      # the real suite
+#   flutter test test/screenshots --update-goldens     # regenerate images
+tags:
+  screenshots:
+    skip: "Run explicitly: flutter test test/screenshots --update-goldens"

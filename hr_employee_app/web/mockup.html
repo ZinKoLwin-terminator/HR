@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HR Employee — Device Mockup</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --bg-grid: #101a2e;
+    --panel: #141c2c;
+    --panel-2: #1b2435;
+    --border: #2a3447;
+    --text: #f2f4f7;
+    --text-dim: #9aa6ba;
+    --accent: #3b82f6;
+    --accent-dim: #1d4ed8;
+    --danger: #f97066;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #16233d 0%, transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font: 14px/1.45 "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  }
+
+  /* ---------------------------------------------------------------- bar */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(11, 18, 32, 0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    margin-right: 6px;
+  }
+  .brand .dot {
+    width: 10px; height: 10px; border-radius: 3px;
+    background: linear-gradient(135deg, var(--accent), #0ea5e9);
+  }
+
+  .sep { width: 1px; height: 24px; background: var(--border); }
+
+  label.field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  input[type="text"], input[type="number"], select {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 13px;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    outline: 2px solid var(--accent-dim);
+    outline-offset: 1px;
+  }
+  #appUrl { width: 230px; }
+  input[type="number"] { width: 72px; }
+
+  button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 11px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:hover { background: var(--panel-2); border-color: #3a4761; }
+  button.primary {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+  }
+  button.primary:hover { background: var(--accent); }
+  button.ghost { background: transparent; }
+
+  .spacer { flex: 1 1 auto; }
+
+  .hint {
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+  .hint code {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 5px;
+  }
+
+  /* -------------------------------------------------------------- stage */
+  #stage {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 28px;
+    padding: 28px 24px 56px;
+    overflow-x: auto;
+    min-height: calc(100% - 52px);
+  }
+  #stage.wrap { flex-wrap: wrap; }
+
+  .device {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .device-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+  }
+  .device-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .device-size { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+  .icon-btn {
+    padding: 2px 7px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-dim);
+  }
+  .icon-btn:hover { color: var(--text); }
+
+  /* The frame scales as a whole, so the iframe keeps the device's real
+     logical pixel size and the app lays out exactly as it would on glass. */
+  .frame-scaler { transform-origin: top center; }
+
+  .frame {
+    position: relative;
+    background: #05070d;
+    border: 1px solid #39435a;
+    box-shadow:
+      0 0 0 2px #0b0f18,
+      0 30px 60px -20px rgba(0, 0, 0, 0.9),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+  .frame.phone { border-radius: 44px; padding: 12px; }
+  .frame.tablet { border-radius: 26px; padding: 14px; }
+  .frame.flat { border-radius: 10px; padding: 6px; }
+
+  .screen {
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+  }
+  .frame.phone .screen { border-radius: 34px; }
+  .frame.tablet .screen { border-radius: 14px; }
+  .frame.flat .screen { border-radius: 5px; }
+
+  .screen iframe {
+    display: block;
+    border: 0;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+  }
+
+  /* Hardware details, drawn rather than imaged so nothing has to load. */
+  .island {
+    position: absolute;
+    top: 9px; left: 50%;
+    transform: translateX(-50%);
+    width: 104px; height: 26px;
+    border-radius: 14px;
+    background: #05070d;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .notch {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 150px; height: 26px;
+    border-radius: 0 0 16px 16px;
+    background: #05070d;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .punch {
+    position: absolute;
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: #05070d;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .home-bar {
+    position: absolute;
+    bottom: 7px; left: 50%;
+    transform: translateX(-50%);
+    width: 36%; height: 4px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .frame.landscape .island,
+  .frame.landscape .notch,
+  .frame.landscape .punch,
+  .frame.landscape .home-bar { display: none; }
+
+  /* Side buttons. */
+  .btn-side {
+    position: absolute;
+    width: 3px;
+    border-radius: 3px;
+    background: #39435a;
+  }
+  .btn-side.power { right: -3px; top: 150px; height: 68px; }
+  .btn-side.vol-up { left: -3px; top: 120px; height: 44px; }
+  .btn-side.vol-down { left: -3px; top: 174px; height: 44px; }
+
+  .empty {
+    margin: 80px auto;
+    text-align: center;
+    color: var(--text-dim);
+  }
+
+  dialog {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    min-width: 320px;
+  }
+  dialog::backdrop { background: rgba(5, 8, 15, 0.6); }
+  dialog h2 { margin: 0 0 14px; font-size: 15px; }
+  dialog .row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+  dialog .row label { width: 92px; color: var(--text-dim); font-size: 12px; }
+  dialog .row input, dialog .row select { flex: 1; }
+  dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand"><span class="dot"></span> Device Mockup</span>
+
+  <label class="field">
+    App URL
+    <input type="text" id="appUrl" value="./" spellcheck="false">
+  </label>
+
+  <label class="field">
+    Zoom
+    <select id="zoom">
+      <option value="auto">Fit height</option>
+      <option value="1">100%</option>
+      <option value="0.85">85%</option>
+      <option value="0.75">75%</option>
+      <option value="0.6">60%</option>
+      <option value="0.5">50%</option>
+    </select>
+  </label>
+
+  <label class="field" title="Pad the screen the way a notch and a home bar do on hardware">
+    <input type="checkbox" id="safeArea"> Safe area
+  </label>
+
+  <span class="sep"></span>
+
+  <select id="presetPicker" title="Add a device"></select>
+  <button id="addPreset">+ Add</button>
+  <button id="addCustom" class="ghost">Custom…</button>
+
+  <span class="sep"></span>
+
+  <button id="reloadAll" class="primary">Reload all</button>
+  <button id="wrapToggle" class="ghost">Wrap rows</button>
+  <button id="clearAll" class="ghost">Clear</button>
+
+  <span class="spacer"></span>
+  <span class="hint">Serve the app, then open this page from the same server.</span>
+</header>
+
+<div id="stage"></div>
+
+<dialog id="customDialog">
+  <h2>Add a custom device</h2>
+  <div class="row"><label for="cName">Name</label><input type="text" id="cName" value="Custom device"></div>
+  <div class="row"><label for="cWidth">Width</label><input type="number" id="cWidth" value="390" min="200" max="2400"></div>
+  <div class="row"><label for="cHeight">Height</label><input type="number" id="cHeight" value="844" min="300" max="2400"></div>
+  <div class="row">
+    <label for="cFrame">Frame</label>
+    <select id="cFrame">
+      <option value="phone">Phone (rounded)</option>
+      <option value="tablet">Tablet</option>
+      <option value="flat">Flat / no bezel</option>
+    </select>
+  </div>
+  <div class="row">
+    <label for="cCutout">Cutout</label>
+    <select id="cCutout">
+      <option value="none">None</option>
+      <option value="island">Dynamic Island</option>
+      <option value="notch">Notch</option>
+      <option value="punch">Punch hole</option>
+    </select>
+  </div>
+  <div class="actions">
+    <button id="cCancel" class="ghost">Cancel</button>
+    <button id="cAdd" class="primary">Add device</button>
+  </div>
+</dialog>
+
+<script>
+/*
+ * A standalone device mockup. It owns nothing of the app: every frame is an
+ * <iframe> pointing at the running build, so the app inside is the real one
+ * and this page never has to be rebuilt when the app changes.
+ *
+ * Deliberately not DevTools' device toolbar: that emulates one device per
+ * tab, changes between Chrome releases, and cannot show two sizes at once.
+ */
+
+/** Logical sizes, as the app sees them — CSS pixels, not hardware pixels. */
+const PRESETS = [
+  { id: 'iphone-se',      name: 'iPhone SE',        w: 375,  h: 667,  frame: 'phone',  cutout: 'none'   },
+  { id: 'iphone-13-mini', name: 'iPhone 13 mini',   w: 375,  h: 812,  frame: 'phone',  cutout: 'notch'  },
+  { id: 'iphone-15',      name: 'iPhone 15',        w: 393,  h: 852,  frame: 'phone',  cutout: 'island' },
+  { id: 'iphone-15-pm',   name: 'iPhone 15 Pro Max',w: 430,  h: 932,  frame: 'phone',  cutout: 'island' },
+  { id: 'pixel-8',        name: 'Pixel 8',          w: 412,  h: 915,  frame: 'phone',  cutout: 'punch'  },
+  { id: 'pixel-8-pro',    name: 'Pixel 8 Pro',      w: 448,  h: 998,  frame: 'phone',  cutout: 'punch'  },
+  { id: 'galaxy-s23',     name: 'Galaxy S23',       w: 360,  h: 780,  frame: 'phone',  cutout: 'punch'  },
+  { id: 'galaxy-s23u',    name: 'Galaxy S23 Ultra', w: 384,  h: 824,  frame: 'phone',  cutout: 'punch'  },
+  { id: 'galaxy-a14',     name: 'Galaxy A14',       w: 360,  h: 800,  frame: 'phone',  cutout: 'punch'  },
+  { id: 'design-390',     name: 'Design canvas',    w: 390,  h: 844,  frame: 'phone',  cutout: 'island' },
+  { id: 'small-320',      name: 'Small 320',        w: 320,  h: 640,  frame: 'phone',  cutout: 'none'   },
+  { id: 'ipad-mini',      name: 'iPad mini',        w: 744,  h: 1133, frame: 'tablet', cutout: 'none'   },
+  { id: 'ipad-air',       name: 'iPad Air',         w: 820,  h: 1180, frame: 'tablet', cutout: 'none'   },
+  { id: 'window-1280',    name: 'Desktop 1280',     w: 1280, h: 800,  frame: 'flat',   cutout: 'none'   },
+];
+
+const STORAGE_KEY = 'hr-mockup-state-v1';
+
+/* ------------------------------------------------------------------ state */
+
+// Declared before the first loadState() call: `let` is not hoisted the way a
+// function declaration is, and the default devices are built through k().
+let seq = 0;
+function k() { return 'd' + (++seq) + '-' + Math.random().toString(36).slice(2, 7); }
+
+const state = loadState();
+
+function loadState() {
+  const fallback = {
+    url: './',
+    zoom: 'auto',
+    wrap: false,
+    safeArea: false,
+    devices: [
+      { key: k(), presetId: 'iphone-15', landscape: false },
+      { key: k(), presetId: 'pixel-8', landscape: false },
+    ],
+  };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.devices)) return fallback;
+    return { ...fallback, ...parsed };
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (_) {
+    /* A private window with storage blocked still works, it just forgets. */
+  }
+}
+
+function specOf(device) {
+  if (device.custom) return device.custom;
+  return PRESETS.find((p) => p.id === device.presetId) || PRESETS[0];
+}
+
+/* ------------------------------------------------------------------ build */
+
+const stage = document.getElementById('stage');
+const appUrlInput = document.getElementById('appUrl');
+const zoomSelect = document.getElementById('zoom');
+const presetPicker = document.getElementById('presetPicker');
+
+for (const preset of PRESETS) {
+  const option = document.createElement('option');
+  option.value = preset.id;
+  option.textContent = `${preset.name} · ${preset.w}×${preset.h}`;
+  presetPicker.appendChild(option);
+}
+presetPicker.value = 'iphone-15';
+
+const safeAreaToggle = document.getElementById('safeArea');
+
+appUrlInput.value = state.url;
+zoomSelect.value = state.zoom;
+safeAreaToggle.checked = state.safeArea;
+stage.classList.toggle('wrap', state.wrap);
+
+/*
+ * Frames are booted one after another, not all at once.
+ *
+ * A debug build is served by the dev server as hundreds of separate modules,
+ * and two instances fetching them concurrently is enough to make the loader
+ * fail with "Library not defined". Waiting for each frame to finish loading
+ * also keeps four Flutter engines from fighting over the same core while
+ * they start.
+ */
+let loadQueue = Promise.resolve();
+
+function queueLoad(iframe, url) {
+  loadQueue = loadQueue.then(
+    () =>
+      new Promise((resolve) => {
+        let settled = false;
+        const next = () => {
+          if (settled) return;
+          settled = true;
+          // A beat after load: the document is there, the engine is still
+          // painting its first frame.
+          setTimeout(resolve, 500);
+        };
+        iframe.addEventListener('load', next, { once: true });
+        // Never let one stuck frame hold up the rest of the queue.
+        setTimeout(next, 20000);
+        iframe.src = url;
+      }),
+  );
+}
+
+function reloadAll() {
+  loadQueue = Promise.resolve();
+  for (const iframe of stage.querySelectorAll('iframe')) {
+    iframe.removeAttribute('src');
+    queueLoad(iframe, resolvedUrl());
+  }
+}
+
+function render() {
+  stage.textContent = '';
+  loadQueue = Promise.resolve();
+
+  if (state.devices.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'No devices. Add one from the bar above.';
+    stage.appendChild(empty);
+    return;
+  }
+
+  for (const device of state.devices) {
+    stage.appendChild(buildDevice(device));
+  }
+  applyZoom();
+}
+
+function buildDevice(device) {
+  const spec = specOf(device);
+  const width = device.landscape ? spec.h : spec.w;
+  const height = device.landscape ? spec.w : spec.h;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'device';
+  wrapper.dataset.key = device.key;
+
+  // --- header -----------------------------------------------------------
+  const head = document.createElement('div');
+  head.className = 'device-head';
+
+  const name = document.createElement('span');
+  name.className = 'device-name';
+  name.textContent = spec.name;
+
+  const size = document.createElement('span');
+  size.className = 'device-size';
+  size.textContent = `${width}×${height}`;
+
+  const rotate = iconButton('⟲', 'Rotate', () => {
+    device.landscape = !device.landscape;
+    saveState();
+    render();
+  });
+  const reload = iconButton('⟳', 'Reload this device', () => {
+    const frame = wrapper.querySelector('iframe');
+    if (frame) frame.src = frame.src;
+  });
+  const remove = iconButton('✕', 'Remove', () => {
+    state.devices = state.devices.filter((d) => d.key !== device.key);
+    saveState();
+    render();
+  });
+
+  head.append(name, size, rotate, reload, remove);
+
+  // --- frame ------------------------------------------------------------
+  const scaler = document.createElement('div');
+  scaler.className = 'frame-scaler';
+
+  const frame = document.createElement('div');
+  frame.className = `frame ${spec.frame}` + (device.landscape ? ' landscape' : '');
+
+  const screen = document.createElement('div');
+  screen.className = 'screen';
+  screen.style.width = width + 'px';
+  screen.style.height = height + 'px';
+
+  // A browser reports no safe-area insets, so a web build paints right up to
+  // the top of the glass and the notch sits over the first thing it drew. The
+  // toggle pads the screen instead, putting content where a real device's
+  // `MediaQuery.padding` would put it. It is off by default because the
+  // design deliberately runs its gradient behind the status bar, and that is
+  // worth seeing too.
+  const insets = state.safeArea && !device.landscape
+    ? { top: spec.cutout === 'none' ? 24 : 47, bottom: spec.frame === 'phone' ? 34 : 0 }
+    : { top: 0, bottom: 0 };
+  screen.style.paddingTop = insets.top + 'px';
+  screen.style.paddingBottom = insets.bottom + 'px';
+  screen.style.background = insets.top > 0 ? '#05070d' : '#fff';
+
+  const iframe = document.createElement('iframe');
+  iframe.title = spec.name;
+  // allow-same-origin is intentional: the app and this page are served from
+  // the same origin, and Flutter's bootstrap needs it.
+  iframe.setAttribute('allow', 'clipboard-read; clipboard-write; geolocation');
+
+  screen.appendChild(iframe);
+  queueLoad(iframe, resolvedUrl());
+
+  if (spec.cutout === 'island') screen.appendChild(div('island'));
+  if (spec.cutout === 'notch') screen.appendChild(div('notch'));
+  if (spec.cutout === 'punch') screen.appendChild(div('punch'));
+  if (spec.frame === 'phone') screen.appendChild(div('home-bar'));
+
+  frame.appendChild(screen);
+  if (spec.frame === 'phone') {
+    frame.append(div('btn-side power'), div('btn-side vol-up'), div('btn-side vol-down'));
+  }
+
+  scaler.appendChild(frame);
+  wrapper.append(head, scaler);
+  return wrapper;
+}
+
+function div(className) {
+  const element = document.createElement('div');
+  element.className = className;
+  return element;
+}
+
+function iconButton(glyph, title, onClick) {
+  const button = document.createElement('button');
+  button.className = 'icon-btn';
+  button.textContent = glyph;
+  button.title = title;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+/** Relative URLs are resolved against this page, so `./` means "the app". */
+function resolvedUrl() {
+  const raw = (state.url || './').trim();
+  return raw.length === 0 ? './' : raw;
+}
+
+/* ------------------------------------------------------------------- zoom */
+
+/**
+ * Scales each frame so the tallest one fits the viewport.
+ *
+ * The iframe keeps its real pixel size and only the wrapper is transformed,
+ * so what you see is the device's own layout shrunk to fit — not a smaller
+ * viewport the app would lay out differently for.
+ */
+function applyZoom() {
+  const available = window.innerHeight - document.querySelector('header').offsetHeight - 96;
+
+  for (const wrapper of stage.querySelectorAll('.device')) {
+    const scaler = wrapper.querySelector('.frame-scaler');
+    const frame = wrapper.querySelector('.frame');
+    if (!scaler || !frame) continue;
+
+    scaler.style.transform = 'none';
+    const naturalHeight = frame.offsetHeight;
+    const naturalWidth = frame.offsetWidth;
+
+    let scale = 1;
+    if (state.zoom === 'auto') {
+      scale = Math.min(1, available / naturalHeight);
+    } else {
+      scale = parseFloat(state.zoom) || 1;
+    }
+
+    scaler.style.transform = `scale(${scale})`;
+    // A transform does not change layout size, so the gap between frames
+    // would stay as wide as the unscaled device. Reserve the scaled box.
+    scaler.style.width = naturalWidth * scale + 'px';
+    scaler.style.height = naturalHeight * scale + 'px';
+  }
+}
+
+/* --------------------------------------------------------------- controls */
+
+appUrlInput.addEventListener('change', () => {
+  state.url = appUrlInput.value;
+  saveState();
+  render();
+});
+
+zoomSelect.addEventListener('change', () => {
+  state.zoom = zoomSelect.value;
+  saveState();
+  applyZoom();
+});
+
+safeAreaToggle.addEventListener('change', () => {
+  state.safeArea = safeAreaToggle.checked;
+  saveState();
+  render();
+});
+
+document.getElementById('addPreset').addEventListener('click', () => {
+  state.devices.push({ key: k(), presetId: presetPicker.value, landscape: false });
+  saveState();
+  render();
+});
+
+document.getElementById('reloadAll').addEventListener('click', reloadAll);
+
+document.getElementById('wrapToggle').addEventListener('click', () => {
+  state.wrap = !state.wrap;
+  stage.classList.toggle('wrap', state.wrap);
+  saveState();
+});
+
+document.getElementById('clearAll').addEventListener('click', () => {
+  state.devices = [];
+  saveState();
+  render();
+});
+
+const dialog = document.getElementById('customDialog');
+document.getElementById('addCustom').addEventListener('click', () => dialog.showModal());
+document.getElementById('cCancel').addEventListener('click', () => dialog.close());
+document.getElementById('cAdd').addEventListener('click', () => {
+  const custom = {
+    name: document.getElementById('cName').value.trim() || 'Custom device',
+    w: clamp(parseInt(document.getElementById('cWidth').value, 10) || 390, 200, 2400),
+    h: clamp(parseInt(document.getElementById('cHeight').value, 10) || 844, 300, 2400),
+    frame: document.getElementById('cFrame').value,
+    cutout: document.getElementById('cCutout').value,
+  };
+  state.devices.push({ key: k(), custom, landscape: false });
+  saveState();
+  dialog.close();
+  render();
+});
+
+function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
+window.addEventListener('resize', applyZoom);
+
+// `R` reloads every frame — the companion to a hot restart in the terminal,
+// which the dev server does not push into an iframe on its own.
+window.addEventListener('keydown', (event) => {
+  if (event.target.matches('input, select, textarea')) return;
+  if (event.key === 'r' || event.key === 'R') reloadAll();
+});
+
+render();
+</script>
+</body>
+</html>
