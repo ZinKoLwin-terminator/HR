@@ -7,13 +7,16 @@ import {
   AttendanceStatus,
 } from '../../../core/models/attendance.models';
 import { AuthService, SERVER_SESSION } from '../../../core/services/auth.service';
-import { fullName } from '../../../core/models/employee.models';
 import { AttendanceAdjustmentDataService } from '../../../core/services/data/attendance-data.services';
-import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
 import { todayIso } from '../../../shared/utilities/date.util';
-import { employeeOptions } from '../../organization/organization-lookups';
+import {
+  OrganizationLookupService,
+  employeeLabel,
+  employeeOptions,
+} from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const FORCEABLE: AttendanceStatus[] = ['Present', 'Late', 'Half Day', 'Absent'];
 
@@ -30,17 +33,18 @@ const FORCEABLE: AttendanceStatus[] = ['Present', 'Late', 'Half Day', 'Absent'];
 })
 export class AdjustmentsPageComponent {
   private readonly adjustments = inject(AttendanceAdjustmentDataService);
-  private readonly employeesApi = inject(EmployeeDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
   private readonly apiMode = inject(SERVER_SESSION);
   private readonly auth = inject(AuthService);
-  private readonly employees = rxResource({ stream: () => this.employeesApi.getAll() });
+  /** The employees the role may see (everyone, or only the user's own); never fails. */
+  private readonly employees = rxResource({ stream: () => this.lookupService.employeeRefs() });
 
   protected readonly config = computed<CrudPageConfig<AttendanceAdjustment> | null>(() => {
-    const people = this.employees.value();
+    const people = safeValue(this.employees);
     if (!people) {
       return null;
     }
-    const names = new Map(people.map((e) => [e.id, `${fullName(e)} (${e.employeeCode})`]));
+    const names = new Map(people.map((e) => [e.id, employeeLabel(e)]));
     const pending = (a: AttendanceAdjustment) => a.status === 'Pending';
     // Nobody decides their own adjustment (the server refuses it too).
     const own = this.auth.session()?.employeeId ?? null;

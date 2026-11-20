@@ -27,7 +27,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
   template: `
     <h2 mat-dialog-title>Import details</h2>
     <mat-dialog-content>
-      @if (batch.value(); as b) {
+      @if (batch.hasValue() ? batch.value() : undefined; as b) {
         <p class="file">{{ b.fileName }}</p>
         <dl class="facts">
           <div>
@@ -116,7 +116,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      @if ((batch.value()?.issues?.length ?? 0) > 0) {
+      @if (batch.hasValue() && batch.value().issues.length > 0) {
         <button mat-stroked-button type="button" (click)="downloadReport()">
           <mat-icon>download</mat-icon>Download report
         </button>

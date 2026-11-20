@@ -22,12 +22,13 @@ import { CellTemplateDirective } from '../../../shared/components/data-table/cel
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 import { ListQuery } from '../../../shared/utilities/list-query';
 import { grievanceStatusLabel } from '../shared/grievance-status-badge.component';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** The columns of My Grievances. The server's order (latest update first) is the default. */
 export const MY_GRIEVANCE_COLUMNS: TableColumn<MyGrievance>[] = [
@@ -56,6 +57,7 @@ export const MY_GRIEVANCE_COLUMNS: TableColumn<MyGrievance>[] = [
     CellTemplateDirective,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -110,6 +112,9 @@ export const MY_GRIEVANCE_COLUMNS: TableColumn<MyGrievance>[] = [
         <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
       </app-empty-state>
     } @else {
+      @if (page.error()) {
+        <app-error-banner [message]="errorText()" (retry)="page.reload()" />
+      }
       <app-data-table
         caption="My grievances"
         [columns]="columns"

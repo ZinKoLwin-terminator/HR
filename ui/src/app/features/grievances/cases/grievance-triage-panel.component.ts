@@ -39,7 +39,7 @@ import { FieldErrorComponent } from '../../../shared/components/field-error/fiel
 import { ISO_DATE_FORMATS, IsoDateAdapter } from '../../../shared/forms/iso-date-adapter';
 import { isGrievanceOpen } from '../../../core/utilities/grievance-workflow';
 import { todayIso } from '../../../shared/utilities/date.util';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Where a server field error lands on the triage form. */
 const FIELDS = [

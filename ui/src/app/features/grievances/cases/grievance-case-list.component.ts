@@ -29,6 +29,7 @@ import { CellTemplateDirective } from '../../../shared/components/data-table/cel
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import {
   FilterFieldComponent,
   FilterPopupComponent,
@@ -41,7 +42,7 @@ import { ListQuery } from '../../../shared/utilities/list-query';
 import { GrievanceWorkspace } from '../shared/grievance-case-actions.component';
 import { GrievancePriorityComponent } from '../shared/grievance-priority.component';
 import { grievanceStatusLabel } from '../shared/grievance-status-badge.component';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 interface WorkspaceText {
   title: string;
@@ -126,6 +127,7 @@ const yesNo = (value: boolean | undefined): YesNo =>
     CellTemplateDirective,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
     FilterFieldComponent,
     FilterPopupComponent,
     GrievancePriorityComponent,
@@ -294,6 +296,9 @@ const yesNo = (value: boolean | undefined): YesNo =>
         <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
       </app-empty-state>
     } @else {
+      @if (page.error()) {
+        <app-error-banner [message]="errorText()" (retry)="page.reload()" />
+      }
       <app-data-table
         [caption]="text().caption"
         [columns]="columns"

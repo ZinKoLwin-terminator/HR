@@ -2,12 +2,12 @@ import { Component, computed, inject, input } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
-import { forkJoin } from 'rxjs';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
-import { LeaveApplication } from '../../../core/models/leave.models';
+import { Holiday } from '../../../core/models/attendance.models';
+import { LeaveApplication, LeaveType } from '../../../core/models/leave.models';
 import { AuthService } from '../../../core/services/auth.service';
 import { HolidayDataService } from '../../../core/services/data/attendance-data.services';
-import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import {
   LeaveApplicationDataService,
   LeaveTypeDataService,
@@ -15,12 +15,18 @@ import {
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
+import { OrganizationLookupService } from '../../organization/organization-lookups';
 import { buildLeaveApplicationsConfig, LeaveListMode } from './leave-applications.config';
 
-/** Loads the lookups a leave list needs and builds the page config for a mode. */
+/**
+ * Loads the lookups a leave list needs and builds the page config for a mode. Every lookup falls
+ * back to an empty list on its own (a 403 included), so the list itself always renders and shows
+ * its own error if the applications cannot be read.
+ */
 function useLeaveConfig(mode: LeaveListMode) {
   const applications = inject(LeaveApplicationDataService);
-  const employeesApi = inject(EmployeeDataService);
+  const lookupService = inject(OrganizationLookupService);
   const typesApi = inject(LeaveTypeDataService);
   const holidaysApi = inject(HolidayDataService);
   const weekendDays = inject(APP_CONFIG).weekendDays;
@@ -28,13 +34,16 @@ function useLeaveConfig(mode: LeaveListMode) {
   const lookups = rxResource({
     stream: () =>
       forkJoin({
-        employees: employeesApi.getAll(),
-        types: typesApi.getAll(),
-        holidays: holidaysApi.getAll(),
+        // Full records with employees:View (gender for leave types), else only the user's own.
+        employees: lookupService
+          .people()
+          .pipe(map((p) => (p.employeeRecords.length ? p.employeeRecords : p.employees))),
+        types: typesApi.getAll().pipe(catchError(() => of([] as LeaveType[]))),
+        holidays: holidaysApi.getAll().pipe(catchError(() => of([] as Holiday[]))),
       }),
   });
   return computed<CrudPageConfig<LeaveApplication> | null>(() => {
-    const l = lookups.value();
+    const l = safeValue(lookups);
     return l
       ? buildLeaveApplicationsConfig({
           mode,

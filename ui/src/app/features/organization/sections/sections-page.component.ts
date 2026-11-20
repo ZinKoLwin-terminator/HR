@@ -4,13 +4,7 @@ import { CrudPageComponent } from '../../../shared/components/crud/crud-page.com
 import { Section } from '../../../core/models/organization.models';
 import { SectionDataService } from '../../../core/services/data/organization-data.services';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
-import {
-  OrgLookups,
-  STATUS_OPTIONS,
-  employeeOptions,
-  nameMap,
-  options,
-} from '../organization-lookups';
+import { OrgLookups, STATUS_OPTIONS, nameMap, options, personField } from '../organization-lookups';
 import { OrganizationPageBase } from '../organization-page.component';
 
 @Component({
@@ -29,7 +23,9 @@ export class SectionsPageComponent extends OrganizationPageBase<Section> {
 
   protected buildConfig(l: OrgLookups): CrudPageConfig<Section> {
     const departmentName = nameMap(l.departments, (d) => d.name);
-    const personName = nameMap(l.employees, (e) => `${e.firstName} ${e.lastName}`);
+    const personName = nameMap(l.employees, (e) => e.displayName);
+    // Without employees:View the role cannot name supervisors: no column, read-only field.
+    const canPick = this.canSeeEmployees();
     const departmentOptions = options(l.departments, (d) => d.name);
     return {
       title: 'Sections',
@@ -53,12 +49,16 @@ export class SectionsPageComponent extends OrganizationPageBase<Section> {
           hideBelow: 'sm',
           value: (s) => departmentName(s.departmentId),
         },
-        {
-          key: 'supervisorEmployeeId',
-          header: 'Supervisor',
-          hideBelow: 'md',
-          value: (s) => personName(s.supervisorEmployeeId),
-        },
+        ...(canPick
+          ? [
+              {
+                key: 'supervisorEmployeeId',
+                header: 'Supervisor',
+                hideBelow: 'md' as const,
+                value: (s: Section) => personName(s.supervisorEmployeeId),
+              },
+            ]
+          : []),
         { key: 'status', header: 'Status', type: 'status', sortable: true },
       ],
       newItem: () => ({ status: 'Active' }),
@@ -86,7 +86,7 @@ export class SectionsPageComponent extends OrganizationPageBase<Section> {
           label: 'Supervisor',
           type: 'select',
           nullable: true,
-          options: () => employeeOptions(l.employees),
+          ...personField('supervisorEmployeeId', l.employees, canPick),
         },
         { key: 'description', label: 'Description', type: 'textarea', maxLength: 300 },
         {

@@ -19,6 +19,7 @@ import {
 } from '../../../core/services/ui-notification.service';
 import { downloadFile } from '../../../core/utilities/file-download';
 import { PermissionService } from '../../../core/services/permission.service';
+import { safeValue } from '../../utilities/resource-value';
 
 export interface ExcelExportDialogData {
   moduleCode: string;
@@ -133,8 +134,14 @@ export interface ExcelExportDialogData {
             </mat-checkbox>
           }
         </fieldset>
+      } @else if (!mayReadCatalog()) {
+        <p class="banner" role="alert">
+          Exporting needs the excel:View and excel:Export permissions.
+        </p>
       } @else if (catalog.isLoading()) {
         <p>Loading…</p>
+      } @else if (catalog.error()) {
+        <p class="banner" role="alert">{{ catalogError() }}</p>
       } @else {
         <p class="banner" role="alert">This module cannot be exported.</p>
       }
@@ -227,9 +234,19 @@ export class ExcelExportDialogComponent {
   private readonly toast = inject(UiNotificationService);
   private readonly permissions = inject(PermissionService);
 
-  protected readonly catalog = rxResource({ stream: () => this.catalogApi.getModules() });
+  /** The catalog needs excel:View (and exporting excel:Export): not requested without them. */
+  protected readonly mayReadCatalog = computed(
+    () => this.permissions.can('excel:View') && this.permissions.can('excel:Export'),
+  );
+  protected readonly catalog = rxResource({
+    params: () => (this.mayReadCatalog() ? true : undefined),
+    stream: () => this.catalogApi.getModules(),
+  });
+  protected readonly catalogError = computed(() =>
+    this.catalog.error() ? errorMessage(this.catalog.error()) : '',
+  );
   protected readonly info = computed<ExcelModuleInfo | undefined>(() =>
-    this.catalog.value()?.find((m) => m.code === this.data.moduleCode && m.canExport),
+    safeValue(this.catalog)?.find((m) => m.code === this.data.moduleCode && m.canExport),
   );
 
   protected readonly scope = signal<ExportScope>(

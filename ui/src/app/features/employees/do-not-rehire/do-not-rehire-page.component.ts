@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { Observable, throwError } from 'rxjs';
+import { Observable, catchError, of, throwError } from 'rxjs';
 import {
   BLACKLIST_EDIT_PERMISSION,
   BLACKLIST_REASON_MAX_LENGTH,
@@ -13,12 +13,14 @@ import {
   PagedResult,
   PageRequest,
 } from '../../../core/models/common.models';
-import { fullName } from '../../../core/models/employee.models';
+import { Employee, fullName } from '../../../core/models/employee.models';
 import { BlacklistDataService } from '../../../core/services/data/blacklist-data.service';
+import { PermissionService } from '../../../core/services/permission.service';
 import { CrudDataService } from '../../../core/services/data/crud-data.service';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const HISTORY_KEPT: AppError = {
   code: 'Forbidden',
@@ -75,10 +77,22 @@ export class DoNotRehirePageComponent {
   private readonly api = inject(BlacklistDataService);
   private readonly employeesApi = inject(EmployeeDataService);
   private readonly service = new BlacklistListService(this.api);
-  private readonly employees = rxResource({ stream: () => this.employeesApi.getAll() });
+  private readonly permissions = inject(PermissionService);
+  /** Former employees can be listed only with employees:View (the picker lookup has none). */
+  private readonly canListEmployees = computed(() => this.permissions.can('employees:View'));
+  /**
+   * Former employees for the Add form: read only with employees:View, so other roles get no 403;
+   * none when they cannot be read (the list still renders).
+   */
+  private readonly employees = rxResource({
+    stream: () =>
+      this.canListEmployees()
+        ? this.employeesApi.getAll().pipe(catchError(() => of([] as Employee[])))
+        : of([] as Employee[]),
+  });
 
   protected readonly config = computed<CrudPageConfig<BlacklistEntry> | null>(() => {
-    const all = this.employees.value();
+    const all = safeValue(this.employees);
     if (!all) {
       return null;
     }
@@ -174,7 +188,9 @@ export class DoNotRehirePageComponent {
           type: 'select',
           required: true,
           fullWidth: true,
-          hint: 'Only employees with an exit date can be listed.',
+          hint: this.canListEmployees()
+            ? 'Only employees with an exit date can be listed.'
+            : 'Choosing a former employee needs access to employees (employees:View).',
           options: () => former,
         },
         {

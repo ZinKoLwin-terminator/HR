@@ -1,18 +1,23 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { forkJoin } from 'rxjs';
-import { AppUser, USER_STATUSES } from '../../../core/models/settings.models';
+import { catchError, forkJoin, map, of } from 'rxjs';
+import { AppUser, Role, USER_STATUSES } from '../../../core/models/settings.models';
 import { CurrentUserService } from '../../../core/services/current-user.service';
 import { MIN_PASSWORD_LENGTH, SERVER_SESSION } from '../../../core/services/auth.service';
-import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import {
   RoleDataService,
   UserDataService,
 } from '../../../core/services/data/settings-data.services';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
-import { employeeOptions, nameMap, options } from '../../organization/organization-lookups';
+import {
+  OrganizationLookupService,
+  employeeOptions,
+  nameMap,
+  options,
+} from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const STATUS_OPTIONS = USER_STATUSES.map((s) => ({ value: s, label: s }));
 
@@ -31,21 +36,25 @@ const STATUS_OPTIONS = USER_STATUSES.map((s) => ({ value: s, label: s }));
 export class UsersPageComponent {
   private readonly users = inject(UserDataService);
   private readonly rolesApi = inject(RoleDataService);
-  private readonly employeesApi = inject(EmployeeDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
   private readonly me = inject(CurrentUserService);
   /** True in the API build: real accounts, so a create needs an initial password. */
   private readonly apiMode = inject(SERVER_SESSION);
   protected readonly lookups = rxResource({
     stream: () =>
       forkJoin({
-        users: this.users.getAll(),
-        roles: this.rolesApi.getAll(),
-        employees: this.employeesApi.getAll(),
+        // Each falls back to an empty list, so the list below always renders (with its own error).
+        users: this.users.getAll().pipe(catchError(() => of([] as AppUser[]))),
+        roles: this.rolesApi.getAll().pipe(catchError(() => of([] as Role[]))),
+        // Full records with employees:View; otherwise only what the role may read (never fails).
+        employees: this.lookupService
+          .people()
+          .pipe(map((p) => (p.employeeRecords.length ? p.employeeRecords : p.employees))),
       }),
   });
 
   protected readonly config = computed<CrudPageConfig<AppUser> | null>(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     if (!l) {
       return null;
     }
@@ -118,7 +127,9 @@ export class UsersPageComponent {
           hint: 'Name and email come from the employee record',
           options: (_values, ctx) =>
             employeeOptions(
-              l.employees.filter((e) => (!e.exitDate && !taken.has(e.id)) || ctx.id !== null),
+              l.employees.filter(
+                (e) => (!('exitDate' in e && e.exitDate) && !taken.has(e.id)) || ctx.id !== null,
+              ),
             ),
         },
         {

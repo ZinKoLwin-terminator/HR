@@ -28,6 +28,7 @@ import {
 } from '../../../shared/components/excel/excel-labels';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { BatchDetailsDialogComponent } from './batch-details-dialog.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 type Row = ImportBatchSummary & Entity;
 
@@ -59,7 +60,7 @@ type Row = ImportBatchSummary & Entity;
       <app-empty-state icon="error" title="Import history could not be loaded">
         <button mat-flat-button type="button" (click)="history.reload()">Try again</button>
       </app-empty-state>
-    } @else if (history.isLoading() && !history.value()) {
+    } @else if (history.isLoading() && !history.hasValue()) {
       <mat-progress-bar mode="indeterminate" aria-label="Loading import history" />
     } @else {
       <app-data-table
@@ -89,7 +90,7 @@ export class ImportHistoryComponent {
 
   protected readonly history = rxResource({ stream: () => this.api.getHistory() });
   protected readonly rows = computed<Row[]>(() =>
-    (this.history.value() ?? []).map((batch, index) => ({ ...batch, id: index + 1 })),
+    (safeValue(this.history) ?? []).map((batch, index) => ({ ...batch, id: index + 1 })),
   );
 
   protected readonly columns: TableColumn<Row>[] = [

@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { forkJoin } from 'rxjs';
+import { forkJoin, map } from 'rxjs';
 import { isAppError } from '../../../core/models/common.models';
 import { EmployeeLookupItem } from '../../../core/models/employee.models';
 import { BulkAssignKpiRequest, BulkAssignmentResult } from '../../../core/models/kpi.models';
@@ -16,17 +16,12 @@ import {
   KpiTemplateDataService,
   ScorecardDataService,
 } from '../../../core/services/data/kpi-data.services';
-import {
-  BranchDataService,
-  DepartmentDataService,
-  JobGradeDataService,
-  PositionDataService,
-} from '../../../core/services/data/organization-data.services';
-import { options } from '../../organization/organization-lookups';
+import { OrganizationLookupService, options } from '../../organization/organization-lookups';
 import { errorMessage } from '../../../core/services/ui-notification.service';
 import { AssignmentRow, toItemInputs, validateAssignmentRows } from '../shared/assignment-rows';
 import { EmployeePickerComponent } from '../shared/employee-picker.component';
 import { KpiAssignmentRowsComponent } from '../shared/kpi-assignment-rows.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** How the employees of a bulk assignment are chosen. */
 export type BulkSelector = 'department' | 'branch' | 'position' | 'jobGrade' | 'employees';
@@ -350,10 +345,7 @@ export class BulkAssignDialogComponent {
   private readonly scorecards = inject(ScorecardDataService);
   private readonly templatesApi = inject(KpiTemplateDataService);
   private readonly periodsApi = inject(EvaluationPeriodDataService);
-  private readonly departmentsApi = inject(DepartmentDataService);
-  private readonly branchesApi = inject(BranchDataService);
-  private readonly positionsApi = inject(PositionDataService);
-  private readonly gradesApi = inject(JobGradeDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
 
   protected readonly selectors = BULK_SELECTORS;
   protected readonly maxEmployees = BULK_MAX_EMPLOYEES;
@@ -377,15 +369,22 @@ export class BulkAssignDialogComponent {
       forkJoin({
         templates: this.templatesApi.getAll(),
         periods: this.periodsApi.getAll(),
-        departments: this.departmentsApi.getAll(),
-        branches: this.branchesApi.getAll(),
-        positions: this.positionsApi.getAll(),
-        grades: this.gradesApi.getAll(),
-      }),
+        // Organization names from the lookup: no organization:View needed, never fails.
+        org: this.lookupService.organization(),
+      }).pipe(
+        map(({ templates, periods, org }) => ({
+          templates,
+          periods,
+          departments: org.departments,
+          branches: org.branches,
+          positions: org.positions,
+          grades: org.jobGrades,
+        })),
+      ),
   });
 
   protected readonly periods = computed(() =>
-    (this.lookups.value()?.periods ?? [])
+    (safeValue(this.lookups)?.periods ?? [])
       .filter((p) => p.status === 'Draft' || p.status === 'Active')
       .sort((a, b) => b.startDate.localeCompare(a.startDate)),
   );
@@ -414,7 +413,7 @@ export class BulkAssignDialogComponent {
   );
 
   protected readonly filterOptions = computed(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     if (!l) return [];
     switch (this.selector()) {
       case 'department':
@@ -436,7 +435,7 @@ export class BulkAssignDialogComponent {
    */
   protected readonly fittingTemplates = computed(() => {
     const department = this.selector() === 'department' ? this.filterId() : null;
-    return (this.lookups.value()?.templates ?? []).filter(
+    return (safeValue(this.lookups)?.templates ?? []).filter(
       (t) =>
         t.status === 'Active' &&
         (t.departmentId === null || department === null || t.departmentId === department),
@@ -480,7 +479,7 @@ export class BulkAssignDialogComponent {
     }
     const periodId = this.periodId();
     const rows = this.rows();
-    const errors = validateAssignmentRows(rows, this.lookups.value()?.templates ?? []);
+    const errors = validateAssignmentRows(rows, safeValue(this.lookups)?.templates ?? []);
     if (periodId === null) errors['periodId'] = 'Choose an evaluation period.';
     const request =
       periodId === null

@@ -28,12 +28,6 @@ import {
   KpiCategoryDataService,
   KpiInsightDataService,
 } from '../../../core/services/data/kpi-data.services';
-import {
-  BranchDataService,
-  CompanyDataService,
-  DepartmentDataService,
-  PositionDataService,
-} from '../../../core/services/data/organization-data.services';
 import { PermissionService } from '../../../core/services/permission.service';
 import { PrintService } from '../../../core/services/print.service';
 import { errorMessage } from '../../../core/services/ui-notification.service';
@@ -51,7 +45,7 @@ import { PrintHeaderComponent } from '../../../shared/components/print/print-hea
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 import { ListQuery } from '../../../shared/utilities/list-query';
-import { options } from '../../organization/organization-lookups';
+import { OrganizationLookupService, options } from '../../organization/organization-lookups';
 import { fixed2, scoreText, withUnit } from '../dashboard/kpi-dashboard-views';
 import { EmployeePickerComponent } from '../shared/employee-picker.component';
 import { injectScorecardViewer } from '../shared/scorecard-viewer';
@@ -69,6 +63,7 @@ import {
   summaryRow,
   targetRow,
 } from './kpi-report-definitions';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** One loaded page of a report, with the facts shown above its table. */
 export interface KpiReportView {
@@ -130,10 +125,7 @@ export class KpiReportsComponent {
 
   private readonly periodsApi = inject(EvaluationPeriodDataService);
   private readonly categoriesApi = inject(KpiCategoryDataService);
-  private readonly companiesApi = inject(CompanyDataService);
-  private readonly branchesApi = inject(BranchDataService);
-  private readonly departmentsApi = inject(DepartmentDataService);
-  private readonly positionsApi = inject(PositionDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
 
   protected readonly choices = KPI_REPORT_CHOICES;
   protected readonly pageSizeOptions = this.appConfig.pageSizeOptions;
@@ -204,7 +196,7 @@ export class KpiReportsComponent {
   /** Keeps the last page of the same report while the next one loads, so the table does not blank. */
   protected readonly result = linkedSignal<KpiReportView | undefined, KpiReportView | undefined>({
     // value() throws while the resource is in error: read it only when there is one.
-    source: () => (this.report.hasValue() ? this.report.value() : undefined),
+    source: () => safeValue(this.report),
     computation: (value, previous) =>
       value ?? (previous?.value?.report === this.definition().report ? previous.value : undefined),
   });
@@ -220,21 +212,28 @@ export class KpiReportsComponent {
       return forkJoin({
         periods: safe(this.periodsApi.options()),
         categories: safe(this.categoriesApi.getAll()),
-        companies: safe(this.companiesApi.getAll()),
-        branches: safe(this.branchesApi.getAll()),
-        departments: safe(this.departmentsApi.getAll()),
-        positions: safe(this.positionsApi.getAll()),
-      });
+        // Organization names from the lookup: no organization:View needed, never fails.
+        org: this.lookupService.organization(),
+      }).pipe(
+        map(({ periods, categories, org }) => ({
+          periods,
+          categories,
+          companies: org.companies,
+          branches: org.branches,
+          departments: org.departments,
+          positions: org.positions,
+        })),
+      );
     },
   });
 
   protected readonly departmentOptions = computed(() =>
-    options(this.lookups.value()?.departments ?? [], (d) => d.name),
+    options(safeValue(this.lookups)?.departments ?? [], (d) => d.name),
   );
 
   /** The options of every filter; a lookup the role cannot read leaves its filter out. */
   private readonly filterOptions = computed<Record<keyof KpiReportFilter, FieldOption[]>>(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     const years = [...new Set((l?.periods ?? []).map((p) => Number(p.startDate.slice(0, 4))))]
       .sort((a, b) => b - a)
       .map((y) => ({ value: y, label: String(y) }));

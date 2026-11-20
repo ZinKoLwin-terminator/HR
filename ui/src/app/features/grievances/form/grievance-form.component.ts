@@ -66,7 +66,7 @@ import {
   GrievanceAttachmentListComponent,
   GrievanceFileItem,
 } from '../shared/grievance-attachment-list.component';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** The form of a grievance draft. `declaration` is checked at submission only. */
 export type GrievanceForm = FormGroup<{

@@ -221,7 +221,15 @@ const tabLabels = (el: HTMLElement) =>
 
 const EMPLOYEE = ['kpi:View', 'kpi:Create'];
 const MANAGER = ['kpi:View', 'kpi:Create', 'kpi:Approve', 'employees:View'];
-const HR = [...MANAGER, 'employees:Edit', 'excel:Export', 'organization:View', 'kpi-setup:View'];
+// excel:View as well: the module catalog (/api/excel/modules) needs it, so Export shows only with both.
+const HR = [
+  ...MANAGER,
+  'employees:Edit',
+  'excel:View',
+  'excel:Export',
+  'organization:View',
+  'kpi-setup:View',
+];
 
 describe('KPI dashboard: views per role', () => {
   it('offers own, team and HR views by kpi:View, kpi:Approve and the HR tier', () => {

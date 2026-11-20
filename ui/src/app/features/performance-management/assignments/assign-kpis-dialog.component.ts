@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { forkJoin } from 'rxjs';
+import { forkJoin, map } from 'rxjs';
 import { isAppError } from '../../../core/models/common.models';
 import { EmployeeLookupItem } from '../../../core/models/employee.models';
 import { AssignKpiResult, ScorecardDetail } from '../../../core/models/kpi.models';
@@ -16,7 +16,7 @@ import {
   KpiTemplateDataService,
   ScorecardDataService,
 } from '../../../core/services/data/kpi-data.services';
-import { DepartmentDataService } from '../../../core/services/data/organization-data.services';
+import { OrganizationLookupService } from '../../organization/organization-lookups';
 import { errorMessage } from '../../../core/services/ui-notification.service';
 import {
   AssignmentRow,
@@ -26,6 +26,7 @@ import {
 } from '../shared/assignment-rows';
 import { EmployeePickerComponent } from '../shared/employee-picker.component';
 import { KpiAssignmentRowsComponent } from '../shared/kpi-assignment-rows.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 export interface AssignKpisDialogData {
   /**
@@ -190,7 +191,7 @@ export class AssignKpisDialogComponent {
   private readonly scorecards = inject(ScorecardDataService);
   private readonly templatesApi = inject(KpiTemplateDataService);
   private readonly periodsApi = inject(EvaluationPeriodDataService);
-  private readonly departmentsApi = inject(DepartmentDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
 
   protected readonly existing = signal<ScorecardDetail | null>(this.data?.scorecard ?? null);
   protected readonly periodId = signal<number | null>(null);
@@ -208,7 +209,8 @@ export class AssignKpisDialogComponent {
       forkJoin({
         templates: this.templatesApi.getAll(),
         periods: this.periodsApi.getAll(),
-        departments: this.departmentsApi.getAll(),
+        // From the organization lookup: no organization:View needed, never fails.
+        departments: this.lookupService.organization().pipe(map((o) => o.departments)),
       }),
   });
   protected readonly lookupError = computed(() =>
@@ -217,13 +219,13 @@ export class AssignKpisDialogComponent {
 
   /** Periods that accept new KPIs: Draft or Active, newest first. */
   protected readonly periods = computed(() =>
-    (this.lookups.value()?.periods ?? [])
+    (safeValue(this.lookups)?.periods ?? [])
       .filter((p) => p.status === 'Draft' || p.status === 'Active')
       .sort((a, b) => b.startDate.localeCompare(a.startDate)),
   );
 
   private readonly departmentNames = computed(
-    () => new Map((this.lookups.value()?.departments ?? []).map((d) => [d.id, d.name])),
+    () => new Map((safeValue(this.lookups)?.departments ?? []).map((d) => [d.id, d.name])),
   );
 
   /** Department of the person the KPIs are for (null until an employee is chosen). */
@@ -233,7 +235,7 @@ export class AssignKpisDialogComponent {
 
   /** Active templates that fit the employee's department. */
   protected readonly fittingTemplates = computed(() =>
-    (this.lookups.value()?.templates ?? []).filter(
+    (safeValue(this.lookups)?.templates ?? []).filter(
       (t) =>
         t.status === 'Active' &&
         templateFitsDepartment(t, this.departmentName(), this.departmentNames()),
@@ -276,7 +278,7 @@ export class AssignKpisDialogComponent {
 
     const errors = validateAssignmentRows(
       rows,
-      this.lookups.value()?.templates ?? [],
+      safeValue(this.lookups)?.templates ?? [],
       card?.totalWeight ?? 0,
     );
     if (periodId === null) errors['periodId'] = 'Choose an evaluation period.';

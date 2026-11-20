@@ -4,7 +4,7 @@ import {
   EvaluationPeriodStatus,
   KPI_FREQUENCIES,
 } from '../../../core/models/kpi.models';
-import { Company } from '../../../core/models/organization.models';
+import { CompanyRef } from '../../../core/models/organization.models';
 import { EvaluationPeriodDataService } from '../../../core/services/data/kpi-data.services';
 import {
   CrudExtraAction,
@@ -16,7 +16,7 @@ import { textOptions } from '../shared/kpi-options';
 
 export interface EvaluationPeriodConfigOptions {
   service: EvaluationPeriodDataService;
-  companies: Company[];
+  companies: CompanyRef[];
 }
 
 /** Company, type, dates and the HR review setting: editable only while the period is a Draft. */

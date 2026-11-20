@@ -1,4 +1,12 @@
-@if (notFound()) {
+@if (runs.error()) {
+  <app-empty-state
+    icon="error"
+    title="Payroll period could not be loaded"
+    [message]="runsErrorText()"
+  >
+    <button mat-flat-button type="button" (click)="runs.reload()">Try again</button>
+  </app-empty-state>
+} @else if (notFound()) {
   <app-empty-state
     icon="event_busy"
     title="Payroll period not found"
@@ -208,23 +216,36 @@
               </mat-select>
             </mat-form-field>
           </div>
-          <app-data-table
-            caption="Payslips for the period"
-            [columns]="columns"
-            [rows]="result()?.items ?? []"
-            [total]="result()?.total ?? 0"
-            [pageIndex]="query.pageIndex()"
-            [pageSize]="query.pageSize()"
-            [pageSizeOptions]="pageSizeOptions"
-            [sort]="query.sort()"
-            [loading]="page.isLoading()"
-            [rowLabel]="rowLabel"
-            [clickableRows]="true"
-            emptyTitle="No payslips match"
-            (pageChange)="query.onPage($event)"
-            (sortChange)="query.setSort($event)"
-            (rowClick)="openPayslip($event)"
-          />
+          @if (page.error() && !result()) {
+            <app-empty-state
+              icon="error"
+              title="Payslips could not be loaded"
+              [message]="errorText()"
+            >
+              <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
+            </app-empty-state>
+          } @else {
+            @if (page.error()) {
+              <app-error-banner [message]="errorText()" (retry)="page.reload()" />
+            }
+            <app-data-table
+              caption="Payslips for the period"
+              [columns]="columns"
+              [rows]="result()?.items ?? []"
+              [total]="result()?.total ?? 0"
+              [pageIndex]="query.pageIndex()"
+              [pageSize]="query.pageSize()"
+              [pageSizeOptions]="pageSizeOptions"
+              [sort]="query.sort()"
+              [loading]="page.isLoading()"
+              [rowLabel]="rowLabel"
+              [clickableRows]="true"
+              emptyTitle="No payslips match"
+              (pageChange)="query.onPage($event)"
+              (sortChange)="query.setSort($event)"
+              (rowClick)="openPayslip($event)"
+            />
+          }
         </section>
       </div>
     }

@@ -7,7 +7,7 @@ import {
 } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { EMPTY, debounceTime, map, startWith, switchMap } from 'rxjs';
+import { EMPTY, catchError, debounceTime, map, of, startWith, switchMap } from 'rxjs';
 import { EmployeeLookupItem } from '../../../core/models/employee.models';
 import { EmployeeLookupDataService } from '../../../core/services/data/employee-data.service';
 
@@ -91,7 +91,11 @@ export class EmployeePickerComponent {
         typeof value === 'string'
           ? this.lookup
               .query({ search: value.trim(), pageIndex: 0, pageSize: PAGE_SIZE })
-              .pipe(map((page) => page.items))
+              // A failed search (a 403 included) shows no matches; a throw would break the signal.
+              .pipe(
+                map((page) => page.items),
+                catchError(() => of([] as EmployeeLookupItem[])),
+              )
           : EMPTY,
       ),
     ),

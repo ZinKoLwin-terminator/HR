@@ -12,6 +12,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { addDays, dayOfWeek, todayIso } from '../../../shared/utilities/date.util';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Monday of the week containing `date`. */
 export function mondayOf(date: string): string {
@@ -59,12 +60,12 @@ export class WorkSchedulesComponent {
     this.branchId.set(null);
   }
 
-  private readonly lookups = rxResource({ stream: () => this.lookupService.load() });
+  private readonly lookups = rxResource({ stream: () => this.lookupService.organization() });
   protected readonly departmentOptions = computed(() =>
-    options(this.lookups.value()?.departments ?? [], (d) => d.name),
+    options(safeValue(this.lookups)?.departments ?? [], (d) => d.name),
   );
   protected readonly branchOptions = computed(() =>
-    options(this.lookups.value()?.branches ?? [], (b) => b.name),
+    options(safeValue(this.lookups)?.branches ?? [], (b) => b.name),
   );
 
   protected readonly schedule = rxResource({
@@ -77,7 +78,7 @@ export class WorkSchedulesComponent {
   });
   /** Keeps the previous week on screen while the next one loads (no flash). */
   protected readonly data = linkedSignal<WorkSchedule | undefined, WorkSchedule | undefined>({
-    source: this.schedule.value,
+    source: () => safeValue(this.schedule),
     computation: (value, previous) => value ?? previous?.value,
   });
   protected readonly weekEnd = computed(() => addDays(this.weekStart(), 6));

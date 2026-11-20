@@ -7,12 +7,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { Router, RouterLink } from '@angular/router';
-import { filter, forkJoin } from 'rxjs';
+import { catchError, filter, forkJoin, map, of } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import { PagedResult, PageRequest } from '../../../core/models/common.models';
 import {
   AssignKpiResult,
   BulkAssignmentResult,
+  EvaluationPeriod,
   SCORECARD_STATUSES,
   Scorecard,
   ScorecardFilter,
@@ -21,7 +22,6 @@ import {
   EvaluationPeriodDataService,
   ScorecardDataService,
 } from '../../../core/services/data/kpi-data.services';
-import { DepartmentDataService } from '../../../core/services/data/organization-data.services';
 import { PermissionService } from '../../../core/services/permission.service';
 import {
   UiNotificationService,
@@ -33,6 +33,7 @@ import { CellTemplateDirective } from '../../../shared/components/data-table/cel
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import {
   FilterFieldComponent,
   FilterPopupComponent,
@@ -40,11 +41,12 @@ import {
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ListQuery } from '../../../shared/utilities/list-query';
-import { options } from '../../organization/organization-lookups';
+import { OrganizationLookupService, options } from '../../organization/organization-lookups';
 import { assignmentMessage } from '../shared/assignment-rows';
 import { textOptions } from '../shared/kpi-options';
 import { AssignKpisDialogComponent } from './assign-kpis-dialog.component';
 import { BulkAssignDialogComponent } from './bulk-assign-dialog.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Whether a plan's weights are not exactly 100% (highlighted in the list). */
 export const weightIsOff = (row: Pick<Scorecard, 'totalWeight'>): boolean =>
@@ -99,6 +101,7 @@ export const ASSIGNMENT_COLUMNS: TableColumn<Scorecard>[] = [
     DataTableComponent,
     DecimalPipe,
     EmptyStateComponent,
+    ErrorBannerComponent,
     FilterFieldComponent,
     FilterPopupComponent,
     MatButtonModule,
@@ -157,6 +160,9 @@ export const ASSIGNMENT_COLUMNS: TableColumn<Scorecard>[] = [
         <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
       </app-empty-state>
     } @else {
+      @if (page.error()) {
+        <app-error-banner [message]="errorText()" (retry)="page.reload()" />
+      }
       <app-data-table
         caption="KPI assignments"
         [columns]="columns"
@@ -224,7 +230,7 @@ export const ASSIGNMENT_COLUMNS: TableColumn<Scorecard>[] = [
 export class AssignmentListComponent {
   private readonly scorecards = inject(ScorecardDataService);
   private readonly periodsApi = inject(EvaluationPeriodDataService);
-  private readonly departmentsApi = inject(DepartmentDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
   private readonly toast = inject(UiNotificationService);
@@ -252,20 +258,24 @@ export class AssignmentListComponent {
     PagedResult<Scorecard> | undefined,
     PagedResult<Scorecard> | undefined
   >({
-    source: this.page.value,
+    source: () => safeValue(this.page),
     computation: (value, previous) => value ?? previous?.value,
   });
   protected readonly errorText = computed(() =>
     this.page.error() ? errorMessage(this.page.error()) : '',
   );
 
+  /** Filter options; departments from the organization lookup. Each part falls back to none. */
   private readonly lookups = rxResource({
     stream: () =>
-      forkJoin({ periods: this.periodsApi.getAll(), departments: this.departmentsApi.getAll() }),
+      forkJoin({
+        periods: this.periodsApi.getAll().pipe(catchError(() => of([] as EvaluationPeriod[]))),
+        departments: this.lookupService.organization().pipe(map((o) => o.departments)),
+      }),
   });
 
   protected readonly filters = computed<FilterConfig[]>(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     return [
       { key: 'periodId', label: 'Period', options: options(l?.periods ?? [], (p) => p.name) },
       {

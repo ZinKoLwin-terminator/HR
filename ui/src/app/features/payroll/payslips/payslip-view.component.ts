@@ -9,6 +9,7 @@ import { PrintService } from '../../../core/services/print.service';
 import { PayslipDataService } from '../../../core/services/data/payroll-data.services';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PayslipSheetComponent } from './payslip-sheet.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Printable payslip preview. Clearly marked as sample data. */
 @Component({
@@ -35,7 +36,7 @@ export class PayslipViewComponent {
     params: () => ({ id: Number(this.id()) }),
     stream: ({ params }) => this.payslipsApi.getById(params.id),
   });
-  protected readonly payslip = computed(() => this.resource.value() ?? null);
+  protected readonly payslip = computed(() => safeValue(this.resource) ?? null);
 
   protected back(): void {
     this.location.back();

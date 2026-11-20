@@ -38,6 +38,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { todayIso } from '../../../shared/utilities/date.util';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 interface Card {
   application: Application;
@@ -98,7 +99,7 @@ import {
           pageActions
           mat-flat-button
           type="button"
-          [disabled]="!data.value()"
+          [disabled]="!data.hasValue()"
           (click)="addApplication()"
         >
           <mat-icon>person_add</mat-icon>Add application
@@ -110,7 +111,7 @@ import {
       <app-empty-state icon="error" title="The pipeline could not be loaded">
         <button mat-flat-button type="button" (click)="data.reload()">Try again</button>
       </app-empty-state>
-    } @else if (data.value()) {
+    } @else if (data.hasValue()) {
       <div class="board">
         @for (stage of stages; track stage) {
           <section class="column" [attr.aria-labelledby]="'stage-' + stage">
@@ -295,13 +296,13 @@ export class RecruitmentPipelineComponent {
   });
 
   protected readonly jobOptions = computed(() =>
-    [...(this.data.value()?.jobs ?? [])]
+    [...(safeValue(this.data)?.jobs ?? [])]
       .filter((j) => j.status !== 'Draft')
       .sort((a, b) => a.title.localeCompare(b.title)),
   );
 
   protected readonly columns = computed<Record<ApplicationStage, Card[]>>(() => {
-    const d = this.data.value();
+    const d = safeValue(this.data);
     const result: Record<ApplicationStage, Card[]> = {
       Applied: [],
       Screening: [],
@@ -431,7 +432,7 @@ export class RecruitmentPipelineComponent {
   }
 
   protected addApplication(): void {
-    const d = this.data.value();
+    const d = safeValue(this.data);
     if (!d) return;
     const data: EntityFormDialogData<Application> = {
       title: 'Add application',

@@ -38,6 +38,7 @@ import { assignmentMessage } from '../shared/assignment-rows';
 import { ReviewHistoryComponent } from '../shared/review-history.component';
 import { ScorecardItemsTableComponent } from '../shared/scorecard-items-table.component';
 import { AssignKpisDialogComponent, AssignKpisDialogData } from './assign-kpis-dialog.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** The plan can be finalized only when the weights add up to exactly 100%. */
 export const canFinalizePlan = (items: readonly Pick<ScorecardItem, 'weight'>[]): boolean =>
@@ -394,7 +395,7 @@ export class PlanDetailComponent {
     params: () => Number(this.id()),
     stream: ({ params }) => this.scorecards.getById(params),
   });
-  protected readonly card = computed<ScorecardDetail | null>(() => this.detail.value() ?? null);
+  protected readonly card = computed<ScorecardDetail | null>(() => safeValue(this.detail) ?? null);
   protected readonly busy = computed(() => this.writing() || this.detail.isLoading());
   protected readonly notFound = computed(() => {
     const error = this.detail.error();
@@ -422,7 +423,11 @@ export class PlanDetailComponent {
    * Undefined while unknown (no employee access); null when the employee has no manager.
    */
   private readonly manager = rxResource({
-    params: () => (this.editable() ? this.card()?.employeeId : undefined),
+    // Only roles that can read employees ask (others would get a 403): the name stays unknown.
+    params: () =>
+      this.editable() && this.permissions.can('employees:View')
+        ? this.card()?.employeeId
+        : undefined,
     stream: ({ params }) =>
       this.employees.getById(params).pipe(
         switchMap((employee) =>
@@ -433,7 +438,7 @@ export class PlanDetailComponent {
         catchError(() => of<string | null | undefined>(undefined)),
       ),
   });
-  protected readonly managerName = computed(() => this.manager.value() ?? null);
+  protected readonly managerName = computed(() => safeValue(this.manager) ?? null);
 
   protected reload(): void {
     this.conflict.set('');
@@ -531,7 +536,7 @@ export class PlanDetailComponent {
 
   /** The sentence of the finalize confirmation that names the reviewer. */
   protected reviewerSentence(): string {
-    const reviewer = this.manager.value();
+    const reviewer = safeValue(this.manager);
     if (reviewer) {
       return `The reviewer will be ${reviewer}, the employee's current manager.`;
     }

@@ -1,14 +1,15 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { forkJoin, map } from 'rxjs';
+import { catchError, forkJoin, map, of } from 'rxjs';
+import { EmployeeLookupItem } from '../../../core/models/employee.models';
 import {
+  Application,
   JOB_OPENING_STATUSES,
   JobOpening,
   JobOpeningStatus,
   RECRUITMENT_EMPLOYMENT_TYPES,
 } from '../../../core/models/recruitment.models';
-import { DepartmentDataService } from '../../../core/services/data/organization-data.services';
 import { EmployeeLookupDataService } from '../../../core/services/data/employee-data.service';
 import {
   ApplicationDataService,
@@ -21,7 +22,13 @@ import {
   FieldOption,
 } from '../../../shared/components/crud/crud.models';
 import { todayIso } from '../../../shared/utilities/date.util';
-import { nameMap, options } from '../../organization/organization-lookups';
+import { PermissionService } from '../../../core/services/permission.service';
+import {
+  OrganizationLookupService,
+  nameMap,
+  options,
+} from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Most rows the picker asks for in one request (the API's page limit). */
 const MANAGER_PICKER_SIZE = 200;
@@ -43,19 +50,27 @@ const toOptions = (values: readonly string[]): FieldOption[] =>
 })
 export class JobOpeningsPageComponent {
   private readonly jobs = inject(JobOpeningDataService);
-  private readonly departmentsApi = inject(DepartmentDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
+  private readonly permissions = inject(PermissionService);
   private readonly employeeLookup = inject(EmployeeLookupDataService);
   private readonly applicationsApi = inject(ApplicationDataService);
   private readonly lookups = rxResource({
     stream: () =>
       forkJoin({
-        departments: this.departmentsApi.getAll(),
-        // The picker needs only the non-personal lookup, so a recruiter without access to the
-        // employee module can still choose a hiring manager.
-        managers: this.employeeLookup
-          .query({ pageIndex: 0, pageSize: MANAGER_PICKER_SIZE })
-          .pipe(map((page) => page.items)),
-        applications: this.applicationsApi.getAll(),
+        // From the organization lookup (any signed-in user): a recruiter has no organization:View,
+        // and the Department field is required.
+        departments: this.lookupService.organization().pipe(map((o) => o.departments)),
+        // The picker needs only the non-personal lookup (recruitment:Edit or employees:View), so a
+        // recruiter without access to the employee module can still choose a hiring manager.
+        managers:
+          this.permissions.can('recruitment:Edit') || this.permissions.can('employees:View')
+            ? this.employeeLookup.query({ pageIndex: 0, pageSize: MANAGER_PICKER_SIZE }).pipe(
+                map((page) => page.items),
+                catchError(() => of([] as EmployeeLookupItem[])),
+              )
+            : of([] as EmployeeLookupItem[]),
+        // Applicant counts; none when they cannot be read (the list below still renders).
+        applications: this.applicationsApi.getAll().pipe(catchError(() => of([] as Application[]))),
       }),
   });
 
@@ -79,7 +94,7 @@ export class JobOpeningsPageComponent {
   }
 
   protected readonly config = computed<CrudPageConfig<JobOpening> | null>(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     if (!l) {
       return null;
     }

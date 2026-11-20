@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { Router, RouterLink } from '@angular/router';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import { PagedResult, PageRequest } from '../../../core/models/common.models';
 import { Scorecard, ScorecardFilter } from '../../../core/models/kpi.models';
@@ -12,13 +12,13 @@ import {
   EvaluationPeriodDataService,
   ScorecardDataService,
 } from '../../../core/services/data/kpi-data.services';
-import { DepartmentDataService } from '../../../core/services/data/organization-data.services';
 import { errorMessage } from '../../../core/services/ui-notification.service';
 import { FilterConfig } from '../../../shared/components/crud/crud.models';
 import { CellTemplateDirective } from '../../../shared/components/data-table/cell-template.directive';
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import {
   FilterFieldComponent,
   FilterPopupComponent,
@@ -27,11 +27,12 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 import { ListQuery } from '../../../shared/utilities/list-query';
-import { options } from '../../organization/organization-lookups';
+import { OrganizationLookupService, options } from '../../organization/organization-lookups';
 import { textOptions } from '../shared/kpi-options';
 import { LateChipComponent } from '../shared/late-chip.component';
 import { rowIsLate } from '../shared/period-due-dates';
 import { REVIEW_QUEUE_STATUSES, overallText, stageLabel } from '../shared/scorecard-rules';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** The queue's columns. The server's order (oldest submission first) is kept: nothing sorts here. */
 export const REVIEW_QUEUE_COLUMNS: TableColumn<Scorecard>[] = [
@@ -57,6 +58,7 @@ export const REVIEW_QUEUE_COLUMNS: TableColumn<Scorecard>[] = [
     CellTemplateDirective,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
     FilterFieldComponent,
     FilterPopupComponent,
     LateChipComponent,
@@ -109,6 +111,9 @@ export const REVIEW_QUEUE_COLUMNS: TableColumn<Scorecard>[] = [
         <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
       </app-empty-state>
     } @else {
+      @if (page.error()) {
+        <app-error-banner [message]="errorText()" (retry)="page.reload()" />
+      }
       <app-data-table
         caption="Scorecards waiting for review"
         [columns]="columns"
@@ -168,7 +173,7 @@ export const REVIEW_QUEUE_COLUMNS: TableColumn<Scorecard>[] = [
 export class ReviewQueueComponent {
   private readonly scorecards = inject(ScorecardDataService);
   private readonly periodsApi = inject(EvaluationPeriodDataService);
-  private readonly departmentsApi = inject(DepartmentDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
   private readonly router = inject(Router);
   private readonly appConfig = inject(APP_CONFIG);
 
@@ -189,7 +194,7 @@ export class ReviewQueueComponent {
     PagedResult<Scorecard> | undefined,
     PagedResult<Scorecard> | undefined
   >({
-    source: this.page.value,
+    source: () => safeValue(this.page),
     computation: (value, previous) => value ?? previous?.value,
   });
   protected readonly errorText = computed(() =>
@@ -197,19 +202,20 @@ export class ReviewQueueComponent {
   );
 
   /**
-   * The period picker needs no setup permission. A reviewer who cannot list departments still
+   * The period picker needs no setup permission; departments come from the organization lookup
+   * (any signed-in user). A reviewer whose period list fails still
    * gets the queue, without that filter's options.
    */
   private readonly lookups = rxResource({
     stream: () =>
       forkJoin({
         periods: this.periodsApi.options().pipe(catchError(() => of([]))),
-        departments: this.departmentsApi.getAll().pipe(catchError(() => of([]))),
+        departments: this.lookupService.organization().pipe(map((o) => o.departments)),
       }),
   });
 
   protected readonly filters = computed<FilterConfig[]>(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     return [
       { key: 'periodId', label: 'Period', options: options(l?.periods ?? [], (p) => p.name) },
       {

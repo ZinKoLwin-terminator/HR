@@ -22,7 +22,7 @@ import {
   EvaluationPeriodDataService,
   KpiInsightDataService,
 } from '../../../core/services/data/kpi-data.services';
-import { CompanyDataService } from '../../../core/services/data/organization-data.services';
+import { OrganizationLookupService } from '../../organization/organization-lookups';
 import { PermissionService } from '../../../core/services/permission.service';
 import { errorMessage } from '../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -32,6 +32,7 @@ import { KpiDashboardView, kpiDashboardTabs } from './kpi-dashboard-views';
 import { KpiEmployeeViewComponent } from './kpi-employee-view.component';
 import { KpiHrViewComponent } from './kpi-hr-view.component';
 import { KpiManagerViewComponent } from './kpi-manager-view.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** A loaded dashboard, tagged with its view. */
 type Loaded =
@@ -219,7 +220,7 @@ type Loaded =
 export class KpiDashboardComponent {
   private readonly insights = inject(KpiInsightDataService);
   private readonly periodsApi = inject(EvaluationPeriodDataService);
-  private readonly companiesApi = inject(CompanyDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
   private readonly permissions = inject(PermissionService);
 
   protected readonly tabs = computed(() => kpiDashboardTabs((key) => this.permissions.can(key)));
@@ -265,7 +266,7 @@ export class KpiDashboardComponent {
   /** Keeps the last dashboard of the same view while the next one loads. */
   protected readonly loaded = linkedSignal<Loaded | undefined, Loaded | undefined>({
     // value() throws while the resource is in error: read it only when there is one.
-    source: () => (this.dashboard.hasValue() ? this.dashboard.value() : undefined),
+    source: () => safeValue(this.dashboard),
     computation: (value, previous) =>
       value ?? (previous?.value?.view === this.view() ? previous.value : undefined),
   });
@@ -290,17 +291,18 @@ export class KpiDashboardComponent {
     stream: () => this.periodsApi.options().pipe(catchError(() => of([]))),
   });
   private readonly companies = rxResource({
-    stream: () => this.companiesApi.getAll().pipe(catchError(() => of([]))),
+    // From the organization lookup: no organization:View needed, never fails.
+    stream: () => this.lookupService.organization().pipe(map((o) => o.companies)),
   });
   protected readonly companyOptions = computed(() =>
-    (this.companies.value() ?? []).map((c) => ({ id: c.id, name: c.name })),
+    (safeValue(this.companies) ?? []).map((c) => ({ id: c.id, name: c.name })),
   );
 
   /** The picker's periods (not Draft), plus the shown one if the list lacks it. */
   protected readonly periodOptions = computed<
     Pick<EvaluationPeriodOption, 'id' | 'name' | 'status'>[]
   >(() => {
-    const list = this.periods.value() ?? [];
+    const list = safeValue(this.periods) ?? [];
     const shown = this.shownPeriod();
     return shown && !list.some((p) => p.id === shown.id) ? [shown, ...list] : list;
   });

@@ -21,6 +21,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { PayrollTrendChartComponent } from './payroll-trend-chart.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Past payroll periods with a gross vs net trend (sample data). */
 import {
@@ -64,7 +65,7 @@ export class PayrollHistoryComponent {
   protected readonly resource = rxResource({ stream: () => this.runsApi.getAll() });
   /** Processed periods only (drafts have no figures), newest first. */
   private readonly processed = computed(() =>
-    (this.resource.value() ?? [])
+    (safeValue(this.resource) ?? [])
       .filter((r) => r.status !== 'Draft')
       .sort((a, b) => b.startDate.localeCompare(a.startDate)),
   );

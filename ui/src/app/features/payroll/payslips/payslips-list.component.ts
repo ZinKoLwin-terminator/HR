@@ -13,10 +13,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import { PagedResult } from '../../../core/models/common.models';
-import { Payslip, PayslipFilter } from '../../../core/models/payroll.models';
+import { PayrollRun, Payslip, PayslipFilter } from '../../../core/models/payroll.models';
 import {
   PayrollRunDataService,
   PayslipDataService,
@@ -29,6 +29,7 @@ import {
   TableColumn,
 } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import {
   FilterFieldComponent,
@@ -41,6 +42,7 @@ import {
   employeeOptions,
   options,
 } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Payslips across periods, filterable by period, employee and department. */
 @Component({
@@ -56,6 +58,7 @@ import {
     SearchFieldComponent,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
   ],
   templateUrl: './payslips-list.component.html',
   styleUrl: './payslips-list.component.scss',
@@ -74,20 +77,25 @@ export class PayslipsListComponent {
   });
 
   private readonly lookups = rxResource({
-    stream: () => forkJoin({ org: this.lookupService.load(), runs: this.runsApi.getAll() }),
+    // Each part falls back on its own (load() never fails), so the list below is never blocked.
+    stream: () =>
+      forkJoin({
+        org: this.lookupService.load(),
+        runs: this.runsApi.getAll().pipe(catchError(() => of([] as PayrollRun[]))),
+      }),
   });
   /** Periods that have payslips, newest first. */
   protected readonly periodOptions = computed(() =>
-    (this.lookups.value()?.runs ?? [])
+    (safeValue(this.lookups)?.runs ?? [])
       .filter((r) => r.status !== 'Draft')
       .sort((a, b) => b.startDate.localeCompare(a.startDate))
       .map((r) => ({ value: r.id, label: r.periodName })),
   );
   protected readonly employeeOptions = computed(() =>
-    employeeOptions(this.lookups.value()?.org.employees ?? []),
+    employeeOptions(safeValue(this.lookups)?.org.employees ?? []),
   );
   protected readonly departmentOptions = computed(() =>
-    options(this.lookups.value()?.org.departments ?? [], (d) => d.name),
+    options(safeValue(this.lookups)?.org.departments ?? [], (d) => d.name),
   );
 
   /** Removable chips describing every applied filter. */
@@ -134,7 +142,7 @@ export class PayslipsListComponent {
     PagedResult<Payslip> | undefined,
     PagedResult<Payslip> | undefined
   >({
-    source: this.page.value,
+    source: () => safeValue(this.page),
     computation: (value, previous) => value ?? previous?.value,
   });
   protected readonly errorText = computed(() =>
@@ -171,7 +179,9 @@ export class PayslipsListComponent {
   constructor() {
     // Start on the most recent processed period.
     effect(() => {
-      if (this.lookups.value() && !untracked(this.defaulted)) {
+      // Settled (loaded or failed): the payslip query must start either way.
+      const settled = this.lookups.hasValue() || !!this.lookups.error();
+      if (settled && !untracked(this.defaulted)) {
         const periods = this.periodOptions();
         if (periods.length) {
           this.query.setFilter('runId', periods[0].value);
@@ -180,7 +190,7 @@ export class PayslipsListComponent {
       }
     });
     effect(() => {
-      const value = this.page.value();
+      const value = safeValue(this.page);
       if (value && value.pageIndex !== this.query.pageIndex()) {
         this.query.pageIndex.set(value.pageIndex);
       }

@@ -23,11 +23,12 @@ import { CellTemplateDirective } from '../../../shared/components/data-table/cel
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ISO_DATE_FORMATS, IsoDateAdapter } from '../../../shared/forms/iso-date-adapter';
 import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 import { ListQuery } from '../../../shared/utilities/list-query';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** The actions of the access log, for the filter. */
 const ACTIONS: readonly GrievanceAuditAction[] = [
@@ -70,6 +71,7 @@ export const GRIEVANCE_ACCESS_LOG_COLUMNS: TableColumn<AuditRow>[] = [
     CellTemplateDirective,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
     MatButtonModule,
     MatDatepickerModule,
     MatFormFieldModule,
@@ -147,6 +149,9 @@ export const GRIEVANCE_ACCESS_LOG_COLUMNS: TableColumn<AuditRow>[] = [
           <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
         </app-empty-state>
       } @else {
+        @if (page.error()) {
+          <app-error-banner [message]="errorText()" (retry)="page.reload()" />
+        }
         <app-data-table
           caption="Grievance access log"
           [columns]="columns"

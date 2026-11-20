@@ -2,7 +2,7 @@
   <app-empty-state icon="error" title="Import options could not be loaded">
     <button mat-flat-button type="button" (click)="catalog.reload()">Try again</button>
   </app-empty-state>
-} @else if (catalog.isLoading() && !catalog.value()) {
+} @else if (catalog.isLoading() && !catalog.hasValue()) {
   <mat-progress-bar mode="indeterminate" aria-label="Loading import options" />
 } @else if (modules().length === 0) {
   <app-empty-state

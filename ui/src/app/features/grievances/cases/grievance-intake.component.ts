@@ -46,7 +46,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { ISO_DATE_FORMATS, IsoDateAdapter } from '../../../shared/forms/iso-date-adapter';
 import { todayIso } from '../../../shared/utilities/date.util';
 import { HrmsValidators } from '../../../shared/validators/hrms-validators';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** The employee picker holds the typed text until an employee is chosen from the list. */
 type EmployeeValue = GrievanceEmployeeOption | string | null;

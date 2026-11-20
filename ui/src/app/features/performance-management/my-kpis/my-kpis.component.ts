@@ -11,6 +11,7 @@ import { CellTemplateDirective } from '../../../shared/components/data-table/cel
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
 import { ListQuery } from '../../../shared/utilities/list-query';
@@ -18,6 +19,7 @@ import { LateChipComponent } from '../shared/late-chip.component';
 import { rowIsLate } from '../shared/period-due-dates';
 import { overallText } from '../shared/scorecard-rules';
 import { injectScorecardViewer } from '../shared/scorecard-viewer';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** The columns of My KPIs. The server's order (newest period first) is kept: nothing sorts here. */
 export const MY_KPI_COLUMNS: TableColumn<Scorecard>[] = [
@@ -41,6 +43,7 @@ export const MY_KPI_COLUMNS: TableColumn<Scorecard>[] = [
     CellTemplateDirective,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
     LateChipComponent,
     MatButtonModule,
     PageHeaderComponent,
@@ -63,6 +66,9 @@ export const MY_KPI_COLUMNS: TableColumn<Scorecard>[] = [
         <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
       </app-empty-state>
     } @else {
+      @if (page.error()) {
+        <app-error-banner [message]="errorText()" (retry)="page.reload()" />
+      }
       <app-data-table
         caption="My KPI scorecards"
         [columns]="columns"
@@ -142,7 +148,7 @@ export class MyKpisComponent {
     PagedResult<Scorecard> | undefined,
     PagedResult<Scorecard> | undefined
   >({
-    source: this.page.value,
+    source: () => safeValue(this.page),
     computation: (value, previous) => value ?? previous?.value,
   });
   protected readonly errorText = computed(() =>

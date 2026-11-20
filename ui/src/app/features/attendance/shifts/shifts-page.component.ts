@@ -1,8 +1,12 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { WEEKDAYS, describeWorkDays } from '../../../core/constants/weekdays';
+import { Employee } from '../../../core/models/employee.models';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
+import { PermissionService } from '../../../core/services/permission.service';
+import { safeValue } from '../../../shared/utilities/resource-value';
 import { ShiftDataService } from '../../../core/services/data/attendance-data.services';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
@@ -26,15 +30,25 @@ const WEEKDAY_OPTIONS = WEEKDAYS.map((d) => ({ value: d.value, label: d.label })
 export class ShiftsPageComponent {
   private readonly shifts = inject(ShiftDataService);
   private readonly employeesApi = inject(EmployeeDataService);
-  protected readonly employees = rxResource({ stream: () => this.employeesApi.getAll() });
+  private readonly permissions = inject(PermissionService);
+  /**
+   * Employees, for the per-shift head count: only with employees:View, so other roles get no 403.
+   * `null` (no permission, or the request failed) hides the Employees column.
+   */
+  protected readonly employees = rxResource({
+    stream: () =>
+      this.permissions.can('employees:View')
+        ? this.employeesApi.getAll().pipe(catchError(() => of(null)))
+        : of(null as Employee[] | null),
+  });
 
   protected readonly config = computed<CrudPageConfig<Shift> | null>(() => {
-    const people = this.employees.value();
-    if (!people) {
+    const people = safeValue(this.employees);
+    if (people === undefined) {
       return null;
     }
     const assigned = new Map<number, number>();
-    for (const e of people) {
+    for (const e of people ?? []) {
       if (e.shiftId !== null) assigned.set(e.shiftId, (assigned.get(e.shiftId) ?? 0) + 1);
     }
     return {
@@ -81,14 +95,18 @@ export class ShiftsPageComponent {
           hideBelow: 'sm',
           value: (s) => describeWorkDays(s.workDays),
         },
-        {
-          key: 'assigned',
-          header: 'Employees',
-          type: 'number',
-          align: 'end',
-          hideBelow: 'md',
-          value: (s) => assigned.get(s.id) ?? 0,
-        },
+        ...(people
+          ? [
+              {
+                key: 'assigned',
+                header: 'Employees',
+                type: 'number' as const,
+                align: 'end' as const,
+                hideBelow: 'md' as const,
+                value: (s: Shift) => assigned.get(s.id) ?? 0,
+              },
+            ]
+          : []),
         { key: 'status', header: 'Status', type: 'status', sortable: true },
       ],
       newItem: () => ({

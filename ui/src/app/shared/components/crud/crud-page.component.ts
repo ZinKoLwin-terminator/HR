@@ -40,10 +40,12 @@ import {
 import { MoneyPipe } from '../../pipes/money.pipe';
 import { ListQuery } from '../../utilities/list-query';
 import { readAllPages } from '../../utilities/paged-query';
+import { safeValue } from '../../utilities/resource-value';
 import { ExcelActionsComponent } from '../excel/excel-actions.component';
 import { DataTableComponent } from '../data-table/data-table.component';
 import { TableAction, TableActionEvent, TableColumn } from '../data-table/data-table.models';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../error-banner/error-banner.component';
 import { FilterFieldComponent, FilterPopupComponent } from '../filter-popup/filter-popup.component';
 import { PageHeaderComponent } from '../page-header/page-header.component';
 import { PrintHeaderComponent } from '../print/print-header.component';
@@ -100,6 +102,7 @@ function permissionModuleOf(snapshot: ActivatedRouteSnapshot | null): string | n
     SearchFieldComponent,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
   ],
   templateUrl: './crud-page.component.html',
   styleUrl: './crud-page.component.scss',
@@ -136,7 +139,9 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
 
   /** Holds the last loaded page so the table does not blank while refetching. */
   protected readonly result = linkedSignal<PagedResult<T> | undefined, PagedResult<T> | undefined>({
-    source: this.page.value,
+    // Not `this.page.value`: that throws in the error state, which froze the page instead of
+    // showing its error message.
+    source: () => safeValue(this.page),
     computation: (value, previous) => value ?? previous?.value,
   });
 
@@ -250,7 +255,7 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
     this.printer.afterPrint$.pipe(takeUntilDestroyed()).subscribe(() => this.printRows.set(null));
     // Deleting the last item of the last page makes the server clamp the index; follow it.
     effect(() => {
-      const value = this.page.value();
+      const value = safeValue(this.page);
       if (value && value.pageIndex !== this.query.pageIndex()) {
         this.query.pageIndex.set(value.pageIndex);
       }

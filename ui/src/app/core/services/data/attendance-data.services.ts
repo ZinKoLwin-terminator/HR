@@ -11,11 +11,21 @@ import {
   PunchRequest,
   ScheduleQuery,
   Shift,
+  ShiftRef,
   WorkSchedule,
 } from '../../models/attendance.models';
 import { CrudDataService } from './crud-data.service';
 
 export abstract class ShiftDataService extends CrudDataService<Shift> {}
+
+/**
+ * Every shift (inactive ones included) as a name source, for screens outside attendance (the
+ * profile's Employment tab). The API serves it to any signed-in user (`GET /api/shifts/lookup`),
+ * unlike the full list (attendance:View).
+ */
+export abstract class ShiftLookupDataService {
+  abstract getLookup(): Observable<ShiftRef[]>;
+}
 export abstract class HolidayDataService extends CrudDataService<Holiday> {}
 
 export abstract class AttendanceRecordDataService extends CrudDataService<

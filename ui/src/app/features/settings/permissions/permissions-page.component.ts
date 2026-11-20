@@ -25,6 +25,7 @@ import { PermissionService } from '../../../core/services/permission.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Normalised, comparable form of a grant set. */
 const normalise = (grants: PermissionGrants): string =>
@@ -66,7 +67,7 @@ const normalise = (grants: PermissionGrants): string =>
           Try again
         </button>
       </app-empty-state>
-    } @else if (roles.value(); as roleList) {
+    } @else if (roles.hasValue() ? roles.value() : undefined; as roleList) {
       <div class="toolbar">
         <mat-form-field subscriptSizing="dynamic">
           <mat-label>Role</mat-label>
@@ -97,7 +98,7 @@ const normalise = (grants: PermissionGrants): string =>
         </p>
       }
 
-      @if (permissions.value()) {
+      @if (permissions.hasValue()) {
         <div class="table-wrap">
           <table class="matrix">
             <caption class="sr-only">
@@ -223,7 +224,7 @@ export class PermissionsPageComponent implements HasUnsavedChanges {
 
   protected readonly roles = rxResource({ stream: () => this.rolesApi.getAll() });
   protected readonly roleId = linkedSignal<number | null>(() => {
-    const list = this.roles.value();
+    const list = safeValue(this.roles);
     if (!list?.length) {
       return null;
     }
@@ -235,15 +236,15 @@ export class PermissionsPageComponent implements HasUnsavedChanges {
     stream: ({ params }) => this.permissionsApi.getForRole(params),
   });
   protected readonly grants = linkedSignal<PermissionGrants>(() =>
-    structuredClone(this.permissions.value()?.grants ?? {}),
+    structuredClone(safeValue(this.permissions)?.grants ?? {}),
   );
 
   protected readonly roleName = computed(
-    () => this.roles.value()?.find((r) => r.id === this.roleId())?.name ?? '',
+    () => safeValue(this.roles)?.find((r) => r.id === this.roleId())?.name ?? '',
   );
   protected readonly locked = computed(() => this.roleName() === ADMIN_ROLE_NAME);
   protected readonly dirty = computed(
-    () => normalise(this.grants()) !== normalise(this.permissions.value()?.grants ?? {}),
+    () => normalise(this.grants()) !== normalise(safeValue(this.permissions)?.grants ?? {}),
   );
 
   hasUnsavedChanges(): boolean {
@@ -287,7 +288,7 @@ export class PermissionsPageComponent implements HasUnsavedChanges {
   }
 
   protected reset(): void {
-    this.grants.set(structuredClone(this.permissions.value()?.grants ?? {}));
+    this.grants.set(structuredClone(safeValue(this.permissions)?.grants ?? {}));
   }
 
   protected save(): void {

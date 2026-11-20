@@ -33,7 +33,7 @@ import {
   priorityBars,
   statusBars,
 } from './grievance-insight-bars';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /**
  * The reviewers' summary (`grievance-review:View`): the review queue in figures (pending proposals,

@@ -2,11 +2,12 @@ import { Component, computed, inject, input } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Employee, fullName } from '../../../../core/models/employee.models';
-import { ShiftDataService } from '../../../../core/services/data/attendance-data.services';
+import { ShiftLookupDataService } from '../../../../core/services/data/attendance-data.services';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
 import { formatTenure, todayIso } from '../../../../shared/utilities/date.util';
 import { OrgLookups, nameMap } from '../../../organization/organization-lookups';
 import { AppDatePipe } from '../../../../shared/pipes/app-date.pipe';
+import { safeValue } from '../../../../shared/utilities/resource-value';
 
 @Component({
   selector: 'app-profile-employment-tab',
@@ -148,8 +149,9 @@ import { AppDatePipe } from '../../../../shared/pipes/app-date.pipe';
 export class ProfileEmploymentTabComponent {
   readonly employee = input.required<Employee>();
   readonly org = input.required<OrgLookups>();
-  private readonly shiftsApi = inject(ShiftDataService);
-  private readonly shifts = rxResource({ stream: () => this.shiftsApi.getAll() });
+  /** The shift lookup (any signed-in user), so roles without attendance:View see the shift name. */
+  private readonly shiftsApi = inject(ShiftLookupDataService);
+  private readonly shifts = rxResource({ stream: () => this.shiftsApi.getLookup() });
 
   protected readonly tenure = computed(() => {
     const e = this.employee();
@@ -165,20 +167,20 @@ export class ProfileEmploymentTabComponent {
       section: nameMap(o.sections, (s) => s.name),
       position: nameMap(o.positions, (p) => p.title),
       grade: nameMap(o.grades, (g) => `${g.code} · ${g.name}`),
-      person: nameMap(o.employees, (e) => fullName(e)),
+      person: nameMap(o.employees, (e) => e.displayName),
     };
   });
 
   protected readonly shiftName = computed(() => {
     const id = this.employee().shiftId;
-    const shift = this.shifts.value()?.find((s) => s.id === id);
+    const shift = safeValue(this.shifts)?.find((s) => s.id === id);
     return shift ? `${shift.name} (${shift.startTime}–${shift.endTime})` : '—';
   });
 
   protected readonly reports = computed(() => {
     const o = this.org();
     const title = nameMap(o.positions, (p) => p.title);
-    return o.employees
+    return o.employeeRecords
       .filter((e) => e.managerId === this.employee().id)
       .map((e) => ({ id: e.id, name: fullName(e), title: title(e.positionId) }))
       .sort((a, b) => a.name.localeCompare(b.name));

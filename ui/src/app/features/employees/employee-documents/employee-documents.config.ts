@@ -1,10 +1,14 @@
 import { DOCUMENT_TYPES, EmployeeDocument } from '../../../core/models/employee-extras.models';
-import { Employee, fullName } from '../../../core/models/employee.models';
+import { Employee } from '../../../core/models/employee.models';
 import { EmployeeDocumentDataService } from '../../../core/services/data/employee-extras-data.services';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { diffInDays, todayIso } from '../../../shared/utilities/date.util';
-import { employeeOptions } from '../../organization/organization-lookups';
+import {
+  EmployeeRef,
+  employeeLabel,
+  employeeOptions,
+} from '../../organization/organization-lookups';
 
 const formatDate = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', {
@@ -29,7 +33,7 @@ const typeOptions = DOCUMENT_TYPES.map((t) => ({ value: t, label: t }));
 export interface DocumentsConfigOptions {
   service: EmployeeDocumentDataService;
   /** All employees (names for the employee column / dropdown). */
-  employees: Employee[];
+  employees: readonly (EmployeeRef | Employee)[];
   /** When set, the screen is scoped to one employee (profile tab). */
   employeeId?: number;
 }
@@ -38,7 +42,7 @@ export function buildDocumentsConfig(
   opts: DocumentsConfigOptions,
 ): CrudPageConfig<EmployeeDocument> {
   const scoped = opts.employeeId !== undefined;
-  const names = new Map(opts.employees.map((e) => [e.id, `${fullName(e)} (${e.employeeCode})`]));
+  const names = new Map(opts.employees.map((e) => [e.id, employeeLabel(e)]));
   const employeeColumn: TableColumn<EmployeeDocument>[] = scoped
     ? []
     : [

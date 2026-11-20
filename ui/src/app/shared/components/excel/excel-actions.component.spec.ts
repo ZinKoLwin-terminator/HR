@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { provideRouter } from '@angular/router';
+import { AppError } from '../../../core/models/common.models';
 import { ExcelModuleInfo } from '../../../core/models/excel.models';
 import { ExcelModuleCatalogDataService } from '../../../core/services/data/excel-data.services';
 import { PermissionService } from '../../../core/services/permission.service';
@@ -28,7 +29,7 @@ describe('ExcelActionsComponent', () => {
     code: string,
     allowImport = true,
     modules: ExcelModuleInfo[] = [],
-    keys = ['excel:Import', 'excel:Export'],
+    keys = ['excel:View', 'excel:Import', 'excel:Export'],
   ) {
     granted = new Set(keys);
     TestBed.configureTestingModule({
@@ -76,7 +77,7 @@ describe('ExcelActionsComponent', () => {
   });
 
   it('follows the excel:Import and excel:Export permission keys', async () => {
-    create('departments', true, [info('departments', true, true)], ['excel:Export']);
+    create('departments', true, [info('departments', true, true)], ['excel:View', 'excel:Export']);
     await fixture.whenStable();
     fixture.detectChanges();
     expect(labels()).toEqual(['downloadExport']);
@@ -98,5 +99,70 @@ describe('ExcelActionsComponent', () => {
       moduleCode: 'departments',
       filters: { departmentId: 3 },
     });
+  });
+});
+
+describe('ExcelActionsComponent without Excel access or with a failing catalog', () => {
+  function setup(
+    keys: string[],
+    getModules: () => Observable<ExcelModuleInfo[]>,
+    allowImport = true,
+  ) {
+    const granted = new Set(keys);
+    let calls = 0;
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: ExcelModuleCatalogDataService,
+          useValue: { getModules: () => (calls++, getModules()) },
+        },
+        { provide: PermissionService, useValue: { can: (key: string) => granted.has(key) } },
+        { provide: ExcelExportService, useValue: { open: () => of(true) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(ExcelActionsComponent);
+    fixture.componentRef.setInput('moduleCode', 'departments');
+    fixture.componentRef.setInput('allowImport', allowImport);
+    fixture.detectChanges();
+    return { fixture, calls: () => calls };
+  }
+
+  it('does not request the catalog when the role can neither export nor import', async () => {
+    const { fixture, calls } = setup(['excel:View'], () => of([info('departments', true, true)]));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(calls()).toBe(0);
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('button, a')).toHaveLength(0);
+  });
+
+  it('does not request the catalog without excel:View (the API requires it)', async () => {
+    const { fixture, calls } = setup(['excel:Export', 'excel:Import'], () =>
+      of([info('departments', true, true)]),
+    );
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(calls()).toBe(0);
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('button, a')).toHaveLength(0);
+  });
+
+  it('does not request it for an import-only role on a screen that only exports', async () => {
+    const { fixture, calls } = setup(['excel:View', 'excel:Import'], () => of([]), false);
+    await fixture.whenStable();
+    expect(calls()).toBe(0);
+  });
+
+  it('shows no buttons and does not throw when the catalog answers 403', async () => {
+    const forbidden: AppError = {
+      code: 'Forbidden',
+      message: 'You do not have permission to do that.',
+    };
+    const { fixture, calls } = setup(['excel:View', 'excel:Export', 'excel:Import'], () =>
+      throwError(() => forbidden),
+    );
+    await fixture.whenStable();
+    expect(() => fixture.detectChanges()).not.toThrow();
+    expect(calls()).toBe(1);
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('button, a')).toHaveLength(0);
   });
 });

@@ -37,7 +37,7 @@ const RELATIONSHIPS = toOptions([
 
 export function buildEmployeeSections(l: EmployeeFormLookups): FormSection[] {
   const { org } = l;
-  const people = org.employees.filter((e) =>
+  const people = org.employeeRecords.filter((e) =>
     CURRENT_EMPLOYMENT_STATUSES.includes(e.employmentStatus),
   );
 

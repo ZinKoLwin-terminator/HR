@@ -27,6 +27,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { todayIso } from '../../../shared/utilities/date.util';
 import { OrganizationLookupService, nameMap } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /**
  * Letters and certificates for one employee, printed from the browser. The wording lives in
@@ -77,7 +78,7 @@ export class EmployeeLettersComponent {
     stream: ({ params }) =>
       forkJoin({
         employee: this.employeesApi.getById(params.id),
-        org: this.lookupService.load(),
+        org: this.lookupService.organization(),
       }),
   });
 
@@ -106,15 +107,15 @@ export class EmployeeLettersComponent {
         }),
       ),
   });
-  protected readonly leaveChoices = computed(() => this.leave.value() ?? []);
+  protected readonly leaveChoices = computed(() => safeValue(this.leave) ?? []);
 
   protected readonly employeeName = computed(() => {
-    const d = this.data.value();
+    const d = safeValue(this.data);
     return d ? fullName(d.employee) : '';
   });
 
   private readonly letterData = computed<LetterData | null>(() => {
-    const d = this.data.value();
+    const d = safeValue(this.data);
     if (!d) {
       return null;
     }

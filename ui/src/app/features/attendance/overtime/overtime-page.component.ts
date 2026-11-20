@@ -3,13 +3,16 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { APPROVAL_STATUSES, OvertimeRecord } from '../../../core/models/attendance.models';
 import { AuthService, SERVER_SESSION } from '../../../core/services/auth.service';
-import { fullName } from '../../../core/models/employee.models';
 import { OvertimeDataService } from '../../../core/services/data/attendance-data.services';
-import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
 import { todayIso } from '../../../shared/utilities/date.util';
-import { employeeOptions } from '../../organization/organization-lookups';
+import {
+  OrganizationLookupService,
+  employeeLabel,
+  employeeOptions,
+} from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 @Component({
   selector: 'app-overtime-page',
@@ -24,17 +27,18 @@ import { employeeOptions } from '../../organization/organization-lookups';
 })
 export class OvertimePageComponent {
   private readonly overtime = inject(OvertimeDataService);
-  private readonly employeesApi = inject(EmployeeDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
   private readonly apiMode = inject(SERVER_SESSION);
   private readonly auth = inject(AuthService);
-  private readonly employees = rxResource({ stream: () => this.employeesApi.getAll() });
+  /** The employees the role may see (everyone, or only the user's own); never fails. */
+  private readonly employees = rxResource({ stream: () => this.lookupService.employeeRefs() });
 
   protected readonly config = computed<CrudPageConfig<OvertimeRecord> | null>(() => {
-    const people = this.employees.value();
+    const people = safeValue(this.employees);
     if (!people) {
       return null;
     }
-    const names = new Map(people.map((e) => [e.id, `${fullName(e)} (${e.employeeCode})`]));
+    const names = new Map(people.map((e) => [e.id, employeeLabel(e)]));
     const pending = (o: OvertimeRecord) => o.status === 'Pending';
     // Nobody decides their own overtime (the server refuses it too).
     const own = this.auth.session()?.employeeId ?? null;

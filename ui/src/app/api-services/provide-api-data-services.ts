@@ -16,6 +16,7 @@ import {
   HolidayDataService,
   OvertimeDataService,
   ShiftDataService,
+  ShiftLookupDataService,
   WorkScheduleDataService,
 } from '../core/services/data/attendance-data.services';
 import {
@@ -23,6 +24,7 @@ import {
   CompanyDataService,
   DepartmentDataService,
   JobGradeDataService,
+  OrganizationLookupDataService,
   PositionDataService,
   SectionDataService,
 } from '../core/services/data/organization-data.services';
@@ -102,6 +104,7 @@ import {
   OvertimeHttpService,
 } from './attendance/attendance-approval-http.services';
 import { HolidayHttpService, ShiftHttpService } from './attendance/attendance-http.services';
+import { ShiftLookupHttpService } from './attendance/shift-lookup-http.service';
 import { AttendanceRecordHttpService } from './attendance/attendance-record-http.service';
 import {
   AttendanceOverviewHttpService,
@@ -156,6 +159,7 @@ import {
   PositionHttpService,
   SectionHttpService,
 } from './organization/organization-http.services';
+import { OrganizationLookupHttpService } from './organization/organization-lookup-http.service';
 
 export interface ApiDataOptions {
   /** Master switch. When false nothing is registered and the mocks stay in charge. */
@@ -193,6 +197,8 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     bind(SectionDataService, SectionHttpService),
     bind(JobGradeDataService, JobGradeHttpService),
     bind(PositionDataService, PositionHttpService),
+    // Names of every organization row for dropdowns (any signed-in user; no organization:View).
+    bind(OrganizationLookupDataService, OrganizationLookupHttpService),
     // Employees: list, record, personal, bank, status and read-only history.
     bind(EmployeeDataService, EmployeeHttpService),
     bind(EmploymentHistoryDataService, EmploymentHistoryHttpService),
@@ -261,6 +267,7 @@ export function provideApiDataServices(options: ApiDataOptions): EnvironmentProv
     },
     // Attendance: shifts, holidays, read-only records with punches, adjustments, overtime, overview, schedule.
     bind(ShiftDataService, ShiftHttpService),
+    bind(ShiftLookupDataService, ShiftLookupHttpService),
     bind(HolidayDataService, HolidayHttpService),
     bind(AttendanceRecordDataService, AttendanceRecordHttpService),
     bind(AttendanceAdjustmentDataService, AttendanceAdjustmentHttpService),

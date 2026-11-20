@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
@@ -13,8 +14,10 @@ import {
   LeaveBalanceDataService,
   LeaveTypeDataService,
 } from '../../../../core/services/data/leave-data.services';
+import { errorMessage } from '../../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
+import { safeValue } from '../../../../shared/utilities/resource-value';
 
 @Component({
   selector: 'app-profile-leave-tab',
@@ -22,6 +25,7 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
     DatePipe,
     DecimalPipe,
     RouterLink,
+    MatButtonModule,
     MatFormFieldModule,
     MatProgressBarModule,
     MatSelectModule,
@@ -29,8 +33,12 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
     EmptyStateComponent,
   ],
   template: `
-    @if (data.isLoading() && !data.value()) {
+    @if (data.isLoading() && !data.hasValue()) {
       <mat-progress-bar mode="indeterminate" aria-label="Loading leave" />
+    } @else if (data.error()) {
+      <app-empty-state icon="error" title="Leave could not be loaded" [message]="errorText()">
+        <button mat-flat-button type="button" (click)="data.reload()">Try again</button>
+      </app-empty-state>
     } @else {
       <section class="card" aria-labelledby="lv-balance">
         <div class="card__header">
@@ -190,6 +198,9 @@ export class ProfileLeaveTabComponent {
   protected readonly yearOptions = balanceYearOptions(new Date().getFullYear());
   protected readonly year = signal(new Date().getFullYear());
 
+  protected readonly errorText = computed(() =>
+    this.data.error() ? errorMessage(this.data.error()) : '',
+  );
   protected readonly data = rxResource({
     params: () => ({ id: this.employeeId() }),
     stream: ({ params }) =>
@@ -211,15 +222,15 @@ export class ProfileLeaveTabComponent {
     stream: ({ params }) => this.balancesApi.getForEmployee(params.id, params.year),
   });
 
-  protected readonly applications = computed(() => this.data.value()?.applications.items ?? []);
+  protected readonly applications = computed(() => safeValue(this.data)?.applications.items ?? []);
   /** Keeps the previous year's rows on screen while the next year loads. */
   protected readonly balances = linkedSignal<LeaveBalance[] | undefined, LeaveBalance[]>({
-    source: this.balanceData.value,
+    source: () => safeValue(this.balanceData),
     computation: (value, previous) => value ?? previous?.value ?? [],
   });
 
   protected typeName(id: number): string {
-    return this.data.value()?.types.find((t) => t.id === id)?.name ?? `#${id}`;
+    return safeValue(this.data)?.types.find((t) => t.id === id)?.name ?? `#${id}`;
   }
 
   protected usage(used: number, entitled: number): number {

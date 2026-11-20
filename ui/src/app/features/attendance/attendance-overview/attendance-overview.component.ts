@@ -15,12 +15,14 @@ import { AttendanceOverviewDataService } from '../../../core/services/data/atten
 import { errorMessage } from '../../../core/services/ui-notification.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
 import { addDays, todayIso } from '../../../shared/utilities/date.util';
 import { AttendanceTrendChartComponent } from '../../dashboard/widgets/attendance-trend-chart.component';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
 import { DepartmentAttendanceChartComponent } from './department-attendance-chart.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** How many days back to look for the latest working day when today has no records. */
 const MAX_STEP_BACK = 7;
@@ -46,6 +48,7 @@ import {
     PageHeaderComponent,
     StatCardComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
     AvatarComponent,
     AttendanceTrendChartComponent,
     DepartmentAttendanceChartComponent,
@@ -74,9 +77,9 @@ export class AttendanceOverviewComponent {
     this.branchId.set(null);
   }
 
-  private readonly lookups = rxResource({ stream: () => this.lookupService.load() });
+  private readonly lookups = rxResource({ stream: () => this.lookupService.organization() });
   protected readonly branchOptions = computed(() =>
-    options(this.lookups.value()?.branches ?? [], (b) => b.name),
+    options(safeValue(this.lookups)?.branches ?? [], (b) => b.name),
   );
 
   protected readonly resource = rxResource({
@@ -88,7 +91,7 @@ export class AttendanceOverviewComponent {
     AttendanceOverview | undefined,
     AttendanceOverview | undefined
   >({
-    source: this.resource.value,
+    source: () => safeValue(this.resource),
     computation: (value, previous) => value ?? previous?.value,
   });
   protected readonly errorText = computed(() =>
@@ -103,7 +106,7 @@ export class AttendanceOverviewComponent {
   constructor() {
     // Weekend / holiday: step back to the most recent day that has attendance.
     effect(() => {
-      const value = this.resource.value();
+      const value = safeValue(this.resource);
       if (
         value &&
         !this.userPickedDate &&

@@ -32,6 +32,7 @@ import {
   TableColumn,
 } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { ExcelExportService } from '../../../shared/components/excel/excel-export.service';
 import { PermissionService } from '../../../core/services/permission.service';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -43,6 +44,7 @@ import { SearchFieldComponent } from '../../../shared/components/search-field/se
 import { ISO_DATE_FORMATS, IsoDateAdapter } from '../../../shared/forms/iso-date-adapter';
 import { ListQuery } from '../../../shared/utilities/list-query';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 @Component({
   selector: 'app-employee-list',
@@ -62,6 +64,7 @@ import { OrganizationLookupService, options } from '../../organization/organizat
     CellTemplateDirective,
     AvatarComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
   ],
   providers: [
     { provide: DateAdapter, useClass: IsoDateAdapter },
@@ -89,12 +92,12 @@ export class EmployeeListComponent {
     sort: { active: 'employeeCode', direction: 'asc' },
   });
 
-  protected readonly lookups = rxResource({ stream: () => this.lookupService.load() });
+  protected readonly lookups = rxResource({ stream: () => this.lookupService.organization() });
   protected readonly departmentOptions = computed(() =>
-    options(this.lookups.value()?.departments ?? [], (d) => d.name),
+    options(safeValue(this.lookups)?.departments ?? [], (d) => d.name),
   );
   protected readonly branchOptions = computed(() =>
-    options(this.lookups.value()?.branches ?? [], (b) => b.name),
+    options(safeValue(this.lookups)?.branches ?? [], (b) => b.name),
   );
   protected readonly statusOptions = EMPLOYMENT_STATUSES;
   protected readonly typeOptions = EMPLOYMENT_TYPES;
@@ -142,7 +145,7 @@ export class EmployeeListComponent {
     PagedResult<EmployeeListItem> | undefined,
     PagedResult<EmployeeListItem> | undefined
   >({
-    source: this.page.value,
+    source: () => safeValue(this.page),
     computation: (value, previous) => value ?? previous?.value,
   });
   protected readonly errorText = computed(() =>
@@ -190,7 +193,7 @@ export class EmployeeListComponent {
     });
     // After a delete on the last page the service clamps the index; follow it.
     effect(() => {
-      const value = this.page.value();
+      const value = safeValue(this.page);
       if (value && value.pageIndex !== this.query.pageIndex()) {
         this.query.pageIndex.set(value.pageIndex);
       }

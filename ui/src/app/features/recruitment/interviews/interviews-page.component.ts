@@ -1,14 +1,19 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { forkJoin, map } from 'rxjs';
+import { catchError, forkJoin, map, of } from 'rxjs';
+import { EmployeeLookupItem } from '../../../core/models/employee.models';
 import {
+  Application,
+  Candidate,
   INTERVIEW_MODES,
   INTERVIEW_RECOMMENDATIONS,
   INTERVIEW_ROUNDS,
   Interview,
+  JobOpening,
   candidateName,
 } from '../../../core/models/recruitment.models';
+import { PermissionService } from '../../../core/services/permission.service';
 import { EmployeeLookupDataService } from '../../../core/services/data/employee-data.service';
 import {
   ApplicationDataService,
@@ -19,6 +24,7 @@ import {
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig, FieldOption } from '../../../shared/components/crud/crud.models';
 import { todayIso } from '../../../shared/utilities/date.util';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const toOptions = (values: readonly string[]): FieldOption[] =>
   values.map((v) => ({ value: v, label: v }));
@@ -48,20 +54,30 @@ export class InterviewsPageComponent {
   // Interviewers come from the non-personal lookup (current employees), so a recruiter without
   // access to the employee module can still schedule interviews.
   private readonly employeeLookup = inject(EmployeeLookupDataService);
+  private readonly permissions = inject(PermissionService);
+  /**
+   * Names for the list and the form. Each part falls back to an empty list on its own, so the
+   * list below always renders. The interviewer picker (recruitment:Edit or employees:View) is not
+   * asked for at all by a role that holds neither.
+   */
   private readonly lookups = rxResource({
     stream: () =>
       forkJoin({
-        applications: this.applicationsApi.getAll(),
-        candidates: this.candidatesApi.getAll(),
-        jobs: this.jobsApi.getAll(),
-        employees: this.employeeLookup
-          .query({ pageIndex: 0, pageSize: INTERVIEWER_PICKER_SIZE })
-          .pipe(map((page) => page.items)),
+        applications: this.applicationsApi.getAll().pipe(catchError(() => of([] as Application[]))),
+        candidates: this.candidatesApi.getAll().pipe(catchError(() => of([] as Candidate[]))),
+        jobs: this.jobsApi.getAll().pipe(catchError(() => of([] as JobOpening[]))),
+        employees:
+          this.permissions.can('recruitment:Edit') || this.permissions.can('employees:View')
+            ? this.employeeLookup.query({ pageIndex: 0, pageSize: INTERVIEWER_PICKER_SIZE }).pipe(
+                map((page) => page.items),
+                catchError(() => of([] as EmployeeLookupItem[])),
+              )
+            : of([] as EmployeeLookupItem[]),
       }),
   });
 
   protected readonly config = computed<CrudPageConfig<Interview> | null>(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     if (!l) {
       return null;
     }

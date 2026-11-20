@@ -1,4 +1,4 @@
-import { Department } from '../../../core/models/organization.models';
+import { DepartmentRef } from '../../../core/models/organization.models';
 import {
   KPI_DIRECTIONS,
   KPI_FREQUENCIES,
@@ -24,7 +24,7 @@ import { textOptions } from '../shared/kpi-options';
 export interface KpiTemplateConfigOptions {
   service: KpiTemplateDataService;
   categories: KpiCategory[];
-  departments: Department[];
+  departments: DepartmentRef[];
 }
 
 const asNumber = (value: unknown): number | null =>

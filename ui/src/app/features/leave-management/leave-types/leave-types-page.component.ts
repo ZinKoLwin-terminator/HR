@@ -1,12 +1,14 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { LeaveType } from '../../../core/models/leave.models';
+import { LeaveApplication, LeaveType } from '../../../core/models/leave.models';
 import { LeaveTypeDataService } from '../../../core/services/data/leave-data.services';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig, FieldOption } from '../../../shared/components/crud/crud.models';
 import { STATUS_OPTIONS } from '../../organization/organization-lookups';
 import { LeaveApplicationDataService } from '../../../core/services/data/leave-data.services';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const GENDER_OPTIONS: FieldOption[] = [
   { value: 'Female', label: 'Women only' },
@@ -27,15 +29,19 @@ const GENDER_OPTIONS: FieldOption[] = [
 export class LeaveTypesPageComponent {
   private readonly types = inject(LeaveTypeDataService);
   private readonly applicationsApi = inject(LeaveApplicationDataService);
-  private readonly applications = rxResource({ stream: () => this.applicationsApi.getAll() });
+  /** For the per-type usage count; `null` when it cannot be read (the column is then hidden). */
+  private readonly applications = rxResource({
+    stream: () =>
+      this.applicationsApi.getAll().pipe(catchError(() => of(null as LeaveApplication[] | null))),
+  });
 
   protected readonly config = computed<CrudPageConfig<LeaveType> | null>(() => {
-    const apps = this.applications.value();
-    if (!apps) {
+    const apps = safeValue(this.applications);
+    if (apps === undefined) {
       return null;
     }
     const used = new Map<number, number>();
-    for (const a of apps) used.set(a.leaveTypeId, (used.get(a.leaveTypeId) ?? 0) + 1);
+    for (const a of apps ?? []) used.set(a.leaveTypeId, (used.get(a.leaveTypeId) ?? 0) + 1);
 
     return {
       title: 'Leave types',
@@ -93,14 +99,18 @@ export class LeaveTypesPageComponent {
                 : 'Men only'
               : 'Everyone',
         },
-        {
-          key: 'applications',
-          header: 'Applications',
-          type: 'number',
-          align: 'end',
-          hideBelow: 'lg',
-          value: (t) => used.get(t.id) ?? 0,
-        },
+        ...(apps
+          ? [
+              {
+                key: 'applications',
+                header: 'Applications',
+                type: 'number' as const,
+                align: 'end' as const,
+                hideBelow: 'lg' as const,
+                value: (t: LeaveType) => used.get(t.id) ?? 0,
+              },
+            ]
+          : []),
         { key: 'status', header: 'Status', type: 'status', sortable: true },
       ],
       newItem: () => ({

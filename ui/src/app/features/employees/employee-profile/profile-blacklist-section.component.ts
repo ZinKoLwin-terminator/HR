@@ -18,6 +18,7 @@ import {
   errorMessage,
 } from '../../../core/services/ui-notification.service';
 import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /**
  * Do-not-rehire section of a FORMER employee's profile (one with an exit date).
@@ -149,7 +150,7 @@ export class ProfileBlacklistSectionComponent {
       this.visible() && this.canView() ? { employeeId: this.employeeId() } : undefined,
     stream: ({ params }) => this.api.getActiveForEmployee(params.employeeId),
   });
-  protected readonly active = computed<BlacklistEntry | null>(() => this.entry.value() ?? null);
+  protected readonly active = computed<BlacklistEntry | null>(() => safeValue(this.entry) ?? null);
   protected readonly errorText = computed(() =>
     this.entry.error() ? errorMessage(this.entry.error()) : '',
   );

@@ -6,7 +6,7 @@
   >
     <a mat-flat-button routerLink="/employees/list">Back to employees</a>
   </app-empty-state>
-} @else if (data.value(); as d) {
+} @else if (data.hasValue() ? data.value() : undefined; as d) {
   <app-page-header
     class="no-print"
     [title]="'Letters · ' + employeeName()"
