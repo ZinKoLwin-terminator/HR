@@ -1,8 +1,12 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { forkJoin } from 'rxjs';
-import { SalaryStructure } from '../../../core/models/payroll.models';
+import { catchError, forkJoin, of } from 'rxjs';
+import {
+  SalaryAssignment,
+  SalaryComponent,
+  SalaryStructure,
+} from '../../../core/models/payroll.models';
 import {
   SalaryAssignmentDataService,
   SalaryComponentDataService,
@@ -13,6 +17,7 @@ import { CrudPageComponent } from '../../../shared/components/crud/crud-page.com
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
 import { todayIso } from '../../../shared/utilities/date.util';
 import { STATUS_OPTIONS } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Salary structures: named sets of components applied to employees. */
 @Component({
@@ -30,16 +35,19 @@ export class SalaryStructuresPageComponent {
   private readonly structures = inject(SalaryStructureDataService);
   private readonly componentsApi = inject(SalaryComponentDataService);
   private readonly assignmentsApi = inject(SalaryAssignmentDataService);
+  /** Names and counts; each falls back to an empty list so the list below always renders. */
   private readonly lookups = rxResource({
     stream: () =>
       forkJoin({
-        components: this.componentsApi.getAll(),
-        assignments: this.assignmentsApi.getAll(),
+        components: this.componentsApi.getAll().pipe(catchError(() => of([] as SalaryComponent[]))),
+        assignments: this.assignmentsApi
+          .getAll()
+          .pipe(catchError(() => of([] as SalaryAssignment[]))),
       }),
   });
 
   protected readonly config = computed<CrudPageConfig<SalaryStructure> | null>(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     if (!l) {
       return null;
     }

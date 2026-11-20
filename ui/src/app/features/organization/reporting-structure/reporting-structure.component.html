@@ -19,7 +19,13 @@
   </ng-container>
 </app-page-header>
 
-@if (data.error()) {
+@if (!canSeeEmployees()) {
+  <app-empty-state
+    icon="lock"
+    title="Employee access is needed"
+    message="The reporting structure is built from every employee's manager. Your role cannot view employees (employees:View), so it cannot be shown. Ask an HR Administrator if you need it."
+  />
+} @else if (data.error()) {
   <app-empty-state
     icon="error"
     title="Reporting structure could not be loaded"
@@ -27,7 +33,7 @@
   >
     <button mat-flat-button type="button" (click)="data.reload()">Try again</button>
   </app-empty-state>
-} @else if (data.value()) {
+} @else if (data.hasValue()) {
   <section class="stats" aria-label="Structure summary">
     <app-stat-card label="People in structure" [value]="stats().people" icon="groups" />
     <app-stat-card

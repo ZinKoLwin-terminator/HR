@@ -1,5 +1,30 @@
 import { describeWorkDays } from '../constants/weekdays';
-import { deriveAttendance, minutesBetween } from './attendance-calc';
+import { dayOffOn, deriveAttendance, minutesBetween } from './attendance-calc';
+
+describe('dayOffOn', () => {
+  const MON_FRI = { workDays: [1, 2, 3, 4, 5] };
+  const HOLIDAYS = [
+    { date: '2026-11-20', name: 'Company Foundation Day', type: 'Company' as const },
+  ];
+
+  it('finds a holiday first, even on a working weekday', () => {
+    // Friday 2026-11-20
+    expect(dayOffOn('2026-11-20', MON_FRI, HOLIDAYS)).toEqual({
+      status: 'Holiday',
+      holiday: { name: 'Company Foundation Day', type: 'Company' },
+    });
+  });
+
+  it("treats a day that is not one of the shift's days as a weekend", () => {
+    expect(dayOffOn('2026-11-21', MON_FRI, HOLIDAYS)).toEqual({ status: 'Weekend', holiday: null });
+    expect(dayOffOn('2026-11-21', { workDays: [1, 2, 3, 4, 5, 6] }, HOLIDAYS)).toBeNull();
+  });
+
+  it('returns null on a working day, and with no shift only holidays count', () => {
+    expect(dayOffOn('2026-11-24', MON_FRI, HOLIDAYS)).toBeNull();
+    expect(dayOffOn('2026-11-21', null, HOLIDAYS)).toBeNull();
+  });
+});
 
 const DAY = {
   startTime: '09:00',

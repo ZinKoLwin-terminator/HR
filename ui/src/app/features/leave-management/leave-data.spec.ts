@@ -3,7 +3,10 @@ import { firstValueFrom } from 'rxjs';
 import { APP_CONFIG, DEFAULT_APP_CONFIG } from '../../core/configuration/app-config';
 import { AppError } from '../../core/models/common.models';
 import { LeaveApplication } from '../../core/models/leave.models';
-import { AttendanceRecordDataService } from '../../core/services/data/attendance-data.services';
+import {
+  AttendanceRecordDataService,
+  HolidayDataService,
+} from '../../core/services/data/attendance-data.services';
 import { EmployeeDataService } from '../../core/services/data/employee-data.service';
 import {
   LeaveApplicationDataService,
@@ -68,6 +71,31 @@ describe('leave data', () => {
     approverRemarks: null,
     ...overrides,
   });
+
+  /** A full-time employee on probation who joined recently (EMP050 Rahul Sharma in the sample). */
+  const findNewcomer = async () =>
+    (await firstValueFrom(TestBed.inject(EmployeeDataService).getAll())).find(
+      (e) =>
+        e.employmentType === 'Full-time' &&
+        e.employmentStatus === 'Probation' &&
+        e.joiningDate > addDays(todayIso(), -80),
+    )!;
+
+  /** A working day within a week of today and in this year (not a weekend or a holiday). */
+  const workingDayThisYear = async () => {
+    const holidays = new Set(
+      (await firstValueFrom(TestBed.inject(HolidayDataService).getAll())).map((h) => h.date),
+    );
+    const year = todayIso().slice(0, 4);
+    return [0, 1, 2, 3, 4, 5, 6, -1, -2, -3, -4, -5, -6]
+      .map((offset) => addDays(todayIso(), offset))
+      .find(
+        (d) =>
+          d.startsWith(year) &&
+          !DEFAULT_APP_CONFIG.weekendDays.includes(dayOfWeek(d)) &&
+          !holidays.has(d),
+      )!;
+  };
 
   describe('leave types and policies', () => {
     it('validates leave types and protects those in use', async () => {
@@ -249,23 +277,54 @@ describe('leave data', () => {
       );
       expect(clash.message).toMatch(/overlap LV-/);
 
-      // 5 days of Casual leave needs a balance of 5; casual allows max 3 at a time so use annual leave
-      // for an employee with a small balance: a new joiner has no annual leave yet.
-      const employees = TestBed.inject(EmployeeDataService);
-      const all = await firstValueFrom(employees.getAll());
-      const newcomer = all.find(
-        (e) =>
-          e.employmentType === 'Full-time' &&
-          e.employmentStatus === 'Probation' &&
-          e.joiningDate > addDays(todayIso(), -80),
-      )!;
+      // A new joiner has no annual leave yet this year (the standard policy needs 3 months'
+      // service). The date must be in this year: next year's entitlement is measured as of
+      // 31 December, when the newcomer has served long enough.
+      const newcomer = await findNewcomer();
+      const day = await workingDayThisYear();
       const tooMuch = await firstValueFrom(
-        apps.create(
-          draft({ employeeId: newcomer.id, startDate: '2027-06-07', endDate: '2027-06-08' }),
-        ),
+        apps.create(draft({ employeeId: newcomer.id, startDate: day, endDate: day })),
       );
       const balance = await expectError(firstValueFrom(apps.submit(tooMuch.id)), 'Conflict');
       expect(balance.message).toMatch(/Insufficient Annual Leave balance/);
+    });
+
+    it('checks a leave against the balance of the year it starts in, as the API does', async () => {
+      // LV-2026-0030: leave that starts next year counts in next year's balance only.
+      const newcomer = await findNewcomer();
+      const thisYear = new Date().getFullYear();
+      const nextYear = thisYear + 1;
+      const annual = async (year: number) =>
+        (await firstValueFrom(balances.getForEmployee(newcomer.id, year))).find(
+          (b) => b.code === 'AL',
+        )!;
+      expect((await annual(thisYear)).available).toBe(0);
+
+      const created = await firstValueFrom(
+        apps.create(
+          draft({
+            employeeId: newcomer.id,
+            startDate: `${nextYear}-03-01`,
+            endDate: `${nextYear}-03-05`,
+          }),
+        ),
+      );
+      const submitted = await firstValueFrom(apps.submit(created.id));
+      expect(submitted.status).toBe('Submitted');
+      expect(await annual(nextYear)).toMatchObject({
+        entitled: 15,
+        pending: submitted.days,
+        available: 15 - submitted.days,
+      });
+
+      await firstValueFrom(apps.decide(created.id, 'Approved', 'OK'));
+      expect(await annual(nextYear)).toMatchObject({
+        taken: submitted.days,
+        pending: 0,
+        available: 15 - submitted.days,
+      });
+      // This year's balance does not change.
+      expect(await annual(thisYear)).toMatchObject({ taken: 0, pending: 0, available: 0 });
     });
 
     it('marks past attendance as On Leave when leave is approved, and filters by date overlap', async () => {

@@ -79,7 +79,7 @@ import {
 } from './grievance-corrective-actions.component';
 import { GrievanceNoteDraft, GrievanceNotesComponent } from './grievance-notes.component';
 import { GrievanceTriagePanelComponent } from './grievance-triage-panel.component';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const BACK: Record<GrievanceWorkspace, { link: string; label: string }> = {
   management: { link: '/grievances/cases', label: 'Case management' },

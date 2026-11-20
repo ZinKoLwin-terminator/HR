@@ -5,8 +5,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
-import { forkJoin } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
+import { Shift } from '../../../core/models/attendance.models';
 import { PagedResult } from '../../../core/models/common.models';
 import { EmployeeFilter, EmployeeListItem } from '../../../core/models/employee.models';
 import { ShiftDataService } from '../../../core/services/data/attendance-data.services';
@@ -19,6 +20,7 @@ import { DataTableComponent } from '../../../shared/components/data-table/data-t
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { ExcelActionsComponent } from '../../../shared/components/excel/excel-actions.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import {
   FilterFieldComponent,
@@ -27,6 +29,7 @@ import {
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ListQuery } from '../../../shared/utilities/list-query';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Assign a shift to one or many employees at once. */
 @Component({
@@ -43,6 +46,7 @@ import { OrganizationLookupService, options } from '../../organization/organizat
     SearchFieldComponent,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
   ],
   templateUrl: './shift-assignment.component.html',
   styleUrl: './shift-assignment.component.scss',
@@ -63,19 +67,23 @@ export class ShiftAssignmentComponent {
   });
 
   private readonly lookups = rxResource({
-    stream: () => forkJoin({ org: this.lookupService.load(), shifts: this.shiftsApi.getAll() }),
+    stream: () =>
+      forkJoin({
+        org: this.lookupService.organization(),
+        shifts: this.shiftsApi.getAll().pipe(catchError(() => of([] as Shift[]))),
+      }),
   });
   protected readonly departmentOptions = computed(() =>
-    options(this.lookups.value()?.org.departments ?? [], (d) => d.name),
+    options(safeValue(this.lookups)?.org.departments ?? [], (d) => d.name),
   );
   protected readonly branchOptions = computed(() =>
-    options(this.lookups.value()?.org.branches ?? [], (b) => b.name),
+    options(safeValue(this.lookups)?.org.branches ?? [], (b) => b.name),
   );
   protected readonly shifts = computed(
-    () => this.lookups.value()?.shifts.filter((s) => s.status === 'Active') ?? [],
+    () => safeValue(this.lookups)?.shifts.filter((s) => s.status === 'Active') ?? [],
   );
   protected readonly shiftOptions = computed(() =>
-    options(this.lookups.value()?.shifts ?? [], (s) => s.name),
+    options(safeValue(this.lookups)?.shifts ?? [], (s) => s.name),
   );
 
   protected readonly page = rxResource({
@@ -85,7 +93,10 @@ export class ShiftAssignmentComponent {
   protected readonly result = linkedSignal<
     PagedResult<EmployeeListItem> | undefined,
     PagedResult<EmployeeListItem> | undefined
-  >({ source: this.page.value, computation: (value, previous) => value ?? previous?.value });
+  >({
+    source: () => safeValue(this.page),
+    computation: (value, previous) => value ?? previous?.value,
+  });
   protected readonly errorText = computed(() =>
     this.page.error() ? errorMessage(this.page.error()) : '',
   );
@@ -109,7 +120,7 @@ export class ShiftAssignmentComponent {
 
   constructor() {
     effect(() => {
-      const value = this.page.value();
+      const value = safeValue(this.page);
       if (value && value.pageIndex !== this.query.pageIndex()) {
         this.query.pageIndex.set(value.pageIndex);
       }

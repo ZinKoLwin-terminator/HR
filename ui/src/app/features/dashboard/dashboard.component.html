@@ -29,7 +29,7 @@
   <app-empty-state icon="error" title="Dashboard could not be loaded" [message]="errorText()">
     <button mat-flat-button type="button" (click)="summary.reload()">Try again</button>
   </app-empty-state>
-} @else if (summary.value(); as s) {
+} @else if (summary.hasValue() ? summary.value() : undefined; as s) {
   <!-- Keep the previous render on refresh (no skeleton flash). -->
   <div
     class="dashboard"

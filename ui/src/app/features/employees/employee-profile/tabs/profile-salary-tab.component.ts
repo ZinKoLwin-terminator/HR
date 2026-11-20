@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 import { EmployeeSalaryDataService } from '../../../../core/services/data/employee-extras-data.services';
 import { errorMessage } from '../../../../core/services/ui-notification.service';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
+import { safeValue } from '../../../../shared/utilities/resource-value';
 
 @Component({
   selector: 'app-profile-salary-tab',
@@ -144,7 +145,7 @@ export class ProfileSalaryTabComponent {
     params: () => ({ id: this.employeeId() }),
     stream: ({ params }) => this.salaryApi.getSummary(params.id),
   });
-  protected readonly summary = computed(() => this.resource.value() ?? null);
+  protected readonly summary = computed(() => safeValue(this.resource) ?? null);
   protected readonly errorText = computed(() =>
     this.resource.error() ? errorMessage(this.resource.error()) : '',
   );

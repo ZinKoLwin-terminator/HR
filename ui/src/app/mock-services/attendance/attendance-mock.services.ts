@@ -14,7 +14,7 @@ import {
   HolidayDataService,
   ShiftDataService,
 } from '../../core/services/data/attendance-data.services';
-import { deriveAttendance } from '../../core/utilities/attendance-calc';
+import { dayOffOn, deriveAttendance } from '../../core/utilities/attendance-calc';
 import { MOCK_ATTENDANCE_RECORDS } from '../../mock-data/attendance/attendance-records.mock';
 import { MOCK_HOLIDAYS } from '../../mock-data/attendance/holidays.mock';
 import { MOCK_SHIFTS } from '../../mock-data/attendance/shifts.mock';
@@ -102,6 +102,7 @@ export class AttendanceRecordMockService
   private readonly departments = inject(DepartmentMockService);
   private readonly branches = inject(BranchMockService);
   private readonly shifts = inject(ShiftMockService);
+  private readonly holidays = inject(HolidayMockService);
 
   protected readonly entityLabel = 'Attendance record';
   protected readonly activityCategory = 'attendance';
@@ -158,6 +159,7 @@ export class AttendanceRecordMockService
         throw mockError('NotFound', `Employee #${request.employeeId} was not found.`);
       }
       const shift = this.shifts.findById(employee.shiftId ?? -1) ?? this.shifts.records()[0];
+      const calendarDay = dayOffOn(request.date, shift, this.holidays.records())?.status ?? null;
       let record = this.store().find(
         (r) => r.employeeId === request.employeeId && r.date === request.date,
       );
@@ -173,7 +175,7 @@ export class AttendanceRecordMockService
           lateMinutes: 0,
           earlyLeaveMinutes: 0,
           overtimeMinutes: 0,
-          status: 'Absent',
+          status: calendarDay ?? 'Absent',
           source: 'Web',
           remarks: '',
         };
@@ -183,7 +185,11 @@ export class AttendanceRecordMockService
         throw mockError('Conflict', 'You are on approved leave on this day.');
       }
 
-      const nonWorking = record.status === 'Weekend' || record.status === 'Holiday';
+      // Same rule as the API: a stored day-off status wins, otherwise the holiday calendar and the
+      // shift's working days decide. Working on a day off is Present, with no late or early minutes.
+      const dayOff =
+        record.status === 'Weekend' || record.status === 'Holiday' ? record.status : calendarDay;
+      const nonWorking = dayOff !== null;
       let changes: Partial<AttendanceRecord>;
       if (request.kind === 'in') {
         if (record.checkIn) {
@@ -194,8 +200,8 @@ export class AttendanceRecordMockService
           ...derived,
           checkIn: request.time,
           source: 'Web',
-          remarks: nonWorking
-            ? `Worked on a ${record.status.toLowerCase()}`
+          remarks: dayOff
+            ? `Worked on a ${dayOff.toLowerCase()}`
             : derived.status === 'Late'
               ? 'Late arrival'
               : '',

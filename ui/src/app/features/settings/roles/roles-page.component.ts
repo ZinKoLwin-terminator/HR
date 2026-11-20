@@ -2,8 +2,8 @@ import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
-import { Role } from '../../../core/models/settings.models';
+import { catchError, forkJoin, of } from 'rxjs';
+import { AppUser, Role } from '../../../core/models/settings.models';
 import { SERVER_SESSION } from '../../../core/services/auth.service';
 import {
   RoleDataService,
@@ -12,6 +12,7 @@ import {
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
 import { STATUS_OPTIONS } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Roles and how many users hold each. Permissions are edited on the Permissions screen. */
 @Component({
@@ -31,11 +32,16 @@ export class RolesPageComponent {
   private readonly router = inject(Router);
   private readonly apiMode = inject(SERVER_SESSION);
   protected readonly lookups = rxResource({
-    stream: () => forkJoin({ roles: this.roles.getAll(), users: this.usersApi.getAll() }),
+    // Each falls back to an empty list, so the list below always renders (with its own error).
+    stream: () =>
+      forkJoin({
+        roles: this.roles.getAll().pipe(catchError(() => of([] as Role[]))),
+        users: this.usersApi.getAll().pipe(catchError(() => of([] as AppUser[]))),
+      }),
   });
 
   protected readonly config = computed<CrudPageConfig<Role> | null>(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     if (!l) {
       return null;
     }

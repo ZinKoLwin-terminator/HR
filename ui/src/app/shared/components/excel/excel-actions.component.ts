@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { ExcelModuleCatalogDataService } from '../../../core/services/data/excel-data.services';
 import { PermissionService } from '../../../core/services/permission.service';
+import { safeValue } from '../../utilities/resource-value';
 import { ExcelExportService } from './excel-export.service';
 
 /**
@@ -50,17 +51,29 @@ export class ExcelActionsComponent {
   private readonly permissions = inject(PermissionService);
   private readonly exporter = inject(ExcelExportService);
 
-  private readonly catalog = rxResource({ stream: () => this.catalogApi.getModules() });
-  private readonly info = computed(() =>
-    this.catalog.value()?.find((m) => m.code === this.moduleCode()),
+  private readonly mayExport = computed(() => this.permissions.can('excel:Export'));
+  private readonly mayImport = computed(
+    () => this.allowImport() && this.permissions.can('excel:Import'),
   );
 
-  protected readonly canExport = computed(
-    () => !!this.info()?.canExport && this.permissions.can('excel:Export'),
+  /**
+   * The module catalog (`/api/excel/modules`, excel:View). Requested only when the role holds
+   * excel:View and could use a button, so roles without Excel access never get a 403 for it; a
+   * failure just hides both.
+   */
+  private readonly catalog = rxResource({
+    params: () =>
+      this.permissions.can('excel:View') && (this.mayExport() || this.mayImport())
+        ? true
+        : undefined,
+    stream: () => this.catalogApi.getModules(),
+  });
+  private readonly info = computed(() =>
+    safeValue(this.catalog)?.find((m) => m.code === this.moduleCode()),
   );
-  protected readonly canImport = computed(
-    () => this.allowImport() && !!this.info()?.canImport && this.permissions.can('excel:Import'),
-  );
+
+  protected readonly canExport = computed(() => this.mayExport() && !!this.info()?.canExport);
+  protected readonly canImport = computed(() => this.mayImport() && !!this.info()?.canImport);
 
   protected openExport(): void {
     this.exporter

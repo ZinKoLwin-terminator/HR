@@ -49,6 +49,7 @@ import {
   rowErrors,
 } from '../shared/scorecard-rules';
 import { injectScorecardViewer } from '../shared/scorecard-viewer';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const COMMENT_MAX = 1000;
 
@@ -552,7 +553,7 @@ export class MyScorecardComponent {
     params: () => Number(this.id()),
     stream: ({ params }) => this.scorecards.getById(params),
   });
-  protected readonly card = computed<ScorecardDetail | null>(() => this.detail.value() ?? null);
+  protected readonly card = computed<ScorecardDetail | null>(() => safeValue(this.detail) ?? null);
   protected readonly busy = computed(() => this.writing() || this.detail.isLoading());
   protected readonly notFound = computed(() => {
     const error = this.detail.error();

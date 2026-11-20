@@ -1,8 +1,10 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { BLACKLIST_MATCH_LABEL } from '../../../core/models/blacklist.models';
 import {
+  Application,
   CANDIDATE_SOURCES,
   Candidate,
   candidateName,
@@ -13,6 +15,7 @@ import {
 } from '../../../core/services/data/recruitment-data.services';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const SOURCE_OPTIONS = CANDIDATE_SOURCES.map((s) => ({ value: s, label: s }));
 
@@ -31,12 +34,13 @@ const SOURCE_OPTIONS = CANDIDATE_SOURCES.map((s) => ({ value: s, label: s }));
 export class CandidatesPageComponent {
   private readonly candidates = inject(CandidateDataService);
   private readonly applicationsApi = inject(ApplicationDataService);
+  /** For the delete rule; none when they cannot be read (the list below still renders). */
   private readonly applications = rxResource({
-    stream: () => this.applicationsApi.getAll(),
+    stream: () => this.applicationsApi.getAll().pipe(catchError(() => of([] as Application[]))),
   });
 
   protected readonly config = computed<CrudPageConfig<Candidate> | null>(() => {
-    const apps = this.applications.value();
+    const apps = safeValue(this.applications);
     if (!apps) {
       return null;
     }

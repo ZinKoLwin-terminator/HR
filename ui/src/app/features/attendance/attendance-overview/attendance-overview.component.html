@@ -61,6 +61,9 @@
     <button mat-flat-button type="button" (click)="resource.reload()">Try again</button>
   </app-empty-state>
 } @else if (overview(); as o) {
+  @if (resource.error()) {
+    <app-error-banner [message]="errorText()" (retry)="resource.reload()" />
+  }
   <div
     class="page"
     [class.refreshing]="resource.isLoading()"

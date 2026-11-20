@@ -37,6 +37,7 @@ import { downloadDashboardReport } from './dashboard-report';
 import { RecruitmentSummaryCardComponent } from './widgets/recruitment-summary-card.component';
 import { QuickAccessCardComponent } from './widgets/quick-access-card.component';
 import { UpcomingEventsCardComponent } from './widgets/upcoming-events-card.component';
+import { safeValue } from '../../shared/utilities/resource-value';
 
 @Component({
   selector: 'app-dashboard',
@@ -88,7 +89,7 @@ export class DashboardComponent {
 
   protected readonly summary = rxResource({ stream: () => this.dashboardApi.getSummary() });
   protected downloadReport(): void {
-    const s = this.summary.value();
+    const s = safeValue(this.summary);
     if (s) {
       downloadDashboardReport(s);
     }

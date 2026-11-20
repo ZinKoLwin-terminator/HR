@@ -39,6 +39,7 @@ import {
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
@@ -49,6 +50,7 @@ import { ListQuery } from '../../../shared/utilities/list-query';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
 import { PayslipSheetComponent } from '../payslips/payslip-sheet.component';
 import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 type Row = Payslip;
 
@@ -69,6 +71,7 @@ type Row = Payslip;
     SearchFieldComponent,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
     MoneyPipe,
     PayslipSheetComponent,
   ],
@@ -99,13 +102,13 @@ export class PayrollReviewComponent {
 
   protected readonly runs = rxResource({ stream: () => this.runsApi.getAll() });
   protected readonly run = computed(
-    () => this.runs.value()?.find((r) => r.id === this.runId()) ?? null,
+    () => safeValue(this.runs)?.find((r) => r.id === this.runId()) ?? null,
   );
-  protected readonly notFound = computed(() => !!this.runs.value() && !this.run());
+  protected readonly notFound = computed(() => !!safeValue(this.runs) && !this.run());
   protected readonly previous = computed(() => {
     const run = this.run();
     return run
-      ? (this.runs.value() ?? [])
+      ? (safeValue(this.runs) ?? [])
           .filter((r) => r.startDate < run.startDate && r.status !== 'Draft')
           .sort((a, b) => b.startDate.localeCompare(a.startDate))[0]
       : undefined;
@@ -120,9 +123,9 @@ export class PayrollReviewComponent {
   protected readonly stepIndex = computed(() => this.steps.indexOf(this.run()?.status ?? 'Draft'));
   protected readonly hasPayslips = computed(() => (this.run()?.status ?? 'Draft') !== 'Draft');
 
-  private readonly lookups = rxResource({ stream: () => this.lookupService.load() });
+  private readonly lookups = rxResource({ stream: () => this.lookupService.organization() });
   protected readonly departmentOptions = computed(() =>
-    options(this.lookups.value()?.departments ?? [], (d) => d.name),
+    options(safeValue(this.lookups)?.departments ?? [], (d) => d.name),
   );
 
   protected readonly query = new ListQuery<PayslipFilter>({
@@ -142,7 +145,7 @@ export class PayrollReviewComponent {
     PagedResult<Payslip> | undefined,
     PagedResult<Payslip> | undefined
   >({
-    source: this.page.value,
+    source: () => safeValue(this.page),
     computation: (value, previous) => value ?? previous?.value,
   });
   /** All payslips of the period (for the department summary), independent of table filters. */
@@ -170,7 +173,7 @@ export class PayrollReviewComponent {
   }
   /** Every payslip of the period, in employee-code order, for printing. */
   protected readonly allPayslipList = computed(() =>
-    [...(this.allPayslips.value()?.items ?? [])].sort((a, b) =>
+    [...(safeValue(this.allPayslips)?.items ?? [])].sort((a, b) =>
       a.employeeCode.localeCompare(b.employeeCode),
     ),
   );
@@ -178,7 +181,7 @@ export class PayrollReviewComponent {
   protected readonly printingAll = signal(false);
   protected readonly departments = computed(() => {
     const map = new Map<string, { name: string; count: number; gross: number; net: number }>();
-    for (const p of this.allPayslips.value()?.items ?? []) {
+    for (const p of safeValue(this.allPayslips)?.items ?? []) {
       const row = map.get(p.departmentName) ?? {
         name: p.departmentName,
         count: 0,
@@ -194,6 +197,9 @@ export class PayrollReviewComponent {
   });
   protected readonly errorText = computed(() =>
     this.page.error() ? errorMessage(this.page.error()) : '',
+  );
+  protected readonly runsErrorText = computed(() =>
+    this.runs.error() ? errorMessage(this.runs.error()) : '',
   );
 
   protected readonly columns: TableColumn<Row>[] = [
@@ -234,7 +240,7 @@ export class PayrollReviewComponent {
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.printingAll.set(false));
     effect(() => {
-      const value = this.page.value();
+      const value = safeValue(this.page);
       if (value && value.pageIndex !== this.query.pageIndex()) {
         this.query.pageIndex.set(value.pageIndex);
       }

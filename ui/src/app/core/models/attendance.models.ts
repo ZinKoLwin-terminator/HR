@@ -30,6 +30,12 @@ export interface Shift extends Entity {
   status: RecordStatus;
 }
 
+/** A shift as `GET /api/shifts/lookup` returns it: no break or grace minutes, colour or row version. */
+export type ShiftRef = Pick<
+  Shift,
+  'id' | 'code' | 'name' | 'startTime' | 'endTime' | 'workDays' | 'isNightShift' | 'status'
+>;
+
 export interface AttendanceRecord extends Entity {
   employeeId: number;
   /** yyyy-MM-dd */

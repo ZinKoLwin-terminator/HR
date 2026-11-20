@@ -8,17 +8,20 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { forkJoin } from 'rxjs';
-import { LeaveCalendarDay, LeaveCalendarMonth } from '../../../core/models/leave.models';
+import { catchError, forkJoin, of } from 'rxjs';
+import { LeaveCalendarDay, LeaveCalendarMonth, LeaveType } from '../../../core/models/leave.models';
 import {
   LeaveCalendarDataService,
   LeaveTypeDataService,
 } from '../../../core/services/data/leave-data.services';
+import { errorMessage } from '../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { addMonths, todayIso } from '../../../shared/utilities/date.util';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Everyone on leave on one day. */
 import {
@@ -118,6 +121,7 @@ const MAX_CHIPS = 3;
     MatSlideToggleModule,
     PageHeaderComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
   ],
   templateUrl: './leave-calendar.component.html',
   styleUrl: './leave-calendar.component.scss',
@@ -149,13 +153,17 @@ export class LeaveCalendarComponent {
   }
 
   private readonly lookups = rxResource({
-    stream: () => forkJoin({ org: this.lookupService.load(), types: this.typesApi.getAll() }),
+    stream: () =>
+      forkJoin({
+        org: this.lookupService.organization(),
+        types: this.typesApi.getAll().pipe(catchError(() => of([] as LeaveType[]))),
+      }),
   });
   protected readonly departmentOptions = computed(() =>
-    options(this.lookups.value()?.org.departments ?? [], (d) => d.name),
+    options(safeValue(this.lookups)?.org.departments ?? [], (d) => d.name),
   );
   protected readonly typeOptions = computed(() =>
-    options(this.lookups.value()?.types ?? [], (t) => t.name),
+    options(safeValue(this.lookups)?.types ?? [], (t) => t.name),
   );
 
   protected readonly resource = rxResource({
@@ -172,9 +180,12 @@ export class LeaveCalendarComponent {
     LeaveCalendarMonth | undefined,
     LeaveCalendarMonth | undefined
   >({
-    source: this.resource.value,
+    source: () => safeValue(this.resource),
     computation: (value, previous) => value ?? previous?.value,
   });
+  protected readonly errorText = computed(() =>
+    this.resource.error() ? errorMessage(this.resource.error()) : '',
+  );
 
   protected readonly monthStart = computed(() => `${this.month()}-01`);
   protected readonly isCurrentMonth = computed(() => this.month() === this.today.slice(0, 7));

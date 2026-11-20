@@ -41,7 +41,7 @@ import {
   GrievanceTimelineComponent,
   myTimelineItems,
 } from '../shared/grievance-timeline.component';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /**
  * One of the employee's own grievances (`/grievances/my/:id`): what they reported, the status

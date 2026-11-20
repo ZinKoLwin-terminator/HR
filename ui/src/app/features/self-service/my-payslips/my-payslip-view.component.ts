@@ -9,6 +9,7 @@ import { MyPayslipDataService } from '../../../core/services/data/payroll-data.s
 import { PrintService } from '../../../core/services/print.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PayslipSheetComponent } from '../../payroll/payslips/payslip-sheet.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /**
  * One of the signed-in user's own payslips, with the same sheet and "Print payslip" button as the
@@ -75,7 +76,7 @@ export class MyPayslipViewComponent {
     params: () => ({ id: Number(this.id()) }),
     stream: ({ params }) => this.api.getById(params.id),
   });
-  protected readonly payslip = computed(() => this.resource.value() ?? null);
+  protected readonly payslip = computed(() => safeValue(this.resource) ?? null);
 
   protected back(): void {
     this.location.back();

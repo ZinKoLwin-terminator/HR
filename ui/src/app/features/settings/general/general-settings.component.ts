@@ -20,6 +20,7 @@ import { PermissionService } from '../../../core/services/permission.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const MONTHS = [
   'January',
@@ -58,7 +59,7 @@ const MONTHS = [
       <app-empty-state icon="error" title="Settings could not be loaded">
         <button mat-flat-button type="button" (click)="resource.reload()">Try again</button>
       </app-empty-state>
-    } @else if (resource.value()) {
+    } @else if (resource.hasValue()) {
       <form [formGroup]="form" (ngSubmit)="save()" novalidate class="form">
         <mat-form-field>
           <mat-label>Organization name</mat-label>
@@ -245,7 +246,7 @@ export class GeneralSettingsComponent implements HasUnsavedChanges {
 
   constructor() {
     effect(() => {
-      const value = this.resource.value();
+      const value = safeValue(this.resource);
       if (value) {
         this.load(value);
       }
@@ -261,7 +262,7 @@ export class GeneralSettingsComponent implements HasUnsavedChanges {
   }
 
   protected reset(): void {
-    const value = this.resource.value();
+    const value = safeValue(this.resource);
     if (value) this.load(value);
   }
 

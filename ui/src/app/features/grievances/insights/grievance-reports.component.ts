@@ -42,6 +42,7 @@ import { CellTemplateDirective } from '../../../shared/components/data-table/cel
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { ExcelActionsComponent } from '../../../shared/components/excel/excel-actions.component';
 import {
   FilterFieldComponent,
@@ -56,7 +57,7 @@ import { ListQuery } from '../../../shared/utilities/list-query';
 import { GrievancePriorityComponent } from '../shared/grievance-priority.component';
 import { grievanceStatusLabel } from '../shared/grievance-status-badge.component';
 import { daysText, percentText } from './grievance-insight-bars';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** The Excel module of this report (export only; the API's `grievance-cases`). */
 export const GRIEVANCE_CASES_EXPORT_MODULE = 'grievance-cases';
@@ -140,6 +141,7 @@ export const GRIEVANCE_REPORT_COLUMNS: TableColumn<GrievanceReportTableRow>[] = 
     CellTemplateDirective,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
     ExcelActionsComponent,
     FilterFieldComponent,
     FilterPopupComponent,
@@ -298,6 +300,9 @@ export const GRIEVANCE_REPORT_COLUMNS: TableColumn<GrievanceReportTableRow>[] = 
         <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
       </app-empty-state>
     } @else {
+      @if (page.error()) {
+        <app-error-banner [message]="errorText()" (retry)="page.reload()" />
+      }
       <app-data-table
         [class.no-print]="printing()"
         caption="Grievance case report"

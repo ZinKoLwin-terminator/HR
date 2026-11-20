@@ -42,7 +42,7 @@
   <app-empty-state icon="error" title="Payroll history could not be loaded">
     <button mat-flat-button type="button" (click)="resource.reload()">Try again</button>
   </app-empty-state>
-} @else if (resource.value()) {
+} @else if (resource.hasValue()) {
   <section class="kpis" aria-label="Summary (sample)">
     <app-stat-card label="Periods" [value]="totals().periods" icon="event_note" />
     <app-stat-card

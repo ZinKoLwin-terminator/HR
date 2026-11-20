@@ -1,4 +1,5 @@
-import { AttendanceStatus, Shift } from '../models/attendance.models';
+import { dayOfWeek } from '../../shared/utilities/date.util';
+import { AttendanceStatus, Holiday, Shift } from '../models/attendance.models';
 
 export interface DerivedAttendance {
   status: AttendanceStatus;
@@ -80,6 +81,32 @@ export function deriveAttendance(
     earlyLeaveMinutes: halfDay ? 0 : Math.max(0, end - outAt),
     overtimeMinutes: after > OVERTIME_THRESHOLD_MINUTES ? after : 0,
   };
+}
+
+/** Why a date is not a working day for an employee: a holiday, or not one of the shift's days. */
+export interface DayOff {
+  status: 'Holiday' | 'Weekend';
+  /** The holiday on that date, when there is one. */
+  holiday: Pick<Holiday, 'name' | 'type'> | null;
+}
+
+/**
+ * Same rule as the API's punch handler: a holiday on the date wins, then the shift's working days
+ * decide (no shift: every day is a working day). Working on a day off is recorded as Present,
+ * with no late or early-leave minutes. Returns null on a working day.
+ */
+export function dayOffOn(
+  date: string,
+  shift: Pick<Shift, 'workDays'> | null | undefined,
+  holidays: readonly Pick<Holiday, 'date' | 'name' | 'type'>[],
+): DayOff | null {
+  const holiday = holidays.find((h) => h.date === date);
+  if (holiday) {
+    return { status: 'Holiday', holiday: { name: holiday.name, type: holiday.type } };
+  }
+  return shift && !shift.workDays.includes(dayOfWeek(date))
+    ? { status: 'Weekend', holiday: null }
+    : null;
 }
 
 /** Minutes between two HH:mm times (rolls over midnight when end < start). */

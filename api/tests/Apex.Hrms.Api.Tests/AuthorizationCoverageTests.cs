@@ -55,6 +55,9 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     private static bool IsSelfServiceRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/me/", StringComparison.Ordinal);
 
+    private static bool IsOrganizationLookupRoute(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText == "/api/organization/lookup";
+
     private static bool IsEmployeeDocumentRoute(RouteEndpoint endpoint) =>
         endpoint.RoutePattern.RawText!.StartsWith("/api/employee-documents", StringComparison.Ordinal);
 
@@ -382,7 +385,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void Six_organization_resources_map_eight_endpoints_each()
     {
         var endpoints = ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint) && !IsKpiRoute(endpoint) && !IsGrievanceRoute(endpoint))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint) && !IsOrganizationLookupRoute(endpoint) && !IsKpiRoute(endpoint) && !IsGrievanceRoute(endpoint))
             .ToList();
 
         Assert.Equal(48, endpoints.Count);
@@ -456,6 +459,42 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Contains("GET /api/me/payslips/{id:int}", mine.Keys);
     }
 
+    /// <summary>
+    /// The policy <c>signed-in</c> lets every account through without a module grant, so the routes that carry it are pinned: a new
+    /// endpoint cannot get it silently. Every endpoint of the host is checked, <c>/api/auth</c> included.
+    /// </summary>
+    [Fact]
+    public void Only_the_known_routes_need_nothing_but_a_signed_in_user()
+    {
+        using var client = factory.CreateClient();
+        var signedIn = factory.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .OfType<RouteEndpoint>()
+            .Where(endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Any(data => data.Policy == "signed-in"))
+            .Select(endpoint => $"{string.Join('|', endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods ?? [])} {endpoint.RoutePattern.RawText}")
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(
+            [
+                "GET /api/me/payslips/",
+                "GET /api/me/payslips/{id:int}",
+                "GET /api/notifications/query",
+                "GET /api/organization/lookup",
+                "GET /api/shifts/lookup",
+                "POST /api/notifications/read-all",
+                "POST /api/notifications/{id:long}/read",
+            ],
+            signedIn);
+    }
+
+    [Fact]
+    public void The_organization_lookup_is_one_read_that_needs_only_a_signed_in_user()
+    {
+        var lookup = PoliciesOf(IsOrganizationLookupRoute);
+
+        Assert.Equal(new Dictionary<string, string> { ["GET /api/organization/lookup"] = "signed-in" }, lookup);
+    }
+
     [Fact]
     public async Task Every_policy_in_use_is_registered()
     {
@@ -502,7 +541,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
     public void The_policy_of_each_endpoint_matches_its_http_method()
     {
         foreach (var endpoint in ApiEndpoints()
-            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint) && !IsKpiRoute(endpoint) && !IsGrievanceRoute(endpoint)))
+            .Where(endpoint => !IsEmployeeRoute(endpoint) && !IsEmployeeDocumentRoute(endpoint) && !IsLeaveRoute(endpoint) && !IsAttendanceRoute(endpoint) && !IsPayrollRoute(endpoint) && !IsRecruitmentRoute(endpoint) && !IsActivityRoute(endpoint) && !IsSettingsRoute(endpoint) && !IsExcelRoute(endpoint) && !IsBlacklistRoute(endpoint) && !IsSelfServiceRoute(endpoint) && !IsOrganizationLookupRoute(endpoint) && !IsKpiRoute(endpoint) && !IsGrievanceRoute(endpoint)))
         {
             var method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
             var isCommand = method == HttpMethods.Post && endpoint.RoutePattern.RawText!.Contains("/{id:int}/", StringComparison.Ordinal);
@@ -630,11 +669,11 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
             endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Single(data => data.Policy is not null).Policy);
 
     [Fact]
-    public void Attendance_maps_thirty_one_endpoints_and_no_way_to_write_a_record_directly()
+    public void Attendance_maps_thirty_two_endpoints_and_no_way_to_write_a_record_directly()
     {
         var policies = AttendancePolicies();
 
-        Assert.Equal(31, policies.Count);
+        Assert.Equal(32, policies.Count);
         Assert.DoesNotContain(policies.Keys, key => key.Contains("/api/attendance-records", StringComparison.Ordinal)
             && !key.StartsWith("GET ", StringComparison.Ordinal));
         Assert.DoesNotContain("GET /api/attendance-adjustments/", policies.Keys);
@@ -663,6 +702,11 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("attendance:Edit", policies["POST /api/holidays/"]);
         Assert.Equal("attendance:Edit", policies["POST /api/shifts/"]);
         Assert.Equal("attendance:Edit", policies["PUT /api/holidays/{id:int}"]);
+        Assert.Equal("attendance:View", policies["GET /api/shifts/{id:int}"]);
+        Assert.Equal("attendance:View", policies["GET /api/shifts/"]);
+
+        // The shift names of an employee profile: any signed-in user, like the organization lookup.
+        Assert.Equal("signed-in", policies["GET /api/shifts/lookup"]);
     }
     private Dictionary<string, string?> ActivityPolicies() => ApiEndpoints().Where(IsActivityRoute)
         .ToDictionary(

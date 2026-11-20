@@ -55,10 +55,13 @@
 </app-page-header>
 
 @if (resource.error() && !data()) {
-  <app-empty-state icon="error" title="Calendar could not be loaded">
+  <app-empty-state icon="error" title="Calendar could not be loaded" [message]="errorText()">
     <button mat-flat-button type="button" (click)="resource.reload()">Try again</button>
   </app-empty-state>
 } @else if (data()) {
+  @if (resource.error()) {
+    <app-error-banner [message]="errorText()" (retry)="resource.reload()" />
+  }
   <p class="summary" aria-live="polite">
     {{ totalLeaveDays() }} day{{ totalLeaveDays() === 1 ? '' : 's' }} with leave this month. Select
     a day for details.

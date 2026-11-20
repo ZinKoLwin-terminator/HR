@@ -1,4 +1,4 @@
-import { Employee, fullName } from '../../../core/models/employee.models';
+import { Employee } from '../../../core/models/employee.models';
 import { Holiday } from '../../../core/models/attendance.models';
 import { LEAVE_STATUSES, LeaveApplication, LeaveType } from '../../../core/models/leave.models';
 import { LeaveApplicationDataService } from '../../../core/services/data/leave-data.services';
@@ -6,14 +6,23 @@ import { CrudExtraAction, CrudPageConfig } from '../../../shared/components/crud
 import { TableColumn } from '../../../shared/components/data-table/data-table.models';
 import { countWorkingDays, todayIso } from '../../../shared/utilities/date.util';
 import { HrmsValidators } from '../../../shared/validators/hrms-validators';
-import { employeeOptions, options } from '../../organization/organization-lookups';
+import {
+  EmployeeRef,
+  employeeLabel,
+  employeeOptions,
+  options,
+} from '../../organization/organization-lookups';
 
 export type LeaveListMode = 'applications' | 'pending' | 'history';
 
 export interface LeaveConfigOptions {
   mode: LeaveListMode;
   service: LeaveApplicationDataService;
-  employees: Employee[];
+  /**
+   * The employees the role may see: full records with employees:View, otherwise references (often
+   * only the user's own employee). Gender filtering of leave types needs the full record.
+   */
+  employees: readonly (EmployeeRef | Employee)[];
   types: LeaveType[];
   holidays: Holiday[];
   weekendDays: readonly number[];
@@ -30,7 +39,7 @@ const formatDate = (iso: string) =>
 export function buildLeaveApplicationsConfig(
   o: LeaveConfigOptions,
 ): CrudPageConfig<LeaveApplication> {
-  const people = new Map(o.employees.map((e) => [e.id, `${fullName(e)} (${e.employeeCode})`]));
+  const people = new Map(o.employees.map((e) => [e.id, employeeLabel(e)]));
   const typeName = new Map(o.types.map((t) => [t.id, t.name]));
   const holidaySet = new Set(o.holidays.map((h) => h.date));
   const employeeName = (a: LeaveApplication) => people.get(a.employeeId) ?? `#${a.employeeId}`;
@@ -219,7 +228,8 @@ export function buildLeaveApplicationsConfig(
       type: 'select',
       required: true,
       options: (v) => {
-        const gender = o.employees.find((e) => e.id === v['employeeId'])?.gender;
+        const employee = o.employees.find((e) => e.id === v['employeeId']);
+        const gender = employee && 'gender' in employee ? employee.gender : undefined;
         return options(
           o.types.filter(
             (t) =>

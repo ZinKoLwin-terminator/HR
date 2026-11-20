@@ -7,15 +7,16 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
-import { forkJoin } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { APP_CONFIG } from '../../../core/configuration/app-config';
 import { PagedResult } from '../../../core/models/common.models';
-import { EmployeeLeaveBalances } from '../../../core/models/leave.models';
+import { EmployeeLeaveBalances, LeaveType } from '../../../core/models/leave.models';
 import {
   LeaveBalanceDataService,
   LeaveTypeDataService,
 } from '../../../core/services/data/leave-data.services';
 import { errorMessage } from '../../../core/services/ui-notification.service';
+import { balanceYearOptions } from '../../../core/utilities/leave-balance';
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import {
   TableAction,
@@ -23,6 +24,7 @@ import {
   TableColumn,
 } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import {
   FilterFieldComponent,
@@ -32,6 +34,7 @@ import { ExcelActionsComponent } from '../../../shared/components/excel/excel-ac
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { SortState } from '../../../core/models/common.models';
 import { OrganizationLookupService, options } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 type Row = EmployeeLeaveBalances & { id: number };
 
@@ -81,7 +84,8 @@ type Row = EmployeeLeaveBalances & { id: number };
       </table>
       <p class="note">
         Entitlements follow the leave policies for the employee's grade and employment type.
-        Approved leave counts as taken; submitted leave is held as pending.
+        Approved leave counts as taken; submitted leave is held as pending. Leave counts in the year
+        it starts.
       </p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -136,6 +140,7 @@ export class LeaveBalanceDialogComponent {
     SearchFieldComponent,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
   ],
   templateUrl: './leave-balances.component.html',
 })
@@ -148,7 +153,7 @@ export class LeaveBalancesComponent {
 
   protected readonly pageSizeOptions = this.appConfig.pageSizeOptions;
   protected readonly currentYear = new Date().getFullYear();
-  protected readonly yearOptions = [this.currentYear, this.currentYear - 1];
+  protected readonly yearOptions = balanceYearOptions(this.currentYear);
 
   protected readonly year = signal(this.currentYear);
   protected readonly search = signal('');
@@ -159,13 +164,17 @@ export class LeaveBalancesComponent {
   protected readonly sort = signal<SortState>({ active: 'employeeCode', direction: 'asc' });
 
   private readonly lookups = rxResource({
-    stream: () => forkJoin({ org: this.lookupService.load(), types: this.typesApi.getAll() }),
+    stream: () =>
+      forkJoin({
+        org: this.lookupService.organization(),
+        types: this.typesApi.getAll().pipe(catchError(() => of([] as LeaveType[]))),
+      }),
   });
   protected readonly departmentOptions = computed(() =>
-    options(this.lookups.value()?.org.departments ?? [], (d) => d.name),
+    options(safeValue(this.lookups)?.org.departments ?? [], (d) => d.name),
   );
   protected readonly branchOptions = computed(() =>
-    options(this.lookups.value()?.org.branches ?? [], (b) => b.name),
+    options(safeValue(this.lookups)?.org.branches ?? [], (b) => b.name),
   );
 
   protected readonly page = rxResource({
@@ -184,7 +193,7 @@ export class LeaveBalancesComponent {
     PagedResult<EmployeeLeaveBalances> | undefined,
     PagedResult<Row> | undefined
   >({
-    source: this.page.value,
+    source: () => safeValue(this.page),
     computation: (value, previous) =>
       value
         ? { ...value, items: value.items.map((r) => ({ ...r, id: r.employeeId })) }
@@ -214,7 +223,7 @@ export class LeaveBalancesComponent {
 
   /** One column per leave type available to everyone (gender-specific types appear in the details). */
   protected readonly columns = computed<TableColumn<Row>[]>(() => {
-    const types = (this.lookups.value()?.types ?? []).filter(
+    const types = (safeValue(this.lookups)?.types ?? []).filter(
       (t) => t.status === 'Active' && !t.eligibleGender,
     );
     return [
@@ -242,7 +251,7 @@ export class LeaveBalancesComponent {
 
   constructor() {
     effect(() => {
-      const value = this.page.value();
+      const value = safeValue(this.page);
       if (value && value.pageIndex !== this.pageIndex()) {
         this.pageIndex.set(value.pageIndex);
       }

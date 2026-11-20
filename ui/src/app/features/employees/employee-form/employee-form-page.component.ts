@@ -4,9 +4,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router, RouterLink } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { HasUnsavedChanges } from '../../../core/guards/unsaved-changes.guard';
 import { Employee, fullName } from '../../../core/models/employee.models';
+import { Shift } from '../../../core/models/attendance.models';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import { ShiftDataService } from '../../../core/services/data/attendance-data.services';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
@@ -14,6 +15,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { OrganizationLookupService } from '../../organization/organization-lookups';
 import { EmployeeFormComponent, EmployeeFormData } from './employee-form.component';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Routed wrapper: loads lookups (and the employee when editing), then shows the form. */
 @Component({
@@ -68,14 +70,14 @@ export class EmployeeFormPageComponent implements HasUnsavedChanges {
     stream: ({ params }) =>
       forkJoin({
         org: this.lookupService.load(),
-        shifts: this.shiftsApi.getAll(),
+        shifts: this.shiftsApi.getAll().pipe(catchError(() => of([] as Shift[]))),
         employee: params.id ? this.employeesApi.getById(params.id) : of(null),
         suggestedCode: params.id ? of(null) : this.employeesApi.nextEmployeeCode(),
       }),
   });
 
   protected readonly formData = computed<EmployeeFormData | null>(() => {
-    const v = this.resource.value();
+    const v = safeValue(this.resource);
     return v
       ? {
           lookups: { org: v.org, shifts: v.shifts },
@@ -87,7 +89,7 @@ export class EmployeeFormPageComponent implements HasUnsavedChanges {
 
   protected readonly title = computed(() => (this.employeeId() ? 'Edit employee' : 'Add employee'));
   protected readonly description = computed(() => {
-    const employee = this.resource.value()?.employee;
+    const employee = safeValue(this.resource)?.employee;
     return employee
       ? `${fullName(employee)} · ${employee.employeeCode}`
       : 'Register a new employee. Fields marked * are required.';

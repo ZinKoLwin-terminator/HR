@@ -1,13 +1,16 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import { AttendanceRecordDataService } from '../../../../core/services/data/attendance-data.services';
+import { errorMessage } from '../../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { StatCardComponent } from '../../../../shared/components/stat-card/stat-card.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
 import { addDays, formatDuration, todayIso } from '../../../../shared/utilities/date.util';
+import { safeValue } from '../../../../shared/utilities/resource-value';
 
 const ATTENDED = new Set(['Present', 'Late', 'Half Day']);
 const NON_WORKING = new Set(['Weekend', 'Holiday']);
@@ -18,14 +21,19 @@ const WINDOW_DAYS = 30;
   imports: [
     DatePipe,
     RouterLink,
+    MatButtonModule,
     MatProgressBarModule,
     StatCardComponent,
     StatusBadgeComponent,
     EmptyStateComponent,
   ],
   template: `
-    @if (records.isLoading() && !records.value()) {
+    @if (records.isLoading() && !records.hasValue()) {
       <mat-progress-bar mode="indeterminate" aria-label="Loading attendance" />
+    } @else if (records.error()) {
+      <app-empty-state icon="error" title="Attendance could not be loaded" [message]="errorText()">
+        <button mat-flat-button type="button" (click)="records.reload()">Try again</button>
+      </app-empty-state>
     } @else {
       <section class="kpis" aria-label="Attendance summary, last 30 days">
         <app-stat-card
@@ -123,6 +131,9 @@ export class ProfileAttendanceTabComponent {
   readonly employeeId = input.required<number>();
   private readonly attendanceApi = inject(AttendanceRecordDataService);
 
+  protected readonly errorText = computed(() =>
+    this.records.error() ? errorMessage(this.records.error()) : '',
+  );
   protected readonly records = rxResource({
     params: () => ({ id: this.employeeId() }),
     stream: ({ params }) =>
@@ -134,11 +145,11 @@ export class ProfileAttendanceTabComponent {
       }),
   });
 
-  protected readonly recent = computed(() => (this.records.value()?.items ?? []).slice(0, 14));
+  protected readonly recent = computed(() => (safeValue(this.records)?.items ?? []).slice(0, 14));
 
   protected readonly summary = computed(() => {
     const from = addDays(todayIso(), -(WINDOW_DAYS - 1));
-    const rows = (this.records.value()?.items ?? []).filter(
+    const rows = (safeValue(this.records)?.items ?? []).filter(
       (r) => r.date >= from && !NON_WORKING.has(r.status),
     );
     const attendedRows = rows.filter((r) => ATTENDED.has(r.status));

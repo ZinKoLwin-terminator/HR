@@ -9,6 +9,7 @@ import {
   Employee,
   fullName,
 } from '../../../core/models/employee.models';
+import { PermissionService } from '../../../core/services/permission.service';
 import { errorMessage } from '../../../core/services/ui-notification.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -16,6 +17,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
 import { OrganizationLookupService, nameMap } from '../organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 interface OrgNode {
   employee: Employee;
@@ -60,7 +62,13 @@ function pruneTree(nodes: OrgNode[], term: string): OrgNode[] {
 })
 export class ReportingStructureComponent {
   private readonly lookupService = inject(OrganizationLookupService);
-  protected readonly data = rxResource({ stream: () => this.lookupService.load() });
+  private readonly permissions = inject(PermissionService);
+  /** The tree needs every employee's manager: without employees:View nothing is loaded. */
+  protected readonly canSeeEmployees = computed(() => this.permissions.can('employees:View'));
+  protected readonly data = rxResource({
+    params: () => (this.canSeeEmployees() ? true : undefined),
+    stream: () => this.lookupService.load(),
+  });
   protected readonly errorText = computed(() =>
     this.data.error() ? errorMessage(this.data.error()) : '',
   );
@@ -71,11 +79,11 @@ export class ReportingStructureComponent {
 
   /** Complete tree of current employees. */
   protected readonly roots = computed<OrgNode[]>(() => {
-    const l = this.data.value();
+    const l = safeValue(this.data);
     if (!l) return [];
     const positionTitle = nameMap(l.positions, (p) => p.title);
     const departmentName = nameMap(l.departments, (d) => d.name);
-    const people = l.employees.filter((e) =>
+    const people = l.employeeRecords.filter((e) =>
       CURRENT_EMPLOYMENT_STATUSES.includes(e.employmentStatus),
     );
     const ids = new Set(people.map((e) => e.id));

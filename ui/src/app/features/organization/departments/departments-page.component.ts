@@ -4,13 +4,7 @@ import { CrudPageComponent } from '../../../shared/components/crud/crud-page.com
 import { Department } from '../../../core/models/organization.models';
 import { DepartmentDataService } from '../../../core/services/data/organization-data.services';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
-import {
-  OrgLookups,
-  STATUS_OPTIONS,
-  employeeOptions,
-  nameMap,
-  options,
-} from '../organization-lookups';
+import { OrgLookups, STATUS_OPTIONS, nameMap, options, personField } from '../organization-lookups';
 import { OrganizationPageBase } from '../organization-page.component';
 
 @Component({
@@ -30,9 +24,10 @@ export class DepartmentsPageComponent extends OrganizationPageBase<Department> {
   protected buildConfig(l: OrgLookups): CrudPageConfig<Department> {
     const companyName = nameMap(l.companies, (c) => c.name);
     const branchName = nameMap(l.branches, (b) => b.name);
-    const personName = nameMap(l.employees, (e) => `${e.firstName} ${e.lastName}`);
+    const personName = nameMap(l.employees, (e) => e.displayName);
     const companyOptions = options(l.companies, (c) => c.name);
-    const people = employeeOptions(l.employees);
+    // Without employees:View the role cannot name heads: no column, read-only field.
+    const canPick = this.canSeeEmployees();
     return {
       title: 'Departments',
       excel: { moduleCode: 'departments' },
@@ -62,12 +57,16 @@ export class DepartmentsPageComponent extends OrganizationPageBase<Department> {
           hideBelow: 'lg',
           value: (d) => companyName(d.companyId),
         },
-        {
-          key: 'headEmployeeId',
-          header: 'Head',
-          hideBelow: 'md',
-          value: (d) => personName(d.headEmployeeId),
-        },
+        ...(canPick
+          ? [
+              {
+                key: 'headEmployeeId',
+                header: 'Head',
+                hideBelow: 'md' as const,
+                value: (d: Department) => personName(d.headEmployeeId),
+              },
+            ]
+          : []),
         { key: 'costCenter', header: 'Cost center', sortable: true, hideBelow: 'lg' },
         { key: 'status', header: 'Status', type: 'status', sortable: true },
       ],
@@ -108,7 +107,7 @@ export class DepartmentsPageComponent extends OrganizationPageBase<Department> {
           label: 'Department head',
           type: 'select',
           nullable: true,
-          options: () => people,
+          ...personField('headEmployeeId', l.employees, canPick),
         },
         { key: 'costCenter', label: 'Cost center', type: 'text', maxLength: 20 },
         { key: 'description', label: 'Description', type: 'textarea', maxLength: 300 },

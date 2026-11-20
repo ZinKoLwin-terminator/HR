@@ -4,13 +4,7 @@ import { CrudPageComponent } from '../../../shared/components/crud/crud-page.com
 import { Branch, BranchType } from '../../../core/models/organization.models';
 import { BranchDataService } from '../../../core/services/data/organization-data.services';
 import { CrudPageConfig, FieldOption } from '../../../shared/components/crud/crud.models';
-import {
-  OrgLookups,
-  STATUS_OPTIONS,
-  employeeOptions,
-  nameMap,
-  options,
-} from '../organization-lookups';
+import { OrgLookups, STATUS_OPTIONS, nameMap, options, personField } from '../organization-lookups';
 import { OrganizationPageBase } from '../organization-page.component';
 
 const BRANCH_TYPES: BranchType[] = ['Head Office', 'Branch', 'Regional Office', 'Warehouse'];
@@ -33,8 +27,9 @@ export class BranchesPageComponent extends OrganizationPageBase<Branch> {
   protected buildConfig(l: OrgLookups): CrudPageConfig<Branch> {
     const companyName = nameMap(l.companies, (c) => c.name);
     const companyOptions = options(l.companies, (c) => c.name);
-    const people = employeeOptions(l.employees);
-    const personName = nameMap(l.employees, (e) => `${e.firstName} ${e.lastName}`);
+    const personName = nameMap(l.employees, (e) => e.displayName);
+    // Without employees:View the role cannot name managers: no column, read-only field.
+    const canPick = this.canSeeEmployees();
     return {
       title: 'Branches',
       excel: { moduleCode: 'branches' },
@@ -61,12 +56,16 @@ export class BranchesPageComponent extends OrganizationPageBase<Branch> {
         },
         { key: 'type', header: 'Type', sortable: true, hideBelow: 'lg' },
         { key: 'city', header: 'City', sortable: true, hideBelow: 'sm' },
-        {
-          key: 'managerEmployeeId',
-          header: 'Manager',
-          hideBelow: 'lg',
-          value: (b) => personName(b.managerEmployeeId),
-        },
+        ...(canPick
+          ? [
+              {
+                key: 'managerEmployeeId',
+                header: 'Manager',
+                hideBelow: 'lg' as const,
+                value: (b: Branch) => personName(b.managerEmployeeId),
+              },
+            ]
+          : []),
         { key: 'status', header: 'Status', type: 'status', sortable: true },
       ],
       newItem: () => ({ country: 'Myanmar', type: 'Branch', status: 'Active' }),
@@ -106,7 +105,7 @@ export class BranchesPageComponent extends OrganizationPageBase<Branch> {
           label: 'Branch manager',
           type: 'select',
           nullable: true,
-          options: () => people,
+          ...personField('managerEmployeeId', l.employees, canPick),
         },
         {
           key: 'openedDate',

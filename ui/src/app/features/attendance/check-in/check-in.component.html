@@ -25,6 +25,12 @@
         {{ s.name }} · {{ s.startTime }} – {{ s.endTime }} · grace {{ s.graceMinutes }} min
       </p>
     }
+    @if (dayOffNotice(); as notice) {
+      <p class="day-off" role="note">
+        <mat-icon aria-hidden="true">event_available</mat-icon>
+        <span>{{ notice }}</span>
+      </p>
+    }
 
     <h2 id="punch-heading" class="state" [attr.data-state]="state()">{{ heading() }}</h2>
     @if (todayRecord(); as record) {
@@ -63,32 +69,36 @@
         <p>Last 8 records</p>
       </div>
     </div>
-    <div class="scroll">
-      <table class="simple-table">
-        <caption class="cdk-visually-hidden">
-          Recent attendance for the selected employee
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">Date</th>
-            <th scope="col">Status</th>
-            <th scope="col">In</th>
-            <th scope="col">Out</th>
-            <th scope="col" class="num">Worked</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (r of history(); track r.id) {
+    @if (recentError(); as message) {
+      <app-error-banner [message]="message" (retry)="recent.reload()" />
+    } @else {
+      <div class="scroll">
+        <table class="simple-table">
+          <caption class="cdk-visually-hidden">
+            Recent attendance for the selected employee
+          </caption>
+          <thead>
             <tr>
-              <th scope="row">{{ r.date | date: 'EEE, dd MMM' }}</th>
-              <td><app-status-badge [status]="r.status" /></td>
-              <td>{{ r.checkIn ?? '—' }}</td>
-              <td>{{ r.checkOut ?? '—' }}</td>
-              <td class="num">{{ duration(r.workedMinutes) }}</td>
+              <th scope="col">Date</th>
+              <th scope="col">Status</th>
+              <th scope="col">In</th>
+              <th scope="col">Out</th>
+              <th scope="col" class="num">Worked</th>
             </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            @for (r of history(); track r.id) {
+              <tr>
+                <th scope="row">{{ r.date | date: 'EEE, dd MMM' }}</th>
+                <td><app-status-badge [status]="r.status" /></td>
+                <td>{{ r.checkIn ?? '—' }}</td>
+                <td>{{ r.checkOut ?? '—' }}</td>
+                <td class="num">{{ duration(r.workedMinutes) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
   </section>
 </div>

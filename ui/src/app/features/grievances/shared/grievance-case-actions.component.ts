@@ -31,7 +31,7 @@ import {
   GrievanceCommandDialogResult,
   GrievanceCommandValues,
 } from './grievance-command-dialog.component';
-import { safeValue } from './resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** Where the bar is shown: each screen offers the commands of its tier. */
 export type GrievanceWorkspace = 'management' | 'investigation' | 'review';

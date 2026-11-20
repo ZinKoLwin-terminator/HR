@@ -156,7 +156,7 @@ import { AppDatePipe } from '../../../shared/pipes/app-date.pipe';
       </section>
     }
 
-    @if (canSensitive() && documents.value(); as docs) {
+    @if (canSensitive() && documents.hasValue() ? documents.value() : undefined; as docs) {
       <section class="block" aria-label="Documents">
         <h2>Documents</h2>
         @if (docs.items.length) {
@@ -266,7 +266,7 @@ export class ProfilePrintComponent {
       section: nameMap(o.sections, (s) => s.name),
       position: nameMap(o.positions, (p) => p.title),
       grade: nameMap(o.grades, (g) => `${g.code} · ${g.name}`),
-      person: nameMap(o.employees, (p) => fullName(p)),
+      person: nameMap(o.employees, (p) => p.displayName),
     };
   });
   protected readonly address = computed(() => {

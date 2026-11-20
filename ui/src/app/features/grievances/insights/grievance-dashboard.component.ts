@@ -27,7 +27,7 @@ import {
   statusBars,
 } from './grievance-insight-bars';
 import { GrievanceTrendChartComponent } from './grievance-trend-chart.component';
-import { safeValue } from '../shared/resource-value';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /**
  * HR's grievance dashboard (`grievance-management:View`): the headline counts, resolution rate and

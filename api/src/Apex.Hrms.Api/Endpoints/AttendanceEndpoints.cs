@@ -22,6 +22,16 @@ internal static class AttendanceEndpoints
     {
         app.MapCrud<ShiftDto, ShiftCreateRequest, ShiftUpdateRequest, ShiftFilter>("/api/shifts", Tag, Module, CrudOperations.All, Permission.Edit)
             .MapStatusCommands<ShiftDto>(Module);
+
+        // The shift names an employee profile shows, for roles without attendance:View (Payroll Officer): id, code, name, times,
+        // work days, night shift and status of every shift, and nothing else. Any signed-in user, like /api/organization/lookup.
+        // A literal segment, and the shift routes take only "{id:int}", so "lookup" is never read as an id.
+        app.MapGet(
+            "/api/shifts/lookup",
+            async (IShiftLookupHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(cancellationToken)).ToOk())
+            .WithTags(Tag)
+            .RequireAuthorization(AuthorizationSetup.SignedInPolicy);
         app.MapCrud<HolidayDto, HolidayCreateRequest, HolidayUpdateRequest, HolidayFilter>("/api/holidays", Tag, Module, CrudOperations.All, Permission.Edit);
 
         MapRecords(app);

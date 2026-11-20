@@ -1,7 +1,8 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { SalaryComponent } from '../../../core/models/payroll.models';
+import { catchError, of } from 'rxjs';
+import { SalaryComponent, SalaryStructure } from '../../../core/models/payroll.models';
 import {
   SalaryComponentDataService,
   SalaryStructureDataService,
@@ -10,6 +11,7 @@ import { describeComponent } from '../../../core/utilities/payroll-calc';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig, FieldOption } from '../../../shared/components/crud/crud.models';
 import { STATUS_OPTIONS } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const TYPE_OPTIONS: FieldOption[] = [
   { value: 'Earning', label: 'Earning (allowance)' },
@@ -36,10 +38,13 @@ const CALCULATION_OPTIONS: FieldOption[] = [
 export class SalaryComponentsPageComponent {
   private readonly components = inject(SalaryComponentDataService);
   private readonly structuresApi = inject(SalaryStructureDataService);
-  private readonly structures = rxResource({ stream: () => this.structuresApi.getAll() });
+  /** For the usage count; falls back to none so the list below always renders. */
+  private readonly structures = rxResource({
+    stream: () => this.structuresApi.getAll().pipe(catchError(() => of([] as SalaryStructure[]))),
+  });
 
   protected readonly config = computed<CrudPageConfig<SalaryComponent> | null>(() => {
-    const structures = this.structures.value();
+    const structures = safeValue(this.structures);
     if (!structures) {
       return null;
     }

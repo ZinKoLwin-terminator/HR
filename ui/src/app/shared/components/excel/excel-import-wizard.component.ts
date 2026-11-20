@@ -35,6 +35,7 @@ import { ExcelFileUploadComponent } from './excel-file-upload.component';
 import { ExcelImportPreviewComponent } from './excel-import-preview.component';
 import { ExcelImportResultComponent } from './excel-import-result.component';
 import { ExcelValidationSummaryComponent } from './excel-validation-summary.component';
+import { safeValue } from '../../utilities/resource-value';
 
 const STEP = { template: 0, upload: 1, columns: 2, review: 3, confirm: 4, result: 5 } as const;
 
@@ -73,7 +74,7 @@ export class ExcelImportWizardComponent {
 
   protected readonly catalog = rxResource({ stream: () => this.catalogApi.getModules() });
   protected readonly modules = computed(() =>
-    (this.catalog.value() ?? []).filter((m) => m.canImport),
+    (safeValue(this.catalog) ?? []).filter((m) => m.canImport),
   );
 
   protected readonly strategies = IMPORT_STRATEGIES;

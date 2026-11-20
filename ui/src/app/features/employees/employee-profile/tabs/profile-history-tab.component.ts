@@ -1,11 +1,14 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { HistoryEventType } from '../../../../core/models/employee-extras.models';
 import { EmploymentHistoryDataService } from '../../../../core/services/data/employee-extras-data.services';
+import { errorMessage } from '../../../../core/services/ui-notification.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { AppDatePipe } from '../../../../shared/pipes/app-date.pipe';
+import { safeValue } from '../../../../shared/utilities/resource-value';
 
 const ICONS: Record<HistoryEventType, string> = {
   Joined: 'login',
@@ -20,7 +23,7 @@ const ICONS: Record<HistoryEventType, string> = {
 
 @Component({
   selector: 'app-profile-history-tab',
-  imports: [AppDatePipe, MatIconModule, MatProgressBarModule, EmptyStateComponent],
+  imports: [AppDatePipe, MatButtonModule, MatIconModule, MatProgressBarModule, EmptyStateComponent],
   template: `
     <section class="card" aria-labelledby="hist-heading">
       <div class="card__header">
@@ -31,6 +34,10 @@ const ICONS: Record<HistoryEventType, string> = {
       </div>
       @if (history.isLoading() && !entries().length) {
         <mat-progress-bar mode="indeterminate" aria-label="Loading history" />
+      } @else if (history.error()) {
+        <app-empty-state icon="error" title="History could not be loaded" [message]="errorText()">
+          <button mat-flat-button type="button" (click)="history.reload()">Try again</button>
+        </app-empty-state>
       } @else if (entries().length) {
         <ol class="timeline">
           @for (entry of entries(); track entry.id) {
@@ -115,6 +122,9 @@ export class ProfileHistoryTabComponent {
   readonly employeeId = input.required<number>();
   private readonly historyApi = inject(EmploymentHistoryDataService);
 
+  protected readonly errorText = computed(() =>
+    this.history.error() ? errorMessage(this.history.error()) : '',
+  );
   protected readonly history = rxResource({
     params: () => ({ id: this.employeeId() }),
     stream: ({ params }) =>
@@ -125,7 +135,7 @@ export class ProfileHistoryTabComponent {
         sort: { active: 'date', direction: 'desc' },
       }),
   });
-  protected readonly entries = computed(() => this.history.value()?.items ?? []);
+  protected readonly entries = computed(() => safeValue(this.history)?.items ?? []);
 
   protected icon(type: HistoryEventType): string {
     return ICONS[type];

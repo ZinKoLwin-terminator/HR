@@ -1,10 +1,8 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { forkJoin } from 'rxjs';
-import { fullName } from '../../../core/models/employee.models';
-import { SalaryAssignment } from '../../../core/models/payroll.models';
-import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
+import { catchError, forkJoin, of } from 'rxjs';
+import { SalaryAssignment, SalaryStructure } from '../../../core/models/payroll.models';
 import {
   SalaryAssignmentDataService,
   SalaryStructureDataService,
@@ -12,7 +10,13 @@ import {
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
 import { todayIso } from '../../../shared/utilities/date.util';
-import { employeeOptions, options } from '../../organization/organization-lookups';
+import {
+  OrganizationLookupService,
+  employeeLabel,
+  employeeOptions,
+  options,
+} from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /**
  * Salary assignments. A new row with a later effective date revises an employee's salary;
@@ -32,23 +36,29 @@ import { employeeOptions, options } from '../../organization/organization-lookup
 export class EmployeeSalariesPageComponent {
   private readonly assignmentsApi = inject(SalaryAssignmentDataService);
   private readonly structuresApi = inject(SalaryStructureDataService);
-  private readonly employeesApi = inject(EmployeeDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
+  /**
+   * Names and the current-assignment rule. Each part falls back to an empty list on its own, so
+   * the list below always renders (and shows its own error when it cannot be read).
+   */
   protected readonly lookups = rxResource({
     stream: () =>
       forkJoin({
-        employees: this.employeesApi.getAll(),
-        structures: this.structuresApi.getAll(),
-        assignments: this.assignmentsApi.getAll(),
+        employees: this.lookupService.employeeRefs(),
+        structures: this.structuresApi.getAll().pipe(catchError(() => of([] as SalaryStructure[]))),
+        assignments: this.assignmentsApi
+          .getAll()
+          .pipe(catchError(() => of([] as SalaryAssignment[]))),
       }),
   });
 
   protected readonly config = computed<CrudPageConfig<SalaryAssignment> | null>(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     if (!l) {
       return null;
     }
     const today = todayIso();
-    const people = new Map(l.employees.map((e) => [e.id, `${fullName(e)} (${e.employeeCode})`]));
+    const people = new Map(l.employees.map((e) => [e.id, employeeLabel(e)]));
     const structureName = new Map(l.structures.map((s) => [s.id, s.name]));
     // The assignment in force today, per employee.
     const currentId = new Map<number, number>();

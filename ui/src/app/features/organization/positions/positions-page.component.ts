@@ -27,8 +27,10 @@ export class PositionsPageComponent extends OrganizationPageBase<Position> {
     const departmentOptions = options(l.departments, (d) => d.name);
     const gradeOptions = options(l.grades, (g) => `${g.code} · ${g.name}`);
 
+    // Head counts need every employee (employees:View); without it the Filled column is hidden.
+    const canCount = this.canSeeEmployees();
     const filled = new Map<number, number>();
-    for (const e of l.employees) {
+    for (const e of l.employeeRecords) {
       if (e.employmentStatus !== 'Resigned' && e.employmentStatus !== 'Terminated') {
         filled.set(e.positionId, (filled.get(e.positionId) ?? 0) + 1);
       }
@@ -71,14 +73,18 @@ export class PositionsPageComponent extends OrganizationPageBase<Position> {
           align: 'end',
           hideBelow: 'md',
         },
-        {
-          key: 'filled',
-          header: 'Filled',
-          type: 'number',
-          align: 'end',
-          hideBelow: 'md',
-          value: (p) => filled.get(p.id) ?? 0,
-        },
+        ...(canCount
+          ? [
+              {
+                key: 'filled',
+                header: 'Filled',
+                type: 'number' as const,
+                align: 'end' as const,
+                hideBelow: 'md' as const,
+                value: (p: Position) => filled.get(p.id) ?? 0,
+              },
+            ]
+          : []),
         { key: 'status', header: 'Status', type: 'status', sortable: true },
       ],
       newItem: () => ({ headcount: 1, status: 'Active' }),

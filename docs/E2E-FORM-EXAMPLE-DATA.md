@@ -335,11 +335,13 @@ Combined example: Department `Engineering` + Status `Probation` → Engineering 
 
 | Filter | Control | Values | Example |
 |---|---|---|---|
-| Year | Select | Current year and the previous year (for example 2026 and 2025 in 2026) | Previous year |
+| Year | Select | Next year, the current year and the previous year (for example 2027, 2026 and 2025 in 2026) | `2027` for leave applied for in advance (LV-E29) |
 | Department | Select | All + departments | `Human Resources` |
 | Branch | Select | All + branches | `Yangon Head Office` |
 
-Choosing a year reloads the balances for that year. Opening a row shows the detail dialog for the selected year.
+Choosing a year reloads the balances for that year. Opening a row shows the detail dialog for the selected year. Leave counts in the year it starts, so a 2027 leave applied for in 2026 (for example `LV-2026-0030`) shows only under 2027.
+
+The employee profile's **Leave** tab has the same choice in **Balance year** (next, current and previous year, current first).
 
 ### 4.4 Leave calendar (`/leave/calendar`)
 

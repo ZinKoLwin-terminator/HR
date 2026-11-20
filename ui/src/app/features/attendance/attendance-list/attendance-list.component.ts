@@ -32,6 +32,7 @@ import {
 } from '../../../shared/components/data-table/data-table.models';
 import { ExcelActionsComponent } from '../../../shared/components/excel/excel-actions.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import {
   FilterFieldComponent,
@@ -46,6 +47,7 @@ import {
   employeeOptions,
   options,
 } from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 export type AttendanceListMode = 'all' | 'late' | 'early';
 
@@ -88,6 +90,7 @@ const DETAIL_FIELDS: FieldConfig[] = [
     SearchFieldComponent,
     DataTableComponent,
     EmptyStateComponent,
+    ErrorBannerComponent,
   ],
   providers: [
     { provide: DateAdapter, useClass: IsoDateAdapter },
@@ -116,13 +119,13 @@ export class AttendanceListComponent {
 
   protected readonly lookups = rxResource({ stream: () => this.lookupService.load() });
   protected readonly employeeOptions = computed(() =>
-    employeeOptions(this.lookups.value()?.employees ?? []),
+    employeeOptions(safeValue(this.lookups)?.employees ?? []),
   );
   protected readonly departmentOptions = computed(() =>
-    options(this.lookups.value()?.departments ?? [], (d) => d.name),
+    options(safeValue(this.lookups)?.departments ?? [], (d) => d.name),
   );
   protected readonly branchOptions = computed(() =>
-    options(this.lookups.value()?.branches ?? [], (b) => b.name),
+    options(safeValue(this.lookups)?.branches ?? [], (b) => b.name),
   );
 
   /** Removable chips describing every applied filter. */
@@ -188,7 +191,10 @@ export class AttendanceListComponent {
   protected readonly result = linkedSignal<
     PagedResult<AttendanceListItem> | undefined,
     PagedResult<AttendanceListItem> | undefined
-  >({ source: this.page.value, computation: (value, previous) => value ?? previous?.value });
+  >({
+    source: () => safeValue(this.page),
+    computation: (value, previous) => value ?? previous?.value,
+  });
   protected readonly errorText = computed(() =>
     this.page.error() ? errorMessage(this.page.error()) : '',
   );

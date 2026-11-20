@@ -13,8 +13,10 @@ import {
   TableColumn,
 } from '../../../shared/components/data-table/data-table.models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ListQuery } from '../../../shared/utilities/list-query';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 /** The API's default page size for "My payslips". */
 export const MY_PAYSLIPS_PAGE_SIZE = 12;
@@ -26,7 +28,13 @@ const PAGE_SIZE_OPTIONS = [12, 24, 60];
  */
 @Component({
   selector: 'app-my-payslips-list',
-  imports: [MatButtonModule, PageHeaderComponent, DataTableComponent, EmptyStateComponent],
+  imports: [
+    MatButtonModule,
+    PageHeaderComponent,
+    DataTableComponent,
+    EmptyStateComponent,
+    ErrorBannerComponent,
+  ],
   template: `
     <app-page-header
       title="My payslips"
@@ -42,6 +50,9 @@ const PAGE_SIZE_OPTIONS = [12, 24, 60];
         <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
       </app-empty-state>
     } @else {
+      @if (page.error()) {
+        <app-error-banner [message]="errorText()" (retry)="page.reload()" />
+      }
       <app-data-table
         caption="My payslips"
         [columns]="columns"
@@ -82,7 +93,7 @@ export class MyPayslipsListComponent {
     PagedResult<Payslip> | undefined,
     PagedResult<Payslip> | undefined
   >({
-    source: this.page.value,
+    source: () => safeValue(this.page),
     computation: (value, previous) => value ?? previous?.value,
   });
   protected readonly errorText = computed(() =>
@@ -115,7 +126,7 @@ export class MyPayslipsListComponent {
   constructor() {
     // Follow the server when it clamps the page index.
     effect(() => {
-      const value = this.page.value();
+      const value = safeValue(this.page);
       if (value && value.pageIndex !== this.query.pageIndex()) {
         this.query.pageIndex.set(value.pageIndex);
       }

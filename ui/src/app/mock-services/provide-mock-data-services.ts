@@ -17,6 +17,7 @@ import {
   HolidayDataService,
   OvertimeDataService,
   ShiftDataService,
+  ShiftLookupDataService,
   WorkScheduleDataService,
 } from '../core/services/data/attendance-data.services';
 import { AuthDataService } from '../core/services/data/auth-data.service';
@@ -64,6 +65,7 @@ import {
   CompanyDataService,
   DepartmentDataService,
   JobGradeDataService,
+  OrganizationLookupDataService,
   PositionDataService,
   SectionDataService,
 } from '../core/services/data/organization-data.services';
@@ -117,6 +119,7 @@ import {
   HolidayMockService,
   ShiftMockService,
 } from './attendance/attendance-mock.services';
+import { ShiftLookupMockService } from './attendance/shift-lookup-mock.service';
 import {
   AttendanceAdjustmentMockService,
   OvertimeMockService,
@@ -160,6 +163,7 @@ import {
   PositionMockService,
   SectionMockService,
 } from './organization/organization-mock.services';
+import { OrganizationLookupMockService } from './organization/organization-lookup-mock.service';
 import {
   MyPayslipMockService,
   PayrollRunMockService,
@@ -203,6 +207,7 @@ export function provideMockDataServices(options: MockDataOptions = {}): Environm
     bind(SectionDataService, SectionMockService),
     bind(JobGradeDataService, JobGradeMockService),
     bind(PositionDataService, PositionMockService),
+    bind(OrganizationLookupDataService, OrganizationLookupMockService),
     bind(EmployeeDataService, EmployeeMockService),
     bind(EmployeeLookupDataService, EmployeeLookupMockService),
     bind(BlacklistDataService, BlacklistMockService),
@@ -210,6 +215,7 @@ export function provideMockDataServices(options: MockDataOptions = {}): Environm
     bind(EmploymentHistoryDataService, EmploymentHistoryMockService),
     bind(EmployeeSalaryDataService, EmployeeSalaryMockService),
     bind(ShiftDataService, ShiftMockService),
+    bind(ShiftLookupDataService, ShiftLookupMockService),
     bind(HolidayDataService, HolidayMockService),
     bind(AttendanceRecordDataService, AttendanceRecordMockService),
     bind(AttendanceAdjustmentDataService, AttendanceAdjustmentMockService),

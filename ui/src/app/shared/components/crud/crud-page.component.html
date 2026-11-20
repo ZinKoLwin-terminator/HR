@@ -144,6 +144,9 @@
     <button mat-flat-button type="button" (click)="page.reload()">Try again</button>
   </app-empty-state>
 } @else {
+  @if (page.error()) {
+    <app-error-banner [message]="errorText()" (retry)="page.reload()" />
+  }
   <app-data-table
     [caption]="cfg.title"
     [columns]="cfg.columns"

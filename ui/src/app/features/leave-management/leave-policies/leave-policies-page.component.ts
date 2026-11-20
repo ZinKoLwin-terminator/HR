@@ -1,17 +1,22 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { forkJoin } from 'rxjs';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { EMPLOYMENT_TYPES } from '../../../core/models/employee.models';
-import { LeavePolicy } from '../../../core/models/leave.models';
+import { LeavePolicy, LeaveType } from '../../../core/models/leave.models';
 import {
   LeavePolicyDataService,
   LeaveTypeDataService,
 } from '../../../core/services/data/leave-data.services';
-import { JobGradeDataService } from '../../../core/services/data/organization-data.services';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig, FieldOption } from '../../../shared/components/crud/crud.models';
-import { STATUS_OPTIONS, nameMap, options } from '../../organization/organization-lookups';
+import {
+  OrganizationLookupService,
+  STATUS_OPTIONS,
+  nameMap,
+  options,
+} from '../../organization/organization-lookups';
+import { safeValue } from '../../../shared/utilities/resource-value';
 
 const ACCRUAL_OPTIONS: FieldOption[] = [
   { value: 'Upfront', label: 'Full amount at the start of the year' },
@@ -36,13 +41,21 @@ const ACCRUAL_OPTIONS: FieldOption[] = [
 export class LeavePoliciesPageComponent {
   private readonly policies = inject(LeavePolicyDataService);
   private readonly typesApi = inject(LeaveTypeDataService);
-  private readonly gradesApi = inject(JobGradeDataService);
+  private readonly lookupService = inject(OrganizationLookupService);
+  /**
+   * Names for the dropdowns. Grades come from the organization lookup (no organization:View
+   * needed); each part falls back to an empty list, so the list below always renders.
+   */
   private readonly lookups = rxResource({
-    stream: () => forkJoin({ types: this.typesApi.getAll(), grades: this.gradesApi.getAll() }),
+    stream: () =>
+      forkJoin({
+        types: this.typesApi.getAll().pipe(catchError(() => of([] as LeaveType[]))),
+        grades: this.lookupService.organization().pipe(map((o) => o.jobGrades)),
+      }),
   });
 
   protected readonly config = computed<CrudPageConfig<LeavePolicy> | null>(() => {
-    const l = this.lookups.value();
+    const l = safeValue(this.lookups);
     if (!l) {
       return null;
     }

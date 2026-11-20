@@ -81,6 +81,45 @@ Resources: `companies`, `branches`, `departments`, `sections`, `job-grades`, `po
 * Every response record includes `rowVersion` (base64 string of the 8-byte SQL `rowversion`). Use the value of the
   last response you received for the record.
 
+### Organization lookup (any signed-in user)
+
+`GET /api/organization/lookup` (policy `signed-in`, like `/api/me/payslips`; no `organization:View` needed) returns the names
+that dropdowns and table columns need on every screen, for roles without the organization module (Recruiter, Payroll Officer,
+Employee). `401` when not signed in.
+
+```json
+{
+  "companies":   [{ "id": 1, "code": "AHT", "name": "...", "status": "Active" }],
+  "branches":    [{ "id": 1, "companyId": 1, "code": "YGN", "name": "...", "status": "Active" }],
+  "departments": [{ "id": 2, "companyId": 1, "branchId": 1, "code": "HR", "name": "...", "status": "Active" }],
+  "sections":    [{ "id": 1, "departmentId": 2, "code": "...", "name": "...", "status": "Active" }],
+  "positions":   [{ "id": 1, "departmentId": 2, "sectionId": null, "jobGradeId": 3, "code": "...", "title": "...", "status": "Active" }],
+  "jobGrades":   [{ "id": 1, "code": "G1", "name": "...", "level": 1, "status": "Active" }]
+}
+```
+
+* Every record, active **and** inactive (`status` is `"Active"` or `"Inactive"`, as in the resource DTOs), so old records still
+  show their names. Each list is ordered by name (positions by title), then id. Not paged and not scoped.
+* Only the fields above: no head, manager or supervisor employee ids, contact data, address, cost centre, legal or tax data,
+  salary bands, headcount, reporting line or `rowVersion`. Use the resource routes (`organization:View`) for the full records.
+* One untracked projection per record type (`Application/Organization/OrganizationLookup.cs`, `IOrganizationLookupHandler`).
+
+### Shift lookup (any signed-in user)
+
+`GET /api/shifts/lookup` (policy `signed-in`, like `/api/organization/lookup`; no `attendance:View` needed) returns the shift
+names an employee profile shows, for roles without the attendance module (Payroll Officer). `401` when not signed in. The body is
+a JSON array:
+
+```json
+[{ "id": 1, "code": "GEN", "name": "...", "startTime": "09:00", "endTime": "18:00", "workDays": [1, 2, 3, 4, 5], "isNightShift": false, "status": "Active" }]
+```
+
+* Every shift, active **and** inactive, ordered by name, then id. Not paged and not scoped.
+* The same formats as the shift resource: times `"HH:mm"`, `workDays` ascending day numbers (0 = Sunday ... 6 = Saturday),
+  `status` `"Active"` or `"Inactive"`. Nothing else: no `breakMinutes`, `graceMinutes`, `color` or `rowVersion`.
+* `lookup` is a literal segment and the shift routes take only `{id:int}`, so it is never read as an id; `GET /api/shifts/{id}`
+  still needs `attendance:View`. One untracked projection with the work days (`Application/Attendance/Shifts/ShiftLookup.cs`).
+
 ### Optimistic concurrency (`rowVersion`)
 
 `rowVersion` is **required** in the JSON body of every update, delete and command. There is no ETag or `If-Match`.
@@ -301,6 +340,7 @@ needs `rowVersion` as described for the organization module.
 | Route | Policy | Notes |
 | --- | --- | --- |
 | `/api/shifts` (get all, `/query`, `/{id}`, POST, PUT, DELETE, `/{id}/activate`, `/{id}/deactivate`) | View, Edit (create), Edit, Delete, Edit | Like an organization resource, but create needs Edit (every employee holds Create to punch). Fields: `code, name, startTime, endTime, breakMinutes, graceMinutes, workDays (0 = Sunday ... 6), isNightShift, color, status`. Delete is refused (`409`) while employees are assigned or attendance records used the shift. |
+| `GET /api/shifts/lookup` | signed in | Every shift (inactive too) by name: `id, code, name, startTime, endTime, workDays, isNightShift, status` only. See "Shift lookup (any signed-in user)". |
 | `/api/holidays` (get all, `/query?dateFrom&dateTo&type`, `/{id}`, POST, PUT, DELETE) | View, Edit (create), Edit, Delete | `{ date, name, type: Public\|Company }` (create needs Edit). One holiday per date (`400` on `date`; the table has no unique index, so this is checked by the API only). |
 | `GET /api/attendance-records/query`, `GET /api/attendance-records/{id}` | View | Read only, list shape with names. Filters: `employeeId, departmentId, branchId, status, dateFrom, dateTo, lateOnly, earlyOnly, overtimeOnly`; `search` matches employee name or code; sort by `date, employeeId, checkIn, checkOut, workedMinutes, lateMinutes, earlyLeaveMinutes, overtimeMinutes, status`. |
 | `POST /api/attendance/punches` | Create | Body `{ employeeId, kind: "CheckIn"\|"CheckOut" }` and nothing else: the server sets the date and the time (business time zone). Returns the day record. A signed-in employee may punch only for themself (`403`); the built-in administrator may punch for anyone. |
@@ -1384,6 +1424,8 @@ Payroll runs (totals only) are not scoped. A caller with no linked employee (the
 
 * The managed ids are read once per request by the permission check (`IRecruitmentDirectory`, only on `recruitment:*` policies and only for callers without Edit); until then the scopes see nothing, which is the safe side. A caller with `recruitment:Create` but not `Edit` can only apply to, or schedule interviews for, records inside their scope (`400` on `jobOpeningId` / `applicationId`).
 * **Employee picker** `GET /api/employees/lookup?search&pageIndex&pageSize` (policy `employee-lookup`: `recruitment:Edit` **or** `employees:View`, checked by one requirement, `AnyPermissionRequirement`). Returns `PagedResult<{ id, employeeCode, displayName, jobTitle, departmentName }>` for current employees only (no exit date, not Resigned or Terminated), ordered by first name, `pageSize` at most 200 (default 20), `search` (at most 100 characters) matches code or name. It is deliberately not scoped and holds no personal data (no email, phone, dates, status, salary, national id).
+* **Organization lookup** `GET /api/organization/lookup` (policy `signed-in`: any signed-in user, no module grant). Returns `{ companies, branches, departments, sections, positions, jobGrades }` with ids, codes, names (positions: titles), parent ids, the job grade level and status of every record, active and inactive, each list ordered by name then id. Not scoped: it is non-personal reference data. See "Organization lookup (any signed-in user)".
+* **Shift lookup** `GET /api/shifts/lookup` (policy `signed-in`). Returns an array of `{ id, code, name, startTime, endTime, workDays, isNightShift, status }` for every shift, active and inactive, ordered by name then id. Not scoped. See "Shift lookup (any signed-in user)".
 
 ### Authorization seams
 
@@ -1406,6 +1448,11 @@ Payroll runs (totals only) are not scoped. A caller with no linked employee (the
   sort order 12 and 13 in the database seed).
 * A route used by two kinds of caller names a requirement met by any one of several permissions (`AnyPermissionRequirement`,
   policy `employee-lookup`); it goes through the same live check as every permission.
+* A route that needs only a signed-in user (policy `signed-in`: `/api/me/payslips`, the notifications, `/api/organization/lookup`, `/api/shifts/lookup`)
+  does not run `PermissionHandler`. The live account check of such a route is the cookie's session validator
+  (`Auth/AuthenticationSetup.cs`, `SessionValidator`), which reads the account on every request that carries the session cookie and
+  ends the session (`401`) when the account is not Active (Inactive or Locked), its role is inactive, its employee has an exit date,
+  the absolute session maximum has passed or the security stamp changed. `OrganizationLookupHttpTests` covers it without a database.
 
 ## Adding a resource (pattern to copy)
 

@@ -19,6 +19,7 @@ import { ThemeService } from '../../core/services/theme.service';
 import { UiNotificationService } from '../../core/services/ui-notification.service';
 import { ThemePickerComponent } from '../../shared/components/theme-picker/theme-picker.component';
 import { RelativeTimePipe } from '../../shared/pipes/relative-time.pipe';
+import { safeValue } from '../../shared/utilities/resource-value';
 
 export interface Breadcrumb {
   label: string;
@@ -82,15 +83,20 @@ export class HeaderComponent {
     stream: () => this.notificationsApi.getNotifications(),
     defaultValue: [] as AppNotification[],
   });
+  /** The notifications, or none while loading or when the request failed (never throws). */
+  protected readonly notificationList = computed<AppNotification[]>(
+    () => safeValue(this.notifications) ?? [],
+  );
   protected readonly unreadCount = computed(
-    () => this.notifications.value().filter((n) => !n.read).length,
+    () => this.notificationList().filter((n) => !n.read).length,
   );
 
   protected open(notification: AppNotification): void {
     if (!notification.read) {
-      this.notificationsApi
-        .markAsRead(notification.id)
-        .subscribe(() => this.notifications.reload());
+      this.notificationsApi.markAsRead(notification.id).subscribe({
+        next: () => this.notifications.reload(),
+        error: (error: unknown) => this.toast.error(error),
+      });
     }
     if (notification.link) {
       this.router.navigateByUrl(notification.link);
@@ -98,7 +104,10 @@ export class HeaderComponent {
   }
 
   protected markAllRead(): void {
-    this.notificationsApi.markAllAsRead().subscribe(() => this.notifications.reload());
+    this.notificationsApi.markAllAsRead().subscribe({
+      next: () => this.notifications.reload(),
+      error: (error: unknown) => this.toast.error(error),
+    });
   }
 
   protected signOut(): void {

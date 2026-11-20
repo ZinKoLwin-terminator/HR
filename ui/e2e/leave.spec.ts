@@ -374,6 +374,77 @@ test.describe('leave balances', () => {
     await expect(page.getByRole('heading', { name: /Leave balances/ })).toBeVisible();
     await expect(page.getByRole('row', { name: /Annual Leave/ })).toContainText('25');
   });
+
+  // LV-E29: leave applied for this year but starting next year counts in next year's balance.
+  test('leave that starts next year is taken from next year’s balance', async ({ page }) => {
+    // Fixed date so the application number and the years are known (the clock keeps running).
+    await page.clock.install({ time: new Date('2026-11-20T09:00:00') });
+    await page.goto('/leave/applications');
+    await page.getByRole('button', { name: 'Add leave application' }).click();
+    await dialogFocused(page);
+    await chooseInDialog(page, 'Employee', 'Hnin Ei Phyu (EMP006)');
+    await chooseInDialog(page, 'Leave type', 'Annual Leave');
+    await dialog(page).getByLabel('Start date').fill('2027-03-01');
+    await dialog(page).getByLabel('End date').fill('2027-03-05');
+    await expect(dialog(page).getByLabel('Number of days')).toHaveValue('5');
+    await dialog(page).getByLabel('Reason').fill('Family trip in March');
+    await dialog(page).getByRole('button', { name: 'Create leave application' }).click();
+    // The number carries the year it was applied in, not the year of the leave.
+    await expect(
+      page.getByText(
+        'Leave application "LV-2026-0030 · Hnin Ei Phyu (EMP006)" created successfully.',
+      ),
+    ).toBeVisible();
+
+    await page.getByRole('searchbox', { name: /Search by application/ }).fill('trip in march');
+    await expect(rows(page)).toHaveCount(1);
+    await rowMenu(page, 'Draft', 'Submit for approval');
+    await dialog(page).getByRole('button', { name: 'Submit' }).click();
+    await expect(page.getByText(/submitted for approval\./)).toBeVisible();
+
+    // Navigate inside the app (a reload would reset the sample data)
+    const nav = page.getByRole('navigation', { name: 'Main navigation' });
+    await nav.getByRole('link', { name: 'Leave Approvals' }).click();
+    await rowMenu(page, 'Hnin Ei Phyu', 'Approve');
+    await dialogFocused(page);
+    await dialog(page).getByLabel('Remarks (optional)').fill('OK');
+    await dialog(page).getByRole('button', { name: 'Approve' }).click();
+    await expect(page.getByText('LV-2026-0030 approved.')).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Leave Balances' }).click();
+    await page.getByRole('searchbox', { name: /Search by employee name/ }).fill('hnin ei');
+    await expect(rows(page)).toHaveCount(1);
+
+    /** Taken days of Annual Leave in the details dialog (cells: entitled, taken, pending, available). */
+    const annualTaken = async () => {
+      await rows(page).first().click();
+      const cells = dialog(page)
+        .getByRole('row', { name: /Annual Leave/ })
+        .getByRole('cell');
+      const taken = (await cells.nth(1).innerText()).trim();
+      await dialog(page).getByRole('button', { name: 'Close' }).click();
+      await expect(dialog(page)).toHaveCount(0);
+      return taken;
+    };
+
+    // This year's balance is unchanged; next year's has the 5 days.
+    expect(await annualTaken()).toBe('0');
+    await choose(page, 'Year', '2027');
+    await expect(dialog(page)).toHaveCount(0);
+    await expect.poll(annualTaken).toBe('5');
+  });
+
+  // LV-E30: the profile's Leave tab can show next year's balances.
+  test('the employee profile can show next year’s balances', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-11-20T09:00:00') });
+    await page.goto('/employees/6?tab=leave');
+    await expect(page.getByRole('heading', { name: 'Leave balances · 2026' })).toBeVisible();
+    await openSelect(page.getByRole('combobox', { name: 'Balance year' }));
+    await expect(page.getByRole('option')).toHaveText(['2027', '2026', '2025']);
+    await page.getByRole('option', { name: '2027' }).click();
+    await expect(page.getByRole('heading', { name: 'Leave balances · 2027' })).toBeVisible();
+    await expect(page.getByRole('row', { name: /Annual Leave/ })).toBeVisible();
+  });
 });
 
 test.describe('leave calendar', () => {

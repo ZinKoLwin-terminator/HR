@@ -20,6 +20,7 @@ internal static class OrganizationServiceCollectionExtensions
         .AddCrudResource<Section, SectionDetails, SectionCreateRequest, SectionUpdateRequest, SectionDto, SectionFilter, SectionMapping, SectionRules, SectionQuerySpecification>()
         .AddCrudResource<JobGrade, JobGradeDetails, JobGradeCreateRequest, JobGradeUpdateRequest, JobGradeDto, JobGradeFilter, JobGradeMapping, JobGradeRules, JobGradeQuerySpecification>()
         .AddCrudResource<Position, PositionDetails, PositionCreateRequest, PositionUpdateRequest, PositionDto, PositionFilter, PositionMapping, PositionRules, PositionQuerySpecification>()
+        .AddScoped<IOrganizationLookupHandler, OrganizationLookupHandler>()
         .AddOrganizationReferences();
 
     /// <summary>
