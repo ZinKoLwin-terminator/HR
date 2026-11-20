@@ -208,6 +208,24 @@ test.describe('check in / check out', () => {
       await expect(page.locator('.state')).toHaveText(/Day complete|on approved leave|Today is a/);
     }
   });
+
+  // ATT-51: working on a holiday is Present, never Late, and the screen says why.
+  test('says that today is a holiday and records a late arrival as Present', async ({ page }) => {
+    // 2026-11-20 is the sample holiday "Company Foundation Day"; 11:59 is long after 09:00 + 15 min.
+    await page.clock.install({ time: new Date('2026-11-20T11:59:00') });
+    await page.goto('/attendance/check-in');
+    await expect(page.getByRole('note')).toContainText(
+      'Today is a holiday: Company Foundation Day. Working today is recorded as Present, with no late minutes.',
+    );
+    await expect(page.locator('.state')).toHaveText('Today is a holiday');
+
+    await page.getByRole('button', { name: /Check in/ }).click();
+    await expect(
+      page.getByText(/checked in at \d{2}:\d{2} — worked on a holiday, recorded as Present\./),
+    ).toBeVisible();
+    await expect(page.locator('.state-status')).toContainText('Present');
+    await expect(page.locator('.state-status')).not.toContainText('Late');
+  });
 });
 
 test.describe('shift management', () => {

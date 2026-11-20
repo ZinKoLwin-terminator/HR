@@ -11,6 +11,7 @@ import {
   AttendanceAdjustmentDataService,
   AttendanceOverviewDataService,
   AttendanceRecordDataService,
+  HolidayDataService,
   OvertimeDataService,
   ShiftDataService,
   WorkScheduleDataService,
@@ -178,6 +179,41 @@ describe('attendance data', () => {
       );
       expect(worked.status).toBe('Present');
       expect(worked.remarks).toContain('weekend');
+    });
+
+    it('uses the holiday calendar and the shift days when the day has no record yet, as the API does', async () => {
+      // A holiday added today on a working Tuesday: arriving at 11:59 is not late.
+      await firstValueFrom(
+        TestBed.inject(HolidayDataService).create({
+          date: '2026-01-06',
+          name: 'Test Holiday',
+          type: 'Company',
+        }),
+      );
+      const holiday = await firstValueFrom(
+        records.punch({ employeeId: 2, date: '2026-01-06', time: '11:59', kind: 'in' }),
+      );
+      expect(holiday).toMatchObject({
+        status: 'Present',
+        lateMinutes: 0,
+        remarks: 'Worked on a holiday',
+      });
+
+      // Saturday is not a day of the General Shift (Monday–Friday).
+      const saturday = await firstValueFrom(
+        records.punch({ employeeId: 2, date: '2026-01-10', time: '11:00', kind: 'in' }),
+      );
+      expect(saturday).toMatchObject({
+        status: 'Present',
+        lateMinutes: 0,
+        remarks: 'Worked on a weekend',
+      });
+
+      // The same arrival on an ordinary working day is late.
+      const workday = await firstValueFrom(
+        records.punch({ employeeId: 2, date: '2026-01-07', time: '11:59', kind: 'in' }),
+      );
+      expect(workday).toMatchObject({ status: 'Late', lateMinutes: 179 });
     });
   });
 

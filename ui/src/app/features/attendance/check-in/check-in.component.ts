@@ -12,8 +12,10 @@ import { fullName } from '../../../core/models/employee.models';
 import { CurrentUserService } from '../../../core/services/current-user.service';
 import {
   AttendanceRecordDataService,
+  HolidayDataService,
   ShiftDataService,
 } from '../../../core/services/data/attendance-data.services';
+import { dayOffOn } from '../../../core/utilities/attendance-calc';
 import { EmployeeDataService } from '../../../core/services/data/employee-data.service';
 import { UiNotificationService } from '../../../core/services/ui-notification.service';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -44,6 +46,7 @@ export class CheckInComponent {
   private readonly attendanceApi = inject(AttendanceRecordDataService);
   private readonly employeesApi = inject(EmployeeDataService);
   private readonly shiftsApi = inject(ShiftDataService);
+  private readonly holidaysApi = inject(HolidayDataService);
   private readonly toast = inject(UiNotificationService);
   private readonly user = inject(CurrentUserService);
 
@@ -74,6 +77,22 @@ export class CheckInComponent {
   });
 
   protected readonly today = todayIso();
+
+  /** Loaded on its own: if it fails, the screen still works and only the day-off notice is missing. */
+  private readonly holidays = rxResource({ stream: () => this.holidaysApi.getAll() });
+  /** Today is a holiday, or not one of the shift's working days (same rule as the server). */
+  protected readonly dayOff = computed(() =>
+    dayOffOn(this.today, this.shift(), this.holidays.hasValue() ? this.holidays.value() : []),
+  );
+  protected readonly dayOffNotice = computed(() => {
+    const off = this.dayOff();
+    if (!off) return '';
+    const day = off.holiday
+      ? `Today is a holiday: ${off.holiday.name}.`
+      : `Today is not a working day of the ${this.shift()?.name ?? 'shift'}.`;
+    return `${day} Working today is recorded as Present, with no late minutes.`;
+  });
+
   protected readonly recent = rxResource({
     params: () => ({ id: this.employeeId() }),
     stream: ({ params }) =>
@@ -105,10 +124,13 @@ export class CheckInComponent {
         return `Checked in at ${record?.checkIn}`;
       case 'done':
         return `Day complete · ${formatDuration(record?.workedMinutes ?? 0)} worked`;
-      default:
-        return record?.status === 'Weekend' || record?.status === 'Holiday'
-          ? `Today is a ${record.status.toLowerCase()}`
-          : 'Ready to check in';
+      default: {
+        const off =
+          record?.status === 'Weekend' || record?.status === 'Holiday'
+            ? record.status
+            : this.dayOff()?.status;
+        return off ? `Today is a ${off.toLowerCase()}` : 'Ready to check in';
+      }
     }
   });
 
@@ -134,9 +156,16 @@ export class CheckInComponent {
         next: (record) => {
           this.busy.set(false);
           const name = this.employee() ? fullName(this.employee()!) : 'Employee';
+          const off = this.dayOff();
+          const note =
+            record.status === 'Late'
+              ? ` — marked late (${record.lateMinutes} min)`
+              : off
+                ? ` — worked on a ${off.status.toLowerCase()}, recorded as Present`
+                : '';
           this.toast.success(
             kind === 'in'
-              ? `${name} checked in at ${time}${record.status === 'Late' ? ` — marked late (${record.lateMinutes} min)` : ''}.`
+              ? `${name} checked in at ${time}${note}.`
               : `${name} checked out at ${time}. Worked ${formatDuration(record.workedMinutes)}.`,
           );
           this.recent.reload();

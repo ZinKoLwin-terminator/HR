@@ -25,6 +25,12 @@
         {{ s.name }} · {{ s.startTime }} – {{ s.endTime }} · grace {{ s.graceMinutes }} min
       </p>
     }
+    @if (dayOffNotice(); as notice) {
+      <p class="day-off" role="note">
+        <mat-icon aria-hidden="true">event_available</mat-icon>
+        <span>{{ notice }}</span>
+      </p>
+    }
 
     <h2 id="punch-heading" class="state" [attr.data-state]="state()">{{ heading() }}</h2>
     @if (todayRecord(); as record) {
