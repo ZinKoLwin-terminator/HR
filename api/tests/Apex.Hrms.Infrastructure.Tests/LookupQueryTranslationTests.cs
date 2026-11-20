@@ -3,6 +3,7 @@ using Apex.Hrms.Application;
 using Apex.Hrms.Application.Abstractions;
 using Apex.Hrms.Application.Attendance.Shifts;
 using Apex.Hrms.Application.Organization;
+using Apex.Hrms.Application.Performance.Categories;
 using Apex.Hrms.Domain.Common;
 using Apex.Hrms.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +12,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Apex.Hrms.Infrastructure.Tests;
 
 /// <summary>
-/// The lookups readable by any signed-in user (<c>/api/organization/lookup</c>, <c>/api/shifts/lookup</c>) run their real
-/// queries through the EF read model and are translated to SQL text, never executed. The columns each SELECT reads are
-/// checked against an allowlist per table, so a new column (a salary band, an employee id, contact data) cannot slip into
-/// what any signed-in user receives. No connection is opened.
+/// The lookups readable by any signed-in user (<c>/api/organization/lookup</c>, <c>/api/shifts/lookup</c>) and the KPI category
+/// picker (<c>/api/kpi/categories/options</c>, <c>kpi:View</c>) run their real queries through the EF read model and are translated
+/// to SQL text, never executed. The columns each SELECT reads are checked against an allowlist per table, so a new column (a salary
+/// band, an employee id, contact data) cannot slip into what these wide audiences receive. No connection is opened.
 /// </summary>
 public sealed partial class LookupQueryTranslationTests : IDisposable
 {
@@ -108,6 +109,20 @@ public sealed partial class LookupQueryTranslationTests : IDisposable
             ["[att].[Shift]"] = ["Id", "Code", "Name", "StartTime", "EndTime", "IsNightShift", "Status"],
             ["[att].[ShiftWorkDay]"] = ["DayOfWeek", "ShiftId"],
         });
+        Assert.Contains("ORDER BY", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_kpi_category_picker_is_one_statement_that_reads_exactly_the_contract_columns()
+    {
+        var (provider, capture) = Arrange();
+        using (provider)
+        {
+            await provider.GetRequiredService<IKpiCategoryOptionsHandler>().HandleAsync(default);
+        }
+
+        var sql = Assert.Single(capture.Statements);
+        AssertColumns(sql, new() { ["[kpi].[Category]"] = ["Id", "Code", "Name", "Status"] });
         Assert.Contains("ORDER BY", sql, StringComparison.Ordinal);
     }
 

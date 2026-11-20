@@ -14,8 +14,8 @@ namespace Apex.Hrms.Api.Endpoints;
 
 /// <summary>
 /// KPI master data under <c>/api/kpi</c>: categories, templates, evaluation periods and rating bands. All of it needs
-/// <c>kpi-setup</c> permissions (HR), except the period picker, which employees and managers use and which needs
-/// <c>kpi:View</c> only. Scorecards (reads, assignment, the plan, the workflow, evidence), the dashboards and the reports follow below.
+/// <c>kpi-setup</c> permissions (HR), except the two pickers (<c>/api/kpi/periods/options</c> and <c>/api/kpi/categories/options</c>),
+/// which employees and managers use and which need <c>kpi:View</c> only. Scorecards (reads, assignment, the plan, the workflow, evidence), the dashboards and the reports follow below.
 /// </summary>
 internal static class KpiEndpoints
 {
@@ -25,8 +25,16 @@ internal static class KpiEndpoints
 
     public static IEndpointRouteBuilder MapKpiEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapCrud<KpiCategoryDto, KpiCategoryCreateRequest, KpiCategoryUpdateRequest, KpiCategoryFilter>("/api/kpi/categories", Tag, Setup)
+        var categories = app.MapCrud<KpiCategoryDto, KpiCategoryCreateRequest, KpiCategoryUpdateRequest, KpiCategoryFilter>("/api/kpi/categories", Tag, Setup)
             .MapStatusCommands<KpiCategoryDto>(Setup);
+
+        // The category picker of the KPI reports (managers and employees): every category, inactive too, as { id, code, name, status }.
+        // On the CRUD group like the period picker; the group's id routes take "{id:int}" only, so "options" is never read as an id.
+        categories.MapGet(
+            "/options",
+            async (IKpiCategoryOptionsHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(cancellationToken)).ToOk())
+            .RequireAuthorization(PermissionModule.Kpi.PolicyName(Permission.View));
         app.MapCrud<KpiTemplateDto, KpiTemplateCreateRequest, KpiTemplateUpdateRequest, KpiTemplateFilter>("/api/kpi/templates", Tag, Setup)
             .MapStatusCommands<KpiTemplateDto>(Setup);
         app.MapCrud<RatingBandDto, RatingBandCreateRequest, RatingBandUpdateRequest, RatingBandFilter>("/api/kpi/rating-bands", Tag, Setup)

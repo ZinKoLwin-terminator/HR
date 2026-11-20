@@ -82,16 +82,16 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         endpoint.RoutePattern.RawText!.StartsWith("/api/kpi", StringComparison.Ordinal);
 
     [Fact]
-    public void Kpi_maps_sixty_four_endpoints_and_every_one_uses_a_kpi_permission()
+    public void Kpi_maps_sixty_five_endpoints_and_every_one_uses_a_kpi_permission()
     {
         var policies = PoliciesOf(IsKpiRoute);
 
-        Assert.Equal(64, policies.Count);
+        Assert.Equal(65, policies.Count);
         Assert.All(policies.Values, policy => Assert.True(policy.StartsWith("kpi-setup:", StringComparison.Ordinal) || policy.StartsWith("kpi:", StringComparison.Ordinal), policy));
     }
 
     [Fact]
-    public void Kpi_setup_endpoints_have_the_policy_of_their_verb_and_only_the_period_picker_needs_the_performance_view()
+    public void Kpi_setup_endpoints_have_the_policy_of_their_verb_and_only_the_two_pickers_need_the_performance_view()
     {
         var policies = PoliciesOf(IsKpiRoute);
 
@@ -115,6 +115,17 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal("kpi-setup:Edit", policies["POST /api/kpi/periods/{id:int}/complete"]);
         Assert.Equal("kpi-setup:Edit", policies["POST /api/kpi/periods/{id:int}/close"]);
         Assert.Equal("kpi:View", policies["GET /api/kpi/periods/options"]);
+        Assert.Equal("kpi:View", policies["GET /api/kpi/categories/options"]);
+
+        // No other master-data route is open to the performance view.
+        string[] masterData = ["/api/kpi/categories", "/api/kpi/templates", "/api/kpi/rating-bands", "/api/kpi/periods"];
+        Assert.Equal(
+            ["GET /api/kpi/categories/options", "GET /api/kpi/periods/options"],
+            policies
+                .Where(entry => entry.Value != null && !entry.Value.StartsWith("kpi-setup:", StringComparison.Ordinal)
+                    && masterData.Any(prefix => entry.Key.Contains(prefix + "/", StringComparison.Ordinal)))
+                .Select(entry => entry.Key)
+                .Order(StringComparer.Ordinal));
     }
 
     [Fact]

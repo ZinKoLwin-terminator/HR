@@ -106,6 +106,12 @@ export interface KpiCategory extends Entity {
   rowVersion?: string;
 }
 
+/**
+ * A category as the picker returns it (`GET /api/kpi/categories/options`, kpi:View): every
+ * category, inactive ones included, by name. No description or row version.
+ */
+export type KpiCategoryOption = Pick<KpiCategory, 'id' | 'code' | 'name' | 'status'>;
+
 /** A reusable KPI definition. A scorecard item copies it when assigned, so later edits never change an item. */
 export interface KpiTemplate extends Entity {
   code: string;

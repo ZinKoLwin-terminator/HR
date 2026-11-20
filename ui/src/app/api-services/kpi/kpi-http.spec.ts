@@ -105,6 +105,17 @@ describe('KPI HTTP adapters', () => {
       expect((await promise).items[0].code).toBe('QUALITY');
     });
 
+    it('loads the category picker from /categories/options (kpi:View)', async () => {
+      const http = setup();
+      const promise = firstValueFrom(TestBed.inject(KpiCategoryDataService).options());
+      const req = http.expectOne(`${KPI}/categories/options`);
+      expect(req.request.method).toBe('GET');
+      req.flush([{ id: 3, code: 'QUALITY', name: 'Quality', status: 'Inactive' }]);
+      expect(await promise).toEqual([
+        { id: 3, code: 'QUALITY', name: 'Quality', status: 'Inactive' },
+      ]);
+    });
+
     it('update sends the fields with the row version, and a status change goes through a command', async () => {
       const http = setup();
       const categories = TestBed.inject(KpiCategoryDataService);

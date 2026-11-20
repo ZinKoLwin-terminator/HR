@@ -421,9 +421,9 @@ and `docs/test-data/kpi-scorecard-cases.json` (whole scorecards with the error k
 documents the fields of each kind. Numbers are plain JSON numbers and enum values the API's texts.
 
 Policies (checked against the role's grants, see "Permission check"): setup is the module `kpi-setup` with
-`View|Create|Edit|Delete` (HR); the period picker is the module `kpi` with `View` (everyone who uses scorecards:
+`View|Create|Edit|Delete` (HR); the two pickers (periods and categories) are the module `kpi` with `View` (everyone who uses scorecards:
 `kpi` also has `Create` and `Approve`: `Approve` decides the scorecard row scope and opens the review routes). A caller with `kpi:View` only cannot read
-the setup, and `kpi-setup` alone does not open the picker. Every route needs a signed-in user (`401` otherwise).
+the setup, and `kpi-setup` alone does not open the pickers. Every route needs a signed-in user (`401` otherwise).
 
 | Route | Policy | Body | Returns |
 | --- | --- | --- | --- |
@@ -435,6 +435,7 @@ the setup, and `kpi-setup` alone does not open the picker. Every route needs a s
 | `POST /api/kpi/periods/{id}/complete` | `kpi-setup:Edit` | `{ rowVersion }` | Active to Completed |
 | `POST /api/kpi/periods/{id}/close` | `kpi-setup:Edit` | `{ rowVersion }` | Completed to Closed (final); `409` while a scorecard of the period is in review or returned |
 | `GET /api/kpi/periods/options?companyId?` | `kpi:View` | none | `EvaluationPeriodOptionDto[]`, periods that are not Draft, newest start first |
+| `GET /api/kpi/categories/options` | `kpi:View` | none | `[{ id, code, name, status }]`: every category, active **and** inactive (so old report rows keep their names), by name then id; `status` is `"Active"` or `"Inactive"` as in `KpiCategoryDto`. No description or `rowVersion`. The category filter of the KPI reports; `options` is never read as an id (the id routes take `{id:int}`) |
 
 The paging, `sort=field:asc|desc` whitelist (an unknown field is a `400` on `sort`), `search`, `rowVersion` and error rules
 are those of the organization module. Dates are `yyyy-MM-dd`; decimals travel as JSON numbers.

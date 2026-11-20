@@ -70,6 +70,8 @@ public sealed class PermissionPolicyHttpTests : IClassFixture<WebApplicationFact
         { "POST", "/api/kpi/periods/1/close", "kpi-setup:Edit" },
         // The period picker is for employees and managers: it needs the performance view, not the setup permission.
         { "GET", "/api/kpi/periods/options", "kpi:View" },
+        // The category picker of the KPI reports, likewise.
+        { "GET", "/api/kpi/categories/options", "kpi:View" },
         { "GET", "/api/kpi/rating-bands/query", "kpi-setup:View" },
         { "POST", "/api/kpi/rating-bands/1/activate", "kpi-setup:Edit" },
         // Scorecard reads need the performance view (rows are scoped in the query); assigning and planning are HR work.

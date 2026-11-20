@@ -26,7 +26,8 @@ internal static class PerformanceServiceCollectionExtensions
         .AddPerformanceReferences();
 
     private static IServiceCollection AddKpiCategories(this IServiceCollection services) => services
-        .AddCrudResource<KpiCategory, KpiCategoryDetails, KpiCategoryCreateRequest, KpiCategoryUpdateRequest, KpiCategoryDto, KpiCategoryFilter, KpiCategoryMapping, KpiCategoryRules, KpiCategoryQuerySpecification>();
+        .AddCrudResource<KpiCategory, KpiCategoryDetails, KpiCategoryCreateRequest, KpiCategoryUpdateRequest, KpiCategoryDto, KpiCategoryFilter, KpiCategoryMapping, KpiCategoryRules, KpiCategoryQuerySpecification>()
+        .AddScoped<IKpiCategoryOptionsHandler, KpiCategoryOptionsHandler>();
 
     private static IServiceCollection AddKpiTemplates(this IServiceCollection services) => services
         .AddCrudResource<KpiTemplate, KpiTemplateDetails, KpiTemplateCreateRequest, KpiTemplateUpdateRequest, KpiTemplateDto, KpiTemplateFilter, KpiTemplateMapping, KpiTemplateRules, KpiTemplateQuerySpecification>();

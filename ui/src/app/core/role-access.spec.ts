@@ -2,7 +2,7 @@ import { Provider, Type, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogModule } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
-import { throwError } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { CheckInComponent } from '../features/attendance/check-in/check-in.component';
 import { LeaveApplicationsPageComponent } from '../features/leave-management/leave-applications/leave-pages.component';
 import { LeaveBalancesComponent } from '../features/leave-management/leave-balances/leave-balances.component';
@@ -11,6 +11,7 @@ import { UNNAMED_PERSON } from '../features/organization/organization-lookups';
 import { PositionsPageComponent } from '../features/organization/positions/positions-page.component';
 import { ReportingStructureComponent } from '../features/organization/reporting-structure/reporting-structure.component';
 import { PayslipsListComponent } from '../features/payroll/payslips/payslips-list.component';
+import { KpiReportsComponent } from '../features/performance-management/reports/kpi-reports.component';
 import { JobOpeningsPageComponent } from '../features/recruitment/job-openings/job-openings-page.component';
 import { MOCK_EMPLOYEES } from '../mock-data/employees/employees.mock';
 import { provideMockDataServices } from '../mock-services/provide-mock-data-services';
@@ -28,6 +29,7 @@ import {
   EmployeeLookupDataService,
 } from './services/data/employee-data.service';
 import { ExcelModuleCatalogDataService } from './services/data/excel-data.services';
+import { KpiCategoryDataService } from './services/data/kpi-data.services';
 import {
   LeaveApplicationDataService,
   LeaveBalanceDataService,
@@ -201,6 +203,7 @@ async function render(
   component: Type<unknown>,
   keys: readonly string[],
   alsoForbid: Token[] = [],
+  extra: Provider[] = [],
 ): Promise<Sweep> {
   const granted = new Set(keys);
   const forbiddenCalls = new Map<Token, number>();
@@ -224,6 +227,7 @@ async function render(
       { provide: APP_CONFIG, useValue: { ...DEFAULT_APP_CONFIG, mockLatencyMs: 0 } },
       { provide: CurrentUserService, useValue: { current: signal(user), initials: signal('RS') } },
       ...overrides,
+      ...extra,
     ],
   });
   const errors: unknown[] = [];
@@ -347,6 +351,31 @@ describe('role access sweep (403 for every contract the role cannot read)', () =
     noValueErrors(sweep);
     expect(text(sweep)).toContain('Departments could not be loaded');
     expect(text(sweep)).toContain(FORBIDDEN.message);
+  });
+
+  it('Department Manager: KPI Reports fills the category filter from the picker, not the setup list', async () => {
+    // Categories: the CRUD reads need kpi-setup:View (403 here); the picker needs kpi:View only.
+    const calls = { crud: 0, options: 0 };
+    const categories = {
+      getAll: () => (calls.crud++, throwError(() => FORBIDDEN)),
+      query: () => (calls.crud++, throwError(() => FORBIDDEN)),
+      getById: () => (calls.crud++, throwError(() => FORBIDDEN)),
+      options: () => (
+        calls.options++,
+        of([{ id: 7, code: 'QUALITY', name: 'Quality', status: 'Active' }])
+      ),
+    };
+    const sweep = await render(
+      KpiReportsComponent,
+      ROLES.departmentManager,
+      [],
+      [{ provide: KpiCategoryDataService, useValue: categories }],
+    );
+    noValueErrors(sweep);
+    expect(calls.crud).toBe(0);
+    expect(calls.options).toBeGreaterThan(0);
+    const filters = instance<{ filterOptions(): { categoryId: { label: string }[] } }>(sweep);
+    expect(filters.filterOptions().categoryId.map((o) => o.label)).toEqual(['Quality']);
   });
 
   it('HR Officer: Leave Balances renders without Excel', async () => {
