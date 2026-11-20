@@ -3,6 +3,15 @@ import { LeaveApplication, LeaveBalance, LeavePolicy, LeaveType } from '../model
 
 export type { LeaveBalance } from '../models/leave.models';
 
+/**
+ * Years a balance can be viewed for, newest first: next year (leave applied for in advance),
+ * this year and last year. Leave counts in the year it starts, so a leave that starts next
+ * year only shows in next year's balance.
+ */
+export function balanceYearOptions(currentYear: number): number[] {
+  return [currentYear + 1, currentYear, currentYear - 1];
+}
+
 /** Optional per-type entitlement override (see {@link resolveEntitlement}). */
 export type EntitlementResolver = (type: LeaveType) => number;
 

@@ -1,5 +1,11 @@
 import { LeaveApplication, LeavePolicy, LeaveType } from '../models/leave.models';
-import { computeLeaveBalances, resolveEntitlement } from './leave-balance';
+import { balanceYearOptions, computeLeaveBalances, resolveEntitlement } from './leave-balance';
+
+describe('balanceYearOptions', () => {
+  it('offers next year, this year and last year, newest first', () => {
+    expect(balanceYearOptions(2026)).toEqual([2027, 2026, 2025]);
+  });
+});
 
 const type = (overrides: Partial<LeaveType> = {}): LeaveType => ({
   id: 1,
@@ -129,6 +135,22 @@ describe('computeLeaveBalances', () => {
     ];
     const [al] = computeLeaveBalances(types, apps, 'Male', 2026);
     expect(al).toMatchObject({ entitled: 15, taken: 3, pending: 2, available: 10 });
+  });
+
+  it('counts leave in the year it starts, not the year it was applied for', () => {
+    // Applied for in 2026 (LV-2026-…) but starting in March 2027.
+    const apps = [
+      application({
+        startDate: '2027-03-01',
+        endDate: '2027-03-05',
+        days: 5,
+        appliedOn: '2026-11-20',
+      }),
+    ];
+    const [this2026] = computeLeaveBalances(types, apps, 'Female', 2026);
+    const [next2027] = computeLeaveBalances(types, apps, 'Female', 2027);
+    expect(this2026).toMatchObject({ taken: 0, available: 15 });
+    expect(next2027).toMatchObject({ taken: 5, available: 10 });
   });
 
   it('never goes below zero and applies the entitlement resolver and gender eligibility', () => {

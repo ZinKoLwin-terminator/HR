@@ -1,9 +1,13 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSelectModule } from '@angular/material/select';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { LeaveBalance } from '../../../../core/models/leave.models';
+import { balanceYearOptions } from '../../../../core/utilities/leave-balance';
 import {
   LeaveApplicationDataService,
   LeaveBalanceDataService,
@@ -18,7 +22,9 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
     DatePipe,
     DecimalPipe,
     RouterLink,
+    MatFormFieldModule,
     MatProgressBarModule,
+    MatSelectModule,
     StatusBadgeComponent,
     EmptyStateComponent,
   ],
@@ -29,11 +35,30 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
       <section class="card" aria-labelledby="lv-balance">
         <div class="card__header">
           <div>
-            <h2 id="lv-balance">Leave balances · {{ year }}</h2>
-            <p>Approved leave counts as taken; submitted requests are held as pending.</p>
+            <h2 id="lv-balance">Leave balances · {{ year() }}</h2>
+            <p>
+              Approved leave counts as taken; submitted requests are held as pending. Leave counts
+              in the year it starts.
+            </p>
           </div>
-          <a routerLink="/leave/balances" class="link-button">All balances</a>
+          <div class="header-tools">
+            <mat-form-field subscriptSizing="dynamic" class="year-field">
+              <mat-select
+                aria-label="Balance year"
+                [value]="year()"
+                (selectionChange)="year.set($event.value)"
+              >
+                @for (y of yearOptions; track y) {
+                  <mat-option [value]="y">{{ y }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <a routerLink="/leave/balances" class="link-button">All balances</a>
+          </div>
         </div>
+        @if (balanceData.isLoading()) {
+          <mat-progress-bar mode="indeterminate" aria-label="Loading leave balances" />
+        }
         <div class="scroll">
           <table class="simple-table">
             <caption class="cdk-visually-hidden">
@@ -127,6 +152,15 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
     .apps {
       margin-top: 20px;
     }
+    .header-tools {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+    .year-field {
+      width: 110px;
+    }
     .scroll {
       overflow-x: auto;
     }
@@ -152,15 +186,15 @@ export class ProfileLeaveTabComponent {
   private readonly applicationsApi = inject(LeaveApplicationDataService);
   private readonly balancesApi = inject(LeaveBalanceDataService);
 
-  protected readonly year = new Date().getFullYear();
+  /** Next year, this year and last year: leave applied for in advance counts in next year. */
+  protected readonly yearOptions = balanceYearOptions(new Date().getFullYear());
+  protected readonly year = signal(new Date().getFullYear());
 
   protected readonly data = rxResource({
     params: () => ({ id: this.employeeId() }),
     stream: ({ params }) =>
       forkJoin({
         types: this.typesApi.getAll(),
-        // Same service as the Leave Balances screen, so entitlements follow the leave policies.
-        balances: this.balancesApi.getForEmployee(params.id, this.year),
         applications: this.applicationsApi.query({
           pageIndex: 0,
           pageSize: 200,
@@ -170,8 +204,19 @@ export class ProfileLeaveTabComponent {
       }),
   });
 
+  /** Loaded on its own so that changing the year does not reload the leave history. */
+  protected readonly balanceData = rxResource({
+    params: () => ({ id: this.employeeId(), year: this.year() }),
+    // Same service as the Leave Balances screen, so entitlements follow the leave policies.
+    stream: ({ params }) => this.balancesApi.getForEmployee(params.id, params.year),
+  });
+
   protected readonly applications = computed(() => this.data.value()?.applications.items ?? []);
-  protected readonly balances = computed(() => this.data.value()?.balances ?? []);
+  /** Keeps the previous year's rows on screen while the next year loads. */
+  protected readonly balances = linkedSignal<LeaveBalance[] | undefined, LeaveBalance[]>({
+    source: this.balanceData.value,
+    computation: (value, previous) => value ?? previous?.value ?? [],
+  });
 
   protected typeName(id: number): string {
     return this.data.value()?.types.find((t) => t.id === id)?.name ?? `#${id}`;

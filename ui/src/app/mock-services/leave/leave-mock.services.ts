@@ -49,6 +49,12 @@ import {
 
 const DAY_STATUSES_TO_REPLACE = new Set(['Present', 'Late', 'Absent', 'Half Day']);
 
+/** Entitlements are measured as of today for the current year and as of 31 December otherwise. */
+function balanceAsOf(year: number): string {
+  const today = todayIso();
+  return year === Number(today.slice(0, 4)) ? today : `${year}-12-31`;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LeaveTypeMockService
   extends InMemoryCrudService<LeaveType>
@@ -276,15 +282,14 @@ export class LeaveApplicationMockService
     }
   }
 
-  /** Days still available for a type (entitlement − approved − pending), ignoring one application. */
-  availableDays(employee: Employee, type: LeaveType, excludeId: number): number {
+  /**
+   * Days still available for a type (entitlement − approved − pending) in a year, ignoring one
+   * application. Leave counts in the year it starts, as in the API.
+   */
+  availableDays(employee: Employee, type: LeaveType, excludeId: number, year: number): number {
     const mine = this.store().filter((a) => a.employeeId === employee.id && a.id !== excludeId);
-    const balance = computeLeaveBalances(
-      [type],
-      mine,
-      employee.gender,
-      new Date().getFullYear(),
-      (t) => resolveEntitlement(t, this.policies.records(), employee, todayIso()),
+    const balance = computeLeaveBalances([type], mine, employee.gender, year, (t) =>
+      resolveEntitlement(t, this.policies.records(), employee, balanceAsOf(year)),
     )[0];
     return balance?.available ?? 0;
   }
@@ -312,7 +317,9 @@ export class LeaveApplicationMockService
           },
         );
       }
-      const available = this.availableDays(employee, type, id);
+      // The balance of the year the leave starts in (the API does the same).
+      const year = Number(application.startDate.slice(0, 4));
+      const available = this.availableDays(employee, type, id, year);
       if (application.days > available) {
         this.conflictError(
           `Insufficient ${type.name} balance: ${application.days} day(s) requested, ${available} available.`,
@@ -413,7 +420,7 @@ export class LeaveBalanceMockService implements LeaveBalanceDataService {
   private readonly applications = inject(LeaveApplicationMockService);
 
   private balancesFor(employee: Employee, year: number): LeaveBalance[] {
-    const asOf = year === new Date().getFullYear() ? todayIso() : `${year}-12-31`;
+    const asOf = balanceAsOf(year);
     return computeLeaveBalances(
       this.types.records(),
       this.applications.records().filter((a) => a.employeeId === employee.id),

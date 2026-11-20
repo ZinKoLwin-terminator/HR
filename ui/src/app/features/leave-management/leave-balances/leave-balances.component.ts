@@ -16,6 +16,7 @@ import {
   LeaveTypeDataService,
 } from '../../../core/services/data/leave-data.services';
 import { errorMessage } from '../../../core/services/ui-notification.service';
+import { balanceYearOptions } from '../../../core/utilities/leave-balance';
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import {
   TableAction,
@@ -81,7 +82,8 @@ type Row = EmployeeLeaveBalances & { id: number };
       </table>
       <p class="note">
         Entitlements follow the leave policies for the employee's grade and employment type.
-        Approved leave counts as taken; submitted leave is held as pending.
+        Approved leave counts as taken; submitted leave is held as pending. Leave counts in the year
+        it starts.
       </p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -148,7 +150,7 @@ export class LeaveBalancesComponent {
 
   protected readonly pageSizeOptions = this.appConfig.pageSizeOptions;
   protected readonly currentYear = new Date().getFullYear();
-  protected readonly yearOptions = [this.currentYear, this.currentYear - 1];
+  protected readonly yearOptions = balanceYearOptions(this.currentYear);
 
   protected readonly year = signal(this.currentYear);
   protected readonly search = signal('');
