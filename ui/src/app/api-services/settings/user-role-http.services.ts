@@ -48,7 +48,8 @@ abstract class SettingsHttpBase<T extends { id: number }> extends RecruitmentHtt
  *  - PUT carries only the role. Status moves use the commands: Active from Inactive is
  *    `activate`, Active from Locked is `unlock`, Inactive is `deactivate`. `Locked` cannot be
  *    requested, it is the result of failed sign-ins.
- *  - The built-in administrator has no employee (API null); the screens get `0` as the mock did.
+ *  - An account without an employee (API null, e.g. the built-in administrator) reaches the
+ *    screens as `0`, as the mock did. `linkEmployee` links it to the employee with its email.
  */
 @Injectable({ providedIn: 'root' })
 export class UserHttpService extends SettingsHttpBase<AppUser> implements UserDataService {
@@ -126,6 +127,14 @@ export class UserHttpService extends SettingsHttpBase<AppUser> implements UserDa
       map(() => undefined),
       catchError((e) => throwError(() => passwordResetError(e))),
     );
+  }
+
+  /**
+   * Links an unlinked account to the employee with its email (`link-employee` command with the
+   * given rowVersion, else the last one seen). 409 keeps the server's text.
+   */
+  linkEmployee(id: number, rowVersion?: string): Observable<AppUser> {
+    return this.command(id, 'link-employee', {}, rowVersion).pipe(catchError((e) => this.fail(e)));
   }
 
   private moveStatus(id: number, from: UserStatus, to: UserStatus): Observable<Versioned<AppUser>> {

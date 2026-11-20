@@ -15,6 +15,7 @@ import {
   TIMEZONES,
 } from '../../core/models/settings.models';
 import { CurrentUserService } from '../../core/services/current-user.service';
+import { employeeForAccountEmail, isUnlinkedAccount } from '../../core/utilities/account-link';
 import {
   GeneralSettingsDataService,
   RoleDataService,
@@ -210,6 +211,44 @@ export class UserMockService extends InMemoryCrudService<AppUser> implements Use
         'system',
         `Password reset email sent to ${user.displayName} (simulation)`,
       );
+    });
+  }
+
+  /**
+   * Same rules as the API: only an unlinked account, linked to the CURRENT employee whose work
+   * email is the account's email (trimmed, case-insensitive), when that employee has no account
+   * yet. There are no row versions or sessions in the mock, so `rowVersion` is not checked.
+   */
+  linkEmployee(id: number): Observable<AppUser> {
+    return this.respond(() => {
+      const user = this.findById(id);
+      if (!user) {
+        throw mockError('NotFound', 'User not found.');
+      }
+      if (!isUnlinkedAccount(user)) {
+        this.conflictError('This account is already linked to an employee.');
+      }
+      const employee = employeeForAccountEmail(this.employees.records(), user.email);
+      if (!employee) {
+        this.conflictError(`No current employee has the work email ${user.email.trim()}.`);
+      }
+      if (this.store().some((u) => u.id !== id && u.employeeId === employee.id)) {
+        // Same text as the API.
+        this.conflictError(
+          `${employee.firstName} ${employee.lastName} already has a user account.`,
+        );
+      }
+      const linked: AppUser = {
+        ...user,
+        employeeId: employee.id,
+        displayName: `${employee.firstName} ${employee.lastName}`,
+      };
+      this.store.update((items) => items.map((u) => (u.id === id ? linked : u)));
+      this.activity.record(
+        'system',
+        `User #${id} "${linked.displayName}" linked to employee ${employee.employeeCode} (simulation)`,
+      );
+      return linked;
     });
   }
 

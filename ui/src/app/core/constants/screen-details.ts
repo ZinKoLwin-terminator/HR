@@ -780,6 +780,10 @@ export const SCREEN_DETAILS: Readonly<Record<string, readonly Bilingual[]>> = {
       'You cannot delete, deactivate or change the role of your own account, and there must always be one active administrator.',
       'ကိုယ့် Account ကို ဖျက်/Deactivate/Role ပြောင်း၍မရ၊ Active Administrator တစ်ဦးအမြဲရှိရမည်။',
     ),
+    b(
+      'An account with no employee shows "Not linked". Use Link to employee: it links the current employee whose work email is the account email (once only); the user then signs in again.',
+      'ဝန်ထမ်းနှင့် မချိတ်ရသေးသော Account တွင် "Not linked" ပြသည်။ Link to employee ဖြင့် Account Email နှင့် Work Email တူသော လက်ရှိဝန်ထမ်းနှင့် ချိတ်သည် (တစ်ကြိမ်သာ)၊ ထို့နောက် ပြန် Sign in ဝင်ရသည်။',
+    ),
   ],
   '/settings/roles': [
     b(

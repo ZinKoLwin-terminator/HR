@@ -1,14 +1,23 @@
 import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { catchError, forkJoin, map, of } from 'rxjs';
+import { EMPTY, Observable, catchError, filter, forkJoin, map, of, switchMap } from 'rxjs';
+import { Employee, fullName } from '../../../core/models/employee.models';
 import { AppUser, Role, USER_STATUSES } from '../../../core/models/settings.models';
+import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { CurrentUserService } from '../../../core/services/current-user.service';
-import { MIN_PASSWORD_LENGTH, SERVER_SESSION } from '../../../core/services/auth.service';
+import {
+  AuthService,
+  MIN_PASSWORD_LENGTH,
+  SERVER_SESSION,
+} from '../../../core/services/auth.service';
 import {
   RoleDataService,
   UserDataService,
 } from '../../../core/services/data/settings-data.services';
+import { PermissionService } from '../../../core/services/permission.service';
+import { UiNotificationService } from '../../../core/services/ui-notification.service';
+import { employeeForAccountEmail, isUnlinkedAccount } from '../../../core/utilities/account-link';
 import { CrudPageComponent } from '../../../shared/components/crud/crud-page.component';
 import { CrudPageConfig } from '../../../shared/components/crud/crud.models';
 import {
@@ -38,6 +47,10 @@ export class UsersPageComponent {
   private readonly rolesApi = inject(RoleDataService);
   private readonly lookupService = inject(OrganizationLookupService);
   private readonly me = inject(CurrentUserService);
+  private readonly auth = inject(AuthService);
+  private readonly toast = inject(UiNotificationService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly permissions = inject(PermissionService);
   /** True in the API build: real accounts, so a create needs an initial password. */
   private readonly apiMode = inject(SERVER_SESSION);
   protected readonly lookups = rxResource({
@@ -47,9 +60,7 @@ export class UsersPageComponent {
         users: this.users.getAll().pipe(catchError(() => of([] as AppUser[]))),
         roles: this.rolesApi.getAll().pipe(catchError(() => of([] as Role[]))),
         // Full records with employees:View; otherwise only what the role may read (never fails).
-        employees: this.lookupService
-          .people()
-          .pipe(map((p) => (p.employeeRecords.length ? p.employeeRecords : p.employees))),
+        people: this.lookupService.people(),
       }),
   });
 
@@ -59,6 +70,9 @@ export class UsersPageComponent {
       return null;
     }
     const roleName = nameMap(l.roles, (r) => r.name);
+    const records = l.people.employeeRecords;
+    const employees = records.length ? records : l.people.employees;
+    const codeOf = new Map(employees.map((e) => [e.id, e.employeeCode]));
     const taken = new Set(l.users.map((u) => u.employeeId));
     const myId = this.me.current().id;
     return {
@@ -101,10 +115,30 @@ export class UsersPageComponent {
           run: (u) => this.users.sendPasswordReset(u.id),
           successMessage: () => 'Password reset email sent.',
         },
+        {
+          id: 'link-employee',
+          label: 'Link to employee',
+          icon: 'link',
+          // Only an unlinked account; a linked one is never re-linked.
+          visible: (u) => isUnlinkedAccount(u),
+          // `run` asks first, naming the employee from a read made when the dialog opens.
+          run: (u) => this.confirmAndLink(u, u.id === myId),
+          // Built from the server's answer (see `confirmAndLink`), never from the question.
+          successMessage: (u, result) =>
+            typeof result === 'string' ? result : `${u.email} is now linked to its employee.`,
+        },
       ],
       columns: [
         { key: 'displayName', header: 'User', sortable: true },
         { key: 'email', header: 'Email', hideBelow: 'md' },
+        {
+          key: 'employeeId',
+          header: 'Employee',
+          hideBelow: 'lg',
+          nowrap: true,
+          value: (u) =>
+            isUnlinkedAccount(u) ? 'Not linked' : (codeOf.get(u.employeeId) ?? 'Linked'),
+        },
         {
           key: 'roleId',
           header: 'Role',
@@ -127,7 +161,7 @@ export class UsersPageComponent {
           hint: 'Name and email come from the employee record',
           options: (_values, ctx) =>
             employeeOptions(
-              l.employees.filter(
+              employees.filter(
                 (e) => (!('exitDate' in e && e.exitDate) && !taken.has(e.id)) || ctx.id !== null,
               ),
             ),
@@ -169,4 +203,65 @@ export class UsersPageComponent {
       ],
     };
   });
+
+  /**
+   * Asks, then links. The question names the employee from a fresh read of the employees (full
+   * records, so only with employees:View; the server decides either way), because a work email can
+   * change between loading the page and opening the dialog, and a link is permanent. Cancel emits
+   * nothing. Success emits the toast text, built from the server's answer. The server ends the
+   * account's sessions, so linking your own account signs you out instead (no toast or reload).
+   */
+  private confirmAndLink(user: AppUser, own: boolean): Observable<string> {
+    return this.freshRecords().pipe(
+      switchMap((records) =>
+        this.confirmDialog.confirm({
+          title: 'Link to employee?',
+          message: linkQuestion(user, employeeForAccountEmail(records, user.email)),
+          confirmText: 'Link',
+        }),
+      ),
+      filter(Boolean),
+      switchMap(() =>
+        this.users.linkEmployee(user.id, (user as { rowVersion?: string }).rowVersion),
+      ),
+      switchMap((linked) => {
+        if (own) {
+          this.toast.info('Your account is now linked. You will be signed out to apply the link.');
+          this.auth.signOut();
+          return EMPTY;
+        }
+        return this.employeeCode(linked.employeeId).pipe(
+          map((code) => linkedMessage(linked, code)),
+        );
+      }),
+    );
+  }
+
+  /** Full employee records read now (employees:View); none without it, so no refused request. */
+  private freshRecords(): Observable<readonly Employee[]> {
+    return this.permissions.can('employees:View')
+      ? this.lookupService.people().pipe(map((p) => p.employeeRecords))
+      : of([]);
+  }
+
+  /** The code of the employee the server linked, from a read made after the link (never fails). */
+  private employeeCode(employeeId: number): Observable<string | null> {
+    return this.lookupService
+      .people()
+      .pipe(map((p) => p.employees.find((e) => e.id === employeeId)?.employeeCode ?? null));
+  }
+}
+
+/** Names the employee when the page could read the work emails; otherwise the server decides. */
+function linkQuestion(user: AppUser, employee: Employee | undefined): string {
+  const account = user.displayName || user.email;
+  return employee
+    ? `Link ${account} to ${fullName(employee)} (${employee.employeeCode})? They must sign in again.`
+    : `The employee with the work email ${user.email} will be linked. They must sign in again.`;
+}
+
+/** Success text from the server's answer: its display name and the code of its employee. */
+function linkedMessage(linked: AppUser, code: string | null): string {
+  const who = linked.displayName || 'its employee';
+  return `${linked.email} is now linked to ${who}${code ? ` (${code})` : ''}.`;
 }
