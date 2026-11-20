@@ -21,6 +21,7 @@ internal static class AttendanceServiceCollectionExtensions
         services.AddScoped<AttendanceLookup>();
         services.AddScoped<IAttendanceOverviewHandler, AttendanceOverviewHandler>();
         services.AddScoped<IWorkScheduleHandler, WorkScheduleHandler>();
+        services.AddScoped<IShiftLookupHandler, ShiftLookupHandler>();
 
         return services
             .AddShifts()

@@ -1,4 +1,6 @@
 using Apex.Hrms.Api.Authorization;
+using Apex.Hrms.Api.Http;
+using Apex.Hrms.Application.Organization;
 using Apex.Hrms.Application.Organization.Branches;
 using Apex.Hrms.Application.Organization.Companies;
 using Apex.Hrms.Application.Organization.Departments;
@@ -28,6 +30,16 @@ internal static class OrganizationEndpoints
             .MapStatusCommands<JobGradeDto>(Module);
         app.MapCrud<PositionDto, PositionCreateRequest, PositionUpdateRequest, PositionFilter>("/api/positions", Tag, Module)
             .MapStatusCommands<PositionDto>(Module);
+
+        // Names for dropdowns and table columns on every screen: ids, codes, names, parent ids, job grade level and status of
+        // every record (inactive too), and nothing else. Non-personal reference data, so any signed-in user may read it: the
+        // signed-in policy of /api/me/payslips. The session validator still ends the session of an account that can no longer sign in.
+        app.MapGet(
+            "/api/organization/lookup",
+            async (IOrganizationLookupHandler handler, CancellationToken cancellationToken) =>
+                (await handler.HandleAsync(cancellationToken)).ToOk())
+            .WithTags(Tag)
+            .RequireAuthorization(AuthorizationSetup.SignedInPolicy);
         return app;
     }
 }
