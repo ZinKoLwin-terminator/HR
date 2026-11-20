@@ -1,7 +1,7 @@
 # APEX HRMS API
 
 .NET 10 Web API (Clean Architecture) for APEX HRMS. EF Core maps onto the existing SQL Server schema owned by the
-SSDT project `HR DBPJ`; it never creates or migrates it.
+SSDT project in `HR DBPJ/` (`HR DBPJ.sqlproj`); it never creates or migrates it.
 
 | Project | Role |
 | --- | --- |
@@ -1427,8 +1427,8 @@ Payroll runs (totals only) are not scoped. A caller with no linked employee (the
   the `HR` database.
 * **Schema:** deployed once per run from the SSDT dacpac with `DacServices.Deploy` (`CreateNewDatabase = false`,
   `BlockOnPossibleDataLoss = true`, `DropObjectsNotInSource = false`). The default path is
-  `D:\New folder\HR DBPJ\HR DBPJ\bin\Debug\HR DBPJ.dacpac`; set the environment variable `HRMS_DACPAC` to use another.
-  Build the database project first if the dacpac is missing or out of date.
+  `HR DBPJ/bin/Debug/HR DBPJ.dacpac` in this repository; set the environment variable `HRMS_DACPAC` to use another.
+  Build the database project first (`dotnet build "HR DBPJ/HR DBPJ.sqlproj"`) if the dacpac is missing or out of date.
 * **Isolation:** tests commit their rows and remove them again by their tag (`TST-` + 8 hex characters, see
   `Support/TestRows`). Organization rows carry the tag in their code; employee rows carry it at the start of the work
   email (an employee code holds only 12 characters). The cleanup deletes employees and the rows that hang on them

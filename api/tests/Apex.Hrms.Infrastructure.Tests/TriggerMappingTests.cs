@@ -17,7 +17,8 @@ public sealed partial class TriggerMappingTests : IDisposable
     /// <summary>Overrides where the SSDT project is looked for (read only, never built or deployed by the tests).</summary>
     public const string ProjectFolderVariable = "HRMS_SSDT_FOLDER";
 
-    private const string DefaultProjectFolder = @"D:\New folder\HR DBPJ\HR DBPJ";
+    /// <summary>The repository's <c>HR DBPJ</c> folder, found by walking up from the test binaries; null when it is not there.</summary>
+    private static readonly string? DefaultProjectFolder = FindDatabaseProjectFolder();
 
     private static readonly (string Trigger, string Table)[] Known =
     [
@@ -70,7 +71,7 @@ public sealed partial class TriggerMappingTests : IDisposable
     public void The_known_list_matches_the_triggers_of_the_database_project_when_it_is_present()
     {
         var folder = Environment.GetEnvironmentVariable(ProjectFolderVariable) is { Length: > 0 } configured ? configured : DefaultProjectFolder;
-        if (!Directory.Exists(folder))
+        if (folder is null || !Directory.Exists(folder))
         {
             return;
         }
@@ -84,6 +85,20 @@ public sealed partial class TriggerMappingTests : IDisposable
             .ToList();
 
         Assert.Equal(Known.Order(), found);
+    }
+
+    private static string? FindDatabaseProjectFolder()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            var project = Path.Combine(directory.FullName, "HR DBPJ");
+            if (File.Exists(Path.Combine(project, "HR DBPJ.sqlproj")))
+            {
+                return project;
+            }
+        }
+
+        return null;
     }
 
     [GeneratedRegex(

@@ -161,7 +161,7 @@ they are; the database holds only `HMACSHA256(key, ...)`.
   together. Keep the grievance pseudonym key in the secret store's own backup, not in the database backup set. Test a
   restore into a non-production server.
 
-**KPI module schema** (database branch `feature/schema-kpi` of the SSDT project `D:\New folder\HR DBPJ\HR DBPJ`; it
+**KPI module schema** (the SSDT project in `HR DBPJ/`, formerly database branch `feature/schema-kpi`; it
 adds the `kpi` schema, its tables, the `hrms_api` grants with `DENY UPDATE, DELETE` on `kpi.ReviewAction`, and the
 `kpi-setup` and `kpi` permission modules):
 

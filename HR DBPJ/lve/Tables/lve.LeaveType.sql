@@ -1,0 +1,31 @@
+CREATE TABLE [lve].[LeaveType]
+(
+    [Id]                  int            IDENTITY (1, 1) NOT NULL,
+    [Code]                nvarchar(20)   NOT NULL,
+    [Name]                nvarchar(60)   NOT NULL,
+    [Description]         nvarchar(300)  NULL,
+    [DefaultDaysPerYear]  decimal(5, 1)  NOT NULL,
+    [IsPaid]              bit            NOT NULL,
+    [RequiresDocument]    bit            NOT NULL CONSTRAINT [DF_LeaveType_RequiresDocument] DEFAULT (0),
+    [MaxConsecutiveDays]  smallint       NOT NULL,
+    [CarryForward]        bit            NOT NULL CONSTRAINT [DF_LeaveType_CarryForward] DEFAULT (0),
+    [MaxCarryForwardDays] decimal(5, 1)  NOT NULL CONSTRAINT [DF_LeaveType_MaxCarryForwardDays] DEFAULT (0),
+    [Color]               varchar(7)     NOT NULL,
+    -- When set, only employees of this gender are eligible (e.g. maternity leave).
+    [EligibleGender]      varchar(30)    NULL,
+    [Status]              varchar(30)    NOT NULL CONSTRAINT [DF_LeaveType_Status] DEFAULT ('Active'),
+    [CreatedAtUtc]        datetime2(3)   NOT NULL CONSTRAINT [DF_LeaveType_CreatedAtUtc] DEFAULT (SYSUTCDATETIME()),
+    [CreatedByUserId]     int            NULL,
+    [ModifiedAtUtc]       datetime2(3)   NOT NULL CONSTRAINT [DF_LeaveType_ModifiedAtUtc] DEFAULT (SYSUTCDATETIME()),
+    [ModifiedByUserId]    int            NULL,
+    [RowVersion]          rowversion     NOT NULL,
+    CONSTRAINT [PK_LeaveType] PRIMARY KEY CLUSTERED ([Id]),
+    CONSTRAINT [UQ_LeaveType_Code] UNIQUE ([Code]),
+    CONSTRAINT [CK_LeaveType_Code] CHECK ([Code] LIKE N'[A-Z0-9]%' COLLATE Latin1_General_BIN2 AND [Code] NOT LIKE N'%[^A-Z0-9-]%' COLLATE Latin1_General_BIN2),
+    CONSTRAINT [CK_LeaveType_DefaultDaysPerYear] CHECK ([DefaultDaysPerYear] >= 0),
+    CONSTRAINT [CK_LeaveType_MaxConsecutiveDays] CHECK ([MaxConsecutiveDays] >= 1),
+    CONSTRAINT [CK_LeaveType_MaxCarryForwardDays] CHECK ([MaxCarryForwardDays] >= 0 AND ([CarryForward] = 0 OR [MaxCarryForwardDays] <= [DefaultDaysPerYear])),
+    CONSTRAINT [CK_LeaveType_Color] CHECK ([Color] LIKE '#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]' COLLATE Latin1_General_BIN2),
+    CONSTRAINT [CK_LeaveType_EligibleGender] CHECK ([EligibleGender] IN ('Male', 'Female', 'Other')),
+    CONSTRAINT [CK_LeaveType_Status] CHECK ([Status] IN ('Active', 'Inactive'))
+);

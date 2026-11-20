@@ -24,8 +24,8 @@ Priority: **P1** = before real use, **P2** = next features, **P3** = nice to hav
 - [x] **P1** Schema for the do-not-rehire list published to the local database by you (database branch
       `feature/schema-blacklist`: blacklist table, candidate national ID, application override columns,
       permissions `ViewBlacklist` and `EditBlacklist`).
-- [ ] **P1** Database repo (`D:\New folder\HR DBPJ\HR DBPJ`): merge `feature/schema-permissions-sync` into `main`,
-      then `git push origin main` (local `main` is ahead and was never pushed; the hook blocks Claude from pushing to main).
+- [ ] **P2** Archive or delete the old GitHub repo `HR-DBPJ` and the folder `D:\New folder\HR DBPJ`: the project now
+      lives in `HR DBPJ/` in this repo, with its whole history (every schema branch included).
 - [ ] **P1** Decide when to merge `integrate/all-features` into `main` in the app repo. **Merging to `main` deploys the
       live demo (GitHub Pages).** Review the diff and CI first.
 - [ ] **P1** KPI schema: review the SqlPackage script of the database branch `feature/schema-kpi`, then publish it to the
