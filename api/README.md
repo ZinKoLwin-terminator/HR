@@ -1128,10 +1128,11 @@ with the initial password or uses forgot-password (the reset-by-email flow).
 
 | Route | Policy | Notes |
 | --- | --- | --- |
-| `GET /api/users/query`, `GET /api/users/{id}` | View | Paged only, no "get all" (the list holds emails). `UserDto`: `{ id, employeeId (null for the built-in administrator), displayName, email, roleId, status (Active\|Inactive\|Locked), lastLoginOn (UTC)\|null, rowVersion }`. `Locked` is also shown while the sign-in lockout after failed attempts lasts. Filters: `roleId, status`; search: name or email; sort: `id, displayName, email, roleId, status, lastLoginOn`. |
+| `GET /api/users/query`, `GET /api/users/{id}` | View | Paged only, no "get all" (the list holds emails). `UserDto`: `{ id, employeeId (null for the built-in administrator or another account not linked yet, see link-employee), displayName, email, roleId, status (Active\|Inactive\|Locked), lastLoginOn (UTC)\|null, rowVersion }`. `Locked` is also shown while the sign-in lockout after failed attempts lasts. Filters: `roleId, status`; search: name or email; sort: `id, displayName, email, roleId, status, lastLoginOn`. |
 | `POST /api/users` | Create | Body `{ employeeId, roleId, status?, initialPassword }`; `201` with the `UserDto`. See the rules below. No credential is ever in a response. |
 | `PUT /api/users/{id}` | Edit | Body `{ roleId, rowVersion }`: only the role changes (the employee never does; status moves are commands). |
 | `POST /api/users/{id}/activate`, `/deactivate`, `/unlock` | Edit | Body `{ rowVersion }`; returns the `UserDto`. |
+| `POST /api/users/{id}/link-employee` | Edit | Body `{ rowVersion }` (other properties, such as an `employeeId`, are ignored: the caller never chooses the employee). Links an account without an employee (for example an administrator account created after the seed linked the others) to the current employee whose work email equals the account's email (trimmed, case-insensitive). `200` with the updated `UserDto` (`employeeId` set, `displayName` taken from the employee, `email` unchanged, new `rowVersion`). **Every open session of the account ends** (the security stamp changes, so `SessionValidator` answers `401` at the next request) and the user signs in again with the employee in the session; that includes the caller when they link their own account. See the rules below. |
 | `POST /api/users/{id}/password-reset` | Edit | No body (an empty JSON object is fine). Sends the same reset mail as forgot-password (same token, link and mail sender or dev mail sink); `202 Accepted` with no body: the administrator never sees the token or the link. `404` unknown id; `409` (with a message) when the account is not Active ("Activate the account before sending a password reset."), its role is inactive, its employee has left, or it has no email or sign-in; `503` (`code: "Unknown"`) when email is not configured, before anything else happens, or when the mail server refuses; `429` (`code: "Unknown"`, `Retry-After`) for a second request for the same user within a minute. It changes nothing about the account (password, lock state, sessions); sessions end when the user uses the link, because the reset changes the security stamp. Activity note: `Password reset email sent for user "<display name>"` (no address, no token). |
 | `DELETE /api/users/{id}` | Delete | Body `{ rowVersion }`; `204`. Removes the account and its login. |
 | `/api/roles` (get all, `/query`, `/{id}`, POST, PUT, DELETE) | View, Create, Edit, Delete | `RoleDto`: `{ id, name, description, isSystem, status, rowVersion }`. POST `{ name, description?, status? }` (default Active); PUT `{ name, description?, rowVersion }`. Filter: `status`. |
@@ -1160,6 +1161,34 @@ Rules (ported from the mock services, with the wording of the mock):
   ends at its next request (`SessionValidator`). A locked account is `409` "This account is locked. Unlock it first." on
   activate; unlock clears the lockout and the failed-attempt count and turns a `Locked` status back to `Active`. Activating
   needs an active role.
+* **Link a user to its employee** (`POST /api/users/{id}/link-employee`): `404` unknown id; `400` on `rowVersion` when it is
+  missing, `409` when it is stale. Then, each `409` with this message as the `detail`:
+  "This account is already linked to an employee." (a linked account's employee never changes);
+  "No current employee has the work email <account email>." (no employee has that work email, or the one that has it has an exit
+  date, as for sign-in); "<employee name> already has a user account." (one account per employee, `UQ_AppUser_EmployeeId`);
+  rarely "This account has no email address to match an employee by." or "The employee's name cannot be used for an account.".
+  On success the link, the activity entry `User #<account id> "<display name>" linked to employee <employee code>` (category
+  `system`, no email; for example `User #12 "Mia Testwell" linked to employee EMP-0007`) and the new security stamp are one
+  transaction: if the identity store refuses the stamp, nothing is linked. The rules are read and the link written under the
+  administrator lock (`hrms:administrator-changes`, the lock of the last-administrator rule). The exit of an employee takes the same
+  lock, even when the employee has no account, so an exit and a link cannot interleave. When the lock is busy, both answer `409`
+  "Another change to the administrators is in progress. Try again.". An exit that finds an account linked to the employee while it
+  waited for the lock answers `409` "A user account was just linked to this employee. Try again.", and the retry switches that
+  account off with the exit.
+* **Wrong link recovery:** a link cannot be undone in the app. There is no unlink command, and the employee of a linked account
+  never changes. Before you link, make sure the account's email is the right person's work email, and keep a second active HR
+  Administrator so that a mistake on an administrator account does not lock everyone out. Recovery is a database change that a
+  human runs by hand on the right database after checking it. It is never run automatically, never by an agent, and never as a
+  migration:
+
+  ```sql
+  -- Unlinks one account. Fill in both ids; the second condition makes the statement change nothing if the link is not the expected one.
+  UPDATE sec.AppUser SET EmployeeId = NULL WHERE Id = <account id> AND EmployeeId = <wrongly linked employee id>;
+  ```
+
+  The display name keeps the employee's name until the account is linked again. The user's open session still carries the
+  wrong employee until the user signs out and in again. To end that session at once, have another administrator deactivate and
+  then activate the account in Settings > Users (deactivating changes the security stamp).
 * **Roles:** names are required, at most 60 characters, unique (`400`). A built-in role (`isSystem`) cannot be renamed (`400` on
   `name`, "A built-in role cannot be renamed."), deactivated ("A built-in role cannot be deactivated.") or deleted ("A built-in
   role cannot be deleted."), both `409`; its description can change. A role with active users cannot be deactivated ("2 active

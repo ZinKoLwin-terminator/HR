@@ -354,11 +354,11 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
             endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(data => data.Policy!).Order(StringComparer.Ordinal).ToArray());
 
     [Fact]
-    public void Settings_maps_twenty_two_endpoints_and_no_unpaged_user_list_and_no_sign_up()
+    public void Settings_maps_twenty_three_endpoints_and_no_unpaged_user_list_and_no_sign_up()
     {
         var policies = SettingsPolicies();
 
-        Assert.Equal(22, policies.Count);
+        Assert.Equal(23, policies.Count);
         Assert.DoesNotContain("GET /api/users/", policies.Keys);
         Assert.Contains("GET /api/users/query", policies.Keys);
 
@@ -380,6 +380,7 @@ public sealed class AuthorizationCoverageTests : IClassFixture<WebApplicationFac
         Assert.Equal(["hr-administrator", "settings:Edit"], policies["POST /api/users/{id:int}/activate"]);
         Assert.Equal(["hr-administrator", "settings:Edit"], policies["POST /api/users/{id:int}/deactivate"]);
         Assert.Equal(["hr-administrator", "settings:Edit"], policies["POST /api/users/{id:int}/unlock"]);
+        Assert.Equal(["hr-administrator", "settings:Edit"], policies["POST /api/users/{id:int}/link-employee"]);
         Assert.Equal(["hr-administrator", "settings:Edit"], policies["POST /api/users/{id:int}/password-reset"]);
         Assert.Equal(["hr-administrator", "settings:Create"], policies["POST /api/roles/"]);
         Assert.Equal(["hr-administrator", "settings:Edit"], policies["PUT /api/roles/{id:int}"]);

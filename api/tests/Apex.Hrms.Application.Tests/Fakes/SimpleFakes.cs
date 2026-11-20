@@ -54,24 +54,67 @@ internal sealed class FakeUnitOfWork(FakeDatabase database, FakeActivityLog? act
 
     public int Commits { get; private set; }
 
+    /// <summary>
+    /// Runs when a handler begins a transaction, before the lock is granted: a test uses it to commit "another request" that
+    /// held the lock just before, so it can see which reads the handler makes after it got the lock.
+    /// </summary>
+    public Action<ApplicationLock?>? OnBeginTransaction { get; set; }
+
+    /// <summary>Transactions that were disposed without a commit.</summary>
+    public int RollBacks { get; private set; }
+
+    /// <summary>
+    /// When true, a transaction disposed without a commit puts the records and the activity log back as they were when it began,
+    /// like a database rollback. Off by default: tests that read the in-memory state after a refused change keep their meaning.
+    /// </summary>
+    public bool RollBackUncommittedTransactions { get; set; }
+
     public Task<Result<IUnitOfWorkTransaction>> BeginTransactionAsync(ApplicationLock? exclusiveLock, CancellationToken cancellationToken)
     {
         TransactionLocks.Add(exclusiveLock?.Name);
         Locks.Add(exclusiveLock);
-        return Task.FromResult(exclusiveLock is not null && HeldElsewhere.Contains(exclusiveLock.Name)
-            ? Result.Failure<IUnitOfWorkTransaction>(AppError.Conflict(exclusiveLock.BusyMessage))
-            : Result.Success<IUnitOfWorkTransaction>(new FakeTransaction(this)));
+        OnBeginTransaction?.Invoke(exclusiveLock);
+        if (exclusiveLock is not null && HeldElsewhere.Contains(exclusiveLock.Name))
+        {
+            return Task.FromResult(Result.Failure<IUnitOfWorkTransaction>(AppError.Conflict(exclusiveLock.BusyMessage)));
+        }
+
+        Action? restore = null;
+        if (RollBackUncommittedTransactions)
+        {
+            var records = database.Snapshot();
+            var log = activityLog?.Snapshot();
+            restore = () =>
+            {
+                records();
+                log?.Invoke();
+            };
+        }
+
+        return Task.FromResult(Result.Success<IUnitOfWorkTransaction>(new FakeTransaction(this, restore)));
     }
 
-    private sealed class FakeTransaction(FakeUnitOfWork owner) : IUnitOfWorkTransaction
+    private sealed class FakeTransaction(FakeUnitOfWork owner, Action? restore) : IUnitOfWorkTransaction
     {
+        private bool committed;
+
         public Task CommitAsync(CancellationToken cancellationToken)
         {
+            committed = true;
             owner.Commits++;
             return Task.CompletedTask;
         }
 
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        public ValueTask DisposeAsync()
+        {
+            if (!committed)
+            {
+                owner.RollBacks++;
+                restore?.Invoke();
+            }
+
+            return ValueTask.CompletedTask;
+        }
     }
 }
 

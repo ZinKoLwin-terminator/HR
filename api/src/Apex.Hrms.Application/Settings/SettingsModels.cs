@@ -49,6 +49,15 @@ public sealed record UnlockUserCommand(int Id, string? RowVersion) : IEntityComm
     public static UnlockUserCommand From(int id, string? rowVersion) => new(id, rowVersion);
 }
 
+/// <summary>
+/// Links an account without an employee to the current employee whose work email is the account's email. The body carries
+/// the row version only: the caller never chooses the employee, and the employee of a linked account never changes.
+/// </summary>
+public sealed record LinkUserEmployeeCommand(int Id, string? RowVersion) : IEntityCommand<LinkUserEmployeeCommand>
+{
+    public static LinkUserEmployeeCommand From(int id, string? rowVersion) => new(id, rowVersion);
+}
+
 // ---- Roles ----
 
 /// <summary>Mirrors Role in settings.models.ts.</summary>
@@ -177,7 +186,7 @@ public interface IAccountLogins
 
     /// <summary>
     /// Changes the Identity security stamp, which ends every open session of the user at its next request. Call it inside the
-    /// transaction of the change that made the sessions unwelcome (an employee who left).
+    /// transaction of the change that made the sessions unwelcome (an employee who left, an account linked to its employee).
     /// </summary>
     Task InvalidateSessionsAsync(string subject, CancellationToken cancellationToken);
 

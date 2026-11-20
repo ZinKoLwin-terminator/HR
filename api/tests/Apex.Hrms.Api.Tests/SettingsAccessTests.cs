@@ -52,6 +52,7 @@ public sealed class SettingsAccessTests : IClassFixture<WebApplicationFactory<Pr
     [InlineData("POST", "/api/users/1/activate")]
     [InlineData("POST", "/api/users/1/deactivate")]
     [InlineData("POST", "/api/users/1/unlock")]
+    [InlineData("POST", "/api/users/1/link-employee")]
     [InlineData("POST", "/api/users/1/password-reset")]
     [InlineData("GET", "/api/roles")]
     [InlineData("GET", "/api/roles/query")]

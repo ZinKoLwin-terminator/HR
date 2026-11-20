@@ -34,6 +34,9 @@ internal sealed class FakeAccountLogins : IAccountLogins
 
     public Exception? SendFailure { get; set; }
 
+    /// <summary>The number of security stamp changes attempted, including the ones that failed.</summary>
+    public int InvalidateAttempts { get; private set; }
+
     public Task<Result<string>> CreateAsync(string email, string password, CancellationToken cancellationToken)
     {
         LastPasswordLength = password.Length;
@@ -52,8 +55,17 @@ internal sealed class FakeAccountLogins : IAccountLogins
         return Task.CompletedTask;
     }
 
+    /// <summary>When set, changing the security stamp fails with this exception, as the real store throws when Identity refuses.</summary>
+    public Exception? InvalidateFailure { get; set; }
+
     public Task InvalidateSessionsAsync(string subject, CancellationToken cancellationToken)
     {
+        InvalidateAttempts++;
+        if (InvalidateFailure is not null)
+        {
+            throw InvalidateFailure;
+        }
+
         SessionsInvalidated.Add(subject);
         return Task.CompletedTask;
     }
