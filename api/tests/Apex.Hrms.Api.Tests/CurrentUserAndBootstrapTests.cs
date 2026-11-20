@@ -1,9 +1,14 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Apex.Hrms.Api.Auth;
 using Apex.Hrms.Api.Cli;
 using Apex.Hrms.Application.Security;
 using Apex.Hrms.Domain.Common;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Apex.Hrms.Api.Tests;
 
@@ -116,6 +121,27 @@ public sealed class CurrentUserAndBootstrapTests
     }
 
     private const string GoodPassword = "correct horse battery";
+
+    [Fact]
+    public async Task The_command_host_builds_in_Development_where_every_registration_is_validated()
+    {
+        // Regression: the command's own host lacked the file stores and the grievance pseudonyms that Application and
+        // Infrastructure handlers depend on, so the Development build (ValidateOnBuild) failed before the first prompt.
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:Hrms"] = @"Server=(localdb)\MSSQLLocalDB;Database=HR;Integrated Security=True;TrustServerCertificate=True",
+            ["Grievance:PseudonymKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)),
+            ["Kpi:EvidenceFolder"] = Path.Combine(Path.GetTempPath(), "hrms-bootstrap-test", "kpi-evidence"),
+            ["Grievance:FileFolder"] = Path.Combine(Path.GetTempPath(), "hrms-bootstrap-test", "grievance-files"),
+        });
+        builder.Services.AddBootstrapServices(builder.Configuration, builder.Environment.ContentRootPath);
+
+        await using var app = builder.Build();
+        await using var scope = app.Services.CreateAsyncScope();
+
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<AdministratorBootstrap>());
+    }
 
     [Fact]
     public async Task The_command_refuses_when_an_active_administrator_exists_and_creates_nothing()
