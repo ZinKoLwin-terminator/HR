@@ -15,7 +15,8 @@ namespace Apex.Hrms.Application.Employees;
 /// changes its Identity security stamp, so an open session ends at its next request. A leaver must not keep access. The
 /// last-active-HR-Administrator rule runs first (under the administrator lock, see <see cref="UserRules.ChangeAdministratorAsync"/>):
 /// an exit that would remove the last active administrator is refused with a Conflict and nothing changes.
-/// An employee without an account, or whose account is already inactive, takes the plain command path.
+/// An employee without an account, or whose account is already inactive, changes no login, but the save still runs under the
+/// administrator lock so it cannot interleave with linking an account to the employee.
 /// </summary>
 internal sealed class ExitEmployeeHandler(
     EntityLoader<Employee> loader,
@@ -34,6 +35,7 @@ internal sealed class ExitEmployeeHandler(
 {
     public const string OwnExitMessage = "You cannot record your own exit.";
     public const string AdministratorOnlyMessage = "Only an HR Administrator can record the exit of an HR Administrator.";
+    public const string AccountLinkedMessage = "A user account was just linked to this employee. Try again.";
 
     public async Task<Result<EmployeeDto>> HandleAsync(ExitEmployeeCommand command, CancellationToken cancellationToken)
     {
@@ -63,7 +65,7 @@ internal sealed class ExitEmployeeHandler(
         }
 
         var result = account is null
-            ? await SaveAsync(employee, command, cancellationToken)
+            ? await SaveWithoutAccountAsync(employee, command, cancellationToken)
             : await UserRules.ChangeAdministratorAsync(
                 unitOfWork,
                 accounts,
@@ -100,10 +102,36 @@ internal sealed class ExitEmployeeHandler(
         return tracked is { Status: not AccountStatus.Inactive } ? tracked : null;
     }
 
-    private Task<Result> SaveAsync(Employee employee, ExitEmployeeCommand command, CancellationToken cancellationToken)
+    /// <summary>
+    /// The exit of an employee without an active account. It still runs under the administrator lock, which the link of an
+    /// account to its employee (<see cref="LinkUserEmployeeHandler"/>) takes too: the two cannot interleave, so an account is
+    /// never linked to an employee whose exit is being saved. An active account linked since the check above (the link
+    /// committed first) is a Conflict; the retry takes the path that switches that account off.
+    /// </summary>
+    private async Task<Result> SaveWithoutAccountAsync(Employee employee, ExitEmployeeCommand command, CancellationToken cancellationToken)
     {
+        var begun = await unitOfWork.BeginTransactionAsync(SecurityPolicy.AdministratorLock, cancellationToken);
+        if (begun.IsFailure)
+        {
+            return Result.Failure(begun.Error);
+        }
+
+        await using var transaction = begun.Value;
+        var employeeId = employee.Id;
+        if (await accounts.AnyAsync(account => account.EmployeeId == employeeId && account.Status != AccountStatus.Inactive, cancellationToken))
+        {
+            return Result.Failure(AppError.Conflict(AccountLinkedMessage));
+        }
+
         RecordEmployeeActivity(employee, command);
-        return unitOfWork.SaveChangesAsync(cancellationToken);
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (saved.IsFailure)
+        {
+            return saved;
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return Result.Success();
     }
 
     private void RecordEmployeeActivity(Employee employee, ExitEmployeeCommand command)

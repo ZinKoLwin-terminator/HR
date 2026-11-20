@@ -11,6 +11,7 @@ import {
   EvaluationPeriod,
   EvaluationPeriodOption,
   KpiCategory,
+  KpiCategoryOption,
   KpiTemplate,
   RatingBand,
 } from '../../core/models/kpi.models';
@@ -38,6 +39,15 @@ export class KpiCategoryHttpService
   protected readonly resource = 'kpi/categories';
   protected readonly filterKeys = ['status'] as const;
   protected override readonly sortKeys = ['id', 'code', 'name', 'status'] as const;
+  private readonly client = inject(HttpClient);
+  private readonly apiBase = inject(API_BASE_URL);
+
+  /** `GET /api/kpi/categories/options` (kpi:View). */
+  options(): Observable<KpiCategoryOption[]> {
+    return this.client
+      .get<KpiCategoryOption[]>(`${this.apiBase}/kpi/categories/options`)
+      .pipe(catchError((e) => throwError(() => mapHttpError(e))));
+  }
 }
 
 @Injectable({ providedIn: 'root' })

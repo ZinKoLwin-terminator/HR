@@ -205,6 +205,52 @@ public sealed class PermissionsHttpTests : DatabaseTest, IDisposable
         Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateBrowserClient(out _).PostAsJsonAsync("/api/auth/login", new { email = leaver.Email, password = leaver.Password, rememberMe = false })).StatusCode);
     }
 
+    // ---- Linking an account to its employee ----
+
+    [IntegrationFact]
+    public async Task Linking_an_account_to_its_employee_ends_the_old_session_and_the_new_sign_in_carries_the_employee()
+    {
+        var person = await SeedPersonAsync("link");
+
+        // An administrator account without an employee whose email is the employee's work email (as the bootstrap leaves it).
+        var unlinked = await TestAccounts.CreateAsync(person.WorkEmail);
+        var oldSession = await SignedInAsync(unlinked);
+        var me = await oldSession.GetFromJsonAsync<JsonElement>("/api/auth/me");
+        Assert.Equal(JsonValueKind.Null, me.GetProperty("employeeId").ValueKind);
+        var stampBefore = await Sql.ScalarAsync<string>("SELECT SecurityStamp FROM auth.[User] WHERE Id = @id", ("@id", unlinked.AuthUserId));
+        var admin = await SignedInAsync(TestAdministrator.Account);
+        var user = await admin.GetFromJsonAsync<JsonElement>($"/api/users/{unlinked.AccountId}");
+
+        var link = await admin.PostAsJsonAsync(
+            $"/api/users/{unlinked.AccountId}/link-employee",
+            new { rowVersion = user.GetProperty("rowVersion").GetString() });
+
+        Assert.Equal(HttpStatusCode.OK, link.StatusCode);
+        Assert.Equal(person.Id, (await link.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("employeeId").GetInt32());
+        Assert.Equal(person.Id, await Sql.ScalarAsync<int>("SELECT EmployeeId FROM sec.AppUser WHERE Id = @id", ("@id", unlinked.AccountId)));
+        Assert.NotEqual(stampBefore, await Sql.ScalarAsync<string>("SELECT SecurityStamp FROM auth.[User] WHERE Id = @id", ("@id", unlinked.AuthUserId)));
+
+        // The cookie of the old session carried no employee: it is refused at its next request.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await oldSession.GetAsync("/api/auth/me")).StatusCode);
+
+        // A new sign-in carries the employee claim: the exit command reads it ("own exit") from the session, not from the database.
+        var newSession = await SignedInAsync(unlinked);
+        Assert.Equal(person.Id, (await newSession.GetFromJsonAsync<JsonElement>("/api/auth/me")).GetProperty("employeeId").GetInt32());
+        var ownExit = await newSession.PostAsJsonAsync(
+            $"/api/employees/{person.Id}/exit",
+            new { rowVersion = await EmployeeVersionAsync(newSession, person.Id), exitDate = "2026-11-01", status = "Resigned" });
+        Assert.Equal(HttpStatusCode.Conflict, ownExit.StatusCode);
+        Assert.Equal("You cannot record your own exit.", (await ownExit.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString());
+
+        // A second link is refused: the employee of a linked account never changes.
+        var again = await admin.GetFromJsonAsync<JsonElement>($"/api/users/{unlinked.AccountId}");
+        var second = await admin.PostAsJsonAsync(
+            $"/api/users/{unlinked.AccountId}/link-employee",
+            new { rowVersion = again.GetProperty("rowVersion").GetString() });
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+        Assert.Equal("This account is already linked to an employee.", (await second.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString());
+    }
+
     [IntegrationFact]
     public async Task An_account_that_is_switched_on_again_still_cannot_sign_in_while_its_employee_has_an_exit_date()
     {

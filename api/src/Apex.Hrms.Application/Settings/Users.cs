@@ -575,6 +575,132 @@ internal sealed class UnlockUserHandler(
     }
 }
 
+/// <summary>
+/// Links an account that has no employee (for example an administrator account created after the seed linked the others) to
+/// its employee. The caller does not choose the employee: it is the current employee (no exit date, the same leaver rule as
+/// sign-in) whose work email equals the account's email, compared trimmed and case-insensitively. The employee must not
+/// already have an account. The account takes the employee's name, its email stays as it is, and every open session of the
+/// account ends (the session cookie carries the employee claim of the sign-in), so the user signs in again; that includes
+/// the caller when it is their own account. All of it runs under the administrator lock, which the exit of an employee takes
+/// too. A link cannot be undone in the app (see "Wrong link recovery" in the API README).
+/// </summary>
+internal sealed class LinkUserEmployeeHandler(
+    EntityLoader<AppAccount> loader,
+    IRepository<Employee> employees,
+    IRepository<AppAccount> accounts,
+    IAccountLogins logins,
+    IActivityRecorder activity,
+    IUnitOfWork unitOfWork) : ICommandHandler<LinkUserEmployeeCommand, UserDto>
+{
+    public const string NoEmailMessage = "This account has no email address to match an employee by.";
+    public const string NameUnusableMessage = "The employee's name cannot be used for an account.";
+
+    public static string NoMatchMessage(string email) => $"No current employee has the work email {email}.";
+
+    public static string EmployeeTakenMessage(string employeeName) => $"{employeeName} already has a user account.";
+
+    public async Task<Result<UserDto>> HandleAsync(LinkUserEmployeeCommand command, CancellationToken cancellationToken)
+    {
+        // Every rule is read and the link written under the administrator lock, in one transaction. The exit of an employee
+        // takes the same lock (ExitEmployeeHandler), so an exit cannot be saved between the "current employee without an
+        // account" checks below and the link: the account, the employee and the other accounts are all read inside the lock.
+        // The link and the end of the sessions are one change too: if the identity store refuses the new security stamp, the
+        // link rolls back, so no session that carries the old (empty) employee claim outlives a linked account.
+        var begun = await unitOfWork.BeginTransactionAsync(SecurityPolicy.AdministratorLock, cancellationToken);
+        if (begun.IsFailure)
+        {
+            return Result.Failure<UserDto>(begun.Error);
+        }
+
+        await using var transaction = begun.Value;
+        var loaded = await loader.LoadForChangeAsync(command.Id, command.RowVersion, cancellationToken);
+        if (loaded.IsFailure)
+        {
+            return Result.Failure<UserDto>(loaded.Error);
+        }
+
+        var account = loaded.Value;
+        if (account.EmployeeId is not null)
+        {
+            return Fail(AppAccount.AlreadyLinkedMessage);
+        }
+
+        var email = account.Email.Trim();
+        if (email.Length == 0)
+        {
+            return Fail(NoEmailMessage);
+        }
+
+        var employee = await FindCurrentEmployeeAsync(email, cancellationToken);
+        if (employee is null)
+        {
+            return Fail(NoMatchMessage(email));
+        }
+
+        var employeeId = employee.Id;
+        var displayName = $"{employee.FirstName} {employee.LastName}".Trim();
+        if (await accounts.AnyAsync(other => other.EmployeeId == employeeId, cancellationToken))
+        {
+            return Fail(EmployeeTakenMessage(displayName));
+        }
+
+        if (displayName.Length == 0 || displayName.Length > AppAccount.DisplayNameMaxLength)
+        {
+            return Fail(NameUnusableMessage);
+        }
+
+        var linked = account.LinkEmployee(employeeId, displayName);
+        if (linked.IsFailure)
+        {
+            return Result.Failure<UserDto>(linked.Error);
+        }
+
+        activity.Record(ActivityCategories.System, ActivityMessages.UserLinkedToEmployee(account.Id, account.DisplayName, employee.EmployeeCode));
+        var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (saved.IsFailure)
+        {
+            return Result.Failure<UserDto>(saved.Error);
+        }
+
+        if (account.ExternalSubject is { } subject)
+        {
+            await logins.InvalidateSessionsAsync(subject, cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return Result.Success(UserMapping.ToDto(account, await UserRules.IsLockedAsync(logins, account, cancellationToken)));
+    }
+
+    /// <summary>
+    /// The current employee with this work email. Work emails are unique (UQ_Employee_WorkEmail), so at most one employee
+    /// matches; one with an exit date (any exit date, as for sign-in) is not current.
+    /// </summary>
+    private async Task<Employee?> FindCurrentEmployeeAsync(string email, CancellationToken cancellationToken)
+    {
+        var matches = await employees.ListAsync(WorkEmailMatch.Is(email), cancellationToken);
+        return matches.FirstOrDefault(employee => employee.ExitDate is null);
+    }
+
+    private static Result<UserDto> Fail(string message) => Result.Failure<UserDto>(AppError.Conflict(message));
+}
+
+/// <summary>The employees whose work email equals an address, trimmed and case-insensitively (the link of an account to its employee).</summary>
+public static class WorkEmailMatch
+{
+    /// <summary>
+    /// Runs in SQL as <c>LOWER(TRIM(WorkEmail)) = @email</c> (EF Core translates ToLower and Trim, not ToLowerInvariant); the
+    /// address is trimmed and lower-cased here first.
+    /// </summary>
+    public static Expression<Func<Employee, bool>> Is(string email)
+    {
+        ArgumentNullException.ThrowIfNull(email);
+        var normalized = email.Trim().ToLowerInvariant();
+#pragma warning disable CA1304, CA1311, CA1862 // ToLower is the form EF Core translates to SQL LOWER.
+        return employee => employee.WorkEmail.Trim().ToLower() == normalized;
+#pragma warning restore CA1304, CA1311, CA1862
+    }
+}
+
 internal sealed class DeleteUserHandler(
     EntityLoader<AppAccount> loader,
     IRepository<Employee> employees,

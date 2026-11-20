@@ -178,7 +178,8 @@ export interface CrudExtraAction<T extends Entity> {
     maxLength?: number;
   };
   run: (row: T, input: string) => Observable<unknown>;
-  successMessage: (row: T) => string;
+  /** Toast text after `run` emits; `result` is the value it emitted (e.g. the server response). */
+  successMessage: (row: T, result: unknown) => string;
   /** Action (within the screen's module) the role needs to see this action: `Approve`, `Create`, ... Default `Edit`. */
   permission?: string;
   /** Skip the success toast and list refresh (e.g. an action that just navigates). */

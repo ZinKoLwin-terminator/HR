@@ -12,6 +12,7 @@ import {
   KPI_SCORING_METHODS,
   KpiCategory,
   KpiCategoryFilter,
+  KpiCategoryOption,
   KpiTemplate,
   KpiTemplateFilter,
   RatingBand,
@@ -142,6 +143,17 @@ export class KpiCategoryMockService
 
   protected override describe(entity: KpiCategory): string {
     return entity.name;
+  }
+
+  /** The category picker: every category, inactive ones included, by name then id. */
+  options(): Observable<KpiCategoryOption[]> {
+    return mockResponse(
+      () =>
+        this.store()
+          .map(({ id, code, name, status }): KpiCategoryOption => ({ id, code, name, status }))
+          .sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id),
+      this.latency,
+    );
   }
 
   protected override prepare(candidate: KpiCategory, isNew: boolean): void {

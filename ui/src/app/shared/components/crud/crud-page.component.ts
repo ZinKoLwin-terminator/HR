@@ -353,9 +353,9 @@ export class CrudPageComponent<T extends Entity> implements OnInit {
     }
     const execute = (input = '') =>
       action.run(row, input).subscribe({
-        next: () => {
+        next: (result) => {
           if (!action.silent) {
-            this.toast.success(action.successMessage(row));
+            this.toast.success(action.successMessage(row, result));
             this.refresh();
           }
         },

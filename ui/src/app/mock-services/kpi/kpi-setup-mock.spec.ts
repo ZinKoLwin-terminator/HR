@@ -113,6 +113,22 @@ describe('KPI mock: master data', () => {
   });
 
   describe('categories', () => {
+    it('offers every category, inactive ones included, by name and with only the picker fields', async () => {
+      const created = await wait(
+        categories.create({ code: 'TSTZ', name: 'Aaa Test', description: 'x', status: 'Inactive' }),
+      );
+      const options = await wait(categories.options());
+      expect(options).toHaveLength((await wait(categories.getAll())).length);
+      expect(options[0]).toEqual({
+        id: created.id,
+        code: 'TSTZ',
+        name: 'Aaa Test',
+        status: 'Inactive',
+      });
+      const names = options.map((c) => c.name);
+      expect([...names].sort((a, b) => a.localeCompare(b))).toEqual(names);
+    });
+
     it('refuses a duplicate code or name on that field and keeps lists unchanged', async () => {
       const created = await wait(
         categories.create({

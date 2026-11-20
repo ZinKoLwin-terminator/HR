@@ -31,7 +31,7 @@ internal static class SettingsServiceCollectionExtensions
 
     /// <summary>
     /// Users are listed in pages only (no "get all": the list holds emails). Creating, changing the role, the status moves,
-    /// deleting and the password reset mail each have their own flow.
+    /// linking an account to its employee, deleting and the password reset mail each have their own flow.
     /// </summary>
     private static IServiceCollection AddUsers(this IServiceCollection services)
     {
@@ -49,6 +49,7 @@ internal static class SettingsServiceCollectionExtensions
         services.AddScoped<ICommandHandler<ActivateCommand, UserDto>, ActivateUserHandler>();
         services.AddScoped<ICommandHandler<DeactivateCommand, UserDto>, DeactivateUserHandler>();
         services.AddScoped<ICommandHandler<UnlockUserCommand, UserDto>, UnlockUserHandler>();
+        services.AddScoped<ICommandHandler<LinkUserEmployeeCommand, UserDto>, LinkUserEmployeeHandler>();
         services.AddScoped<IUserPasswordResetHandler, UserPasswordResetHandler>();
 
         // An employee who has a user account cannot be deleted: the account has to go first.

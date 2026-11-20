@@ -340,6 +340,50 @@ describe('Settings HTTP adapters', () => {
       expect((await bare).message).toBe('Email is not configured.');
     });
 
+    it('links an account with POST /users/{id}/link-employee and the given rowVersion', async () => {
+      const { http, users } = setup();
+      const promise = firstValueFrom(users.linkEmployee(1, 'USRV7'));
+      const req = http.expectOne(
+        (r) => r.method === 'POST' && r.url.endsWith('/users/1/link-employee'),
+      );
+      expect(req.request.body).toEqual({ rowVersion: 'USRV7' });
+      req.flush({ ...admin, employeeId: 9, displayName: 'Ada Sample', rowVersion: 'USRV8' });
+      const linked = await promise;
+      expect(linked.employeeId).toBe(9);
+      expect(linked.displayName).toBe('Ada Sample');
+    });
+
+    it('links with the last rowVersion seen when none is given', async () => {
+      const { http, users } = setup();
+      await seedUser(http, users, admin as unknown as typeof user);
+      const promise = firstValueFrom(users.linkEmployee(1));
+      await tick();
+      const req = http.expectOne((r) => r.url.endsWith('/users/1/link-employee'));
+      expect(req.request.body).toEqual({ rowVersion: 'USRV1' });
+      req.flush({ ...admin, employeeId: 9, rowVersion: 'USRV2' });
+      await promise;
+    });
+
+    it('shows the server text of a refused link and maps 403 to the administrators-only message', async () => {
+      const { http, users } = setup();
+      const refused = rejection(firstValueFrom(users.linkEmployee(1, 'USRV1')));
+      http
+        .expectOne((r) => r.url.endsWith('/users/1/link-employee'))
+        .flush(
+          { code: 'Conflict', detail: 'That employee already has a user account.' },
+          { status: 409, statusText: 'Conflict' },
+        );
+      const conflict = await refused;
+      expect(conflict.code).toBe('Conflict');
+      expect(conflict.message).toBe('That employee already has a user account.');
+
+      const forbidden = rejection(firstValueFrom(users.linkEmployee(1, 'USRV1')));
+      http
+        .expectOne((r) => r.url.endsWith('/users/1/link-employee'))
+        .flush(null, { status: 403, statusText: 'Forbidden' });
+      expect((await forbidden).message).toBe('Only HR Administrators can manage users and roles.');
+    });
+
     it('maps 403 to the administrators-only message and 409 to the reload message', async () => {
       const { http, users } = setup();
       const forbidden = rejection(firstValueFrom(users.query({ pageIndex: 0, pageSize: 10 })));

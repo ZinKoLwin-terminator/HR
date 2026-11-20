@@ -47,6 +47,19 @@ internal sealed class FakeActivityLog(IClock clock, ICurrentUser user) : IActivi
     /// <summary>Called by the fake unit of work when the save failed.</summary>
     public void Discard() => pending.Clear();
 
+    /// <summary>The log now; the returned action removes every entry written after it (a rollback).</summary>
+    public Action Snapshot()
+    {
+        var count = entries.Count;
+        var keptLastId = lastId;
+        return () =>
+        {
+            entries.RemoveRange(count, entries.Count - count);
+            pending.Clear();
+            lastId = keptLastId;
+        };
+    }
+
     /// <summary>Puts an entry straight into the log, as if an earlier request had written it.</summary>
     public ActivityLogEntry Append(string category, string message, int? actorUserId, string actorName, DateTime occurredAtUtc)
     {

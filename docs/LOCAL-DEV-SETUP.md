@@ -41,7 +41,31 @@ sqlpackage /Action:Publish /SourceFile:"HR DBPJ\bin\Debug\HR DBPJ.dacpac" /Targe
 
 - `HR` database မရှိရင် အသစ် ဖန်တီးပေးပါတယ်။ Post-deployment script က roles, permissions, categories တွေကို ထည့်ပေးပါတယ်။
 - Data ပျောက်နိုင်တဲ့ ပြောင်းလဲမှု ပါရင် publish က ရပ်ပါတယ် (default)။ အဲဒီအခါ preview script ကို ဖတ်ပြီး ဆုံးဖြတ်ပါ။
-- Visual Studio ဒါမှမဟုတ် VS Code "SQL Database Projects" extension ရဲ့ Publish နဲ့လည်း လုပ်လို့ရပါတယ်။
+- Visual Studio ဒါမှမဟုတ် VS Code နဲ့လည်း လုပ်လို့ရပါတယ် (အောက်က 2a ကို ကြည့်ပါ)။
+
+### 2a. VS Code မှာ Database Project သုံးနည်း (optional)
+
+အဆင့် 1–2 ကို command line အစား VS Code ထဲကနေ လုပ်ချင်ရင်:
+
+1. Extension နှစ်ခု ထည့်ပါ: **SQL Server (mssql)** (`ms-mssql.mssql`) နဲ့ **SQL Database Projects**
+   (`ms-mssql.sql-database-projects-vscode`)။ .NET SDK ရှိဖို့ လိုပါတယ် (အဆင့် 0)။
+2. `D:\HR` folder ကို ဖွင့်ပြီး Activity Bar က **Database Projects** ကို နှိပ်ပါ။ `HR DBPJ` project ပေါ်လာပါမယ်။
+   မပေါ်ရင် **Open Existing** ကနေ `HR DBPJ\HR DBPJ.sqlproj` ကို ရွေးပါ။
+3. Activity Bar က **SQL Server** > **Add Connection** နဲ့ local DB ကို ချိတ်ပါ: Server `(localdb)\MSSQLLocalDB`၊
+   **Windows Authentication**၊ Database `HR`၊ **Trust server certificate** ဖွင့်ပါ။
+
+| လုပ်ချင်တာ | VS Code မှာ |
+| --- | --- |
+| Table, view, procedure အသစ် | Schema folder (`hr`, `lve`, `pay` …) ပေါ် right-click > **Add Table** / **Add View** / **Add Stored Procedure** |
+| Build (`.dacpac` ထုတ်) | Project ပေါ် right-click > **Build** (အဆင့် 1 ရဲ့ `dotnet build` နဲ့ အတူတူ) |
+| Publish | Right-click > **Publish** > အဆင့် 3 ရဲ့ connection ကို ရွေး > **Generate Script** ကို အရင်လုပ်ပြီး ဖတ်ပါ၊ ပြီးမှ **Publish** |
+| Live DB နဲ့ နှိုင်းယှဉ် | Right-click > **Schema Compare** |
+
+- `Ctrl+Shift+P` မှာ `Database Projects:` လို့ ရိုက်ရင် command အားလုံး ပေါ်ပါတယ်။
+- `TreatTSqlWarningsAsErrors` ဖွင့်ထားလို့ T-SQL warning တစ်ခုပဲ ရှိရင်တောင် build fail ပါတယ်။ **Problems** panel မှာ ကြည့်ပါ။
+- Publish dialog ရဲ့ "block on possible data loss" ကို မပိတ်ပါနဲ့။ Script ကို ဖတ်ပြီးမှ ဆုံးဖြတ်ပါ။
+- **Save Profile** နဲ့ `.publish.xml` သိမ်းလို့ရပါတယ်။ Connection string မှာ password ပါရင် commit မလုပ်ပါနဲ့။
+- Local DB ကိုပဲ ချိတ်ပါ။ Schema ပြောင်းချင်ရင် ဒီ project ထဲမှာပဲ ပြင်ပါ (EF Core က migration မ run ပါဘူး)။
 
 ## 3. File folders (တစ်ကြိမ်ပဲ)
 
@@ -62,6 +86,8 @@ cd ..
 
 - Target database ကို ပြပြီး `yes` ရိုက်ခိုင်းပါတယ်။ Password ကို နှစ်ကြိမ် ရိုက်ရပါတယ် (မပေါ်ပါဘူး၊ **အနည်းဆုံး ၁၂ လုံး**)။
 - ဒီ account က HR Administrator ပါ။ အဆင့် 7 ရဲ့ seed က EMP002 Su Myat Noe နဲ့ email ကနေ ချိတ်ပေးပါတယ်။
+- Seed scripts (အဆင့် 7) ကို run ပြီးမှ ဒီ command နဲ့ account ဖန်တီးရင် employee နဲ့ **မချိတ်ရသေးပါဘူး** (Settings > Users ရဲ့ Employee column မှာ "Not linked")။ My KPIs, My Payslips လို own data တွေ ဗလာ ဖြစ်နေပါမယ်။ **Settings > Users** မှာ အဲဒီ row ရဲ့ Actions > **Link to employee** ကို နှိပ်ပါ (account email နဲ့ work email တူတဲ့ current employee နဲ့ ချိတ်ပေးပါတယ်)၊ ပြီးရင် sign out ဖြစ်သွားလို့ ပြန် sign in ဝင်ပါ။
+- **သတိ:** Link လုပ်ပြီးရင် app ထဲကနေ ပြန်ဖြုတ်လို့ (undo) မရပါဘူး။ Link မလုပ်ခင် တခြား active HR Administrator account တစ်ခု ရှိထားပါ။ မှားချိတ်မိရင် ပြန်ပြင်တာက လူကိုယ်တိုင် run ရတဲ့ database change ပါ ([api/README.md](../api/README.md) မှာ ကြည့်ပါ)။
 
 ## 5. Sample data script ထုတ်ပါ (run မယ့်နေ့တိုင်း)
 
@@ -155,6 +181,7 @@ sqlcmd -S "(localdb)\MSSQLLocalDB" -d HR -E -b -i docs\test-data\sql\seed-module
 | Sign in မရ | Account မရှိသေးလို့ (အဆင့် 4)၊ ဒါမှမဟုတ် password ၅ ကြိမ် မှားလို့ ၁၅ မိနစ် lock ဖြစ်နေတာ |
 | API စတာနဲ့ ရပ်သွား (pseudonym key) | Development key ကို LocalDB connection နဲ့ပဲ လက်ခံပါတယ်။ `ConnectionStrings:Hrms` ကို မပြောင်းပါနဲ့ |
 | `bootstrap-admin` refused | Active HR Administrator ရှိပြီးသားပါ။ အဲဒီ account နဲ့ ဝင်ပါ |
+| My KPIs / My Payslips ဗလာ (admin account) | Account က employee နဲ့ မချိတ်ရသေးလို့ပါ (seed မတိုင်ခင် bootstrap မလုပ်ခဲ့ရင်)။ Settings > Users > **Link to employee**၊ ပြီးရင် ပြန် sign in ဝင်ပါ (အဆင့် 4) |
 | UI မှာ data မပေါ်၊ `/api` 404/502 | API (port 5045) run မနေလို့ပါ။ Terminal 1 ကို စစ်ပါ |
 | 403 Forbidden | Role မှာ permission မရှိလို့ပါ (Settings > Permissions)။ ဒါက မှန်ကန်တဲ့ behaviour ပါ |
 | Seed script THROW 50001 / 50002 | `HR` database နဲ့ local server မဟုတ်လို့ ငြင်းတာပါ (safety guard) |

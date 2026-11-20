@@ -211,7 +211,8 @@ export class KpiReportsComponent {
       const safe = <T>(source: Observable<T[]>) => source.pipe(catchError(() => of([] as T[])));
       return forkJoin({
         periods: safe(this.periodsApi.options()),
-        categories: safe(this.categoriesApi.getAll()),
+        // The picker needs kpi:View only (the CRUD list needs kpi-setup:View, which reviewers lack).
+        categories: safe(this.categoriesApi.options()),
         // Organization names from the lookup: no organization:View needed, never fails.
         org: this.lookupService.organization(),
       }).pipe(

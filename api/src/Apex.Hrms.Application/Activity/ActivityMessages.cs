@@ -16,6 +16,13 @@ public static class ActivityMessages
 
     public static string Deleted(string label, string subject) => $"{label} \"{subject}\" deleted";
 
+    /// <summary>
+    /// An account was linked to its employee: <c>User #12 "Ada Test" linked to employee EMP-0007</c>. The account id tells the
+    /// account apart from the employee, whose name it now carries; never the email.
+    /// </summary>
+    public static string UserLinkedToEmployee(int accountId, string displayName, string employeeCode) =>
+        $"User #{accountId.ToString(CultureInfo.InvariantCulture)} \"{displayName}\" linked to employee {employeeCode}";
+
     /// <summary>A leave application moved on: <c>LV-2026-0004 submitted for approval</c>.</summary>
     public static string LeaveSubmitted(string applicationNo) => $"{applicationNo} submitted for approval";
 

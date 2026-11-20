@@ -71,15 +71,47 @@ public sealed class LeaverAccountTests : IDisposable
     }
 
     [Fact]
-    public async Task Exit_of_an_employee_without_an_account_changes_no_login_and_opens_no_transaction()
+    public async Task Exit_of_an_employee_without_an_account_changes_no_login_but_saves_under_the_administrator_lock()
     {
         var employee = await settings.SeedEmployeeAsync();
         var transactions = settings.Host.UnitOfWork.TransactionLocks.Count;
+        var commits = settings.Host.UnitOfWork.Commits;
 
         ResultAssert.Succeeded(await ExitAsync(employee));
 
         Assert.Empty(settings.Logins.SessionsInvalidated);
-        Assert.Equal(transactions, settings.Host.UnitOfWork.TransactionLocks.Count);
+        Assert.Equal(transactions + 1, settings.Host.UnitOfWork.TransactionLocks.Count);
+        Assert.Equal(SecurityPolicy.AdministratorLockName, settings.Host.UnitOfWork.TransactionLocks[^1]);
+        Assert.Equal(commits + 1, settings.Host.UnitOfWork.Commits);
+    }
+
+    [Fact]
+    public async Task Exit_of_an_employee_without_an_account_waits_for_the_administrator_lock_like_the_link_of_an_account()
+    {
+        var employee = await settings.SeedEmployeeAsync();
+        settings.Host.UnitOfWork.HeldElsewhere.Add(SecurityPolicy.AdministratorLockName);
+
+        var result = await ExitAsync(employee);
+
+        Assert.Equal("Another change to the administrators is in progress. Try again.", ResultAssert.Failed(result, ErrorType.Conflict).Message);
+    }
+
+    [Fact]
+    public async Task An_account_linked_to_the_employee_just_before_the_exit_got_the_lock_makes_the_exit_a_409_to_retry()
+    {
+        var role = settings.SeedRole("HR Officer");
+        var employee = await settings.SeedEmployeeAsync();
+        var commits = settings.Host.UnitOfWork.Commits;
+
+        // The link committed while the exit waited for the lock: the exit found no account before, and sees it now.
+        settings.Host.UnitOfWork.OnBeginTransaction = _ => settings.SeedAccount(role, employee.Id, "Mia Hartley", "mia.hartley@example.test");
+
+        var result = await ExitAsync(employee);
+
+        Assert.Equal("A user account was just linked to this employee. Try again.", ResultAssert.Failed(result, ErrorType.Conflict).Message);
+        Assert.Equal(commits, settings.Host.UnitOfWork.Commits);
+        Assert.Empty(settings.Logins.SessionsInvalidated);
+        Assert.Equal(AccountStatus.Active, settings.Host.Repository<AppAccount>().Items.Single().Status);
     }
 
     [Fact]

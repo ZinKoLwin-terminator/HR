@@ -9,7 +9,7 @@ namespace Apex.Hrms.Application.Tests.Fakes;
 /// List-backed repository that assigns identities and row versions on Add, like the database would. A record whose
 /// row version was checked by a change (ExpectRowVersion) gets a new version when the fake database saves.
 /// </summary>
-internal sealed class InMemoryRepository<TEntity> : IRepository<TEntity>, IRecordCounter<TEntity>, IVersionedStore
+internal sealed class InMemoryRepository<TEntity> : IRepository<TEntity>, IRecordCounter<TEntity>, IVersionedStore, IRollbackStore
     where TEntity : Entity
 {
     private static readonly System.Reflection.PropertyInfo IdProperty = typeof(Entity).GetProperty(nameof(Entity.Id))!;
@@ -115,11 +115,78 @@ internal sealed class InMemoryRepository<TEntity> : IRepository<TEntity>, IRecor
 
         changed.Clear();
     }
+
+    Action IRollbackStore.Snapshot()
+    {
+        var kept = items.ToList();
+        var values = kept.Select(item => (Item: item, Fields: EntityFields.Copy(item))).ToList();
+        var keptChanged = changed.ToList();
+        var keptExpected = ExpectedRowVersions.ToDictionary();
+        var keptLastId = lastId;
+        return () =>
+        {
+            items.Clear();
+            items.AddRange(kept);
+            foreach (var (item, fields) in values)
+            {
+                EntityFields.Restore(item, fields);
+            }
+
+            changed.Clear();
+            changed.UnionWith(keptChanged);
+            ExpectedRowVersions.Clear();
+            foreach (var (entity, rowVersion) in keptExpected)
+            {
+                ExpectedRowVersions[entity] = rowVersion;
+            }
+
+            lastId = keptLastId;
+        };
+    }
 }
 
 internal interface IVersionedStore
 {
     void StampChanged();
+}
+
+/// <summary>A store that can put its records back as they were (the fake of a transaction rollback, see <see cref="FakeUnitOfWork.RollBackUncommittedTransactions"/>).</summary>
+internal interface IRollbackStore
+{
+    /// <summary>Takes a copy of the records now and returns the action that restores it.</summary>
+    Action Snapshot();
+}
+
+/// <summary>
+/// Copies and restores the fields of an entity, its base classes included. The copy is shallow: scalar state (ids, foreign
+/// keys, names, statuses, row versions) comes back exactly; a child collection comes back as the same list instance.
+/// </summary>
+internal static class EntityFields
+{
+    private const System.Reflection.BindingFlags Declared =
+        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly;
+
+    public static List<(System.Reflection.FieldInfo Field, object? Value)> Copy(object entity) =>
+        [.. FieldsOf(entity.GetType()).Select(field => (field, field.GetValue(entity)))];
+
+    public static void Restore(object entity, List<(System.Reflection.FieldInfo Field, object? Value)> fields)
+    {
+        foreach (var (field, value) in fields)
+        {
+            field.SetValue(entity, value);
+        }
+    }
+
+    private static IEnumerable<System.Reflection.FieldInfo> FieldsOf(Type? type)
+    {
+        for (; type is not null && type != typeof(object); type = type.BaseType)
+        {
+            foreach (var field in type.GetFields(Declared))
+            {
+                yield return field;
+            }
+        }
+    }
 }
 
 /// <summary>Shared by the fake repositories and the fake unit of work: hands out row versions and stamps saved changes.</summary>
@@ -138,5 +205,12 @@ internal sealed class FakeDatabase
         {
             store.StampChanged();
         }
+    }
+
+    /// <summary>A copy of every repository now; the returned action puts them all back (a rollback).</summary>
+    public Action Snapshot()
+    {
+        var restores = stores.OfType<IRollbackStore>().Select(store => store.Snapshot()).ToList();
+        return () => restores.ForEach(restore => restore());
     }
 }

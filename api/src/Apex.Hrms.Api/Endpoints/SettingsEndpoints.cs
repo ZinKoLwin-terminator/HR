@@ -68,7 +68,10 @@ internal static class SettingsEndpoints
             .RequireAuthorization(Module.PolicyName(Permission.Delete));
 
         group.MapStatusCommands<UserDto>(Module)
-            .MapCommand<UserDto, UnlockUserCommand>("unlock", Module);
+            .MapCommand<UserDto, UnlockUserCommand>("unlock", Module)
+
+            // The body is the row version only: the employee is found by the account's email, never chosen by the caller.
+            .MapCommand<UserDto, LinkUserEmployeeCommand>("link-employee", Module);
 
         // 202 with no body: the mail is sent and the administrator never sees the token or the link. One per user per minute.
         group.MapPost(

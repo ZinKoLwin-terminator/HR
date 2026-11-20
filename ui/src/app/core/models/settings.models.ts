@@ -115,7 +115,9 @@ export const DATE_FORMATS: readonly string[] = [
 export const ADMIN_ROLE_NAME = 'HR Administrator';
 
 /**
- * Employee id of the built-in administrator account in empty-data mode. It is linked to no
- * real employee, so every real employee (including id 2) can still be given a user account.
+ * Employee id of an account linked to no employee: the built-in administrator in empty-data mode,
+ * or (API, sent as null) an account created after the seed scripts. Such an account can be linked
+ * later with Settings > Users > Link to employee. Every real employee (including id 2) can still
+ * be given a user account.
  */
 export const BUILT_IN_ADMIN_EMPLOYEE_ID = 0;

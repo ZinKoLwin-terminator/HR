@@ -13,11 +13,16 @@ public sealed class AppAccount : AuditedEntity
 
     public const string LockedMessage = "This account is locked. Unlock it first.";
 
+    public const string AlreadyLinkedMessage = "This account is already linked to an employee.";
+
     private AppAccount()
     {
     }
 
-    /// <summary>The linked employee; null only for the built-in administrator. It never changes after creation.</summary>
+    /// <summary>
+    /// The linked employee; null for an account that is not linked (the built-in administrator, or an account created before
+    /// it was linked). An unlinked account can be linked once (<see cref="LinkEmployee"/>); after that the employee never changes.
+    /// </summary>
     public int? EmployeeId { get; private set; }
 
     public string DisplayName { get; private set; } = string.Empty;
@@ -66,6 +71,24 @@ public sealed class AppAccount : AuditedEntity
     }
 
     public void Deactivate() => Status = AccountStatus.Inactive;
+
+    /// <summary>
+    /// Links an account that has no employee to its employee and takes the employee's name as the display name, as
+    /// <see cref="Create"/> does. Only an unlinked account can be linked: the employee of a linked account never changes.
+    /// </summary>
+    public Result LinkEmployee(int employeeId, string displayName)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(employeeId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        if (EmployeeId is not null)
+        {
+            return Result.Failure(AppError.Conflict(AlreadyLinkedMessage));
+        }
+
+        EmployeeId = employeeId;
+        DisplayName = TextNormalization.Clean(displayName);
+        return Result.Success();
+    }
 
     /// <summary>A locked account becomes Active again; any other status is left as it is.</summary>
     public void Unlock()

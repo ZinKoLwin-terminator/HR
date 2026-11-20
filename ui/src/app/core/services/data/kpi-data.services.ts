@@ -13,6 +13,7 @@ import {
   EvidenceUploadResult,
   KpiCategory,
   KpiCategoryFilter,
+  KpiCategoryOption,
   KpiTemplate,
   KpiTemplateFilter,
   RatingBand,
@@ -48,7 +49,13 @@ export abstract class KpiCategoryDataService extends CrudDataService<
   KpiCategory,
   KpiCategory,
   KpiCategoryFilter
-> {}
+> {
+  /**
+   * The category picker for screens outside setup (KPI reports): every category, inactive ones
+   * included, by name. Needs kpi:View only, unlike the CRUD reads (kpi-setup:View).
+   */
+  abstract options(): Observable<KpiCategoryOption[]>;
+}
 
 export abstract class KpiTemplateDataService extends CrudDataService<
   KpiTemplate,
