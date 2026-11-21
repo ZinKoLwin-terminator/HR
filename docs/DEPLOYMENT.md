@@ -254,6 +254,12 @@ throttling.
     secret that CloudFront adds, takes the viewer IP from the last `X-Forwarded-For` entry, and serves `/api/` only.
     `AllowedHosts` lists both `54.251.230.240` and the sslip.io name. Changing the Elastic IP breaks the origin name
     and certificate. Replace this with a real domain when one exists.
+* **UAT API on EC2 + RDS:** the API runs on Core-UAT-API (Ubuntu, systemd `hrms-api`, secrets in
+  `/etc/hrms/hrms.env`, nginx self-signed HTTPS on `54.251.230.240` for `/api/`, `/health/`, `/swagger` and
+  `/openapi/`). Its database is RDS `core-uat-db` (SQL Server Express 2019), reached as the least-privilege login
+  `hrms_api_uat` with `TrustServerCertificate=False` (the RDS CA bundle is installed on the server). The scripts and
+  steps to create the database, publish the schema, connect the API, create the first administrator and load the
+  fictional sample data are in `deploy/uat/README.md`.
 
 ## 7. Rollback
 

@@ -51,3 +51,7 @@ Thumbs.db
 
 # Agent worktrees (nested checkouts, not project content)
 /.claude/worktrees/
+
+# UAT deployment: local values and generated review scripts
+/deploy/uat/uat.local.env
+/deploy/uat/HR-deploy-*.sql
