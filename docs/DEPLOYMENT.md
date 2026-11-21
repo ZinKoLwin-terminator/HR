@@ -261,6 +261,16 @@ throttling.
   `hrms_api_uat` with `TrustServerCertificate=False` (the RDS CA bundle is installed on the server). The scripts and
   steps to create the database, publish the schema, connect the API, create the first administrator and load the
   fictional sample data are in `deploy/uat/README.md`.
+  * **Automatic API deployment:** every push to `uat_deploy_ui` that changes `api/` (or the workflow) runs
+    `.github/workflows/deploy-uat-api.yml`: build with zero warnings, tests, `dotnet publish`, upload of the tarball to
+    the private bucket `apex-hrms-api-artifacts-306855880046-ap-southeast-1` (kept 14 days), then the SSM document
+    `HRMS-DeployApi` runs `/usr/local/sbin/hrms-deploy-api` on the server (source: `deploy/uat/server/`). The script
+    verifies the SHA-256, keeps the previous release in `/opt/hrms/api.prev`, installs the new one, restarts
+    `hrms-api` and waits for `/health/ready` = 200; otherwise it restores the previous release and the workflow fails.
+    `/etc/hrms/hrms.env` and `appsettings.Production.json` are never touched, so the database connection and secrets
+    stay as they are. GitHub signs in through OIDC to `apex-hrms-uat-api-deploy` (this branch only; S3 upload to
+    `api/*` and that one SSM document on that one instance). No SSH, no open port, no AWS keys in GitHub. Run it by
+    hand from the Actions tab to redeploy.
 
 ## 7. Rollback
 

@@ -93,6 +93,28 @@ SSMS မှာ RDS master login (`<RDS_ADMIN_LOGIN>`) နဲ့ `HR` database �
   2. `POST /api/auth/login` (step 3 က admin account နဲ့)
   3. `GET /api/auth/me` → admin user ပြရပါမယ်
 
+## API ကို အလိုအလျောက် deploy လုပ်ခြင်း (GitHub Actions)
+
+Step 1–3 ကို တစ်ကြိမ်ပဲ လုပ်ရပါတယ်။ အဲ့ဒီနောက်ပိုင်း API code ပြောင်းရင် **`uat_deploy_ui` ကို push လုပ်ရုံပါပဲ**:
+
+| Push မှာ ပြောင်းထားတာ | ဖြစ်မယ့်အရာ |
+|---|---|
+| `api/**` | `deploy-uat-api.yml` က API ကို build → test → EC2 ပေါ် deploy လုပ်ပါတယ် |
+| `ui/**` | `deploy-uat-ui.yml` က UI ကို S3 + CloudFront ပေါ် deploy လုပ်ပါတယ် |
+| တခြား file တွေပဲ (`docs/` စသည်) | Deploy မလုပ်ပါ |
+
+API deploy မှာ ဖြစ်တဲ့ အဆင့်တွေ:
+1. Build (warning 0 ဖြစ်ရမယ်) နဲ့ test အားလုံး pass ဖြစ်မှ ဆက်လုပ်ပါတယ်
+2. Release ကို private S3 bucket ပေါ် တင်ပြီး SSM ကနေ server ကို `/usr/local/sbin/hrms-deploy-api` (source: `server/hrms-deploy-api`) run ခိုင်းပါတယ်
+3. Server က checksum စစ်ပြီး version အဟောင်းကို `/opt/hrms/api.prev` အဖြစ် backup လုပ်ပါတယ်။ ပြီးရင် version အသစ်ကို ထည့်ပြီး restart လုပ်ပါတယ်
+4. **`/health/ready` = 200 (database ချိတ်မိ) ဖြစ်မှ အောင်မြင်ပါတယ်**။ မဖြစ်ရင် version အဟောင်းကို အလိုအလျောက် ပြန်ထားပြီး workflow က fail ပြပါတယ်
+
+`/etc/hrms/hrms.env` (connection string၊ secret) နဲ့ `appsettings.Production.json` ကို deploy က **ဘယ်တော့မှ မထိပါဘူး**။ ဒါကြောင့် database ချိတ်ဆက်မှု ဆက်ရှိနေပါတယ်။
+
+ဘယ် version run နေလဲ ကြည့်ချင်ရင် server ပေါ်မှာ `sudo cat /opt/hrms/api/DEPLOYED_COMMIT` ကို run ပါ။ Manual redeploy လုပ်ချင်ရင် GitHub → Actions → **Deploy UAT API** → **Run workflow** ကို နှိပ်ပါ။
+
+`server/hrms-deploy-api` ကို ပြင်ရင် server ပေါ်မှာလည်း ပြန် install လုပ်ရပါမယ် (`/usr/local/sbin/hrms-deploy-api`၊ root၊ 755)။ `server/ssm-document-HRMS-DeployApi.json` ကို ပြင်ရင်လည်း `aws ssm update-document` နဲ့ document ကို update လုပ်ရပါမယ်။
+
 ## ပြဿနာ ဖြေရှင်းနည်း
 
 | ပြဿနာ | ဖြေရှင်းနည်း |

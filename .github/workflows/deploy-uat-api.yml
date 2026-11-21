@@ -1,0 +1,100 @@
+name: Deploy UAT API
+
+# A push to uat_deploy_ui that changes api/ (or this workflow) builds, tests and publishes the .NET API, then deploys
+# it to the UAT server Core-UAT-API through AWS Systems Manager: no SSH, no open port, no keys in GitHub.
+#
+# The server keeps its own configuration (/etc/hrms/hrms.env: connection string and secrets), so the database
+# connection stays as it is. The release counts as deployed only when /health/ready answers 200 (the database is
+# reachable); otherwise the server puts the previous release back and this workflow fails.
+#
+# AWS access: GitHub OIDC to the IAM role apex-hrms-uat-api-deploy, which trusts only this branch and may only upload
+# to the artifact bucket and run the SSM document HRMS-DeployApi (a fixed script, /usr/local/sbin/hrms-deploy-api,
+# with validated parameters) on that one instance. See deploy/uat/README.md.
+on:
+  push:
+    branches: [uat_deploy_ui]
+    paths:
+      - 'api/**'
+      - '.github/workflows/deploy-uat-api.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-uat-api
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  AWS_ROLE_ARN: arn:aws:iam::306855880046:role/apex-hrms-uat-api-deploy
+  ARTIFACT_BUCKET: apex-hrms-api-artifacts-306855880046-ap-southeast-1
+  INSTANCE_ID: i-05c31f0b585a64cef
+  SSM_DOCUMENT: HRMS-DeployApi
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+defaults:
+  run:
+    working-directory: api
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build (zero warnings)
+        run: dotnet build Apex.Hrms.slnx -c Release -warnaserror
+
+      - name: Test
+        run: dotnet test Apex.Hrms.slnx -c Release --no-build
+
+      - name: Publish and package
+        run: |
+          dotnet publish src/Apex.Hrms.Api -c Release -o "$RUNNER_TEMP/publish" --no-self-contained
+          rm -f "$RUNNER_TEMP/publish/appsettings.Development.json" "$RUNNER_TEMP"/publish/*.pdb
+          tar -czf "$RUNNER_TEMP/api.tar.gz" -C "$RUNNER_TEMP/publish" .
+          echo "ARTIFACT_SHA256=$(sha256sum "$RUNNER_TEMP/api.tar.gz" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload the release
+        run: |
+          key="api/${GITHUB_SHA}.tar.gz"
+          aws s3 cp "$RUNNER_TEMP/api.tar.gz" "s3://$ARTIFACT_BUCKET/$key" --only-show-errors
+          url=$(aws s3 presign "s3://$ARTIFACT_BUCKET/$key" --expires-in 900 --region "$AWS_REGION")
+          echo "::add-mask::$url"
+          echo "ARTIFACT_URL=$url" >> "$GITHUB_ENV"
+
+      - name: Deploy on the server and wait for /health/ready
+        run: |
+          params=$(jq -cn --arg u "$ARTIFACT_URL" --arg s "$ARTIFACT_SHA256" --arg c "$GITHUB_SHA" \
+            '{ArtifactUrl: [$u], Sha256: [$s], Commit: [$c]}')
+          id=$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name "$SSM_DOCUMENT" \
+            --comment "deploy ${GITHUB_SHA::7}" --parameters "$params" --query Command.CommandId --output text)
+          echo "SSM command $id"
+          status=Pending
+          for _ in $(seq 1 120); do
+            sleep 5
+            status=$(aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$status" in Pending|InProgress|Delayed) continue ;; *) break ;; esac
+          done
+          aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE_ID" \
+            --query StandardOutputContent --output text
+          echo "Status: $status"
+          [ "$status" = "Success" ]
+
+      - name: Summary
+        if: success()
+        run: echo "Deployed ${GITHUB_SHA::7} to the UAT API; /health/ready = 200 (database connected)." >> "$GITHUB_STEP_SUMMARY"
