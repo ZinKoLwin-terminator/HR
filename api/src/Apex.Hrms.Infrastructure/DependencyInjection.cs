@@ -57,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<IDashboardSource, EfDashboardSource>();
         services.AddScoped<IReadModel, EfReadModel>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IDatabaseProbe, EfDatabaseProbe>();
         services.AddScoped<IPayrollRunOutput, EfPayrollRunOutput>();
         services.AddScoped<IActivityMute>(provider => provider.GetRequiredService<EfActivityRecorder>());
         services.AddScoped<IImportBatchStore, EfImportBatchStore>();
