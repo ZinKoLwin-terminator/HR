@@ -195,7 +195,7 @@ public sealed class EmployeeHttpTests : DatabaseTest, IDisposable
         var duplicate = await client.PostAsJsonAsync(
             "/api/employees",
             Requests.Employee(created.CompanyId, created.BranchId, created.DepartmentId, created.PositionId, created.JobGradeId, "2", "mia"));
-        var problem = JsonDocument.Parse(await BodyAsync(duplicate)).RootElement;
+        var problem = JsonElement.Parse(await BodyAsync(duplicate));
 
         Assert.Equal(HttpStatusCode.BadRequest, duplicate.StatusCode);
         Assert.Equal("Work email must be unique.", problem.GetProperty("errors").GetProperty("workEmail")[0].GetString());

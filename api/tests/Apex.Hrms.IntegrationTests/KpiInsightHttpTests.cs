@@ -74,7 +74,7 @@ public sealed class KpiInsightHttpTests : DatabaseTest, IDisposable
         var response = await request;
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.StatusCode == HttpStatusCode.OK, $"{(int)response.StatusCode}: {body}");
-        return JsonDocument.Parse(body).RootElement.Clone();
+        return JsonElement.Parse(body);
     }
 
     private static decimal Dec(JsonElement json, string name) => json.GetProperty(name).GetDecimal();
