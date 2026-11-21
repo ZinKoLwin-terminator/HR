@@ -46,9 +46,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Pinned to the 10.0.1xx feature band (the SDK the UAT server and the local checks use), so a newer SDK's new
+      # analyzer rules cannot break the zero-warning build without anyone changing the code. Raise it deliberately.
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '10.0.1xx'
 
       - name: Build (zero warnings)
         run: dotnet build Apex.Hrms.slnx -c Release -warnaserror
