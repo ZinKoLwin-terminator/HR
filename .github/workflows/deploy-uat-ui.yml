@@ -1,13 +1,18 @@
 name: Deploy UAT UI
 
-# Every push to uat_deploy_ui builds the Angular app in API mode and publishes it to
-# S3 + CloudFront: https://d1ijsaaw5ohl8t.cloudfront.net
+# A push to uat_deploy_ui that changes ui/ (or this workflow) builds the Angular app in API mode and
+# publishes it to S3 + CloudFront: https://d1ijsaaw5ohl8t.cloudfront.net
+# Pushes that change only the API, docs or other files do not deploy; run it by hand from the Actions tab
+# (workflow_dispatch) to redeploy anyway. The UAT API on EC2 is never deployed by this workflow.
 # The same distribution sends /api/* to the UAT API on EC2 (Core-UAT-API), so the app calls a
 # same-origin /api. See docs/DEPLOYMENT.md section 6.
 # AWS access uses GitHub OIDC: no stored keys. The IAM role trusts this branch only.
 on:
   push:
     branches: [uat_deploy_ui]
+    paths:
+      - 'ui/**'
+      - '.github/workflows/deploy-uat-ui.yml'
   workflow_dispatch:
 
 permissions:

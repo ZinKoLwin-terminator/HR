@@ -233,8 +233,9 @@ throttling.
   nginx or similar serves the UI files, proxies `/api/` with `X-Forwarded-For`, `X-Forwarded-Proto` and `Host`, and
   falls back to `index.html`. Put the API on a private network and list the proxy's address in `KnownProxies`.
   Do not publish the API port directly.
-* **AWS S3 + CloudFront (UAT, UI in API mode):** every push to the `uat_deploy_ui` branch runs
-  `.github/workflows/deploy-uat-ui.yml`: lint, format, unit tests, an optimised API-mode build
+* **AWS S3 + CloudFront (UAT, UI in API mode):** every push to the `uat_deploy_ui` branch that changes `ui/` or the
+  workflow file itself runs `.github/workflows/deploy-uat-ui.yml` (pushes that change only `api/`, `docs/` or other
+  files do not deploy; run it from the Actions tab to redeploy anyway; it never deploys the API): lint, format, unit tests, an optimised API-mode build
   (`ng build --configuration production,api --optimization --no-source-map --extract-licenses`), then publish to
   https://d1ijsaaw5ohl8t.cloudfront.net (bucket `apex-hrms-ui-306855880046-ap-south-1`, private, read through
   CloudFront Origin Access Control; distribution `E2ZTZ085WYV0QX`). It can also be run by hand from the Actions tab.
