@@ -1,0 +1,75 @@
+#!/bin/bash
+# Installs an HRMS API release on the UAT server. Installed as /usr/local/sbin/hrms-deploy-api (root, 755) and run
+# only through the SSM document HRMS-DeployApi, which .github/workflows/deploy-uat-api.yml calls:
+#     hrms-deploy-api <presigned artifact URL> <sha256> <commit>
+#
+# The server keeps its own configuration: /etc/hrms/hrms.env (connection string, secrets) and
+# /etc/hrms/appsettings.Production.json are never touched, so the database connection stays as it is.
+# The release counts as deployed only when /health/ready answers 200 (the database is reachable); otherwise the
+# previous release is put back and the script fails.
+set -euo pipefail
+
+URL="${1:-}"; SHA="${2:-}"; COMMIT="${3:-}"
+[[ "$URL" =~ ^https://[A-Za-z0-9.-]+\.amazonaws\.com/ ]] || { echo "Invalid artifact URL."; exit 2; }
+[[ "$SHA" =~ ^[a-f0-9]{64}$ ]] || { echo "Invalid sha256."; exit 2; }
+[[ "$COMMIT" =~ ^[0-9a-f]{7,40}$ ]] || { echo "Invalid commit."; exit 2; }
+
+APP=/opt/hrms/api
+PREV=/opt/hrms/api.prev
+ENV_FILE=/etc/hrms/hrms.env
+
+exec 9>/run/hrms-deploy.lock
+flock -n 9 || { echo "Another deployment is running."; exit 3; }
+
+work=$(mktemp -d /var/tmp/hrms-deploy.XXXXXX)
+trap 'rm -rf "$work"' EXIT
+
+echo "== Download and verify $COMMIT"
+curl -fsS --max-time 300 -o "$work/api.tar.gz" "$URL"
+echo "$SHA  $work/api.tar.gz" | sha256sum -c --quiet -
+mkdir "$work/app"
+tar -xzf "$work/api.tar.gz" -C "$work/app"
+[ -f "$work/app/Apex.Hrms.Api.dll" ] || { echo "The artifact has no Apex.Hrms.Api.dll."; exit 4; }
+rm -f "$work/app/appsettings.Development.json" "$work/app/appsettings.Production.json"
+echo "commit: $COMMIT (deployed $(date -u +%Y-%m-%dT%H:%M:%SZ) by GitHub Actions)" > "$work/app/DEPLOYED_COMMIT"
+
+host=$(grep -m1 '^AllowedHosts=' "$ENV_FILE" | cut -d= -f2- | tr -d "'\"" | cut -d';' -f1)
+ready() {
+  local code
+  for _ in $(seq 1 30); do
+    code=$(curl -sk -o /dev/null -w '%{http_code}' -H "Host: $host" https://localhost/health/ready || true)
+    [ "$code" = "200" ] && return 0
+    sleep 3
+  done
+  return 1
+}
+install_from() {
+  # appsettings.Production.json is a symlink to /etc/hrms: keep it.
+  rsync -a --delete --exclude appsettings.Production.json "$1"/ "$APP"/
+  chown -R root:hrms "$APP"
+  find "$APP" -type d -exec chmod 750 {} +
+  find "$APP" -type f -exec chmod 640 {} +
+}
+
+echo "== Previous release: $(cat "$APP/DEPLOYED_COMMIT" 2>/dev/null || echo unknown)"
+rm -rf "$PREV"
+cp -a "$APP" "$PREV"
+
+echo "== Install and restart"
+install_from "$work/app"
+systemctl restart hrms-api
+if ready; then
+  echo "DEPLOYED $COMMIT: /health/ready = 200 (database connected)"
+  exit 0
+fi
+
+# Details stay on the server (journalctl -u hrms-api): this output can end up in public CI logs.
+echo "NOT READY after the deployment: rolling back to the previous release"
+install_from "$PREV"
+systemctl restart hrms-api
+if ready; then
+  echo "ROLLED BACK: the previous release is running again. See journalctl -u hrms-api on the server."
+else
+  echo "ROLLBACK NOT READY EITHER: check the server (journalctl -u hrms-api, /health/ready)."
+fi
+exit 1

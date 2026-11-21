@@ -24,6 +24,15 @@ public sealed class KpiLockTests : DatabaseTest
     /// <summary>How long a write that waits for a held lock is watched before the lock is released.</summary>
     private static readonly TimeSpan Watched = TimeSpan.FromSeconds(2);
 
+    /// <summary>True when <paramref name="task"/> finishes within <paramref name="window"/>; the timer is cancelled either way (CA2027).</summary>
+    private static async Task<bool> CompletesWithinAsync(Task task, TimeSpan window)
+    {
+        using var timer = new CancellationTokenSource();
+        var finished = await Task.WhenAny(task, Task.Delay(window, timer.Token)) == task;
+        await timer.CancelAsync();
+        return finished;
+    }
+
     private async Task<(int Employee, int Other, int Template, EvaluationPeriodDto Q4, EvaluationPeriodDto Q1, int CompanyId)> SeedAsync()
     {
         var org = await SeedOrganizationAsync();
@@ -46,7 +55,7 @@ public sealed class KpiLockTests : DatabaseTest
         var elsewhere = await Assign(seed.Employee, seed.Q1.Id, ItemOf(seed.Template, weight: 100m));
         var elapsed = clock.Elapsed;
         var waiting = Assign(seed.Other, seed.Q4.Id, ItemOf(seed.Template, weight: 100m));
-        var finishedWhileHeld = await Task.WhenAny(waiting, Task.Delay(Watched)) == waiting;
+        var finishedWhileHeld = await CompletesWithinAsync(waiting, Watched);
         await held.DisposeAsync();
         var afterRelease = await waiting;
 
@@ -112,7 +121,7 @@ public sealed class KpiLockTests : DatabaseTest
         var elsewhere = await Create(Requests.Period(otherCompany.Id, "Other company"));
         var elapsed = clock.Elapsed;
         var waiting = Create(Requests.Period(company.Id));
-        var finishedWhileHeld = await Task.WhenAny(waiting, Task.Delay(Watched)) == waiting;
+        var finishedWhileHeld = await CompletesWithinAsync(waiting, Watched);
         await held.DisposeAsync();
         var afterRelease = await waiting;
 

@@ -49,6 +49,7 @@ For production settings, hosting notes and the go-live checklist see [`docs/DEPL
 | `Grievance:RetentionYears` | Years a Closed or Rejected grievance is kept (sets `RetentionUntil` when the case is closed or rejected; reopening clears it). Default 7, accepted 1 to 100 (anything else stops startup). A case on legal hold is never archived. |
 | `Grievance:FileUploadsPerMinute` | Grievance uploads (`POST /api/grievances/my/{id}/attachments` and `POST /api/grievances/cases/{id}/attachments`) one signed-in account may start per minute (default 10; its own counter, separate from the KPI one). Every attempt counts; the next one is `429`. |
 | `Grievance:SubmitterDailyUploadBytes` | Bytes one account may upload as a grievance submitter per business day (default 104857600, 100 MB; accepted 1 MB to 10 GB, anything else stops startup). Over it the upload is a `400` on `file` ("You have reached today's upload limit ..."). In memory per instance, like the rate limits; it keeps the account id and a byte count for today only, never a case. |
+| `OpenApi:Enabled` | Serve the OpenAPI document (`/openapi/v1.json`) and Swagger UI (`/swagger`) outside Development (default `false`; always on in Development). Both are anonymous and publish every route and field, so enable it only where that is acceptable (UAT); every call made from Swagger UI still needs a session. Swagger UI copies the `XSRF-TOKEN` cookie into `X-XSRF-TOKEN`: call `GET /api/auth/antiforgery`, then `POST /api/auth/login`, before unsafe calls. |
 | `Hosting:ForwardedHeaders:Enabled` | Behind a reverse proxy, take the client IP and scheme from `X-Forwarded-For` and `X-Forwarded-Proto` (default `false`, so local development is unchanged). The client IP feeds the sign-in rate limit and lockout, the scheme feeds HTTPS redirection and secure cookies. When enabled, `UseForwardedHeaders` runs first in the pipeline with a forward limit of 1 and trusts only the proxies below; enabling it with neither list filled stops startup. |
 | `Hosting:ForwardedHeaders:KnownProxies` | List of trusted proxy IP addresses (for example `["10.0.0.5"]`; as environment variables `Hosting__ForwardedHeaders__KnownProxies__0`). An invalid address stops startup. |
 | `Hosting:ForwardedHeaders:KnownNetworks` | List of trusted proxy networks in CIDR form (for example `["10.0.0.0/8"]`). The framework's loopback defaults are removed: only these lists are trusted. |
@@ -58,6 +59,18 @@ Secrets: `dotnet user-secrets set "Email:Smtp:Password" "..." --project src/Apex
 
 The password reset limits (one administrator-triggered reset mail per user per minute, and at most 20 per calling administrator in 10 minutes, in memory per instance; the allowance is given back only when no mail was sent) are not configurable. Outside Development the API also uses HTTPS redirection and HSTS. Every response carries
 `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`.
+
+## Health checks
+
+| Route | Answers |
+| --- | --- |
+| `GET /health/live` | `200 Healthy` while the process serves requests. Runs no checks and never touches the database. |
+| `GET /health/ready` | `200 Healthy` when a connection to the database opens within 5 seconds (`IDatabaseProbe`, no query on HR data), otherwise `503 Unhealthy`. |
+
+Both are anonymous, GET and HEAD only, and answer plain text `Healthy` or `Unhealthy` with no check names, timings or
+exception details. They sit outside `/api/` because every `/api/` endpoint except sign-in requires a session
+(`AuthorizationCoverageTests`); `HealthEndpointTests` pins that the probes are the only other anonymous endpoints. Host
+filtering (`AllowedHosts`) applies to them like to any request, so a probe must send an allowed `Host` header.
 
 ## HTTP contract (organization module)
 

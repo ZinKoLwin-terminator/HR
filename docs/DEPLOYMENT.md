@@ -38,7 +38,7 @@ items) or the host's secret store. Configuration is read at startup; restart aft
 
 | Variable | Notes |
 | --- | --- |
-| `ASPNETCORE_ENVIRONMENT=Production` | Selects SMTP mail, `__Host-` cookies, Secure cookies, HSTS and HTTPS redirection, exact `AllowedHosts`. OpenAPI is off. |
+| `ASPNETCORE_ENVIRONMENT=Production` | Selects SMTP mail, `__Host-` cookies, Secure cookies, HSTS and HTTPS redirection, exact `AllowedHosts`. OpenAPI and Swagger UI are off unless `OpenApi__Enabled=true`. |
 | `ConnectionStrings__Hrms` | **Required.** Use the least-privilege runtime account only (below). No fallback exists. Example shape (no values): `Server=<host>;Database=<db>;User Id=<login>;Password=<from secret store>;Encrypt=True`. Prefer Windows auth with a gMSA where possible. |
 | `AllowedHosts` | Exact host names separated by `;`. Wildcard or empty stops startup outside Development. The base file says `localhost`: override it. |
 | `Cors__AllowedOrigins__0` | Same-origin needs no CORS. Note: arrays merge by index, so the base file's `http://localhost:4200` stays at index 0 unless you override `__0`. |
@@ -46,6 +46,7 @@ items) or the host's secret store. Configuration is read at startup; restart aft
 | `Email__Smtp__UserName`, `Email__Smtp__Password` | Both or neither. Secret store only. |
 | `DataProtection__KeysPath` | Absolute directory for the key ring (see below). Default is `App_Data/keys` under the content root, which is wrong for a published folder that gets replaced. |
 | `Hosting__ForwardedHeaders__Enabled=true` | Only behind a reverse proxy. Then fill `KnownProxies__0..` and/or `KnownNetworks__0..` (CIDR). Enabled with neither list stops startup. Leave off when Kestrel faces clients directly. |
+| `OpenApi__Enabled` | `true` serves `/openapi/v1.json` and Swagger UI at `/swagger` (anonymous; calls still need a session). Default off outside Development. Never on production: it publishes the whole API surface. The proxy must forward `/openapi/` and `/swagger` to the API. |
 | `Auth__RememberMeMaxDays` | Hard end of a remember-me session, 1 to 365, default 30 (confirm the value, FUTURE-TODO 3). |
 | `Auth__RateLimit__PermitsPerMinute` | Login, forgot- and reset-password per client IP, default 10. |
 | `Logging__LogLevel__Default` etc. | `Warning` default, `Apex.Hrms` at `Information`. Never log at Debug/Trace in production (SQL text and parameters). |
@@ -232,6 +233,44 @@ throttling.
   nginx or similar serves the UI files, proxies `/api/` with `X-Forwarded-For`, `X-Forwarded-Proto` and `Host`, and
   falls back to `index.html`. Put the API on a private network and list the proxy's address in `KnownProxies`.
   Do not publish the API port directly.
+* **AWS S3 + CloudFront (UAT, UI in API mode):** every push to the `uat_deploy_ui` branch that changes `ui/` or the
+  workflow file itself runs `.github/workflows/deploy-uat-ui.yml` (pushes that change only `api/`, `docs/` or other
+  files do not deploy; run it from the Actions tab to redeploy anyway; it never deploys the API): lint, format, unit tests, an optimised API-mode build
+  (`ng build --configuration production,api --optimization --no-source-map --extract-licenses`), then publish to
+  https://d1ijsaaw5ohl8t.cloudfront.net (bucket `apex-hrms-ui-306855880046-ap-south-1`, private, read through
+  CloudFront Origin Access Control; distribution `E2ZTZ085WYV0QX`). It can also be run by hand from the Actions tab.
+  GitHub signs in through OIDC to the IAM role `apex-hrms-uat-ui-deploy`, which trusts only this repository's
+  `uat_deploy_ui` branch and may only write that bucket and invalidate that distribution; no AWS keys are stored in
+  GitHub. Caching: hashed bundles are `immutable`, `index.html` and the other unhashed files are `no-cache,no-store`,
+  and each deploy invalidates `/*`, so users get the new build on the next page load.
+  * **Routing:** the default behaviour serves S3; the CloudFront Function `apex-hrms-spa-rewrite` (viewer request)
+    sends paths without a file extension to `/index.html`. There are deliberately no 403/404 custom error pages:
+    they would also replace API error responses. `/api/*` goes, uncached (CachingDisabled, AllViewerExceptHostHeader),
+    to the UAT API on EC2 through `54-251-230-240.sslip.io`, so the browser sees one origin and the session and
+    XSRF cookies stay first-party.
+  * **Origin:** CloudFront needs a host name with a publicly trusted certificate, and there is no company domain, so
+    the origin is the sslip.io name of the Elastic IP with a Let's Encrypt certificate (certbot webroot, renewed by
+    `certbot.timer`; port 80 is open for the challenge and otherwise redirects). The nginx server block for that name
+    (`/etc/nginx/sites-available/hrms-cloudfront`) answers 403 unless the request carries the `X-Origin-Verify`
+    secret that CloudFront adds, takes the viewer IP from the last `X-Forwarded-For` entry, and serves `/api/` only.
+    `AllowedHosts` lists both `54.251.230.240` and the sslip.io name. Changing the Elastic IP breaks the origin name
+    and certificate. Replace this with a real domain when one exists.
+* **UAT API on EC2 + RDS:** the API runs on Core-UAT-API (Ubuntu, systemd `hrms-api`, secrets in
+  `/etc/hrms/hrms.env`, nginx self-signed HTTPS on `54.251.230.240` for `/api/`, `/health/`, `/swagger` and
+  `/openapi/`). Its database is RDS `core-uat-db` (SQL Server Express 2019), reached as the least-privilege login
+  `hrms_api_uat` with `TrustServerCertificate=False` (the RDS CA bundle is installed on the server). The scripts and
+  steps to create the database, publish the schema, connect the API, create the first administrator and load the
+  fictional sample data are in `deploy/uat/README.md`.
+  * **Automatic API deployment:** every push to `uat_deploy_ui` that changes `api/` (or the workflow) runs
+    `.github/workflows/deploy-uat-api.yml`: build with zero warnings, tests, `dotnet publish`, upload of the tarball to
+    the private bucket `apex-hrms-api-artifacts-306855880046-ap-southeast-1` (kept 14 days), then the SSM document
+    `HRMS-DeployApi` runs `/usr/local/sbin/hrms-deploy-api` on the server (source: `deploy/uat/server/`). The script
+    verifies the SHA-256, keeps the previous release in `/opt/hrms/api.prev`, installs the new one, restarts
+    `hrms-api` and waits for `/health/ready` = 200; otherwise it restores the previous release and the workflow fails.
+    `/etc/hrms/hrms.env` and `appsettings.Production.json` are never touched, so the database connection and secrets
+    stay as they are. GitHub signs in through OIDC to `apex-hrms-uat-api-deploy` (this branch only; S3 upload to
+    `api/*` and that one SSM document on that one instance). No SSH, no open port, no AWS keys in GitHub. Run it by
+    hand from the Actions tab to redeploy.
 
 ## 7. Rollback
 
@@ -276,8 +315,10 @@ throttling.
 - [ ] No parameter-capturing traces, Extended Events sessions or Query Store parameter capture on the `grv` tables.
 - [ ] Database backups and restore tested; bootstrap-admin run; first admin password stored in a vault.
 - [ ] A production API-mode UI build exists and has no source maps (see section 1).
-- [ ] Monitoring and alerts: the API has **no health endpoint** today (gap). Add liveness (process up) and readiness
-      (database reachable) endpoints, anonymous but minimal, and point the host's probe at them.
+- [ ] Monitoring and alerts: point the host's probe or uptime monitor at `GET /health/live` (process up, no checks)
+      and `GET /health/ready` (database reachable within 5 seconds, else `503`). Both are anonymous, GET/HEAD only,
+      obey `AllowedHosts`, and answer only `Healthy` or `Unhealthy`. The reverse proxy must forward `/health/` to the
+      API as well as `/api/`. Alerts on `503` and on missing responses are still to be set up per host.
 - [ ] Log retention and access policy defined (logs must not contain PII; activity log retention, FUTURE-TODO 3).
 - [ ] Remember-me maximum confirmed (default 30 days).
 - [ ] Single instance, or the shared store work from section 5 is done.
