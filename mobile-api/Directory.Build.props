@@ -1,0 +1,4 @@
+<Project>
+  <!-- The same compiler and analyzer settings as the backend API (zero warnings), so the shared layers build alike. -->
+  <Import Project="..\api\Directory.Build.props" />
+</Project>

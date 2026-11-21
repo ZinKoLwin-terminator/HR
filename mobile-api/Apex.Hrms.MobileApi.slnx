@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Apex.Hrms.Mobile.Domain/Apex.Hrms.Mobile.Domain.csproj" />
+    <Project Path="src/Apex.Hrms.Mobile.Application/Apex.Hrms.Mobile.Application.csproj" />
+    <Project Path="src/Apex.Hrms.Mobile.Infrastructure/Apex.Hrms.Mobile.Infrastructure.csproj" />
+    <Project Path="src/Apex.Hrms.MobileApi/Apex.Hrms.MobileApi.csproj" />
+  </Folder>
+  <Folder Name="/shared/">
+    <Project Path="../api/src/Apex.Hrms.Domain/Apex.Hrms.Domain.csproj" />
+    <Project Path="../api/src/Apex.Hrms.Application/Apex.Hrms.Application.csproj" />
+    <Project Path="../api/src/Apex.Hrms.Infrastructure/Apex.Hrms.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Apex.Hrms.Mobile.UnitTests/Apex.Hrms.Mobile.UnitTests.csproj" />
+    <Project Path="tests/Apex.Hrms.MobileApi.Tests/Apex.Hrms.MobileApi.Tests.csproj" />
+  </Folder>
+</Solution>

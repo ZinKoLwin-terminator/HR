@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The adapters of the mobile ports: a small read/write DbContext of its own (only the columns the mobile API uses), the
+    Identity credential store, and the JWT token issuer. The shared HRMS Infrastructure of api/src supplies the Identity
+    UserManager and the account directory (AddPersistenceAndIdentity). No web stack here.
+  -->
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Apex.Hrms.Mobile.UnitTests" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <ProjectReference Include="..\Apex.Hrms.Mobile.Application\Apex.Hrms.Mobile.Application.csproj" />
+    <ProjectReference Include="..\..\..\api\src\Apex.Hrms.Infrastructure\Apex.Hrms.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

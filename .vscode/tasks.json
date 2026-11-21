@@ -39,6 +39,42 @@
           }
         }
       }
+    },
+    {
+      // Runs the employee app and opens web/mockup.html, which shows it in a
+      // phone frame. Both steps run side by side.
+      "label": "flutter: employee app in phone mockup",
+      "dependsOn": ["flutter: run employee app (web)", "flutter: open phone mockup"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      // The app tab Chrome opens here must stay open: a debug build starts
+      // only once the debugger has connected, and only that top-level tab can
+      // connect it. The terminal keeps the flutter run keys (r, R, q).
+      "label": "flutter: run employee app (web)",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run", "-d", "chrome", "--web-port", "5000"],
+      "options": {
+        "cwd": "${workspaceFolder}/hr_employee_app"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      // Waits for the dev server, then opens the mockup in the default browser.
+      // Probes 127.0.0.1: Windows PowerShell tries ::1 first for "localhost"
+      // and times out, because the dev server listens on IPv4 only.
+      "label": "flutter: open phone mockup",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "while ($true) { try { Invoke-WebRequest http://127.0.0.1:5000/mockup.html -UseBasicParsing -TimeoutSec 2 | Out-Null; break } catch { Start-Sleep -Seconds 2 } }; Start-Process http://localhost:5000/mockup.html"
+      ],
+      "problemMatcher": []
     }
   ]
 }

@@ -122,30 +122,39 @@ part of the UI in mock mode, not an overlay added to the images.
 
 ## Device mockup (browser preview)
 
-`web/mockup.html` shows the running app inside as many phone frames as you
-want, side by side. It is a plain page served next to the app, so it does not
-depend on the Chrome DevTools device toolbar — which emulates one device per
-tab and changes between Chrome releases.
+`web/mockup.html` shows the running app inside phone frames — one iPhone 15
+by default, more on request. It is a plain page served next to the app, so it
+does not depend on the Chrome DevTools device toolbar — which emulates one
+device per tab and changes between Chrome releases.
 
 ```bash
-flutter run -d web-server --web-port 5000
-# then open http://localhost:5000/mockup.html in Chrome
+flutter run -d chrome --web-port 5000
+# then open http://localhost:5000/mockup.html in a second tab
 ```
 
-`flutter run -d chrome --web-port 5000` works too; it opens the app itself in
-one tab, and the mockup page is a second tab at the same address.
+In VS Code the task **flutter: employee app in phone mockup** (*Terminal → Run
+Task…*, defined in the repository's `.vscode/tasks.json`) does both: it starts
+`flutter run` and opens the mockup in your default browser once the dev server
+answers.
 
-Each frame is an `<iframe>` pointing at the app, so what you see is the real
-build and the page never needs rebuilding when the app changes. From the bar
-you can add any preset or a custom size, rotate or remove a frame, scale
-everything to fit the window, and pad the screen the way a notch and a home
-bar do on hardware. The layout is remembered per browser.
+**Keep the app tab that `flutter run` opened.** A debug build starts `main()`
+only after the debugger has connected, and only a top-level tab can connect
+it; a frame cannot. Without that tab the frames stay on the blue loading
+screen. For the same reason, do not point `--web-launch-url` at the mockup:
+the first load works, but frames reloaded later never start.
+
+The page puts the frames on the left and a side panel on the right with the
+controls (add a preset or a custom size, zoom, safe area, *Reload all*), the
+dev server and frame status, the steps for seeing a code change, the keys, and
+an activity log. Each frame is an `<iframe>` pointing at the app, so what you
+see is the real build and the page never needs rebuilding when the app
+changes. The layout is remembered per browser.
 
 After a hot restart (`R` in the terminal), press **R** on the page — or
-*Reload all* — to pull the new build into the frames; the dev server only
-pushes into the tab it launched. Note that every frame shares one origin, so
-they also share stored session state: signing in on one and reloading another
-signs that one in too.
+*Reload all* — to pull the new build into the frames; hot reload (`r`) reaches
+only the app tab. Note that every frame shares one origin, so they also share
+stored session state: signing in on one and reloading another signs that one
+in too.
 
 ### What the browser build is for
 

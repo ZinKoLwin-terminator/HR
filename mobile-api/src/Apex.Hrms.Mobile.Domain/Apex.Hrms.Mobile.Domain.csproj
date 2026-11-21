@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The rules of a mobile app session. No framework and no other layer: plain C# only. -->
+
+  <PropertyGroup>
+    <RootNamespace>Apex.Hrms.Mobile.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Apex.Hrms.Mobile.UnitTests" />
+  </ItemGroup>
+
+</Project>
