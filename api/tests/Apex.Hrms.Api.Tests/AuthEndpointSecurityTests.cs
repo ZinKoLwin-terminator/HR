@@ -48,7 +48,7 @@ public sealed class AuthEndpointSecurityTests(WebApplicationFactory<Program> fix
         (await response.Content.ReadFromJsonAsync<JsonElement>())!;
 
     [Fact]
-    public void Only_the_four_auth_endpoints_and_the_openapi_document_allow_anonymous_callers()
+    public void Only_the_four_auth_endpoints_the_two_health_probes_and_the_openapi_document_allow_anonymous_callers()
     {
         var factory = Development();
         using var client = factory.CreateClient();
@@ -61,7 +61,7 @@ public sealed class AuthEndpointSecurityTests(WebApplicationFactory<Program> fix
             .ToList();
 
         Assert.Equal(
-            ["/api/auth/antiforgery", "/api/auth/forgot-password", "/api/auth/login", "/api/auth/reset-password", "/openapi/{documentName}.json"],
+            ["/api/auth/antiforgery", "/api/auth/forgot-password", "/api/auth/login", "/api/auth/reset-password", "/health/live", "/health/ready", "/openapi/{documentName}.json"],
             anonymous);
     }
 

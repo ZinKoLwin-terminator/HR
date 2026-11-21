@@ -29,17 +29,17 @@ builder.Services
     .AddGrievancePseudonyms(builder.Configuration)
     .AddHrmsDataProtection(builder.Configuration, builder.Environment.ContentRootPath)
     .AddHrmsForwardedHeaders(builder.Configuration)
+    .AddHrmsHealthChecks()
     .AddApi(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 
+app.UseHrmsSwaggerUi();
 app.UseApiPipeline();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi().AllowAnonymous();
-}
+app.MapHrmsOpenApi();
 
+app.MapHealthEndpoints();
 app.MapAuthEndpoints();
 app.MapOrganizationEndpoints();
 app.MapEmployeeEndpoints();

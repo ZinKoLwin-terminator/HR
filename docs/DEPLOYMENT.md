@@ -38,7 +38,7 @@ items) or the host's secret store. Configuration is read at startup; restart aft
 
 | Variable | Notes |
 | --- | --- |
-| `ASPNETCORE_ENVIRONMENT=Production` | Selects SMTP mail, `__Host-` cookies, Secure cookies, HSTS and HTTPS redirection, exact `AllowedHosts`. OpenAPI is off. |
+| `ASPNETCORE_ENVIRONMENT=Production` | Selects SMTP mail, `__Host-` cookies, Secure cookies, HSTS and HTTPS redirection, exact `AllowedHosts`. OpenAPI and Swagger UI are off unless `OpenApi__Enabled=true`. |
 | `ConnectionStrings__Hrms` | **Required.** Use the least-privilege runtime account only (below). No fallback exists. Example shape (no values): `Server=<host>;Database=<db>;User Id=<login>;Password=<from secret store>;Encrypt=True`. Prefer Windows auth with a gMSA where possible. |
 | `AllowedHosts` | Exact host names separated by `;`. Wildcard or empty stops startup outside Development. The base file says `localhost`: override it. |
 | `Cors__AllowedOrigins__0` | Same-origin needs no CORS. Note: arrays merge by index, so the base file's `http://localhost:4200` stays at index 0 unless you override `__0`. |
@@ -46,6 +46,7 @@ items) or the host's secret store. Configuration is read at startup; restart aft
 | `Email__Smtp__UserName`, `Email__Smtp__Password` | Both or neither. Secret store only. |
 | `DataProtection__KeysPath` | Absolute directory for the key ring (see below). Default is `App_Data/keys` under the content root, which is wrong for a published folder that gets replaced. |
 | `Hosting__ForwardedHeaders__Enabled=true` | Only behind a reverse proxy. Then fill `KnownProxies__0..` and/or `KnownNetworks__0..` (CIDR). Enabled with neither list stops startup. Leave off when Kestrel faces clients directly. |
+| `OpenApi__Enabled` | `true` serves `/openapi/v1.json` and Swagger UI at `/swagger` (anonymous; calls still need a session). Default off outside Development. Never on production: it publishes the whole API surface. The proxy must forward `/openapi/` and `/swagger` to the API. |
 | `Auth__RememberMeMaxDays` | Hard end of a remember-me session, 1 to 365, default 30 (confirm the value, FUTURE-TODO 3). |
 | `Auth__RateLimit__PermitsPerMinute` | Login, forgot- and reset-password per client IP, default 10. |
 | `Logging__LogLevel__Default` etc. | `Warning` default, `Apex.Hrms` at `Information`. Never log at Debug/Trace in production (SQL text and parameters). |
@@ -276,8 +277,10 @@ throttling.
 - [ ] No parameter-capturing traces, Extended Events sessions or Query Store parameter capture on the `grv` tables.
 - [ ] Database backups and restore tested; bootstrap-admin run; first admin password stored in a vault.
 - [ ] A production API-mode UI build exists and has no source maps (see section 1).
-- [ ] Monitoring and alerts: the API has **no health endpoint** today (gap). Add liveness (process up) and readiness
-      (database reachable) endpoints, anonymous but minimal, and point the host's probe at them.
+- [ ] Monitoring and alerts: point the host's probe or uptime monitor at `GET /health/live` (process up, no checks)
+      and `GET /health/ready` (database reachable within 5 seconds, else `503`). Both are anonymous, GET/HEAD only,
+      obey `AllowedHosts`, and answer only `Healthy` or `Unhealthy`. The reverse proxy must forward `/health/` to the
+      API as well as `/api/`. Alerts on `503` and on missing responses are still to be set up per host.
 - [ ] Log retention and access policy defined (logs must not contain PII; activity log retention, FUTURE-TODO 3).
 - [ ] Remember-me maximum confirmed (default 30 days).
 - [ ] Single instance, or the shared store work from section 5 is done.
