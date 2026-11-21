@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    The backend API's package versions (one place for every shared package, including the security pins), plus the packages
+    only the mobile API uses.
+  -->
+  <Import Project="..\api\Directory.Packages.props" />
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.19.2" />
+  </ItemGroup>
+</Project>

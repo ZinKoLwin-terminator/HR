@@ -33,18 +33,7 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString(ConnectionStringName)
-            ?? throw new InvalidOperationException($"Connection string '{ConnectionStringName}' is not configured.");
-        var businessTimeZone = BusinessTimeZone.Resolve(configuration[BusinessTimeZone.ConfigurationKey]);
-
-        services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<IClock>(provider => new SystemClock(provider.GetRequiredService<TimeProvider>(), businessTimeZone));
-        services.TryAddScoped<ICurrentUser, AnonymousCurrentUser>();
-
-        services.AddScoped<AuditStampInterceptor>();
-        services.AddDbContext<HrmsDbContext>((provider, options) => options
-            .UseSqlServer(connectionString)
-            .AddInterceptors(provider.GetRequiredService<AuditStampInterceptor>()));
+        services.AddPersistenceAndIdentity(configuration);
 
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
         services.AddScoped(typeof(IRecordCounter<>), typeof(EfRecordCounter<>));
@@ -57,7 +46,6 @@ public static class DependencyInjection
         services.AddScoped<IDashboardSource, EfDashboardSource>();
         services.AddScoped<IReadModel, EfReadModel>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
-        services.AddScoped<IDatabaseProbe, EfDatabaseProbe>();
         services.AddScoped<IPayrollRunOutput, EfPayrollRunOutput>();
         services.AddScoped<IActivityMute>(provider => provider.GetRequiredService<EfActivityRecorder>());
         services.AddScoped<IImportBatchStore, EfImportBatchStore>();
@@ -80,7 +68,6 @@ public static class DependencyInjection
         services.AddSingleton<IBusinessWeek>(ConfiguredBusinessWeek.From(
             configuration.GetSection(ConfiguredBusinessWeek.ConfigurationKey).Get<string[]>()));
 
-        services.AddScoped<IAccountDirectory, EfAccountDirectory>();
         services.AddScoped<IAdministratorStore, EfAdministratorStore>();
         services.AddScoped<IAccountLogins, EfAccountLogins>();
         services.AddScoped<IPermissionStore, EfPermissionStore>();
@@ -90,6 +77,31 @@ public static class DependencyInjection
 
         // Fails closed (refuses to send) until the host registers a real sender with AddEmailSender.
         services.TryAddSingleton<IEmailSender>(new SmtpEmailSender(SmtpSettings.From(configuration)));
+        return services;
+    }
+
+    /// <summary>
+    /// The part of <see cref="AddInfrastructure"/> that signing in needs and nothing more: the clock, the placeholder current
+    /// user, the database context, ASP.NET Core Identity, the account directory and the database probe. For a host that only
+    /// signs people in (the mobile API in mobile-api/); <see cref="AddInfrastructure"/> includes it.
+    /// </summary>
+    public static IServiceCollection AddPersistenceAndIdentity(this IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString(ConnectionStringName)
+            ?? throw new InvalidOperationException($"Connection string '{ConnectionStringName}' is not configured.");
+        var businessTimeZone = BusinessTimeZone.Resolve(configuration[BusinessTimeZone.ConfigurationKey]);
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IClock>(provider => new SystemClock(provider.GetRequiredService<TimeProvider>(), businessTimeZone));
+        services.TryAddScoped<ICurrentUser, AnonymousCurrentUser>();
+
+        services.AddScoped<AuditStampInterceptor>();
+        services.AddDbContext<HrmsDbContext>((provider, options) => options
+            .UseSqlServer(connectionString)
+            .AddInterceptors(provider.GetRequiredService<AuditStampInterceptor>()));
+
+        services.AddScoped<IDatabaseProbe, EfDatabaseProbe>();
+        services.AddScoped<IAccountDirectory, EfAccountDirectory>();
         AddIdentity(services);
         return services;
     }

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    The presentation layer and host of the employee mobile app's API (hr_employee_app): HTTP endpoints, the response envelope
+    of hr_employee_app/docs/api_contracts.md, bearer authentication and the request pipeline. Business rules live in
+    Apex.Hrms.Mobile.Domain / Application; adapters in Apex.Hrms.Mobile.Infrastructure.
+  -->
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Apex.Hrms.MobileApi.Tests" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <ProjectReference Include="..\Apex.Hrms.Mobile.Application\Apex.Hrms.Mobile.Application.csproj" />
+    <ProjectReference Include="..\Apex.Hrms.Mobile.Infrastructure\Apex.Hrms.Mobile.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

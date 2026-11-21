@@ -96,6 +96,13 @@ Query params: `?pageNumber=1&pageSize=20`. `pageNumber` is **1-based**.
 
 ## 2. Authentication
 
+> **IMPLEMENTED** by the mobile API in `mobile-api/` (see `mobile-api/README.md`): login, refresh (rotated, with reuse
+> detection), logout, `GET /auth/me` and change-password, in this envelope. Differences from the proposal below:
+> a refused sign-in or refresh is `401` with one generic message (never which part was wrong); `userId` is the
+> `sec.AppUser` id and `employeeId` the employee code, both as text; `mustChangePassword` is always `false`;
+> logout takes the session from the access token and ignores the body. Forgot/reset password are not on the mobile
+> API yet (use the web app).
+
 ### POST `/auth/login` — public
 
 ```json

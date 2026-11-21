@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The use cases of the mobile app (sign in, refresh, sign out, me, change password) and the ports they need. It reuses the
+    shared HRMS Domain (Result, AppError, account status) and Application (IAccountDirectory, SecurityPolicy) of api/src.
+    No Entity Framework, no ASP.NET Core: those live in Infrastructure and the API host.
+  -->
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Apex.Hrms.Mobile.UnitTests" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <ProjectReference Include="..\Apex.Hrms.Mobile.Domain\Apex.Hrms.Mobile.Domain.csproj" />
+    <ProjectReference Include="..\..\..\api\src\Apex.Hrms.Application\Apex.Hrms.Application.csproj" />
+  </ItemGroup>
+
+</Project>

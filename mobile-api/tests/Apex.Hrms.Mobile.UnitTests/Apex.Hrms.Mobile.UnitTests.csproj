@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <ProjectReference Include="..\..\src\Apex.Hrms.Mobile.Domain\Apex.Hrms.Mobile.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Apex.Hrms.Mobile.Application\Apex.Hrms.Mobile.Application.csproj" />
+    <ProjectReference Include="..\..\src\Apex.Hrms.Mobile.Infrastructure\Apex.Hrms.Mobile.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Apex.Hrms.MobileApi\Apex.Hrms.MobileApi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
