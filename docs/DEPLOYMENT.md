@@ -232,16 +232,27 @@ throttling.
   nginx or similar serves the UI files, proxies `/api/` with `X-Forwarded-For`, `X-Forwarded-Proto` and `Host`, and
   falls back to `index.html`. Put the API on a private network and list the proxy's address in `KnownProxies`.
   Do not publish the API port directly.
-* **AWS S3 + CloudFront (UAT UI, mock data):** every push to the `uat_deploy_ui` branch runs
-  `.github/workflows/deploy-uat-ui.yml`: lint, format, unit tests, build, then publish to
+* **AWS S3 + CloudFront (UAT, UI in API mode):** every push to the `uat_deploy_ui` branch runs
+  `.github/workflows/deploy-uat-ui.yml`: lint, format, unit tests, an optimised API-mode build
+  (`ng build --configuration production,api --optimization --no-source-map --extract-licenses`), then publish to
   https://d1ijsaaw5ohl8t.cloudfront.net (bucket `apex-hrms-ui-306855880046-ap-south-1`, private, read through
-  CloudFront Origin Access Control; distribution `E2ZTZ085WYV0QX`; 403/404 fall back to `index.html`). It can also be
-  run by hand from the Actions tab. GitHub signs in through OIDC to the IAM role `apex-hrms-uat-ui-deploy`, which
-  trusts only this repository's `uat_deploy_ui` branch and may only write that bucket and invalidate that
-  distribution; no AWS keys are stored in GitHub. Caching: hashed bundles are `immutable`, `index.html` and the other
-  unhashed files are `no-cache,no-store`, and each deploy invalidates `/*`, so users get the new build on the next
-  page load. No API runs on AWS yet: when it does, add an `/api/*` behaviour to the distribution and build with the
-  `api` configuration.
+  CloudFront Origin Access Control; distribution `E2ZTZ085WYV0QX`). It can also be run by hand from the Actions tab.
+  GitHub signs in through OIDC to the IAM role `apex-hrms-uat-ui-deploy`, which trusts only this repository's
+  `uat_deploy_ui` branch and may only write that bucket and invalidate that distribution; no AWS keys are stored in
+  GitHub. Caching: hashed bundles are `immutable`, `index.html` and the other unhashed files are `no-cache,no-store`,
+  and each deploy invalidates `/*`, so users get the new build on the next page load.
+  * **Routing:** the default behaviour serves S3; the CloudFront Function `apex-hrms-spa-rewrite` (viewer request)
+    sends paths without a file extension to `/index.html`. There are deliberately no 403/404 custom error pages:
+    they would also replace API error responses. `/api/*` goes, uncached (CachingDisabled, AllViewerExceptHostHeader),
+    to the UAT API on EC2 through `54-251-230-240.sslip.io`, so the browser sees one origin and the session and
+    XSRF cookies stay first-party.
+  * **Origin:** CloudFront needs a host name with a publicly trusted certificate, and there is no company domain, so
+    the origin is the sslip.io name of the Elastic IP with a Let's Encrypt certificate (certbot webroot, renewed by
+    `certbot.timer`; port 80 is open for the challenge and otherwise redirects). The nginx server block for that name
+    (`/etc/nginx/sites-available/hrms-cloudfront`) answers 403 unless the request carries the `X-Origin-Verify`
+    secret that CloudFront adds, takes the viewer IP from the last `X-Forwarded-For` entry, and serves `/api/` only.
+    `AllowedHosts` lists both `54.251.230.240` and the sslip.io name. Changing the Elastic IP breaks the origin name
+    and certificate. Replace this with a real domain when one exists.
 
 ## 7. Rollback
 

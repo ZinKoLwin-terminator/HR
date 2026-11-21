@@ -1,7 +1,9 @@
 name: Deploy UAT UI
 
-# Every push to uat_deploy_ui builds the Angular app (mock data) and publishes it to
+# Every push to uat_deploy_ui builds the Angular app in API mode and publishes it to
 # S3 + CloudFront: https://d1ijsaaw5ohl8t.cloudfront.net
+# The same distribution sends /api/* to the UAT API on EC2 (Core-UAT-API), so the app calls a
+# same-origin /api. See docs/DEPLOYMENT.md section 6.
 # AWS access uses GitHub OIDC: no stored keys. The IAM role trusts this branch only.
 on:
   push:
@@ -41,7 +43,9 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run test:ci
-      - run: npm run build
+      # API mode (api-data-options.api.ts, baseUrl /api), optimised like production. The `api`
+      # configuration alone is a development build with source maps.
+      - run: npx ng build --configuration production,api --optimization --no-source-map --extract-licenses
 
       - uses: aws-actions/configure-aws-credentials@v5
         with:

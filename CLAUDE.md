@@ -15,7 +15,7 @@ Check this before assuming anything. Inspected 2026-11-17; re-check when a modul
 | Data layer  | Abstract contracts in `ui/src/app/core/services/data`, bound to mocks in `ui/src/app/mock-services` by `provideMockDataServices()` (default, GitHub Pages demo) or to HTTP adapters in `ui/src/app/api-services` (`npm run start:api`) |
 | Auth        | API: ASP.NET Core Identity cookie sessions, permissions (`module:Action`, `sec.RolePermission`) checked on every request, row scoping by `SelfService` (own / direct reports / everyone). Mock mode: simulation in browser storage that enforces nothing |
 | Tests       | Vitest via `ng test` (`*.spec.ts` beside the code), Playwright (`ui/e2e/`), xUnit in `api/tests` (integration tests need a local SQL Server). Fixtures in `docs/test-data` |
-| CI/CD       | `.github/workflows/ci.yml`: lint, format, unit, build, E2E, then **deploy to GitHub Pages on every push to `main`**. `.github/workflows/deploy-uat-ui.yml`: **every push to `uat_deploy_ui` deploys the mock-data UI to AWS S3 + CloudFront** (OIDC role, no stored keys; see `docs/DEPLOYMENT.md` section 6) |
+| CI/CD       | `.github/workflows/ci.yml`: lint, format, unit, build, E2E, then **deploy to GitHub Pages on every push to `main`**. `.github/workflows/deploy-uat-ui.yml`: **every push to `uat_deploy_ui` deploys the UI in API mode to AWS S3 + CloudFront**, whose `/api/*` reaches the UAT API on EC2 (OIDC role, no stored keys; see `docs/DEPLOYMENT.md` section 6) |
 | Data        | All sample data is fictional. Payroll rules are demonstrations, not statutory calculations               |
 
 Treat the live demo as production anyway: **merging to `main` deploys it.** Never describe mock
