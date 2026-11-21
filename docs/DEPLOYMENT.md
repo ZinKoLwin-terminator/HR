@@ -232,6 +232,16 @@ throttling.
   nginx or similar serves the UI files, proxies `/api/` with `X-Forwarded-For`, `X-Forwarded-Proto` and `Host`, and
   falls back to `index.html`. Put the API on a private network and list the proxy's address in `KnownProxies`.
   Do not publish the API port directly.
+* **AWS S3 + CloudFront (UAT UI, mock data):** every push to the `uat_deploy_ui` branch runs
+  `.github/workflows/deploy-uat-ui.yml`: lint, format, unit tests, build, then publish to
+  https://d1ijsaaw5ohl8t.cloudfront.net (bucket `apex-hrms-ui-306855880046-ap-south-1`, private, read through
+  CloudFront Origin Access Control; distribution `E2ZTZ085WYV0QX`; 403/404 fall back to `index.html`). It can also be
+  run by hand from the Actions tab. GitHub signs in through OIDC to the IAM role `apex-hrms-uat-ui-deploy`, which
+  trusts only this repository's `uat_deploy_ui` branch and may only write that bucket and invalidate that
+  distribution; no AWS keys are stored in GitHub. Caching: hashed bundles are `immutable`, `index.html` and the other
+  unhashed files are `no-cache,no-store`, and each deploy invalidates `/*`, so users get the new build on the next
+  page load. No API runs on AWS yet: when it does, add an `/api/*` behaviour to the distribution and build with the
+  `api` configuration.
 
 ## 7. Rollback
 

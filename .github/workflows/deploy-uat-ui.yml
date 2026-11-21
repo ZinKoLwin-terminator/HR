@@ -1,0 +1,77 @@
+name: Deploy UAT UI
+
+# Every push to uat_deploy_ui builds the Angular app (mock data) and publishes it to
+# S3 + CloudFront: https://d1ijsaaw5ohl8t.cloudfront.net
+# AWS access uses GitHub OIDC: no stored keys. The IAM role trusts this branch only.
+on:
+  push:
+    branches: [uat_deploy_ui]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-uat-ui
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+  AWS_ROLE_ARN: arn:aws:iam::306855880046:role/apex-hrms-uat-ui-deploy
+  S3_BUCKET: apex-hrms-ui-306855880046-ap-south-1
+  CLOUDFRONT_DISTRIBUTION_ID: E2ZTZ085WYV0QX
+
+defaults:
+  run:
+    working-directory: ui
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run test:ci
+      - run: npm run build
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 1. Hashed bundles (new names on every build): cache for a year.
+      - name: Upload hashed assets
+        run: >-
+          aws s3 sync dist/hrms/browser "s3://$S3_BUCKET/"
+          --exclude "*" --include "*-*.js" --include "*-*.css" --include "media/*"
+          --cache-control "public,max-age=31536000,immutable" --only-show-errors
+
+      # 2. index.html and other unhashed files, last, so they only reference uploaded bundles.
+      #    no-cache: browsers and CloudFront always fetch the latest version.
+      - name: Upload index.html and unhashed files
+        run: >-
+          aws s3 sync dist/hrms/browser "s3://$S3_BUCKET/"
+          --exclude "*-*.js" --exclude "*-*.css" --exclude "media/*"
+          --cache-control "no-cache,no-store,must-revalidate" --only-show-errors
+
+      - name: Invalidate CloudFront
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+            --paths "/*" --query Invalidation.Id --output text)
+          aws cloudfront wait invalidation-completed --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --id "$id"
+
+      # 3. Remove bundles from older builds (--size-only: nothing is re-uploaded here).
+      - name: Remove stale files
+        run: aws s3 sync dist/hrms/browser "s3://$S3_BUCKET/" --delete --size-only --only-show-errors
+
+      - name: Summary
+        run: echo "Deployed ${GITHUB_SHA::7} to https://d1ijsaaw5ohl8t.cloudfront.net" >> "$GITHUB_STEP_SUMMARY"
